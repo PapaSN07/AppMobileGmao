@@ -115,6 +115,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
+                  textStyle: TextStyle(
+                    fontFamily: AppTheme.fontMontserrat,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
                 ),
                 child: Text('Se connecter'),
               ),
