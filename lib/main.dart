@@ -16,6 +16,7 @@ class MyApp extends StatelessWidget {
       title: 'GMAO',
       theme: ThemeData(primaryColor: AppTheme.primaryColor),
       home: const HomeScreen(),
+      // debugShowCheckedModeBanner: false,
     );
   }
 }
