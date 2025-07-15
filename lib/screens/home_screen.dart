@@ -13,7 +13,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: _appBar(),
-      body: Center(child: const Text('Bienvenue sur l’écran d’accueil !')),
+      body: _bodyContent(),
       bottomNavigationBar: _bottomNavigationBar(),
       backgroundColor: AppTheme.primaryColor,
     );
@@ -24,7 +24,7 @@ class _HomeScreenState extends State<HomeScreen> {
       preferredSize: const Size.fromHeight(56), // Hauteur de l'AppBar
       child: Padding(
         padding: const EdgeInsets.symmetric(
-          horizontal: 26,
+          horizontal: 8,
         ), // Espacement gauche et droite
         child: Container(
           decoration: BoxDecoration(
@@ -80,27 +80,42 @@ class _HomeScreenState extends State<HomeScreen> {
                 .transparent, // Transparent pour laisser le Container gérer la couleur
         elevation: 0, // Supprime l'ombre
         items: const [
-          BottomNavigationBarItem(icon: Padding(
-            padding: EdgeInsets.only(top: 8), // Ajuste l'icône pour réduire l'espace
-            child: Icon(Icons.home),
-          ), label: 'Accueil'),
           BottomNavigationBarItem(
             icon: Padding(
-              padding: EdgeInsets.only(top: 8), // Ajuste l'icône pour réduire l'espace
-              child: Icon(Icons.assignment), // Icône pour Ordre de Transfert (OT)
+              padding: EdgeInsets.only(
+                top: 8,
+              ), // Ajuste l'icône pour réduire l'espace
+              child: Icon(Icons.home),
+            ),
+            label: 'Accueil',
+          ),
+          BottomNavigationBarItem(
+            icon: Padding(
+              padding: EdgeInsets.only(
+                top: 8,
+              ), // Ajuste l'icône pour réduire l'espace
+              child: Icon(
+                Icons.assignment,
+              ), // Icône pour Ordre de Transfert (OT)
             ),
             label: 'OT',
           ),
           BottomNavigationBarItem(
             icon: Padding(
-              padding: EdgeInsets.only(top: 8), // Ajuste l'icône pour réduire l'espace
-              child: Icon(Icons.build), // Icône pour Demande d'Intervention (DI)
+              padding: EdgeInsets.only(
+                top: 8,
+              ), // Ajuste l'icône pour réduire l'espace
+              child: Icon(
+                Icons.build,
+              ), // Icône pour Demande d'Intervention (DI)
             ),
             label: 'DI',
           ),
           BottomNavigationBarItem(
             icon: Padding(
-              padding: EdgeInsets.only(top: 8), // Ajuste l'icône pour réduire l'espace
+              padding: EdgeInsets.only(
+                top: 8,
+              ), // Ajuste l'icône pour réduire l'espace
               child: Icon(Icons.settings),
             ),
             label: 'Équipements',
@@ -130,4 +145,262 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
+  Widget _bodyContent() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 26),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _cardSectionOne(),
+            SizedBox(height: 20),
+            Text(
+              'Utilisez le menu en bas pour naviguer dans l’application.',
+              style: AppTheme.bodyText1,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _cardSectionOne() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
+      decoration: BoxDecoration(
+        color: AppTheme.blurColor,
+        borderRadius: BorderRadius.circular(25),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [_boxOne(), _boxTwo()],
+      ),
+    );
+  }
+
+  Widget _boxOne() {
+    return Container(
+      width: 170,
+      height: 220,
+      decoration: BoxDecoration(
+        color: AppTheme.primaryColor,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Stack(
+        children: [
+          // Contenu principal
+          Padding(
+            padding: EdgeInsets.all(10),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 50, // Taille du cercle
+                      height: 50, // Taille du cercle
+                      decoration: BoxDecoration(
+                        color:
+                            AppTheme
+                                .secondaryColor, // Couleur de fond du cercle (bleu)
+                        shape: BoxShape.circle, // Forme circulaire
+                      ),
+                      child: Icon(
+                        Icons.assignment, // Icône à afficher
+                        size: 24, // Taille de l'icône
+                        color:
+                            AppTheme.primaryColor, // Couleur de l'icône (blanc)
+                      ),
+                    ),
+                    Transform(
+                      transform: Matrix4.rotationZ(
+                        -0.785398,
+                      ), // Inclinaison de 45 degrés (en radians)
+                      alignment: Alignment.center, // Centre de rotation
+                      child: Icon(
+                        Icons.arrow_back, // Icône à afficher
+                        size: 24, // Taille de l'icône
+                        color:
+                            AppTheme
+                                .secondaryColor, // Couleur de l'icône (blanc)
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 10),
+                Text(
+                  'Order de Travail',
+                  style: TextStyle(
+                    fontFamily: AppTheme.fontMontserrat,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.secondaryColor,
+                    fontSize: 16,
+                  ),
+                ),
+                SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'De',
+                      style: TextStyle(
+                        fontFamily: AppTheme.fontMontserrat,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.thirdColor,
+                        fontSize: 14,
+                      ),
+                    ),
+                    Text(
+                      '22',
+                      style: TextStyle(
+                        fontFamily: AppTheme.fontMontserrat,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.secondaryColor,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          // Image positionnée en bas du container
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: ClipRRect(
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(10),
+                bottomRight: Radius.circular(10),
+              ),
+              child: SizedBox(
+                height: 80, // Hauteur fixe pour l'image
+                child: Image.asset(
+                  'assets/images/bg_card.png',
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _boxTwo() {
+    return Container(
+      width: 170,
+      height: 220,
+      decoration: BoxDecoration(
+        color: AppTheme.primaryColor,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Stack(
+        children: [
+          // Contenu principal
+          Padding(
+            padding: EdgeInsets.all(10),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 50, // Taille du cercle
+                      height: 50, // Taille du cercle
+                      decoration: BoxDecoration(
+                        color:
+                            AppTheme
+                                .secondaryColor, // Couleur de fond du cercle (bleu)
+                        shape: BoxShape.circle, // Forme circulaire
+                      ),
+                      child: Icon(
+                        Icons.build, // Icône à afficher
+                        size: 24, // Taille de l'icône
+                        color:
+                            AppTheme.primaryColor, // Couleur de l'icône (blanc)
+                      ),
+                    ),
+                    Transform(
+                      transform: Matrix4.rotationZ(
+                        -0.785398,
+                      ), // Inclinaison de 45 degrés (en radians)
+                      alignment: Alignment.center, // Centre de rotation
+                      child: Icon(
+                        Icons.arrow_back, // Icône à afficher
+                        size: 24, // Taille de l'icône
+                        color:
+                            AppTheme
+                                .secondaryColor, // Couleur de l'icône (blanc)
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 10),
+                Text(
+                  'Demande d\'Intervention',
+                  style: TextStyle(
+                    fontFamily: AppTheme.fontMontserrat,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.secondaryColor,
+                    fontSize: 16,
+                  ),
+                ),
+                SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'De',
+                      style: TextStyle(
+                        fontFamily: AppTheme.fontMontserrat,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.thirdColor,
+                        fontSize: 14,
+                      ),
+                    ),
+                    Text(
+                      '22',
+                      style: TextStyle(
+                        fontFamily: AppTheme.fontMontserrat,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.secondaryColor,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          // Image positionnée en bas du container
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: ClipRRect(
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(10),
+                bottomRight: Radius.circular(10),
+              ),
+              child: SizedBox(
+                height: 80, // Hauteur fixe pour l'image
+                child: Image.asset(
+                  'assets/images/bg_card.png',
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
 }
