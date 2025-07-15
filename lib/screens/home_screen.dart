@@ -1,5 +1,6 @@
 import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:flutter/material.dart';
+import 'dart:ui'; // Import nécessaire pour ImageFilter
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -438,123 +439,191 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _itemBuilder() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppTheme.secondaryColor,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 56, // Taille du cercle
-            height: 56, // Taille du cercle
-            decoration: BoxDecoration(
-              color: AppTheme.primaryColor, // Couleur de fond du cercle (bleu)
-              shape: BoxShape.rectangle, // Forme rectangulaire
-              borderRadius: BorderRadius.circular(15), // Coins arrondis
+    return GestureDetector(
+      onTap: () {
+        // Afficher l'overlay lorsqu'on clique sur l'élément
+        showDialog(
+          context: context,
+          builder: (context) => _buildOverlay(context),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppTheme.secondaryColor,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 56, // Taille du cercle
+              height: 56, // Taille du cercle
+              decoration: BoxDecoration(
+                color:
+                    AppTheme.primaryColor, // Couleur de fond du cercle (bleu)
+                shape: BoxShape.rectangle, // Forme rectangulaire
+                borderRadius: BorderRadius.circular(15), // Coins arrondis
+              ),
+              child: Icon(
+                Icons.assignment, // Icône à afficher
+                size: 30, // Taille de l'icône
+                color: AppTheme.secondaryColor, // Couleur de l'icône (blanc)
+              ),
             ),
-            child: Icon(
-              Icons.assignment, // Icône à afficher
-              size: 30, // Taille de l'icône
-              color: AppTheme.secondaryColor, // Couleur de l'icône (blanc)
+            SizedBox(width: 10), // Ajout d'espace entre l'icône et les textes
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Code: #12345',
+                        style: TextStyle(
+                          fontFamily: AppTheme.fontMontserrat,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.primaryColor,
+                          fontSize: 18,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Transform(
+                        transform: Matrix4.rotationZ(-0.785398),
+                        alignment: Alignment.center,
+                        child: Icon(
+                          Icons.arrow_back,
+                          size: 24,
+                          color: AppTheme.primaryColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Famille: #12345',
+                        style: TextStyle(
+                          fontFamily: AppTheme.fontRoboto,
+                          fontWeight: FontWeight.normal,
+                          color: AppTheme.primaryColor,
+                          fontSize: 12,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        'Zone: Dakar',
+                        style: TextStyle(
+                          fontFamily: AppTheme.fontRoboto,
+                          fontWeight: FontWeight.normal,
+                          color: AppTheme.primaryColor,
+                          fontSize: 12,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Entité: Lorem',
+                        style: TextStyle(
+                          fontFamily: AppTheme.fontRoboto,
+                          fontWeight: FontWeight.normal,
+                          color: AppTheme.primaryColor,
+                          fontSize: 12,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        'Centre: Dakar',
+                        style: TextStyle(
+                          fontFamily: AppTheme.fontRoboto,
+                          fontWeight: FontWeight.normal,
+                          color: AppTheme.primaryColor,
+                          fontSize: 12,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOverlay(BuildContext context) {
+    return Stack(
+      children: [
+        // Effet de flou sur l'arrière-plan
+        BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10), // Intensité du flou
+          child: Container(
+            color: AppTheme.primaryColor15, // Couleur semi-transparente
+          ),
+        ),
+        // Contenu de l'overlay
+        Center(
+          child: Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20), // Coins arrondis
+            ),
+            backgroundColor:
+                AppTheme.secondaryColor, // Couleur de fond de l'overlay
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: AppTheme.secondaryColor,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min, // Ajuste la taille de l'overlay
+                children: [
+                  Text(
+                    'Détails de l\'élément',
+                    style: TextStyle(
+                      fontFamily: AppTheme.fontMontserrat,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      color: AppTheme.primaryColor,
+                    ),
+                  ),
+                  SizedBox(height: 10),
+                  Text(
+                    'Code: #12345\nFamille: #12345\nZone: Dakar\nEntité: Lorem\nCentre: Dakar',
+                    style: TextStyle(
+                      fontFamily: AppTheme.fontRoboto,
+                      fontWeight: FontWeight.normal,
+                      fontSize: 14,
+                      color: AppTheme.primaryColor,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop(); // Fermer l'overlay
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryColor,
+                    ),
+                    child: Text(
+                      'Fermer',
+                      style: TextStyle(color: AppTheme.secondaryColor),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-          SizedBox(width: 10), // Ajout d'espace entre l'icône et les textes
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment:
-                      MainAxisAlignment.spaceBetween, // Espacement automatique
-                  children: [
-                    Text(
-                      'Code: #12345',
-                      style: TextStyle(
-                        fontFamily: AppTheme.fontMontserrat,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.primaryColor,
-                        fontSize: 18,
-                      ),
-                      overflow:
-                          TextOverflow.ellipsis, // Pour gérer le débordement
-                    ),
-                    Transform(
-                      transform: Matrix4.rotationZ(
-                        -0.785398,
-                      ), // Inclinaison de 45 degrés (en radians)
-                      alignment: Alignment.center, // Centre de rotation
-                      child: Icon(
-                        Icons.arrow_back, // Icône à afficher
-                        size: 24, // Taille de l'icône
-                        color:
-                            AppTheme.primaryColor, // Couleur de l'icône (blanc)
-                      ),
-                    ),
-                  ],
-                ),
-                Row(
-                  mainAxisAlignment:
-                      MainAxisAlignment.spaceBetween, // Espacement automatique
-                  children: [
-                    Text(
-                      'Famille: #12345',
-                      style: TextStyle(
-                        fontFamily: AppTheme.fontRoboto,
-                        fontWeight: FontWeight.normal,
-                        color: AppTheme.primaryColor,
-                        fontSize: 12,
-                      ),
-                      overflow:
-                          TextOverflow.ellipsis, // Pour gérer le débordement
-                    ),
-                    Text(
-                      'Zone: Dakar',
-                      style: TextStyle(
-                        fontFamily: AppTheme.fontRoboto,
-                        fontWeight: FontWeight.normal,
-                        color: AppTheme.primaryColor,
-                        fontSize: 12,
-                      ),
-                      overflow:
-                          TextOverflow.ellipsis, // Pour gérer le débordement
-                    ),
-                  ],
-                ),
-                Row(
-                  mainAxisAlignment:
-                      MainAxisAlignment.spaceBetween, // Espacement automatique
-                  children: [
-                    Text(
-                      'Entité: Lorem',
-                      style: TextStyle(
-                        fontFamily: AppTheme.fontRoboto,
-                        fontWeight: FontWeight.normal,
-                        color: AppTheme.primaryColor,
-                        fontSize: 12,
-                      ),
-                      overflow:
-                          TextOverflow.ellipsis, // Pour gérer le débordement
-                    ),
-                    Text(
-                      'Centre: Dakar',
-                      style: TextStyle(
-                        fontFamily: AppTheme.fontRoboto,
-                        fontWeight: FontWeight.normal,
-                        color: AppTheme.primaryColor,
-                        fontSize: 12,
-                      ),
-                      overflow:
-                          TextOverflow.ellipsis, // Pour gérer le débordement
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
