@@ -15,7 +15,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'GMAO',
       theme: ThemeData(primaryColor: AppTheme.primaryColor),
-      home: LoginScreen(),
+      home: const LoginScreen(),
     );
   }
 }
