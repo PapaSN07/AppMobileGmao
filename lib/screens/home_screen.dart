@@ -155,10 +155,7 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             _cardSectionOne(),
             SizedBox(height: 20),
-            Text(
-              'Utilisez le menu en bas pour naviguer dans l’application.',
-              style: AppTheme.bodyText1,
-            ),
+            _cardSectionTwo(),
           ],
         ),
       ),
@@ -403,4 +400,161 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _cardSectionTwo() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '5 Ordres de Travail en cours',
+          style: TextStyle(
+            fontFamily: AppTheme.fontMontserrat,
+            fontWeight: FontWeight.normal,
+            color: AppTheme.thirdColor,
+            fontSize: 15,
+          ),
+        ),
+        SizedBox(height: 10),
+        _boxThree(),
+      ],
+    );
+  }
+
+  Widget _boxThree() {
+    return SizedBox(
+      height: 364, // Hauteur fixe pour la zone scrollable
+      child: ListView.builder(
+        itemCount: 5, // Nombre d'éléments dans la liste
+        itemBuilder: (context, index) {
+          return Padding(
+            padding: const EdgeInsets.only(
+              bottom: 10,
+            ), // Espacement entre les items
+            child: _itemBuilder(),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _itemBuilder() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppTheme.secondaryColor,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 56, // Taille du cercle
+            height: 56, // Taille du cercle
+            decoration: BoxDecoration(
+              color: AppTheme.primaryColor, // Couleur de fond du cercle (bleu)
+              shape: BoxShape.rectangle, // Forme rectangulaire
+              borderRadius: BorderRadius.circular(15), // Coins arrondis
+            ),
+            child: Icon(
+              Icons.assignment, // Icône à afficher
+              size: 30, // Taille de l'icône
+              color: AppTheme.secondaryColor, // Couleur de l'icône (blanc)
+            ),
+          ),
+          SizedBox(width: 10), // Ajout d'espace entre l'icône et les textes
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment:
+                      MainAxisAlignment.spaceBetween, // Espacement automatique
+                  children: [
+                    Text(
+                      'Code: #12345',
+                      style: TextStyle(
+                        fontFamily: AppTheme.fontMontserrat,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.primaryColor,
+                        fontSize: 18,
+                      ),
+                      overflow:
+                          TextOverflow.ellipsis, // Pour gérer le débordement
+                    ),
+                    Transform(
+                      transform: Matrix4.rotationZ(
+                        -0.785398,
+                      ), // Inclinaison de 45 degrés (en radians)
+                      alignment: Alignment.center, // Centre de rotation
+                      child: Icon(
+                        Icons.arrow_back, // Icône à afficher
+                        size: 24, // Taille de l'icône
+                        color:
+                            AppTheme.primaryColor, // Couleur de l'icône (blanc)
+                      ),
+                    ),
+                  ],
+                ),
+                Row(
+                  mainAxisAlignment:
+                      MainAxisAlignment.spaceBetween, // Espacement automatique
+                  children: [
+                    Text(
+                      'Famille: #12345',
+                      style: TextStyle(
+                        fontFamily: AppTheme.fontRoboto,
+                        fontWeight: FontWeight.normal,
+                        color: AppTheme.primaryColor,
+                        fontSize: 12,
+                      ),
+                      overflow:
+                          TextOverflow.ellipsis, // Pour gérer le débordement
+                    ),
+                    Text(
+                      'Zone: Dakar',
+                      style: TextStyle(
+                        fontFamily: AppTheme.fontRoboto,
+                        fontWeight: FontWeight.normal,
+                        color: AppTheme.primaryColor,
+                        fontSize: 12,
+                      ),
+                      overflow:
+                          TextOverflow.ellipsis, // Pour gérer le débordement
+                    ),
+                  ],
+                ),
+                Row(
+                  mainAxisAlignment:
+                      MainAxisAlignment.spaceBetween, // Espacement automatique
+                  children: [
+                    Text(
+                      'Entité: Lorem',
+                      style: TextStyle(
+                        fontFamily: AppTheme.fontRoboto,
+                        fontWeight: FontWeight.normal,
+                        color: AppTheme.primaryColor,
+                        fontSize: 12,
+                      ),
+                      overflow:
+                          TextOverflow.ellipsis, // Pour gérer le débordement
+                    ),
+                    Text(
+                      'Centre: Dakar',
+                      style: TextStyle(
+                        fontFamily: AppTheme.fontRoboto,
+                        fontWeight: FontWeight.normal,
+                        color: AppTheme.primaryColor,
+                        fontSize: 12,
+                      ),
+                      overflow:
+                          TextOverflow.ellipsis, // Pour gérer le débordement
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
