@@ -1,4 +1,7 @@
 import 'package:appmobilegmao/theme/app_theme.dart';
+import 'package:appmobilegmao/widgets/bottom_navigation_bar.dart';
+import 'package:appmobilegmao/widgets/custom_overlay.dart';
+import 'package:appmobilegmao/widgets/overlay_content.dart';
 import 'package:flutter/material.dart';
 import 'dart:ui'; // Import nécessaire pour ImageFilter
 
@@ -15,7 +18,15 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: _appBar(),
       body: _bodyContent(),
-      bottomNavigationBar: _bottomNavigationBar(),
+      bottomNavigationBar: CustomBottomNavigationBar(
+        currentIndex: 0, // Index de la page actuelle
+        onTap: (index) {
+          // Logique de navigation en fonction de l'index
+          setState(() {
+            // Mettre à jour l'index sélectionné si nécessaire
+          });
+        },
+      ),
       backgroundColor: AppTheme.primaryColor,
     );
   }
@@ -58,91 +69,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Container _bottomNavigationBar() {
-    return Container(
-      height: 100, // Augmente la hauteur du BottomNavigationBar
-      decoration: BoxDecoration(
-        color: AppTheme.secondaryColor, // Couleur de fond
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(20), // Coins arrondis en haut à gauche
-          topRight: Radius.circular(20), // Coins arrondis en haut à droite
-        ),
-      ),
-      child: BottomNavigationBar(
-        type:
-            BottomNavigationBarType
-                .fixed, // Force l'utilisation de la couleur personnalisée
-        backgroundColor:
-            Colors
-                .transparent, // Transparent pour laisser le Container gérer la couleur
-        elevation: 0, // Supprime l'ombre
-        items: const [
-          BottomNavigationBarItem(
-            icon: Padding(
-              padding: EdgeInsets.only(
-                top: 8,
-              ), // Ajuste l'icône pour réduire l'espace
-              child: Icon(Icons.home),
-            ),
-            label: 'Accueil',
-          ),
-          BottomNavigationBarItem(
-            icon: Padding(
-              padding: EdgeInsets.only(
-                top: 8,
-              ), // Ajuste l'icône pour réduire l'espace
-              child: Icon(
-                Icons.assignment,
-              ), // Icône pour Ordre de Transfert (OT)
-            ),
-            label: 'OT',
-          ),
-          BottomNavigationBarItem(
-            icon: Padding(
-              padding: EdgeInsets.only(
-                top: 8,
-              ), // Ajuste l'icône pour réduire l'espace
-              child: Icon(
-                Icons.build,
-              ), // Icône pour Demande d'Intervention (DI)
-            ),
-            label: 'DI',
-          ),
-          BottomNavigationBarItem(
-            icon: Padding(
-              padding: EdgeInsets.only(
-                top: 8,
-              ), // Ajuste l'icône pour réduire l'espace
-              child: Icon(Icons.settings),
-            ),
-            label: 'Équipements',
-          ),
-        ],
-        currentIndex: 0, // Index de l'élément sélectionné
-        selectedItemColor:
-            AppTheme.primaryColor, // Couleur de l'élément sélectionné
-        unselectedItemColor:
-            AppTheme.primaryColor75, // Couleur des éléments non sélectionnés
-        selectedLabelStyle: TextStyle(
-          fontFamily: AppTheme.fontMontserrat,
-          fontWeight: FontWeight.w600,
-          color: AppTheme.primaryColor,
-        ),
-        unselectedLabelStyle: TextStyle(
-          fontFamily: AppTheme.fontMontserrat,
-          fontWeight: FontWeight.normal,
-          color: AppTheme.primaryColor75,
-        ),
-        onTap: (index) {
-          // Logique de navigation en fonction de l'index
-          setState(() {
-            // Mettre à jour l'index sélectionné si nécessaire
-          });
-        },
       ),
     );
   }
@@ -451,16 +377,25 @@ class _HomeScreenState extends State<HomeScreen> {
               AppTheme
                   .primaryColor15, // Transparent car on gère le flou nous-mêmes
           transitionDuration: Duration(milliseconds: 300),
-          pageBuilder: (
-            BuildContext buildContext,
-            Animation animation,
-            Animation secondaryAnimation,
-          ) {
-            return _buildOverlay(buildContext);
-          },
-          transitionBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(opacity: animation, child: child);
-          },
+          pageBuilder: (BuildContext buildContext, Animation animation, Animation secondaryAnimation) {
+          return CustomOverlay(
+            onClose: () {
+              Navigator.of(context).pop(); // Fermer l'overlay
+            },
+            content: OverlayContent(
+              title: 'Détails',
+              details: {
+                'Code': '#12345',
+                'Description': 'Lorem ipsum dolor sit amet.',
+                'Famille': '#12345',
+                'Zone': 'Dakar',
+                'Entité': 'Lorem Ipsum',
+                'Unité': 'Lorem Ipsum',
+                'Centre': 'Lorem Ipsum',
+              },
+            ),
+          );
+        },
         );
       },
       child: Container(
@@ -570,332 +505,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildOverlay(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.of(context).pop(); // Fermer l'overlay lorsqu'on clique dessus
-      },
-      child: Stack(
-        children: [
-          // Effet de flou sur l'arrière-plan qui prend tout l'écran
-          Positioned.fill(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(
-                sigmaX: 10,
-                sigmaY: 10,
-              ), // Intensité du flou
-              child: Container(
-                color: AppTheme.primaryColor15, // Couleur semi-transparente
-              ),
-            ),
-          ),
-          // Contenu de l'overlay centré
-          Center(
-            child: GestureDetector(
-              onTap:
-                  () {}, // Empêche la fermeture lorsqu'on clique sur le contenu
-              child: Container(
-                width:
-                    MediaQuery.of(context).size.width *
-                    0.85, // 85% de la largeur
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: AppTheme.secondaryColor,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min, // Ajuste la taille du contenu
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      spacing: 20.0,
-                      children: [
-                        SizedBox(
-                          width: 64, // Largeur fixe
-                          height: 34, // Hauteur fixe
-                          child: ElevatedButton(
-                            onPressed: () {
-                              Navigator.of(context).pop(); // Fermer l'overlay
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppTheme.primaryColor,
-                              padding:
-                                  EdgeInsets
-                                      .zero, // Supprime les marges internes
-                            ),
-                            child: Icon(
-                              Icons.arrow_back,
-                              size: 20, // Taille de l'icône
-                              color: AppTheme.secondaryColor,
-                            ),
-                          ),
-                        ),
-                        Text(
-                          'Détails',
-                          style: TextStyle(
-                            fontFamily: AppTheme.fontMontserrat,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 20,
-                            color: AppTheme.primaryColor,
-                            decoration: TextDecoration.none,
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 30),
-                    Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Code',
-                          style: TextStyle(
-                            fontFamily: AppTheme.fontMontserrat,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                            color: AppTheme.primaryColor,
-                            decoration: TextDecoration.none,
-                          ),
-                        ),
-                        SizedBox(height: 10),
-                        Text(
-                          '#12345',
-                          style: TextStyle(
-                            fontFamily: AppTheme.fontRoboto,
-                            fontWeight: FontWeight.normal,
-                            fontSize: 14,
-                            color: AppTheme.primaryColor,
-                            decoration: TextDecoration.none,
-                          ),
-                        ),
-                        Divider(
-                          color: AppTheme.primaryColor15, // Couleur du trait
-                          thickness: 1, // Épaisseur du trait
-                          indent: 0, // Espacement à gauche
-                          endIndent: 0, // Espacement à droite
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 20),
-                    // Code
-                    Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Description',
-                          style: TextStyle(
-                            fontFamily: AppTheme.fontMontserrat,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                            color: AppTheme.primaryColor,
-                            decoration: TextDecoration.none,
-                          ),
-                        ),
-                        SizedBox(height: 10),
-                        Text(
-                          'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
-                          style: TextStyle(
-                            fontFamily: AppTheme.fontRoboto,
-                            fontWeight: FontWeight.normal,
-                            fontSize: 14,
-                            color: AppTheme.primaryColor,
-                            decoration: TextDecoration.none,
-                          ),
-                        ),
-                        Divider(
-                          color: AppTheme.primaryColor15, // Couleur du trait
-                          thickness: 1, // Épaisseur du trait
-                          indent: 0, // Espacement à gauche
-                          endIndent: 0, // Espacement à droite
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 20),
-                    // Description
-                    Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Famille',
-                          style: TextStyle(
-                            fontFamily: AppTheme.fontMontserrat,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                            color: AppTheme.primaryColor,
-                            decoration: TextDecoration.none,
-                          ),
-                        ),
-                        SizedBox(height: 10),
-                        Text(
-                          '#12345',
-                          style: TextStyle(
-                            fontFamily: AppTheme.fontRoboto,
-                            fontWeight: FontWeight.normal,
-                            fontSize: 14,
-                            color: AppTheme.primaryColor,
-                            decoration: TextDecoration.none,
-                          ),
-                        ),
-                        Divider(
-                          color: AppTheme.primaryColor15, // Couleur du trait
-                          thickness: 1, // Épaisseur du trait
-                          indent: 0, // Espacement à gauche
-                          endIndent: 0, // Espacement à droite
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 20),
-                    // Famille
-                    Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Zone',
-                          style: TextStyle(
-                            fontFamily: AppTheme.fontMontserrat,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                            color: AppTheme.primaryColor,
-                            decoration: TextDecoration.none,
-                          ),
-                        ),
-                        SizedBox(height: 10),
-                        Text(
-                          'Dakar',
-                          style: TextStyle(
-                            fontFamily: AppTheme.fontRoboto,
-                            fontWeight: FontWeight.normal,
-                            fontSize: 14,
-                            color: AppTheme.primaryColor,
-                            decoration: TextDecoration.none,
-                          ),
-                        ),
-                        Divider(
-                          color: AppTheme.primaryColor15, // Couleur du trait
-                          thickness: 1, // Épaisseur du trait
-                          indent: 0, // Espacement à gauche
-                          endIndent: 0, // Espacement à droite
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 20),
-                    // Zone
-                    Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Entité',
-                          style: TextStyle(
-                            fontFamily: AppTheme.fontMontserrat,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                            color: AppTheme.primaryColor,
-                            decoration: TextDecoration.none,
-                          ),
-                        ),
-                        SizedBox(height: 10),
-                        Text(
-                          'Lorem Ipsum',
-                          style: TextStyle(
-                            fontFamily: AppTheme.fontRoboto,
-                            fontWeight: FontWeight.normal,
-                            fontSize: 14,
-                            color: AppTheme.primaryColor,
-                            decoration: TextDecoration.none,
-                          ),
-                        ),
-                        Divider(
-                          color: AppTheme.primaryColor15, // Couleur du trait
-                          thickness: 1, // Épaisseur du trait
-                          indent: 0, // Espacement à gauche
-                          endIndent: 0, // Espacement à droite
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 20),
-                    // Entité
-                    Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Unité',
-                          style: TextStyle(
-                            fontFamily: AppTheme.fontMontserrat,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                            color: AppTheme.primaryColor,
-                            decoration: TextDecoration.none,
-                          ),
-                        ),
-                        SizedBox(height: 10),
-                        Text(
-                          'Lorem Ipsum',
-                          style: TextStyle(
-                            fontFamily: AppTheme.fontRoboto,
-                            fontWeight: FontWeight.normal,
-                            fontSize: 14,
-                            color: AppTheme.primaryColor,
-                            decoration: TextDecoration.none,
-                          ),
-                        ),
-                        Divider(
-                          color: AppTheme.primaryColor15, // Couleur du trait
-                          thickness: 1, // Épaisseur du trait
-                          indent: 0, // Espacement à gauche
-                          endIndent: 0, // Espacement à droite
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 20),
-                    // Centre
-                    Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Centre',
-                          style: TextStyle(
-                            fontFamily: AppTheme.fontMontserrat,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                            color: AppTheme.primaryColor,
-                            decoration: TextDecoration.none,
-                          ),
-                        ),
-                        SizedBox(height: 10),
-                        Text(
-                          'Lorem Ipsum',
-                          style: TextStyle(
-                            fontFamily: AppTheme.fontRoboto,
-                            fontWeight: FontWeight.normal,
-                            fontSize: 14,
-                            color: AppTheme.primaryColor,
-                            decoration: TextDecoration.none,
-                          ),
-                        ),
-                        Divider(
-                          color: AppTheme.primaryColor15, // Couleur du trait
-                          thickness: 1, // Épaisseur du trait
-                          indent: 0, // Espacement à gauche
-                          endIndent: 0, // Espacement à droite
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
