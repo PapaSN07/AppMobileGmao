@@ -1,4 +1,4 @@
-import 'package:appmobilegmao/screens/login_screen.dart';
+import 'package:appmobilegmao/screens/home_screen.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 
@@ -15,7 +15,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'GMAO',
       theme: ThemeData(primaryColor: AppTheme.primaryColor),
-      home: const LoginScreen(),
+      home: const HomeScreen(),
     );
   }
 }
