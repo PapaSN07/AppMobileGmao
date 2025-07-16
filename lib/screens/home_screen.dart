@@ -105,8 +105,20 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.circular(25),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [_boxOne(), _boxTwo()],
+        children: [
+          // Box 1 adaptative
+          Expanded(
+            child: AspectRatio(
+              aspectRatio: 170 / 200, // ratio largeur / hauteur d’origine
+              child: _boxOne(),
+            ),
+          ),
+          const SizedBox(width: 10),
+          // Box 2 adaptative
+          Expanded(
+            child: AspectRatio(aspectRatio: 170 / 200, child: _boxTwo()),
+          ),
+        ],
       ),
     );
   }
@@ -114,8 +126,6 @@ class _HomeScreenState extends State<HomeScreen> {
   // Méthode pour construire la première boîte de la section 1
   Widget _boxOne() {
     return Container(
-      width: 170,
-      height: 200,
       decoration: BoxDecoration(
         color: AppTheme.primaryColor,
         borderRadius: BorderRadius.circular(10),
@@ -229,8 +239,6 @@ class _HomeScreenState extends State<HomeScreen> {
   // Méthode pour construire la deuxième boîte de la section 1
   Widget _boxTwo() {
     return Container(
-      width: 170,
-      height: 200,
       decoration: BoxDecoration(
         color: AppTheme.primaryColor,
         borderRadius: BorderRadius.circular(10),

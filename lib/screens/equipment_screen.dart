@@ -98,8 +98,8 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
             child: Container(
               padding: const EdgeInsets.only(
                 top: 40, // Espace pour la carte qui déborde
-                left: 20,
-                right: 20,
+                left: 0,
+                right: 0,
               ),
               child: Column(
                 children: [
