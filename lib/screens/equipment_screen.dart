@@ -146,7 +146,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
+                    color: AppTheme.boxShadowColor,
                     blurRadius: 10,
                     offset: const Offset(0, 5),
                   ),
