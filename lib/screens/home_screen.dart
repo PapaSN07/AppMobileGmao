@@ -39,14 +39,12 @@ class _HomeScreenState extends State<HomeScreen> {
       preferredSize: const Size.fromHeight(56), // Hauteur de l'AppBar
       child: Padding(
         padding: const EdgeInsets.symmetric(
-          horizontal: 8,
+          horizontal: 16,
         ), // Espacement gauche et droite
         child: Container(
           decoration: BoxDecoration(
             color: AppTheme.primaryColor, // Couleur de fond de l'AppBar
-            borderRadius: BorderRadius.circular(
-              10,
-            ), // Coins arrondis (optionnel)
+            borderRadius: BorderRadius.circular(10),
           ),
           child: AppBar(
             title: const Text(
@@ -78,17 +76,18 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Méthodes pour construire le contenu du corps
   Widget _bodyContent() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 26),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _cardSectionOne(),
-            SizedBox(height: 20),
-            _cardSectionTwo(),
-          ],
-        ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 26),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _cardSectionOne(),
+          const SizedBox(height: 20),
+          Expanded(
+            // Permet à _cardSectionTwo de prendre tout l'espace restant
+            child: _cardSectionTwo(),
+          ),
+        ],
       ),
     );
   }
@@ -127,7 +126,8 @@ class _HomeScreenState extends State<HomeScreen> {
           Padding(
             padding: EdgeInsets.all(10),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start, // Aligne tout à gauche
+              crossAxisAlignment:
+                  CrossAxisAlignment.start, // Aligne tout à gauche
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -343,7 +343,6 @@ class _HomeScreenState extends State<HomeScreen> {
   // Méthode pour construire la deuxième section de cartes
   Widget _cardSectionTwo() {
     return Column(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
@@ -355,27 +354,28 @@ class _HomeScreenState extends State<HomeScreen> {
             fontSize: 15,
           ),
         ),
-        SizedBox(height: 10),
-        _boxThree(),
+        const SizedBox(height: 10),
+        Expanded(
+          // Permet à _boxThree de prendre tout l'espace restant
+          child: _boxThree(),
+        ),
       ],
     );
   }
 
   // Méthode pour construire la zone scrollable avec les ordres de travail
   Widget _boxThree() {
-    return SizedBox(
-      height: 384, // Hauteur fixe pour la zone scrollable
-      child: ListView.builder(
-        itemCount: 5, // Nombre d'éléments dans la liste
-        itemBuilder: (context, index) {
-          return Padding(
-            padding: const EdgeInsets.only(
-              bottom: 10,
-            ), // Espacement entre les items
-            child: _itemBuilder(),
-          );
-        },
-      ),
+    return ListView.builder(
+      padding: EdgeInsets.zero, // Supprime le padding par défaut
+      itemCount: 5, // Augmenté pour tester le scroll
+      itemBuilder: (context, index) {
+        return Padding(
+          padding: const EdgeInsets.only(
+            bottom: 10,
+          ), // Espacement entre les items
+          child: _itemBuilder(),
+        );
+      },
     );
   }
 

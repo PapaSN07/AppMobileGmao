@@ -15,7 +15,7 @@ class MyApp extends StatelessWidget {
       title: 'GMAO',
       theme: ThemeData(primaryColor: AppTheme.primaryColor),
       home: const MainScreen(), // Utilisation de MainScreen comme page principale
-      debugShowCheckedModeBanner: false,
+      // debugShowCheckedModeBanner: false,
     );
   }
 }
