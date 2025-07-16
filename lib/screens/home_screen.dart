@@ -1,7 +1,7 @@
+import 'package:appmobilegmao/models/order.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:appmobilegmao/widgets/bottom_navigation_bar.dart';
-import 'package:appmobilegmao/widgets/custom_overlay.dart';
-import 'package:appmobilegmao/widgets/overlay_content.dart';
+import 'package:appmobilegmao/widgets/work_order_item.dart';
 import 'package:flutter/material.dart';
 import 'dart:ui'; // Import nécessaire pour ImageFilter
 
@@ -13,6 +13,19 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  // Exemple de données pour l'ordre de travail
+  final Order order = Order(
+    id: '1',
+    icon: Icons.assignment,
+    code: '#12345',
+    famille: 'Famille 1',
+    zone: 'Dakar',
+    entity: 'Lorem Ipsum',
+    unite: 'DK, SN',
+    centre: 'Centre 1',
+    description: 'Description de l\'ordre de travail',
+  );
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -31,6 +44,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // Méthodes pour construire l'AppBar et le contenu du corps
   PreferredSize _appBar() {
     return PreferredSize(
       preferredSize: const Size.fromHeight(56), // Hauteur de l'AppBar
@@ -73,6 +87,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // Méthodes pour construire le contenu du corps
   Widget _bodyContent() {
     return Center(
       child: Padding(
@@ -89,6 +104,11 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // Méthodes pour construire les sections de cartes
+  // Section 1: Deux cartes côte à côte
+  // Section 2: Liste d'ordres de travail
+  // Chaque section est construite avec des widgets personnalisés
+  // pour une meilleure lisibilité et réutilisation du code.
   Widget _cardSectionOne() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
@@ -103,6 +123,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // Méthode pour construire la première boîte de la section 1
   Widget _boxOne() {
     return Container(
       width: 170,
@@ -215,6 +236,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // Méthode pour construire la deuxième boîte de la section 1
   Widget _boxTwo() {
     return Container(
       width: 170,
@@ -327,6 +349,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // Méthode pour construire la deuxième section de cartes
   Widget _cardSectionTwo() {
     return Column(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -347,6 +370,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // Méthode pour construire la zone scrollable avec les ordres de travail
   Widget _boxThree() {
     return SizedBox(
       height: 364, // Hauteur fixe pour la zone scrollable
@@ -364,148 +388,19 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // Méthode pour construire un item de la liste des ordres de travail
   Widget _itemBuilder() {
-    return GestureDetector(
-      onTap: () {
-        // Afficher l'overlay plein écran
-        showGeneralDialog(
-          context: context,
-          barrierDismissible: true,
-          barrierLabel:
-              MaterialLocalizations.of(context).modalBarrierDismissLabel,
-          barrierColor:
-              AppTheme
-                  .primaryColor15, // Transparent car on gère le flou nous-mêmes
-          transitionDuration: Duration(milliseconds: 300),
-          pageBuilder: (BuildContext buildContext, Animation animation, Animation secondaryAnimation) {
-          return CustomOverlay(
-            onClose: () {
-              Navigator.of(context).pop(); // Fermer l'overlay
-            },
-            content: OverlayContent(
-              title: 'Détails',
-              details: {
-                'Code': '#12345',
-                'Description': 'Lorem ipsum dolor sit amet.',
-                'Famille': '#12345',
-                'Zone': 'Dakar',
-                'Entité': 'Lorem Ipsum',
-                'Unité': 'Lorem Ipsum',
-                'Centre': 'Lorem Ipsum',
-              },
-            ),
-          );
-        },
-        );
+    return WorkOrderItem(
+      order: order,
+      overlayDetails: {
+        'Code': order.code,
+        'Description': order.description,
+        'Famille': order.famille,
+        'Zone': order.zone,
+        'Entité': order.entity,
+        'Unité': order.unite,
+        'Centre': order.centre,
       },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-        decoration: BoxDecoration(
-          color: AppTheme.secondaryColor,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 56, // Taille du cercle
-              height: 56, // Taille du cercle
-              decoration: BoxDecoration(
-                color:
-                    AppTheme.primaryColor, // Couleur de fond du cercle (bleu)
-                shape: BoxShape.rectangle, // Forme rectangulaire
-                borderRadius: BorderRadius.circular(15), // Coins arrondis
-              ),
-              child: Icon(
-                Icons.assignment, // Icône à afficher
-                size: 30, // Taille de l'icône
-                color: AppTheme.secondaryColor, // Couleur de l'icône (blanc)
-              ),
-            ),
-            SizedBox(width: 10), // Ajout d'espace entre l'icône et les textes
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Code: #12345',
-                        style: TextStyle(
-                          fontFamily: AppTheme.fontMontserrat,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.primaryColor,
-                          fontSize: 18,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Transform(
-                        transform: Matrix4.rotationZ(-0.785398),
-                        alignment: Alignment.center,
-                        child: Icon(
-                          Icons.arrow_back,
-                          size: 24,
-                          color: AppTheme.primaryColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Famille: #12345',
-                        style: TextStyle(
-                          fontFamily: AppTheme.fontRoboto,
-                          fontWeight: FontWeight.normal,
-                          color: AppTheme.primaryColor,
-                          fontSize: 12,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        'Zone: Dakar',
-                        style: TextStyle(
-                          fontFamily: AppTheme.fontRoboto,
-                          fontWeight: FontWeight.normal,
-                          color: AppTheme.primaryColor,
-                          fontSize: 12,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Entité: Lorem',
-                        style: TextStyle(
-                          fontFamily: AppTheme.fontRoboto,
-                          fontWeight: FontWeight.normal,
-                          color: AppTheme.primaryColor,
-                          fontSize: 12,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        'Centre: Dakar',
-                        style: TextStyle(
-                          fontFamily: AppTheme.fontRoboto,
-                          fontWeight: FontWeight.normal,
-                          color: AppTheme.primaryColor,
-                          fontSize: 12,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
