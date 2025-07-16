@@ -10,6 +10,9 @@ class EquipmentScreen extends StatefulWidget {
 class _EquipmentScreenState extends State<EquipmentScreen> {
   @override
   Widget build(BuildContext context) {
-    return const Placeholder();
+    return Scaffold(
+      appBar: AppBar(title: Text('Équipement')),
+      body: Center(child: Text('Contenu de la page Équipement')),
+    );
   }
 }

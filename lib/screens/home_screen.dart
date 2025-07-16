@@ -1,9 +1,7 @@
 import 'package:appmobilegmao/models/order.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
-import 'package:appmobilegmao/widgets/bottom_navigation_bar.dart';
 import 'package:appmobilegmao/widgets/work_order_item.dart';
 import 'package:flutter/material.dart';
-import 'dart:ui'; // Import nécessaire pour ImageFilter
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -31,15 +29,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: _appBar(),
       body: _bodyContent(),
-      bottomNavigationBar: CustomBottomNavigationBar(
-        currentIndex: 0, // Index de la page actuelle
-        onTap: (index) {
-          // Logique de navigation en fonction de l'index
-          setState(() {
-            // Mettre à jour l'index sélectionné si nécessaire
-          });
-        },
-      ),
       backgroundColor: AppTheme.primaryColor,
     );
   }
@@ -127,7 +116,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _boxOne() {
     return Container(
       width: 170,
-      height: 220,
+      height: 200,
       decoration: BoxDecoration(
         color: AppTheme.primaryColor,
         borderRadius: BorderRadius.circular(10),
@@ -138,6 +127,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Padding(
             padding: EdgeInsets.all(10),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start, // Aligne tout à gauche
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -181,7 +171,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     fontFamily: AppTheme.fontMontserrat,
                     fontWeight: FontWeight.bold,
                     color: AppTheme.secondaryColor,
-                    fontSize: 16,
+                    fontSize: 14,
                   ),
                 ),
                 SizedBox(height: 10),
@@ -240,7 +230,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _boxTwo() {
     return Container(
       width: 170,
-      height: 220,
+      height: 200,
       decoration: BoxDecoration(
         color: AppTheme.primaryColor,
         borderRadius: BorderRadius.circular(10),
@@ -294,8 +284,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     fontFamily: AppTheme.fontMontserrat,
                     fontWeight: FontWeight.bold,
                     color: AppTheme.secondaryColor,
-                    fontSize: 16,
+                    fontSize: 14,
                   ),
+                  textAlign: TextAlign.start,
                 ),
                 SizedBox(height: 10),
                 Row(
@@ -373,7 +364,7 @@ class _HomeScreenState extends State<HomeScreen> {
   // Méthode pour construire la zone scrollable avec les ordres de travail
   Widget _boxThree() {
     return SizedBox(
-      height: 364, // Hauteur fixe pour la zone scrollable
+      height: 384, // Hauteur fixe pour la zone scrollable
       child: ListView.builder(
         itemCount: 5, // Nombre d'éléments dans la liste
         itemBuilder: (context, index) {
