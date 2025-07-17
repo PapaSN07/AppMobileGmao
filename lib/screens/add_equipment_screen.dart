@@ -10,13 +10,16 @@ class AddEquipmentScreen extends StatefulWidget {
 }
 
 class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
-  String? selectedCodeParent; // Variable pour stocker la valeur sélectionnée
+  String? selectedCodeParent;
   String? selectedFeeder;
   String? selectedFamille;
   String? selectedZone;
   String? selectedEntity;
   String? selectedUnite;
   String? selectedCentreCharge;
+
+  // Ajouter des variables pour les attributs
+  List<String> selectedAttributeValues = List.filled(9, '1922309AHDNAJ');
 
   @override
   Widget build(BuildContext context) {
@@ -122,6 +125,10 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
                       _rowSix(),
                       SizedBox(height: 20),
                       _rowSeven(),
+                      SizedBox(height: 20),
+                      _rowEight(),
+                      SizedBox(height: 20),
+                      _buildActionButtons(),
                       SizedBox(height: 40),
                     ],
                   ),
@@ -229,7 +236,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
     if (items.isEmpty) {
       items.add('Aucun élément disponible'); // Ajouter un élément par défaut
     }
-    
+
     return DropdownButtonFormField<String>(
       value: selectedValue,
       decoration: InputDecoration(
@@ -285,7 +292,15 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
             fontSize: 18,
           ),
         ),
-        Container(height: 1, color: AppTheme.thirdColor),
+        const SizedBox(width: 5),
+        Expanded(
+          child: Container(
+            height: 1,
+            width: double.infinity,
+            color: AppTheme.thirdColor,
+            margin: EdgeInsets.only(top: 10),
+          ),
+        ),
       ],
     );
   }
@@ -524,4 +539,278 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
       ),
     );
   }
+
+  Widget _rowEight() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Expanded(
+          child: GestureDetector(
+            onTap: () {
+              // Afficher le modal en bas de l'écran
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true, // Permet de contrôler la hauteur
+                backgroundColor: Colors.transparent,
+                builder: (BuildContext context) {
+                  return Container(
+                    height:
+                        MediaQuery.of(context).size.height *
+                        0.7, // 70% de l'écran
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(30),
+                        topRight: Radius.circular(30),
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        // Handle bar pour indiquer que c'est draggable
+                        Container(
+                          margin: const EdgeInsets.symmetric(vertical: 12),
+                          height: 4,
+                          width: 40,
+                          decoration: BoxDecoration(
+                            color: AppTheme.thirdColor,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+
+                        // En-tête avec bouton retour et titre
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              GestureDetector(
+                                onTap: () {
+                                  Navigator.pop(context);
+                                },
+                                child: SizedBox(
+                                  width: 64, // Largeur fixe
+                                  height: 34, // Hauteur fixe
+                                  child: ElevatedButton(
+                                    onPressed: () {
+                                      Navigator.pop(context);
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppTheme.secondaryColor,
+                                      padding:
+                                          EdgeInsets
+                                              .zero, // Supprime les marges internes
+                                    ),
+                                    child: Icon(
+                                      Icons.arrow_back,
+                                      size: 20, // Taille de l'icône
+                                      color: AppTheme.primaryColor,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 20),
+                              Text(
+                                'Ajout Attribut',
+                                style: TextStyle(
+                                  fontFamily: AppTheme.fontMontserrat,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.secondaryColor,
+                                  fontSize: 20,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 30),
+
+                        // En-tête avec colonnes Attribut et Valeur
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Attribut',
+                                style: TextStyle(
+                                  fontFamily: AppTheme.fontMontserrat,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.secondaryColor,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Container(
+                                  height: 1,
+                                  width: double.infinity,
+                                  color: AppTheme.thirdColor,
+                                  margin: EdgeInsets.only(top: 10),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                'Valeur',
+                                style: TextStyle(
+                                  fontFamily: AppTheme.fontMontserrat,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.secondaryColor,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // const SizedBox(height: 20),
+
+                        // Liste des attributs scrollable
+                        Expanded(
+                          child: SingleChildScrollView(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 26,
+                                vertical: 20,
+                              ),
+                              child: Column(
+                                children: List.generate(
+                                  8, // Nombre d'attributs comme dans l'image
+                                  (index) => _buildAttributeRow(index),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Row(
+                children: [
+                  Icon(Icons.add, color: AppTheme.secondaryColor),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Ajouter les attributs',
+                    style: TextStyle(
+                      fontFamily: AppTheme.fontMontserrat,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.secondaryColor,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(width: 5),
+                  Expanded(
+                    child: Container(
+                      height: 1,
+                      width: double.infinity,
+                      color: AppTheme.thirdColor,
+                      margin: const EdgeInsets.only(top: 10),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Méthode pour construire chaque ligne d'attribut
+  Widget _buildAttributeRow(int index) {
+    List<String> values = [
+      '1922309AHDNAJ',
+      '2033410BIEKBK',
+      '3144521CJFLCL',
+      '4255632DKGMDM',
+      '5366743ELHNEE',
+    ];
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        // Attribut (côté gauche)
+        Expanded(
+          flex: 2,
+          child: Text(
+            'Test',
+            style: TextStyle(
+              fontFamily: AppTheme.fontMontserrat,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.secondaryColor,
+              fontSize: 16,
+            ),
+          ),
+        ),
+
+        const SizedBox(width: 16),
+
+        // Valeur avec dropdown (côté droit)
+        Expanded(
+          flex: 3,
+          child: _buildDropdownField(
+            label: '',
+            msgError: 'Veuillez sélectionner une valeur',
+            items: values,
+            selectedValue: selectedAttributeValues[index],
+            onChanged: (value) {
+              setState(() {
+                selectedAttributeValues[index] = value!;
+              });
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildButton(String label, VoidCallback onPressed) {
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppTheme.secondaryColor,
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontFamily: AppTheme.fontMontserrat,
+          fontWeight: FontWeight.bold,
+          color: AppTheme.primaryColor,
+          fontSize: 16,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButtons() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        _buildCancelButton(),
+        _buildSaveButton(),
+      ],
+    );
+  }
+
+  Widget _buildCancelButton() {
+    return _buildButton('Annuler', () {
+      Navigator.of(context).pop();
+    });
+  }
+
+  Widget _buildSaveButton() {
+    return _buildButton('Enregistrer', () {
+      // Logique pour enregistrer les attributs
+    });
+  }
+
 }
