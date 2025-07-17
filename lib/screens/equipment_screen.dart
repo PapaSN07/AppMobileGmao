@@ -14,17 +14,21 @@ class EquipmentScreen extends StatefulWidget {
 
 class _EquipmentScreenState extends State<EquipmentScreen> {
   final _formKey = GlobalKey<FormState>();
-  // Exemple de données pour l'ordre de travail
-  final Order order = Order(
-    id: '1',
-    icon: Icons.assignment,
-    code: '#12345',
-    famille: 'Famille 1',
-    zone: 'Dakar',
-    entity: 'Lorem Ipsum',
-    unite: 'DK, SN',
-    centre: 'Centre 1',
-    description: 'Description de l\'ordre de travail',
+
+  // Liste dynamique d'équipements
+  final List<Order> orders = List.generate(
+    20, // Nombre d'éléments dynamiques
+    (index) => Order(
+      id: '$index',
+      icon: Icons.assignment,
+      code: '#12345$index',
+      famille: 'Famille $index',
+      zone: 'Zone $index',
+      entity: 'Entité $index',
+      unite: 'Unité $index',
+      centre: 'Centre $index',
+      description: 'Description de l\'équipement $index',
+    ),
   );
 
   @override
@@ -117,7 +121,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                           mainAxisAlignment: MainAxisAlignment.start,
                           children: [
                             _searchBar(),
-                            SizedBox(height: 20),
+                            const SizedBox(height: 20),
                             _boxOne(),
                           ],
                         ),
@@ -213,11 +217,11 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
             fontWeight: FontWeight.bold,
             fontSize: 14,
           ),
-          border: UnderlineInputBorder(),
-          enabledBorder: UnderlineInputBorder(
+          border: const UnderlineInputBorder(),
+          enabledBorder: const UnderlineInputBorder(
             borderSide: BorderSide(color: AppTheme.thirdColor),
           ),
-          focusedBorder: UnderlineInputBorder(
+          focusedBorder: const UnderlineInputBorder(
             borderSide: BorderSide(color: AppTheme.secondaryColor, width: 2.0),
           ),
           suffixIcon: IconButton(
@@ -242,19 +246,18 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     );
   }
 
-  // Méthode pour construire la liste des ordres de travail
+  // Méthode pour construire la liste des équipements
   Widget _boxOne() {
     return Expanded(
-      // Prend tout l'espace disponible
       child: ListView.builder(
         padding: EdgeInsets.zero, // Supprime le padding par défaut
-        itemCount: 10, // Augmenté pour tester le scroll
+        itemCount: orders.length, // Utilise la liste dynamique
         itemBuilder: (context, index) {
           return Padding(
             padding: const EdgeInsets.only(
               bottom: 10,
             ), // Espacement entre les items
-            child: _itemBuilder(),
+            child: _itemBuilder(orders[index]),
           );
         },
       ),
@@ -262,7 +265,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
   }
 
   // Méthode pour construire un item de la liste
-  Widget _itemBuilder() {
+  Widget _itemBuilder(Order order) {
     return WorkOrderItem(
       order: order,
       overlayDetails: {

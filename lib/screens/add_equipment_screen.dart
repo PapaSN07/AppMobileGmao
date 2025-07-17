@@ -19,7 +19,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
   String? selectedCentreCharge;
 
   // Ajouter des variables pour les attributs
-  List<String> selectedAttributeValues = List.filled(9, '1922309AHDNAJ');
+  List<String> selectedAttributeValues = List.filled(10, '1922309AHDNAJ');
 
   @override
   Widget build(BuildContext context) {

@@ -58,6 +58,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             backgroundColor: AppTheme.primaryColor,
             elevation: 0,
+            scrolledUnderElevation: 0, // Pas d'ombre
             leading: IconButton(
               icon: const Icon(
                 Icons.menu,
