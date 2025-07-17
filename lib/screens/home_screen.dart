@@ -11,17 +11,38 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // Exemple de données pour l'ordre de travail
-  final Order order = Order(
-    id: '1',
-    icon: Icons.assignment,
-    code: '#12345',
-    famille: 'Famille 1',
-    zone: 'Dakar',
-    entity: 'Lorem Ipsum',
-    unite: 'DK, SN',
-    centre: 'Centre 1',
-    description: 'Description de l\'ordre de travail',
+  // État pour gérer la liste affichée
+  String selectedCategory = 'OT'; // Par défaut, "OT" est sélectionné
+
+  // Exemple de données pour les listes
+  final List<Order> otOrders = List.generate(
+    5,
+    (index) => Order(
+      id: '$index',
+      icon: Icons.assignment,
+      code: '#OT12345$index',
+      famille: 'Famille OT $index',
+      zone: 'Zone OT $index',
+      entity: 'Entité OT $index',
+      unite: 'Unité OT $index',
+      centre: 'Centre OT $index',
+      description: 'Description de l\'ordre de travail OT $index',
+    ),
+  );
+
+  final List<Order> diOrders = List.generate(
+    5,
+    (index) => Order(
+      id: '$index',
+      icon: Icons.build,
+      code: '#DI12345$index',
+      famille: 'Famille DI $index',
+      zone: 'Zone DI $index',
+      entity: 'Entité DI $index',
+      unite: 'Unité DI $index',
+      centre: 'Centre DI $index',
+      description: 'Description de la demande d\'intervention DI $index',
+    ),
   );
 
   @override
@@ -33,22 +54,19 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Méthodes pour construire l'AppBar et le contenu du corps
   PreferredSize _appBar() {
     return PreferredSize(
-      preferredSize: const Size.fromHeight(56), // Hauteur de l'AppBar
+      preferredSize: const Size.fromHeight(56),
       child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 16,
-        ), // Espacement gauche et droite
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Container(
           decoration: BoxDecoration(
-            color: AppTheme.primaryColor, // Couleur de fond de l'AppBar
+            color: AppTheme.primaryColor,
             borderRadius: BorderRadius.circular(10),
           ),
           child: AppBar(
             title: const Text(
-              'Bienvenue sur l’accueil',
+              'Bienvenue sur l\'accueil',
               style: TextStyle(
                 fontFamily: AppTheme.fontMontserrat,
                 fontWeight: FontWeight.w600,
@@ -58,7 +76,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             backgroundColor: AppTheme.primaryColor,
             elevation: 0,
-            scrolledUnderElevation: 0, // Pas d'ombre
+            scrolledUnderElevation: 0,
             leading: IconButton(
               icon: const Icon(
                 Icons.menu,
@@ -75,7 +93,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Méthodes pour construire le contenu du corps
   Widget _bodyContent() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 26),
@@ -84,20 +101,33 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           _cardSectionOne(),
           const SizedBox(height: 20),
+          // Affichage du titre dynamique
+          Text(
+            selectedCategory == 'OT'
+                ? '${otOrders.length} Ordres de Travail en cours'
+                : '${diOrders.length} Demandes d\'Intervention en cours',
+            style: TextStyle(
+              fontFamily: AppTheme.fontMontserrat,
+              fontWeight: FontWeight.normal,
+              color: AppTheme.thirdColor,
+              fontSize: 15,
+            ),
+          ),
+          const SizedBox(height: 10),
           Expanded(
-            // Permet à _cardSectionTwo de prendre tout l'espace restant
-            child: _cardSectionTwo(),
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              child:
+                  selectedCategory == 'OT'
+                      ? _buildList(otOrders, 'OT')
+                      : _buildList(diOrders, 'DI'),
+            ),
           ),
         ],
       ),
     );
   }
 
-  // Méthodes pour construire les sections de cartes
-  // Section 1: Deux cartes côte à côte
-  // Section 2: Liste d'ordres de travail
-  // Chaque section est construite avec des widgets personnalisés
-  // pour une meilleure lisibilité et réutilisation du code.
   Widget _cardSectionOne() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
@@ -107,77 +137,80 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       child: Row(
         children: [
-          // Box 1 adaptative
           Expanded(
-            child: AspectRatio(
-              aspectRatio: 170 / 200, // ratio largeur / hauteur d’origine
-              child: _boxOne(),
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  selectedCategory = 'OT';
+                });
+              },
+              child: AspectRatio(aspectRatio: 170 / 200, child: _boxOne()),
             ),
           ),
           const SizedBox(width: 10),
-          // Box 2 adaptative
           Expanded(
-            child: AspectRatio(aspectRatio: 170 / 200, child: _boxTwo()),
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  selectedCategory = 'DI';
+                });
+              },
+              child: AspectRatio(aspectRatio: 170 / 200, child: _boxTwo()),
+            ),
           ),
         ],
       ),
     );
   }
 
-  // Méthode pour construire la première boîte de la section 1
   Widget _boxOne() {
     return Container(
       decoration: BoxDecoration(
         color: AppTheme.primaryColor,
         borderRadius: BorderRadius.circular(10),
+        border:
+            selectedCategory == 'OT'
+                ? Border.all(color: AppTheme.secondaryColor, width: 2)
+                : null,
       ),
       child: Stack(
         children: [
-          // Contenu principal
           Padding(
-            padding: EdgeInsets.all(10),
+            padding: const EdgeInsets.all(10),
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start, // Aligne tout à gauche
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      width: 50, // Taille du cercle
-                      height: 50, // Taille du cercle
+                      width: 50,
+                      height: 50,
                       decoration: BoxDecoration(
-                        color:
-                            AppTheme
-                                .secondaryColor, // Couleur de fond du cercle (bleu)
-                        shape: BoxShape.circle, // Forme circulaire
+                        color: AppTheme.secondaryColor,
+                        shape: BoxShape.circle,
                       ),
                       child: Icon(
-                        Icons.assignment, // Icône à afficher
-                        size: 24, // Taille de l'icône
-                        color:
-                            AppTheme.primaryColor, // Couleur de l'icône (blanc)
+                        Icons.assignment,
+                        size: 24,
+                        color: AppTheme.primaryColor,
                       ),
                     ),
                     Transform(
-                      transform: Matrix4.rotationZ(
-                        -0.785398,
-                      ), // Inclinaison de 45 degrés (en radians)
-                      alignment: Alignment.center, // Centre de rotation
+                      transform: Matrix4.rotationZ(-0.785398),
+                      alignment: Alignment.center,
                       child: Icon(
-                        Icons.arrow_back, // Icône à afficher
-                        size: 24, // Taille de l'icône
-                        color:
-                            AppTheme
-                                .secondaryColor, // Couleur de l'icône (blanc)
+                        Icons.arrow_back,
+                        size: 24,
+                        color: AppTheme.secondaryColor,
                       ),
                     ),
                   ],
                 ),
-                SizedBox(height: 10),
+                const SizedBox(height: 10),
                 Text(
-                  'Order de Travail',
+                  'Ordre de Travail',
                   style: TextStyle(
                     fontFamily: AppTheme.fontMontserrat,
                     fontWeight: FontWeight.bold,
@@ -185,7 +218,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     fontSize: 14,
                   ),
                 ),
-                SizedBox(height: 10),
+                const SizedBox(height: 10),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -199,7 +232,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     Text(
-                      '22',
+                      '${otOrders.length}',
                       style: TextStyle(
                         fontFamily: AppTheme.fontMontserrat,
                         fontWeight: FontWeight.bold,
@@ -212,18 +245,17 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-          // Image positionnée en bas du container
           Positioned(
             bottom: 0,
             left: 0,
             right: 0,
             child: ClipRRect(
-              borderRadius: BorderRadius.only(
+              borderRadius: const BorderRadius.only(
                 bottomLeft: Radius.circular(10),
                 bottomRight: Radius.circular(10),
               ),
               child: SizedBox(
-                height: 80, // Hauteur fixe pour l'image
+                height: 80,
                 child: Image.asset(
                   'assets/images/bg_card.png',
                   fit: BoxFit.cover,
@@ -237,56 +269,52 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Méthode pour construire la deuxième boîte de la section 1
   Widget _boxTwo() {
     return Container(
       decoration: BoxDecoration(
         color: AppTheme.primaryColor,
         borderRadius: BorderRadius.circular(10),
+        border:
+            selectedCategory == 'DI'
+                ? Border.all(color: AppTheme.secondaryColor, width: 2)
+                : null,
       ),
       child: Stack(
         children: [
-          // Contenu principal
           Padding(
-            padding: EdgeInsets.all(10),
+            padding: const EdgeInsets.all(10),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      width: 50, // Taille du cercle
-                      height: 50, // Taille du cercle
+                      width: 50,
+                      height: 50,
                       decoration: BoxDecoration(
-                        color:
-                            AppTheme
-                                .secondaryColor, // Couleur de fond du cercle (bleu)
-                        shape: BoxShape.circle, // Forme circulaire
+                        color: AppTheme.secondaryColor,
+                        shape: BoxShape.circle,
                       ),
                       child: Icon(
-                        Icons.build, // Icône à afficher
-                        size: 24, // Taille de l'icône
-                        color:
-                            AppTheme.primaryColor, // Couleur de l'icône (blanc)
+                        Icons.build,
+                        size: 24,
+                        color: AppTheme.primaryColor,
                       ),
                     ),
                     Transform(
-                      transform: Matrix4.rotationZ(
-                        -0.785398,
-                      ), // Inclinaison de 45 degrés (en radians)
-                      alignment: Alignment.center, // Centre de rotation
+                      transform: Matrix4.rotationZ(-0.785398),
+                      alignment: Alignment.center,
                       child: Icon(
-                        Icons.arrow_back, // Icône à afficher
-                        size: 24, // Taille de l'icône
-                        color:
-                            AppTheme
-                                .secondaryColor, // Couleur de l'icône (blanc)
+                        Icons.arrow_back,
+                        size: 24,
+                        color: AppTheme.secondaryColor,
                       ),
                     ),
                   ],
                 ),
-                SizedBox(height: 10),
+                const SizedBox(height: 10),
                 Text(
                   'Demande d\'Intervention',
                   style: TextStyle(
@@ -295,9 +323,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     color: AppTheme.secondaryColor,
                     fontSize: 14,
                   ),
-                  textAlign: TextAlign.start,
                 ),
-                SizedBox(height: 10),
+                const SizedBox(height: 10),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -311,7 +338,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     Text(
-                      '22',
+                      '${diOrders.length}',
                       style: TextStyle(
                         fontFamily: AppTheme.fontMontserrat,
                         fontWeight: FontWeight.bold,
@@ -324,18 +351,17 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-          // Image positionnée en bas du container
           Positioned(
             bottom: 0,
             left: 0,
             right: 0,
             child: ClipRRect(
-              borderRadius: BorderRadius.only(
+              borderRadius: const BorderRadius.only(
                 bottomLeft: Radius.circular(10),
                 bottomRight: Radius.circular(10),
               ),
               child: SizedBox(
-                height: 80, // Hauteur fixe pour l'image
+                height: 80,
                 child: Image.asset(
                   'assets/images/bg_card.png',
                   fit: BoxFit.cover,
@@ -349,57 +375,28 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Méthode pour construire la deuxième section de cartes
-  Widget _cardSectionTwo() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '5 Ordres de Travail en cours',
-          style: TextStyle(
-            fontFamily: AppTheme.fontMontserrat,
-            fontWeight: FontWeight.normal,
-            color: AppTheme.thirdColor,
-            fontSize: 15,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Expanded(
-          // Permet à _boxThree de prendre tout l'espace restant
-          child: _boxThree(),
-        ),
-      ],
-    );
-  }
-
-  // Méthode pour construire la zone scrollable avec les ordres de travail
-  Widget _boxThree() {
+  Widget _buildList(List<Order> orders, String category) {
     return ListView.builder(
-      padding: EdgeInsets.zero, // Supprime le padding par défaut
-      itemCount: 5, // Augmenté pour tester le scroll
+      key: ValueKey(category), // Clé unique pour chaque catégorie
+      padding: EdgeInsets.zero,
+      itemCount: orders.length,
       itemBuilder: (context, index) {
+        final order = orders[index];
         return Padding(
-          padding: const EdgeInsets.only(
-            bottom: 10,
-          ), // Espacement entre les items
-          child: _itemBuilder(),
+          padding: const EdgeInsets.only(bottom: 10),
+          child: WorkOrderItem(
+            order: order,
+            overlayDetails: {
+              'Code': order.code,
+              'Description': order.description,
+              'Famille': order.famille,
+              'Zone': order.zone,
+              'Entité': order.entity,
+              'Unité': order.unite,
+              'Centre': order.centre,
+            },
+          ),
         );
-      },
-    );
-  }
-
-  // Méthode pour construire un item de la liste des ordres de travail
-  Widget _itemBuilder() {
-    return WorkOrderItem(
-      order: order,
-      overlayDetails: {
-        'Code': order.code,
-        'Description': order.description,
-        'Famille': order.famille,
-        'Zone': order.zone,
-        'Entité': order.entity,
-        'Unité': order.unite,
-        'Centre': order.centre,
       },
     );
   }
