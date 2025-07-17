@@ -12,6 +12,11 @@ class AddEquipmentScreen extends StatefulWidget {
 class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
   String? selectedCodeParent; // Variable pour stocker la valeur sélectionnée
   String? selectedFeeder;
+  String? selectedFamille;
+  String? selectedZone;
+  String? selectedEntity;
+  String? selectedUnite;
+  String? selectedCentreCharge;
 
   @override
   Widget build(BuildContext context) {
@@ -103,6 +108,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
                       _rowOne(),
                       SizedBox(height: 40),
                       _fieldsets('Informations'),
+                      SizedBox(height: 10),
                       _rowTwo(),
                       SizedBox(height: 20),
                       _rowThree(),
@@ -155,32 +161,60 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
   }
 
   Widget _buildText({required String label, required String value}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
+    if (value.isEmpty) {
+      // Si la valeur est vide, créer un champ de texte classique
+      return TextFormField(
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(
+            color: AppTheme.secondaryColor,
             fontFamily: AppTheme.fontMontserrat,
             fontWeight: FontWeight.w600,
-            color: AppTheme.secondaryColor,
-            fontSize: 16,
+          ),
+          border: const UnderlineInputBorder(),
+          enabledBorder: UnderlineInputBorder(
+            borderSide: BorderSide(color: AppTheme.thirdColor),
+          ),
+          focusedBorder: UnderlineInputBorder(
+            borderSide: BorderSide(color: AppTheme.secondaryColor, width: 2.0),
           ),
         ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(
-            fontFamily: AppTheme.fontMontserrat,
-            fontWeight: FontWeight.normal,
-            color: AppTheme.thirdColor,
-            fontSize: 14,
+        validator: (value) {
+          if (value == null || value.isEmpty) {
+            return 'Veuillez entrer une valeur pour $label';
+          }
+          return null;
+        },
+      );
+    } else {
+      // Si la valeur n'est pas vide, afficher un champ avec la valeur existante
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: AppTheme.fontMontserrat,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.secondaryColor,
+              fontSize: 16,
+            ),
           ),
-        ),
-        const SizedBox(height: 8),
-        Container(height: 1, color: AppTheme.thirdColor),
-      ],
-    );
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              fontFamily: AppTheme.fontMontserrat,
+              fontWeight: FontWeight.normal,
+              color: AppTheme.thirdColor,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(height: 1, color: AppTheme.thirdColor),
+        ],
+      );
+    }
   }
 
   Widget _buildDropdownField({
@@ -190,6 +224,12 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
     required String? selectedValue,
     required Function(String?) onChanged,
   }) {
+    items = items.toSet().toList(); // Supprimer les doublons
+    items.sort(); // Trier les éléments
+    if (items.isEmpty) {
+      items.add('Aucun élément disponible'); // Ajouter un élément par défaut
+    }
+    
     return DropdownButtonFormField<String>(
       value: selectedValue,
       decoration: InputDecoration(
@@ -260,20 +300,20 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
             msgError: 'Veuillez sélectionner un feeder',
             items: [
               '1250977676AF11TG',
-              '1250977676AF11TG',
-              '1250977676AF11TG',
+              '8129731276AF11TG',
+              '1287377676AF11TG',
             ], // Liste des options
-            selectedValue: selectedCodeParent,
+            selectedValue: selectedFeeder,
             onChanged: (value) {
               setState(() {
-                selectedCodeParent = value; // Met à jour la valeur sélectionnée
+                selectedFeeder = value; // Met à jour la valeur sélectionnée
               });
             },
           ),
         ),
         SizedBox(width: 10), // Espace entre les champs
         Expanded(
-          child: _buildText(label: 'Info Feeder', value: '1250977676AF11TG'),
+          child: _buildText(label: 'Info Feeder', value: selectedFeeder ?? ''),
         ),
       ],
     );
@@ -283,23 +323,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Expanded(
-          child: _buildDropdownField(
-            label: 'Code',
-            msgError: 'Veuillez sélectionner un code',
-            items: [
-              '1676AF11TG',
-              '7676AF11TG',
-              '7676AF11TG',
-            ], // Liste des options
-            selectedValue: selectedCodeParent,
-            onChanged: (value) {
-              setState(() {
-                selectedCodeParent = value; // Met à jour la valeur sélectionnée
-              });
-            },
-          ),
-        ),
+        Expanded(child: _buildText(label: 'Code', value: '#12345')),
         SizedBox(width: 10), // Espace entre les champs
         Expanded(
           child: _buildDropdownField(
@@ -308,12 +332,12 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
             items: [
               '1676AF11TG',
               '7676AF11TG',
-              '7676AF11TG',
+              '12996AF11TG',
             ], // Liste des options
-            selectedValue: selectedCodeParent,
+            selectedValue: selectedFamille,
             onChanged: (value) {
               setState(() {
-                selectedCodeParent = value; // Met à jour la valeur sélectionnée
+                selectedFamille = value; // Met à jour la valeur sélectionnée
               });
             },
           ),
@@ -331,10 +355,10 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
             label: 'Zone',
             msgError: 'Veuillez sélectionner une zone',
             items: ['Dakar', 'Thiès', 'Saint-Louis'], // Liste des options
-            selectedValue: selectedCodeParent,
+            selectedValue: selectedZone,
             onChanged: (value) {
               setState(() {
-                selectedCodeParent = value; // Met à jour la valeur sélectionnée
+                selectedZone = value; // Met à jour la valeur sélectionnée
               });
             },
           ),
@@ -347,12 +371,12 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
             items: [
               '1676AF11TG',
               '7676AF11TG',
-              '7676AF11TG',
+              '2816AF11TG',
             ], // Liste des options
-            selectedValue: selectedCodeParent,
+            selectedValue: selectedEntity,
             onChanged: (value) {
               setState(() {
-                selectedCodeParent = value; // Met à jour la valeur sélectionnée
+                selectedEntity = value; // Met à jour la valeur sélectionnée
               });
             },
           ),
@@ -370,10 +394,10 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
             label: 'Unité',
             msgError: 'Veuillez sélectionner une unité',
             items: ['Dakar', 'Thiès', 'Saint-Louis'], // Liste des options
-            selectedValue: selectedCodeParent,
+            selectedValue: selectedUnite,
             onChanged: (value) {
               setState(() {
-                selectedCodeParent = value; // Met à jour la valeur sélectionnée
+                selectedUnite = value; // Met à jour la valeur sélectionnée
               });
             },
           ),
@@ -388,10 +412,11 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
               '7676AF11TG',
               '7676AF11TG',
             ], // Liste des options
-            selectedValue: selectedCodeParent,
+            selectedValue: selectedCentreCharge,
             onChanged: (value) {
               setState(() {
-                selectedCodeParent = value; // Met à jour la valeur sélectionnée
+                selectedCentreCharge =
+                    value; // Met à jour la valeur sélectionnée
               });
             },
           ),
