@@ -78,3 +78,4 @@ flutter_icons:
   ios: true
   image_path: "assets/images/logo.png" # Chemin vers votre icône
   adaptive_icon_background: "#015CC0" # Couleur de fond pour Android (optionnel)
+  remove_alpha_ios: true # Supprimer le canal alpha pour iOS (optionnel)

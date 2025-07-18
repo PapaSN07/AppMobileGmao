@@ -18,8 +18,19 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
   String? selectedUnite;
   String? selectedCentreCharge;
 
+  final _formKey = GlobalKey<FormState>();
+  final FocusNode _descriptionFocusNode =
+      FocusNode(); // FocusNode pour la description
+
   // Ajouter des variables pour les attributs
   List<String> selectedAttributeValues = List.filled(10, '1922309AHDNAJ');
+
+  @override
+  void dispose() {
+    // Libérer le FocusNode lorsque l'écran est détruit
+    _descriptionFocusNode.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -87,50 +98,53 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
                 // Permet de rendre le contenu scrollable
                 child: Padding(
                   padding: const EdgeInsets.only(top: 0, right: 16, left: 16),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: [
-                      _fieldsets('Informations parents'),
-                      _buildDropdownField(
-                        label: 'Code Parent',
-                        msgError: 'Veuillez sélectionner un code parent',
-                        items: [
-                          '#12345',
-                          '#67890',
-                          '#54321',
-                        ], // Liste des options
-                        selectedValue: selectedCodeParent,
-                        onChanged: (value) {
-                          setState(() {
-                            selectedCodeParent =
-                                value; // Met à jour la valeur sélectionnée
-                          });
-                        },
-                      ),
-                      SizedBox(height: 20),
-                      _rowOne(),
-                      SizedBox(height: 40),
-                      _fieldsets('Informations'),
-                      SizedBox(height: 10),
-                      _rowTwo(),
-                      SizedBox(height: 20),
-                      _rowThree(),
-                      SizedBox(height: 20),
-                      _rowFour(),
-                      SizedBox(height: 20),
-                      _rowFive(),
-                      SizedBox(height: 40),
-                      _fieldsets('Informations de positionnement'),
-                      SizedBox(height: 10),
-                      _rowSix(),
-                      SizedBox(height: 20),
-                      _rowSeven(),
-                      SizedBox(height: 20),
-                      _rowEight(),
-                      SizedBox(height: 20),
-                      _buildActionButtons(),
-                      SizedBox(height: 40),
-                    ],
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        _fieldsets('Informations parents'),
+                        _buildDropdownField(
+                          label: 'Code Parent',
+                          msgError: 'Veuillez sélectionner un code parent',
+                          items: [
+                            '#12345',
+                            '#67890',
+                            '#54321',
+                          ], // Liste des options
+                          selectedValue: selectedCodeParent,
+                          onChanged: (value) {
+                            setState(() {
+                              selectedCodeParent =
+                                  value; // Met à jour la valeur sélectionnée
+                            });
+                          },
+                        ),
+                        SizedBox(height: 20),
+                        _rowOne(),
+                        SizedBox(height: 40),
+                        _fieldsets('Informations'),
+                        SizedBox(height: 10),
+                        _rowTwo(),
+                        SizedBox(height: 20),
+                        _rowThree(),
+                        SizedBox(height: 20),
+                        _rowFour(),
+                        SizedBox(height: 20),
+                        _rowFive(),
+                        SizedBox(height: 40),
+                        _fieldsets('Informations de positionnement'),
+                        SizedBox(height: 10),
+                        _rowSix(),
+                        SizedBox(height: 20),
+                        _rowSeven(),
+                        SizedBox(height: 20),
+                        _rowEight(),
+                        SizedBox(height: 20),
+                        _buildActionButtons(),
+                        SizedBox(height: 40),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -141,8 +155,13 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
     );
   }
 
-  Widget _buildTextField({required String label, required String msgError}) {
+  Widget _buildTextField({
+    required String label,
+    required String msgError,
+    FocusNode? focusNode,
+  }) {
     return TextFormField(
+      focusNode: focusNode,
       decoration: InputDecoration(
         labelText: label,
         labelStyle: TextStyle(
@@ -168,60 +187,43 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
   }
 
   Widget _buildText({required String label, required String value}) {
-    if (value.isEmpty) {
-      // Si la valeur est vide, créer un champ de texte classique
-      return TextFormField(
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: TextStyle(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 5),
+        Text(
+          label,
+          style: TextStyle(
             color: AppTheme.secondaryColor,
             fontFamily: AppTheme.fontMontserrat,
             fontWeight: FontWeight.w600,
-          ),
-          border: const UnderlineInputBorder(),
-          enabledBorder: UnderlineInputBorder(
-            borderSide: BorderSide(color: AppTheme.thirdColor),
-          ),
-          focusedBorder: UnderlineInputBorder(
-            borderSide: BorderSide(color: AppTheme.secondaryColor, width: 2.0),
+            fontSize: 12,
           ),
         ),
-        validator: (value) {
-          if (value == null || value.isEmpty) {
-            return 'Veuillez entrer une valeur pour $label';
-          }
-          return null;
-        },
-      );
-    } else {
-      // Si la valeur n'est pas vide, afficher un champ avec la valeur existante
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontFamily: AppTheme.fontMontserrat,
-              fontWeight: FontWeight.w600,
-              color: AppTheme.secondaryColor,
-              fontSize: 16,
-            ),
+        const SizedBox(height: 2),
+        Text(
+          value.isNotEmpty
+              ? value
+              : '------', // Affiche '-' si la valeur est vide
+          style: TextStyle(
+            color:
+                value.isNotEmpty
+                    ? AppTheme.secondaryColor
+                    : AppTheme.thirdColor,
+            fontFamily: AppTheme.fontMontserrat,
+            fontWeight: FontWeight.normal,
+            fontSize: 16,
           ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: TextStyle(
-              fontFamily: AppTheme.fontMontserrat,
-              fontWeight: FontWeight.normal,
-              color: AppTheme.thirdColor,
-              fontSize: 14,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Container(height: 1, color: AppTheme.thirdColor),
-        ],
-      );
-    }
+        ),
+        const SizedBox(height: 8),
+        Container(
+          height: 1,
+          width: double.infinity,
+          color: AppTheme.thirdColor,
+          // margin: const EdgeInsets.only(top: 4),
+        ),
+      ],
+    );
   }
 
   Widget _buildDropdownField({
@@ -448,6 +450,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
           child: _buildTextField(
             label: 'Description',
             msgError: 'Veuillez entrer la description',
+            focusNode: _descriptionFocusNode,
           ),
         ),
       ],
@@ -775,9 +778,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
       style: ElevatedButton.styleFrom(
         backgroundColor: AppTheme.secondaryColor,
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
       child: Text(
         label,
@@ -794,10 +795,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
   Widget _buildActionButtons() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        _buildCancelButton(),
-        _buildSaveButton(),
-      ],
+      children: [_buildCancelButton(), _buildSaveButton()],
     );
   }
 
@@ -812,5 +810,4 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
       // Logique pour enregistrer les attributs
     });
   }
-
 }
