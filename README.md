@@ -1,6 +1,6 @@
 # 📱 AppMobileGMAO
 
-<div align="center">
+<center>
 
 ![Flutter](https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)
 ![Dart](https://img.shields.io/badge/Dart-0175C2?style=for-the-badge&logo=dart&logoColor=white)
@@ -17,7 +17,7 @@
 
 [📥 Télécharger](#installation-et-démarrage) • [📖 Documentation](#architecture-et-composants) • [🐛 Signaler un bug](https://github.com/your-repo/issues) • [💡 Demander une fonctionnalité](https://github.com/your-repo/issues)
 
-</div>
+</center>
 
 ---
 
@@ -25,17 +25,9 @@
 
 AppMobileGMAO est une **application mobile native** développée avec Flutter qui révolutionne la gestion des équipements industriels. Elle permet de gérer efficacement les **ordres de travail (OT)** et les **demandes d'intervention (DI)** dans le cadre d'une stratégie de maintenance préventive et corrective moderne.
 
-<div align="center">
-  <img src="https://via.placeholder.com/800x400/1E3A8A/FFFFFF?text=AppMobileGMAO+Screenshot" alt="Screenshot" width="100%">
-</div>
-
 ---
 
 ## ✨ Fonctionnalités principales
-
-<table>
-<tr>
-<td width="50%">
 
 ### 🏠 **Écran d'accueil**
 
@@ -44,20 +36,12 @@ AppMobileGMAO est une **application mobile native** développée avec Flutter qu
 - 📋 Liste dynamique des éléments récents
 - 🎨 Interface moderne et intuitive
 
-</td>
-<td width="50%">
-
 ### 🔧 **Gestion des équipements**
 
 - 📝 Formulaire complet d'ajout d'équipements
 - 🔍 Recherche avancée et filtrage
 - 📍 Géolocalisation avec coordonnées
 - ⚙️ Gestion des attributs personnalisés
-
-</td>
-</tr>
-<tr>
-<td width="50%">
 
 ### 📋 **Ordres de travail**
 
@@ -66,9 +50,6 @@ AppMobileGMAO est une **application mobile native** développée avec Flutter qu
 - 📱 Interface responsive et optimisée
 - 💾 Sauvegarde automatique des données
 
-</td>
-<td width="50%">
-
 ### 🎨 **Interface utilisateur**
 
 - 🎨 Design Material Design moderne
@@ -76,15 +57,11 @@ AppMobileGMAO est une **application mobile native** développée avec Flutter qu
 - 📱 Navigation par onglets intuitifs
 - ⚡ Performances optimisées
 
-</td>
-</tr>
-</table>
-
 ---
 
 ## 🛠 Stack technique
 
-<div align="center">
+<center>
 
 | Catégorie | Technologies |
 |-----------|-------------|
@@ -95,7 +72,7 @@ AppMobileGMAO est une **application mobile native** développée avec Flutter qu
 | **UI** | ![Material Design](https://img.shields.io/badge/Material%20Design-Custom%20Theme-orange) |
 | **Plateformes** | ![Android](https://img.shields.io/badge/Android-✅-3DDC84) ![iOS](https://img.shields.io/badge/iOS-✅-000000) ![Web](https://img.shields.io/badge/Web-⚠️-yellow) |
 
-</div>
+</center>
 
 ---
 
@@ -284,4 +261,3 @@ WorkOrderItem
 **⭐ N'oubliez pas de mettre une étoile si ce projet vous a aidé !**
 
 </div>
-
