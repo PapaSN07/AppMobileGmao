@@ -1,46 +1,63 @@
 import 'package:flutter/material.dart';
-import 'dart:ui'; // Import nécessaire pour ImageFilter
+import 'dart:ui';
 import 'package:appmobilegmao/theme/app_theme.dart';
 
 class CustomOverlay extends StatelessWidget {
-  final Widget content; // Contenu à afficher dans l'overlay
-  final VoidCallback onClose; // Action pour fermer l'overlay
+  final Widget content;
+  final VoidCallback onClose;
+  final bool isDismissible;
+  final double? width;
+  final double? maxHeight;
 
-  const CustomOverlay({super.key, required this.content, required this.onClose});
+  const CustomOverlay({
+    super.key,
+    required this.content,
+    required this.onClose,
+    this.isDismissible = true,
+    this.width,
+    this.maxHeight,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+
     return GestureDetector(
-      onTap: onClose, // Fermer l'overlay lorsqu'on clique sur l'arrière-plan
+      onTap: isDismissible ? onClose : null,
       child: Stack(
         children: [
-          // Effet de flou sur l'arrière-plan
+          // Arrière-plan avec effet de flou
           Positioned.fill(
             child: BackdropFilter(
-              filter: ImageFilter.blur(
-                sigmaX: 10,
-                sigmaY: 10,
-              ), // Intensité du flou
-              child: Container(
-                color: AppTheme.primaryColor15, // Couleur semi-transparente
-              ),
+              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+              child: Container(color: AppTheme.primaryColor15),
             ),
           ),
-          // Contenu de l'overlay centré
+
+          // Contenu centré
           Center(
             child: GestureDetector(
-              onTap:
-                  () {}, // Empêche la fermeture lorsqu'on clique sur le contenu
+              onTap: () {}, // Empêche la fermeture lors du clic sur le contenu
               child: Container(
-                width:
-                    MediaQuery.of(context).size.width *
-                    0.85, // Largeur relative
-                padding: const EdgeInsets.all(20),
+                width: width ?? screenSize.width * 0.9,
+                constraints: BoxConstraints(
+                  maxHeight: maxHeight ?? screenSize.height * 0.8,
+                  maxWidth: screenSize.width * 0.95,
+                ),
+                margin: const EdgeInsets.symmetric(horizontal: 20),
+                padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
                   color: AppTheme.secondaryColor,
-                  borderRadius: BorderRadius.circular(20), // Coins arrondis
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.primaryColor15,
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
                 ),
-                child: content, // Contenu dynamique
+                child: SingleChildScrollView(child: content),
               ),
             ),
           ),

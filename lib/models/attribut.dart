@@ -1,19 +1,27 @@
+import 'package:appmobilegmao/models/attribut_value.dart';
+
 class Attribut {
   final String nom;
-  final String valeur;
+  final List<AttributValue>? valeurs;
 
-  Attribut({required this.nom, required this.valeur});
+  Attribut({required this.nom, this.valeurs = const []});
 
   Attribut.fromJson(Map<String, dynamic> json)
     : nom = json['nom'],
-      valeur = json['valeur'];
+      valeurs =
+          (json['valeurs'] as List?)
+              ?.map((item) => AttributValue.fromJson(item))
+              .toList();
 
   Map<String, dynamic> toJson() {
-    return {'nom': nom, 'valeur': valeur};
+    return {
+      'nom': nom,
+      'valeurs': valeurs?.map((value) => value.toJson()).toList(),
+    };
   }
 
   @override
   String toString() {
-    return 'Attribut(nom: $nom, valeur: $valeur)';
+    return 'Attribut(nom: $nom, valeurs: $valeurs)';
   }
 }

@@ -1,6 +1,6 @@
 import 'package:appmobilegmao/models/order.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
-import 'package:appmobilegmao/widgets/work_order_item.dart';
+import 'package:appmobilegmao/widgets/list_item.dart';
 import 'package:flutter/material.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -384,17 +384,15 @@ class _HomeScreenState extends State<HomeScreen> {
         final order = orders[index];
         return Padding(
           padding: const EdgeInsets.only(bottom: 10),
-          child: WorkOrderItem(
-            order: order,
-            overlayDetails: {
-              'Code': order.code,
-              'Description': order.description,
-              'Famille': order.famille,
-              'Zone': order.zone,
-              'Entité': order.entity,
-              'Unité': order.unite,
-              'Centre': order.centre,
-            },
+          child: ListItemCustom.order(
+            id: order.id,
+            code: order.code,
+            famille: order.famille,
+            zone: order.zone,
+            entity: order.entity,
+            unite: order.unite,
+            centre: order.centre,
+            description: order.description,
           ),
         );
       },

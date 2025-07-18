@@ -1,3 +1,5 @@
+import 'package:appmobilegmao/models/attribut.dart';
+
 class Equipment {
   String? id;
   String codeParent;
@@ -12,6 +14,7 @@ class Equipment {
   String description;
   String longitude;
   String latitude;
+  List<Attribut?> attributs = [];
 
   Equipment({
     this.id,
@@ -27,6 +30,7 @@ class Equipment {
     required this.description,
     required this.longitude,
     required this.latitude,
+    this.attributs = const [],
   });
 
   Equipment.fromJson(Map<String, dynamic> json)
@@ -42,7 +46,13 @@ class Equipment {
       centreCharge = json['centreCharge'],
       description = json['description'],
       longitude = json['longitude'],
-      latitude = json['latitude'];
+      latitude = json['latitude'] {
+        if (json['attributs'] != null) {
+          attributs = (json['attributs'] as List)
+              .map((item) => item == null ? null : Attribut.fromJson(item))
+              .toList();
+        }
+      }
 
   Map<String, dynamic> toJson() {
     return {
@@ -59,11 +69,12 @@ class Equipment {
       'description': description,
       'longitude': longitude,
       'latitude': latitude,
+      'attributs': attributs.map((item) => item?.toJson()).toList(),
     };
   }
 
   @override
   String toString() {
-    return 'Equipment(id: $id, codeParent: $codeParent, feeder: $feeder, feederDescription: $feederDescription, code: $code, famille: $famille, zone: $zone, entity: $entity, unite: $unite, centreCharge: $centreCharge, description: $description, longitude: $longitude, latitude: $latitude)';
+    return 'Equipment(id: $id, codeParent: $codeParent, feeder: $feeder, feederDescription: $feederDescription, code: $code, famille: $famille, zone: $zone, entity: $entity, unite: $unite, centreCharge: $centreCharge, description: $description, longitude: $longitude, latitude: $latitude, attributs: $attributs)';
   }
 }

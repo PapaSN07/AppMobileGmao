@@ -1,12 +1,15 @@
 import 'package:appmobilegmao/models/order.dart';
 import 'package:appmobilegmao/screens/add_equipment_screen.dart';
+import 'package:appmobilegmao/services/equipment_service.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
-import 'package:appmobilegmao/widgets/work_order_item.dart';
+import 'package:appmobilegmao/widgets/list_item.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class EquipmentScreen extends StatefulWidget {
-  const EquipmentScreen({super.key});
+  final EquipmentService equipmentService;
+
+  const EquipmentScreen({super.key, required this.equipmentService});
 
   @override
   State<EquipmentScreen> createState() => _EquipmentScreenState();
@@ -14,6 +17,27 @@ class EquipmentScreen extends StatefulWidget {
 
 class _EquipmentScreenState extends State<EquipmentScreen> {
   final _formKey = GlobalKey<FormState>();
+  List<dynamic> equipments = [];
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialiser le service ou charger les données nécessaires
+    widget.equipmentService.getAllEquipments().then((data) {
+      setState(() {
+        equipments = data;
+        isLoading = false; // Mettre à jour l'état de chargement
+      });
+    }).catchError((error) {
+      if (kDebugMode) {
+        print('Erreur lors du chargement des équipements: $error');
+      }
+      setState(() {
+        isLoading = false; // Mettre à jour l'état de chargement même en cas d'erreur
+      });
+    });
+  }
 
   // Liste dynamique d'équipements
   final List<Order> orders = List.generate(
@@ -159,9 +183,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _buildStatCard('222', 'OT'),
-                  _buildStatCard('222', 'OT'),
-                  _buildStatCard('222', 'OT'),
+                  _buildStatCard(equipments.length.toString(), 'Équipements'),
                   _buildStatCard('222', 'OT'),
                 ],
               ),
@@ -251,13 +273,13 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     return Expanded(
       child: ListView.builder(
         padding: EdgeInsets.zero, // Supprime le padding par défaut
-        itemCount: orders.length, // Utilise la liste dynamique
+        itemCount: equipments.length, // Utilise la liste dynamique
         itemBuilder: (context, index) {
           return Padding(
             padding: const EdgeInsets.only(
               bottom: 10,
             ), // Espacement entre les items
-            child: _itemBuilder(orders[index]),
+            child: _itemBuilder(equipments[index]),
           );
         },
       ),
@@ -265,18 +287,16 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
   }
 
   // Méthode pour construire un item de la liste
-  Widget _itemBuilder(Order order) {
-    return WorkOrderItem(
-      order: order,
-      overlayDetails: {
-        'Code': order.code,
-        'Description': order.description,
-        'Famille': order.famille,
-        'Zone': order.zone,
-        'Entité': order.entity,
-        'Unité': order.unite,
-        'Centre': order.centre,
-      },
+  Widget _itemBuilder(Map<String, dynamic> equipment) {
+    return ListItemCustom.equipment(
+      id: equipment['id'],
+      code: equipment['code'],
+      famille: equipment['famille'],
+      zone: equipment['zone'],
+      entity: equipment['entity'],
+      unite: equipment['unite'],
+      centre: equipment['centreCharge'],
+      description: equipment['description'],
     );
   }
 }
