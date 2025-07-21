@@ -7,30 +7,56 @@ class EquipmentProvider extends ChangeNotifier {
 
   bool _isLoading = false;
   List<dynamic> _equipments = [];
+  List<dynamic> _filteredEquipments = []; // Liste des équipements filtrés
   String _errorMessage = '';
 
-  // Getters
   bool get isLoading => _isLoading;
-  List<dynamic> get equipments => _equipments;
+  List<dynamic> get equipments =>
+      _filteredEquipments.isEmpty ? _equipments : _filteredEquipments;
   String get errorMessage => _errorMessage;
 
   Future<void> fetchEquipments() async {
     _isLoading = true;
-    _errorMessage = '';
     notifyListeners();
 
     try {
       final response = await _equipmentService.getAllEquipments();
       _equipments = response;
+      _filteredEquipments = []; // Réinitialiser les filtres
     } catch (e) {
-      _errorMessage = 'Erreur lors du chargement des équipements : $e';
       if (kDebugMode) {
-        print(_errorMessage);
+        print('Erreur lors du chargement des équipements : $e');
       }
     } finally {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  void filterEquipments(String query) {
+    if (query.isEmpty) {
+      _filteredEquipments = [];
+    } else {
+      _filteredEquipments =
+          _equipments.where((equipment) {
+            return (equipment['code']?.toString().toLowerCase() ?? '').contains(
+              query.toLowerCase(),
+            ) ||
+            (equipment['famille']?.toString().toLowerCase() ?? '').contains(
+              query.toLowerCase(),
+            ) ||
+            (equipment['entity']?.toString().toLowerCase() ?? '').contains(
+              query.toLowerCase(),
+            ) ||
+            (equipment['zone']?.toString().toLowerCase() ?? '').contains(
+              query.toLowerCase(),
+            ) ||
+            (equipment['unite']?.toString().toLowerCase() ?? '').contains(
+              query.toLowerCase(),
+            );
+          }).toList();
+    }
+    notifyListeners();
   }
 
   Future<void> addEquipment(Map<String, dynamic> equipment) async {

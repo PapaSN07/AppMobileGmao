@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:appmobilegmao/provider/equipment_provider.dart';
 import 'package:appmobilegmao/screens/add_equipment_screen.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:appmobilegmao/widgets/list_item.dart';
 import 'package:appmobilegmao/widgets/loading_indicator.dart';
+import 'package:appmobilegmao/widgets/empty_state.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -16,6 +19,9 @@ class EquipmentScreen extends StatefulWidget {
 
 class _EquipmentScreenState extends State<EquipmentScreen> {
   final _formKey = GlobalKey<FormState>();
+  final TextEditingController _searchController =
+      TextEditingController(); // Contrôleur pour le champ de recherche
+  Timer? _debounce;
 
   @override
   void initState() {
@@ -24,6 +30,20 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<EquipmentProvider>().fetchEquipments();
     });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose(); // Libérer le contrôleur
+    _debounce?.cancel(); // Annuler le Timer si actif
+    super.dispose();
+  }
+
+  @override
+  void deactivate() {
+    // Fermer le clavier avant la désactivation
+    FocusScope.of(context).unfocus();
+    super.deactivate();
   }
 
   @override
@@ -120,7 +140,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.start,
                         children: [
-                          _searchBar(),
+                          _searchBar(equipmentProvider),
                           const SizedBox(height: 20),
                           _boxOne(equipmentProvider),
                         ],
@@ -196,10 +216,11 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     );
   }
 
-  Widget _searchBar() {
+  Widget _searchBar(EquipmentProvider equipmentProvider) {
     return Form(
       key: _formKey,
       child: TextFormField(
+        controller: _searchController,
         decoration: InputDecoration(
           labelText: 'Rechercher par...',
           labelStyle: TextStyle(
@@ -218,13 +239,22 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
           suffixIcon: IconButton(
             icon: Icon(Icons.search, color: AppTheme.secondaryColor),
             onPressed: () {
-              // Logique de recherche
-              if (kDebugMode) {
-                print("click search");
-              }
+              // Appliquer le filtre
+              equipmentProvider.filterEquipments(_searchController.text);
             },
           ),
         ),
+        onChanged: (value) {
+          // Déclencher la recherche après 1 seconde d'inactivité
+          if (_debounce?.isActive ?? false) _debounce!.cancel();
+          _debounce = Timer(const Duration(seconds: 1), () {
+            equipmentProvider.filterEquipments(value);
+          });
+        },
+        onFieldSubmitted: (value) {
+          // Déclencher la recherche lorsque l'utilisateur appuie sur "Terminé"
+          equipmentProvider.filterEquipments(value);
+        },
         validator: (value) {
           if (value == null || value.isEmpty) {
             return 'Veuillez entrer quelque chose';
@@ -236,23 +266,73 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
   }
 
   Widget _boxOne(EquipmentProvider equipmentProvider) {
+    final bool hasResults = equipmentProvider.equipments.isNotEmpty;
+
     return equipmentProvider.isLoading
         ? const LoadingIndicator()
         : Expanded(
           child: RefreshIndicator(
             onRefresh: () => equipmentProvider.fetchEquipments(),
-            child: ListView.builder(
-              padding: EdgeInsets.zero,
-              itemCount: equipmentProvider.equipments.length,
-              itemBuilder: (context, index) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _itemBuilder(equipmentProvider.equipments[index]),
-                );
-              },
-            ),
+            child:
+                hasResults
+                    ? ListView.builder(
+                      padding: EdgeInsets.zero,
+                      itemCount: equipmentProvider.equipments.length,
+                      itemBuilder: (context, index) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: _itemBuilder(
+                            equipmentProvider.equipments[index],
+                          ),
+                        );
+                      },
+                    )
+                    : _buildEmptyState(equipmentProvider),
           ),
         );
+  }
+
+  Widget _buildEmptyState(EquipmentProvider equipmentProvider) {
+    final bool isSearching = _searchController.text.isNotEmpty;
+    final String searchTerm = _searchController.text.trim();
+    
+    if (isSearching) {
+      // Messages personnalisés selon la longueur de la recherche
+      String message;
+      if (searchTerm.length < 3) {
+        message =
+            'Tapez au moins 3 caractères pour une recherche plus précise.';
+      } else {
+        message =
+            'Aucun équipement ne correspond à "$searchTerm".\nEssayez avec d\'autres mots-clés comme:\n• Code équipement (ex: EQ001)\n• Zone (ex: Dakar)\n• Famille (ex: Moteur)';
+      }
+
+      return EmptyState(
+        title: '🔍 Aucun résultat trouvé',
+        message: message,
+        icon: Icons.search_off,
+        onRetry: () {
+          _searchController.clear();
+          equipmentProvider.filterEquipments('');
+          FocusScope.of(context).unfocus();
+        },
+        retryButtonText: 'Effacer la recherche',
+      );
+    } else {
+      return EmptyState(
+        title: '📦 Aucun équipement',
+        message:
+            'Aucun équipement n\'a été trouvé.\nCommencez par ajouter votre premier équipement.',
+        icon: Icons.inventory_2_outlined,
+        onRetry: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const AddEquipmentScreen()),
+          );
+        },
+        retryButtonText: 'Ajouter un équipement',
+      );
+    }
   }
 
   Widget _itemBuilder(dynamic equipment) {

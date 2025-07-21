@@ -33,6 +33,13 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
   }
 
   @override
+  void deactivate() {
+    // Fermer le clavier avant la désactivation
+    FocusScope.of(context).unfocus();
+    super.deactivate();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.primaryColor,
