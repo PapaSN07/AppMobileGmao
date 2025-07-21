@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
+import 'package:appmobilegmao/screens/modify_equipment_screen.dart';
 
 class OverlayContent extends StatelessWidget {
   final String title;
   final Map<String, String> details;
   final IconData? titleIcon;
   final VoidCallback? onClose;
-  final List<OverlayAction>? actions;
+  final bool showModifyButton; // Nouveau paramètre
 
   const OverlayContent({
     super.key,
@@ -14,7 +15,7 @@ class OverlayContent extends StatelessWidget {
     required this.details,
     this.titleIcon,
     this.onClose,
-    this.actions,
+    this.showModifyButton = true, // Par défaut, afficher le bouton
   });
 
   @override
@@ -25,7 +26,8 @@ class OverlayContent extends StatelessWidget {
         _buildHeader(context),
         const SizedBox(height: 20),
         _buildContent(),
-        if (actions != null && actions!.isNotEmpty) _buildActions(),
+        if (showModifyButton)
+          _buildActionButtons(context), // Affichage conditionnel
       ],
     );
   }
@@ -64,10 +66,7 @@ class OverlayContent extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppTheme.primaryColor15,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: AppTheme.primaryColor15,
-            width: 1,
-          ),
+          border: Border.all(color: AppTheme.primaryColor15, width: 1),
         ),
         child: const Icon(
           Icons.arrow_back,
@@ -92,10 +91,7 @@ class OverlayContent extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppTheme.primaryColor15,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppTheme.primaryColor15,
-          width: 1,
-        ),
+        border: Border.all(color: AppTheme.primaryColor15, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -140,64 +136,67 @@ class OverlayContent extends StatelessWidget {
     );
   }
 
-  Widget _buildActions() {
+  Widget _buildActionButtons(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(top: 20),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: actions!.map((action) => _buildActionButton(action)).toList(),
-      ),
-    );
-  }
+        children: [
+          // Bouton Modifier
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  // Fermer l'overlay d'abord
+                  Navigator.of(context).pop();
 
-  Widget _buildActionButton(OverlayAction action) {
-    return Expanded(
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 4),
-        child: ElevatedButton.icon(
-          onPressed: action.onPressed,
-          icon: Icon(
-            action.icon,
-            size: 18,
-            color:
-                action.isPrimary
-                    ? AppTheme.secondaryColor
-                    : AppTheme.primaryColor,
-          ),
-          label: Text(
-            action.label,
-            style: TextStyle(
-              fontFamily: AppTheme.fontMontserrat,
-              fontWeight: FontWeight.w600,
-              fontSize: 14,
-              color:
-                  action.isPrimary
-                      ? AppTheme.secondaryColor
-                      : AppTheme.primaryColor,
-            ),
-          ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor:
-                action.isPrimary
-                    ? AppTheme.primaryColor
-                    : AppTheme.primaryColor15,
-            elevation: action.isPrimary ? 2 : 0,
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(
-                color: AppTheme.primaryColor15,
-                width: 1,
+                  // Puis naviguer vers l'écran de modification
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (context) =>
+                              ModifyEquipmentScreen(equipmentData: details),
+                    ),
+                  );
+                },
+                icon: const Icon(
+                  Icons.edit,
+                  size: 18,
+                  color: AppTheme.primaryColor,
+                ),
+                label: const Text(
+                  'Modifier',
+                  style: TextStyle(
+                    fontFamily: AppTheme.fontMontserrat,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    color: AppTheme.primaryColor,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.secondaryColor,
+                  elevation: 2,
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 12,
+                    horizontal: 16,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: AppTheme.primaryColor15, width: 1),
+                  ),
+                ),
               ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
 }
 
-// Classe pour les actions personnalisées
+// Classe pour les actions personnalisées (maintenue pour compatibilité)
 class OverlayAction {
   final String label;
   final IconData icon;

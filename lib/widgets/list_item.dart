@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:appmobilegmao/widgets/custom_overlay.dart';
-import 'package:appmobilegmao/widgets/overlay_content.dart';
+import 'package:appmobilegmao/widgets/overlay_item.dart';
 
 class ListItemCustom extends StatelessWidget {
   final String? id;
@@ -15,6 +15,7 @@ class ListItemCustom extends StatelessWidget {
   final Color? backgroundColor;
   final Color? textColor;
   final Color? iconColor;
+  final bool showModifyButton;
 
   const ListItemCustom({
     super.key,
@@ -29,6 +30,7 @@ class ListItemCustom extends StatelessWidget {
     this.backgroundColor,
     this.textColor,
     this.iconColor,
+    this.showModifyButton = true,
   });
 
   // Constructeur pour les équipements
@@ -41,6 +43,7 @@ class ListItemCustom extends StatelessWidget {
     required String unite,
     required String centre,
     required String description,
+    bool showModifyButton = true,
     String overlayTitle = 'Détails de l\'équipement',
     VoidCallback? onTap,
   }) {
@@ -65,6 +68,7 @@ class ListItemCustom extends StatelessWidget {
         'Description': description,
       },
       overlayTitle: overlayTitle,
+      showModifyButton: showModifyButton,
       onTap: onTap,
     );
   }
@@ -103,6 +107,7 @@ class ListItemCustom extends StatelessWidget {
         'Description': description,
       },
       overlayTitle: overlayTitle,
+      showModifyButton: false,
       onTap: onTap,
     );
   }
@@ -141,6 +146,7 @@ class ListItemCustom extends StatelessWidget {
         'Description': description,
       },
       overlayTitle: overlayTitle,
+      showModifyButton: false,
       onTap: onTap,
     );
   }
@@ -310,25 +316,12 @@ class ListItemCustom extends StatelessWidget {
             title: overlayTitle,
             details: overlayDetails,
             titleIcon: icon,
-            actions: _buildOverlayActions(context),
+            showModifyButton: showModifyButton,
+            // actions: _buildOverlayActions(context),
           ),
         );
       },
     );
-  }
-
-  List<OverlayAction> _buildOverlayActions(BuildContext context) {
-    return [
-      OverlayAction(
-        label: 'Modifier',
-        icon: Icons.edit,
-        onPressed: () {
-          Navigator.of(context).pop();
-          // Action de modification
-          if (onTap != null) onTap!();
-        },
-      ),
-    ];
   }
 }
 

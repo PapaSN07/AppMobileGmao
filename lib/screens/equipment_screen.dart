@@ -6,7 +6,6 @@ import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:appmobilegmao/widgets/list_item.dart';
 import 'package:appmobilegmao/widgets/loading_indicator.dart';
 import 'package:appmobilegmao/widgets/empty_state.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -295,7 +294,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
   Widget _buildEmptyState(EquipmentProvider equipmentProvider) {
     final bool isSearching = _searchController.text.isNotEmpty;
     final String searchTerm = _searchController.text.trim();
-    
+
     if (isSearching) {
       // Messages personnalisés selon la longueur de la recherche
       String message;
