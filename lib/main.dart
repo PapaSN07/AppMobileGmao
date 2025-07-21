@@ -1,9 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:appmobilegmao/screens/main_screen.dart'; // Import de MainScreen
-import 'package:appmobilegmao/theme/app_theme.dart';
+import 'package:provider/provider.dart';
+import 'package:appmobilegmao/screens/main_screen.dart';
+import 'package:appmobilegmao/provider/equipment_provider.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (context) => EquipmentProvider()),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -13,8 +21,8 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'GMAO',
-      theme: ThemeData(primaryColor: AppTheme.primaryColor),
-      home: const MainScreen(), // Utilisation de MainScreen comme page principale
+      theme: ThemeData(primaryColor: Colors.blue),
+      home: const MainScreen(),
       debugShowCheckedModeBanner: false,
     );
   }

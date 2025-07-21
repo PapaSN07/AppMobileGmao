@@ -15,7 +15,7 @@ class ApiService {
   static const int defaultPort = 3000;
 
   // Adresse IP de l'ordinateur pour les appareils iOS physiques
-  static const String _macIpAddress = '192.168.1.9';
+  static const String _macIpAddress = '169.254.221.130';
 
   ApiService() {
     _initializeBaseUrl();
