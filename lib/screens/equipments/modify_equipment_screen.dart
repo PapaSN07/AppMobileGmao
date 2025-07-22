@@ -1,6 +1,8 @@
+import 'package:appmobilegmao/provider/equipment_provider.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class ModifyEquipmentScreen extends StatefulWidget {
   final Map<String, String>?
@@ -28,7 +30,14 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
   final TextEditingController _descriptionController = TextEditingController();
 
   // Listes des valeurs disponibles pour chaque dropdown
-  final List<String> codeParentItems = ['EQ001', 'EQ002', 'EQ003', '#12345', '#67890', '#54321'];
+  final List<String> codeParentItems = [
+    'EQ001',
+    'EQ002',
+    'EQ003',
+    '#12345',
+    '#67890',
+    '#54321',
+  ];
   final List<String> feederItems = [
     'Feeder 1',
     'Feeder 2',
@@ -37,17 +46,38 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     '8129731276AF11TG',
     '1287377676AF11TG',
   ];
-  final List<String> familleItems = ['1676AF11TG', '7676AF11TG', '12996AF11TG', 'Famille A', 'Famille B', 'Famille C'];
+  final List<String> familleItems = [
+    '1676AF11TG',
+    '7676AF11TG',
+    '12996AF11TG',
+    'Famille A',
+    'Famille B',
+    'Famille C',
+  ];
   final List<String> zoneItems = ['Dakar', 'Thiès', 'Saint-Louis'];
-  final List<String> entityItems = ['1676AF11TG', '7676AF11TG', '2816AF11TG', 'Entité 1', 'Entité 2', 'Entité 3'];
-  final List<String> uniteItems = ['Dakar', 'Thiès', 'Saint-Louis', 'Unité 1', 'Unité 2', 'Unité 3'];
+  final List<String> entityItems = [
+    '1676AF11TG',
+    '7676AF11TG',
+    '2816AF11TG',
+    'Entité 1',
+    'Entité 2',
+    'Entité 3',
+  ];
+  final List<String> uniteItems = [
+    'Dakar',
+    'Thiès',
+    'Saint-Louis',
+    'Unité 1',
+    'Unité 2',
+    'Unité 3',
+  ];
   final List<String> centreChargeItems = [
     '1676AF11TG',
     '7676AF11TG',
     '7676AF11TG',
     'Centre 1',
     'Centre 2',
-    'Centre 3'
+    'Centre 3',
   ];
 
   List<String> selectedAttributeValues = List.filled(10, '1922309AHDNAJ');
@@ -88,7 +118,10 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
 
       // Initialiser les dropdowns avec les valeurs mappées
       selectedFeeder = mapValueToDropdown(data['Feeder'], feederItems);
-      selectedCodeParent = mapValueToDropdown(data['Code Parent'], codeParentItems);
+      selectedCodeParent = mapValueToDropdown(
+        data['Code Parent'],
+        codeParentItems,
+      );
       selectedFamille = mapValueToDropdown(data['Famille'], familleItems);
       selectedZone = mapValueToDropdown(data['Zone'], zoneItems);
       selectedEntity = mapValueToDropdown(data['Entité'], entityItems);
@@ -124,111 +157,119 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.primaryColor,
-      body: Stack(
-        children: [
-          // AppBar personnalisée
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              height: 150,
-              width: double.infinity,
-              decoration: BoxDecoration(color: AppTheme.secondaryColor),
-              child: SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 0, left: 16, right: 16),
-                  child: Row(
+      body: Consumer<EquipmentProvider>(
+        builder: (context, equipmentProvider, child) {
+          return _buildBody(equipmentProvider);
+        },
+      ),
+    );
+  }
+
+  Widget _buildBody(EquipmentProvider equipmentProvider) {
+    return Stack(
+      children: [
+        // AppBar personnalisée
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: Container(
+            height: 150,
+            width: double.infinity,
+            decoration: BoxDecoration(color: AppTheme.secondaryColor),
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 0, left: 16, right: 16),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(
+                        Icons.arrow_back,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                    ),
+                    const Spacer(),
+                    const Text(
+                      'Modifier l\'équipement', // Titre modifié
+                      style: TextStyle(
+                        fontFamily: AppTheme.fontMontserrat,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                        fontSize: 20,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const Spacer(),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+
+        // Contenu du body avec les champs pré-remplis
+        Positioned(
+          top: 156,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: Container(
+            padding: const EdgeInsets.only(top: 10, left: 0, right: 0),
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 0, right: 16, left: 16),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.start,
                     children: [
-                      IconButton(
-                        icon: const Icon(
-                          Icons.arrow_back,
-                          color: Colors.white,
-                          size: 28,
-                        ),
-                        onPressed: () {
-                          Navigator.pop(context);
+                      _fieldsets('Informations parents'),
+                      _buildDropdownField(
+                        label: 'Code Parent',
+                        msgError: 'Veuillez sélectionner un code parent',
+                        items: codeParentItems,
+                        selectedValue: selectedCodeParent,
+                        onChanged: (value) {
+                          setState(() {
+                            selectedCodeParent = value;
+                          });
                         },
                       ),
-                      const Spacer(),
-                      const Text(
-                        'Modifier l\'équipement', // Titre modifié
-                        style: TextStyle(
-                          fontFamily: AppTheme.fontMontserrat,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                          fontSize: 20,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const Spacer(),
+                      const SizedBox(height: 20),
+                      _rowOne(),
+                      const SizedBox(height: 40),
+                      _fieldsets('Informations'),
+                      const SizedBox(height: 10),
+                      _rowTwo(),
+                      const SizedBox(height: 20),
+                      _rowThree(),
+                      const SizedBox(height: 20),
+                      _rowFour(),
+                      const SizedBox(height: 20),
+                      _rowFive(),
+                      const SizedBox(height: 40),
+                      _fieldsets('Informations de positionnement'),
+                      const SizedBox(height: 10),
+                      _rowSix(),
+                      const SizedBox(height: 20),
+                      _rowSeven(),
+                      const SizedBox(height: 20),
+                      _rowEight(),
+                      const SizedBox(height: 20),
+                      _buildActionButtons(),
+                      const SizedBox(height: 40),
                     ],
                   ),
                 ),
               ),
             ),
           ),
-
-          // Contenu du body avec les champs pré-remplis
-          Positioned(
-            top: 156,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: Container(
-              padding: const EdgeInsets.only(top: 10, left: 0, right: 0),
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 0, right: 16, left: 16),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        _fieldsets('Informations parents'),
-                        _buildDropdownField(
-                          label: 'Code Parent',
-                          msgError: 'Veuillez sélectionner un code parent',
-                          items: codeParentItems,
-                          selectedValue: selectedCodeParent,
-                          onChanged: (value) {
-                            setState(() {
-                              selectedCodeParent = value;
-                            });
-                          },
-                        ),
-                        const SizedBox(height: 20),
-                        _rowOne(),
-                        const SizedBox(height: 40),
-                        _fieldsets('Informations'),
-                        const SizedBox(height: 10),
-                        _rowTwo(),
-                        const SizedBox(height: 20),
-                        _rowThree(),
-                        const SizedBox(height: 20),
-                        _rowFour(),
-                        const SizedBox(height: 20),
-                        _rowFive(),
-                        const SizedBox(height: 40),
-                        _fieldsets('Informations de positionnement'),
-                        const SizedBox(height: 10),
-                        _rowSix(),
-                        const SizedBox(height: 20),
-                        _rowSeven(),
-                        const SizedBox(height: 20),
-                        _rowEight(),
-                        const SizedBox(height: 20),
-                        _buildActionButtons(),
-                        const SizedBox(height: 40),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -415,7 +456,12 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Expanded(child: _buildText(label: 'Code', value: '#12345')),
+        Expanded(
+          child: _buildText(
+            label: 'Code',
+            value: selectedCodeParent ?? '#12345',
+          ),
+        ),
         const SizedBox(width: 10),
         Expanded(
           child: _buildDropdownField(
@@ -524,9 +570,19 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Expanded(child: _buildText(label: 'Longitude', value: valueLongitude ?? '12311231')),
+        Expanded(
+          child: _buildText(
+            label: 'Longitude',
+            value: valueLongitude ?? '12311231',
+          ),
+        ),
         SizedBox(width: 10), // Espace entre les champs
-        Expanded(child: _buildText(label: 'Latitude', value: valueLatitude ?? '12311231')),
+        Expanded(
+          child: _buildText(
+            label: 'Latitude',
+            value: valueLatitude ?? '12311231',
+          ),
+        ),
       ],
     );
   }
@@ -871,7 +927,60 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
   Widget _buildSaveButton() {
     return _buildButton('Modifier', () {
       if (_formKey.currentState!.validate()) {
-        // Logique pour sauvegarder les modifications
+        // Créer un map seulement avec les champs modifiés
+        final updatedFields = <String, dynamic>{};
+
+        // Ajouter seulement les champs qui ont changé
+        if (selectedCodeParent != null && selectedCodeParent!.isNotEmpty) {
+          updatedFields['codeParent'] = selectedCodeParent;
+        }
+
+        if (selectedFeeder != null && selectedFeeder!.isNotEmpty) {
+          updatedFields['feeder'] = selectedFeeder;
+        }
+
+        if (selectedFamille != null && selectedFamille!.isNotEmpty) {
+          updatedFields['famille'] = selectedFamille;
+        }
+
+        if (selectedZone != null && selectedZone!.isNotEmpty) {
+          updatedFields['zone'] = selectedZone;
+        }
+
+        if (selectedEntity != null && selectedEntity!.isNotEmpty) {
+          updatedFields['entity'] = selectedEntity;
+        }
+
+        if (selectedUnite != null && selectedUnite!.isNotEmpty) {
+          updatedFields['unite'] = selectedUnite;
+        }
+
+        if (selectedCentreCharge != null && selectedCentreCharge!.isNotEmpty) {
+          updatedFields['centreCharge'] = selectedCentreCharge;
+        }
+
+        if (_descriptionController.text.isNotEmpty) {
+          updatedFields['description'] = _descriptionController.text;
+        }
+
+        if (valueLongitude != null && valueLongitude!.isNotEmpty) {
+          updatedFields['longitude'] = valueLongitude;
+        }
+
+        if (valueLatitude != null && valueLatitude!.isNotEmpty) {
+          updatedFields['latitude'] = valueLatitude;
+        }
+
+        if (kDebugMode) {
+          print('🔧 Champs modifiés à envoyer: $updatedFields');
+        }
+
+        // Appeler la méthode pour mettre à jour l'équipement
+        context.read<EquipmentProvider>().updateEquipment(
+          widget.equipmentData!['ID']!, // ID de l'équipement à modifier
+          updatedFields, // Seulement les champs modifiés
+        );
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Équipement modifié avec succès !'),
@@ -879,7 +988,6 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
           ),
         );
 
-        // Retourner à l'écran précédent
         Navigator.of(context).pop();
       }
     });

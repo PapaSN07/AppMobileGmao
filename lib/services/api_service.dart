@@ -274,6 +274,37 @@ class ApiService {
     }
   }
 
+  Future<dynamic> patch(String endpoint, dynamic data) async {
+    final headers = await _getHeaders();
+
+    if (endpoint.startsWith('/')) {
+      endpoint = endpoint.substring(1);
+    }
+
+    try {
+      final url = '$baseUrl/$endpoint';
+      if (kDebugMode) {
+        print('🔧 PATCH: $url');
+        print('📦 Données: ${jsonEncode(data)}');
+      }
+
+      final response = await http
+          .patch(Uri.parse(url), headers: headers, body: jsonEncode(data))
+          .timeout(
+            timeout,
+            onTimeout: () => throw Exception('Délai d\'attente dépassé'),
+          );
+
+      return _processResponse(response);
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Erreur PATCH: $e');
+        _printConnectionHelp();
+      }
+      throw Exception('Erreur de connexion: $e');
+    }
+  }
+
   /// Affiche des conseils de connexion en cas d'erreur
   void _printConnectionHelp() {
     if (kDebugMode) {

@@ -64,6 +64,7 @@ class ListItemCustom extends StatelessWidget {
         ItemField(label: 'Unité', value: unite),
       ],
       overlayDetails: {
+        'ID': id ?? '',
         'Code Parent': codeParent,
         'Feeder': feeder,
         'Feeder Description': feederDescription,
@@ -108,6 +109,7 @@ class ListItemCustom extends StatelessWidget {
         ItemField(label: 'Unité', value: unite),
       ],
       overlayDetails: {
+        'ID': id ?? '',
         'Code': code,
         'Famille': famille,
         'Zone': zone,
@@ -147,6 +149,7 @@ class ListItemCustom extends StatelessWidget {
         ItemField(label: 'Unité', value: unite),
       ],
       overlayDetails: {
+        'ID': id ?? '',
         'Code': code,
         'Famille': famille,
         'Zone': zone,
