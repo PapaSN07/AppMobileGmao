@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
+  // Couleurs principales existantes
   static const Color primaryColor = Color.fromRGBO(255, 255, 255, 1);
   static const Color primaryColor75 = Color.fromRGBO(255, 255, 255, 0.75);
   static const Color primaryColor15 = Color.fromRGBO(255, 255, 255, 0.15);
@@ -8,6 +9,21 @@ class AppTheme {
   static const Color thirdColor = Color.fromRGBO(144, 144, 144, 1);
   static const Color blurColor = Color.fromRGBO(196, 196, 196, 0.25);
   static const Color boxShadowColor = Color.fromRGBO(0, 0, 0, 0.25);
+
+  // Nouvelles couleurs pour les notifications
+  static const Color successColor = Color(0xFF10B981);
+  static const Color successColorDark = Color(0xFF059669);
+  static const Color errorColor = Color(0xFFEF4444);
+  static const Color errorColorDark = Color(0xFFDC2626);
+  static const Color warningColor = Color(0xFFF59E0B);
+  static const Color warningColorDark = Color(0xFFD97706);
+  static const Color infoColor =
+      secondaryColor; // Utilise la couleur secondaire existante
+  static const Color infoColorDark = Color.fromRGBO(1, 82, 172, 1);
+
+  // Couleurs d'overlay pour les notifications
+  static const Color overlayBackgroundColor = Color.fromRGBO(0, 0, 0, 0.3);
+  static const Color notificationShadowColor = Color.fromRGBO(0, 0, 0, 0.15);
 
   // Font styles
   static const String fontMontserrat = 'Montserrat';
@@ -33,5 +49,26 @@ class AppTheme {
     fontSize: 14,
     fontWeight: FontWeight.normal,
     color: thirdColor,
+  );
+
+  // Styles pour les notifications
+  static const TextStyle notificationTitle = TextStyle(
+    fontFamily: fontMontserrat,
+    fontWeight: FontWeight.bold,
+    color: Colors.white,
+    fontSize: 16,
+  );
+
+  static const TextStyle notificationMessage = TextStyle(
+    fontFamily: fontRoboto,
+    fontWeight: FontWeight.normal,
+    color: Colors.white,
+    fontSize: 14,
+  );
+
+  static const TextStyle notificationAction = TextStyle(
+    fontFamily: fontMontserrat,
+    fontWeight: FontWeight.w600,
+    fontSize: 12,
   );
 }

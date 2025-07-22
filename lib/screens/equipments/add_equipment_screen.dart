@@ -1,5 +1,6 @@
 import 'package:appmobilegmao/provider/equipment_provider.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
+import 'package:appmobilegmao/widgets/notification_bar.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -833,38 +834,83 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
   }
 
   Widget _buildSaveButton() {
-    return _buildButton('Enregistrer', () {
+    return _buildButton('Enregistrer', () async {
       if (_formKey.currentState!.validate()) {
-        // Collecter les données du formulaire
-        final equipmentData = {
-          'codeParent': selectedCodeParent,
-          'code': selectedCodeParent,
-          'feeder': selectedFeeder,
-          'infoFeeder': selectedFeeder,
-          'famille': selectedFamille,
-          'zone': selectedZone,
-          'entity': selectedEntity,
-          'unite': selectedUnite,
-          'centreCharge': selectedCentreCharge,
-          'description': _descriptionController.text,
-          'longitude': '12311231', // Exemple de valeur
-          'latitude': '12311231', // Exemple de valeur
-          'attributs': selectedAttributeValues,
-        };
+        try {
+          // Collecter les données du formulaire
+          final equipmentData = {
+            'codeParent': selectedCodeParent,
+            'code': selectedCodeParent,
+            'feeder': selectedFeeder,
+            'infoFeeder': selectedFeeder,
+            'famille': selectedFamille,
+            'zone': selectedZone,
+            'entity': selectedEntity,
+            'unite': selectedUnite,
+            'centreCharge': selectedCentreCharge,
+            'description': _descriptionController.text,
+            'longitude': '12311231',
+            'latitude': '12311231',
+            'attributs': selectedAttributeValues,
+          };
 
-        // Appeler la méthode pour insérer l'équipement
-        context.read<EquipmentProvider>().addEquipment(equipmentData);
+          // Appeler la méthode pour ajouter l'équipement
+          await context.read<EquipmentProvider>().addEquipment(equipmentData);
 
-        // Afficher un message de confirmation
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Équipement ajouté avec succès !'),
-            backgroundColor: Colors.green,
-          ),
-        );
+          // Vérifier si le widget est toujours monté avant d'afficher la notification
+          if (mounted && Navigator.canPop(context)) {
+            // Afficher la notification de succès AVANT de fermer l'écran
+            NotificationService.showSuccess(
+              context,
+              title: '🎉 Succès',
+              message: 'Équipement ajouté avec succès !',
+              showAction: false, // Pas d'action pour éviter les conflits
+              duration: const Duration(seconds: 2),
+              showProgressBar: false,
+            );
 
-        // Retourner à l'écran précédent
-        Navigator.of(context).pop();
+            // Attendre un délai plus court avant de fermer
+            await Future.delayed(const Duration(milliseconds: 800));
+
+            // Vérifier encore une fois avant de fermer
+            if (mounted && Navigator.canPop(context)) {
+              Navigator.of(
+                context,
+              ).pop(true); // Passer true pour indiquer le succès
+            }
+          }
+        } catch (e) {
+          if (kDebugMode) {
+            print('❌ Erreur lors de l\'ajout: $e');
+          }
+
+          // Vérifier si le widget est toujours monté avant d'afficher l'erreur
+          if (mounted) {
+            NotificationService.showError(
+              context,
+              title: '❌ Erreur',
+              message: 'Impossible d\'ajouter l\'équipement: $e',
+              showAction: true,
+              actionText: 'Réessayer',
+              onActionPressed: () {
+                // Relancer l'action d'ajout
+                _buildSaveButton();
+              },
+              duration: const Duration(seconds: 4),
+            );
+          }
+        }
+      } else {
+        // Validation échouée
+        if (mounted) {
+          NotificationService.showWarning(
+            context,
+            title: '⚠️ Formulaire incomplet',
+            message: 'Veuillez remplir tous les champs obligatoires',
+            duration: const Duration(seconds: 3),
+            showProgressBar: false,
+          );
+        }
       }
     });
   }
