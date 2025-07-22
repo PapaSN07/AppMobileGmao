@@ -15,7 +15,7 @@
 **Application mobile Flutter pour la Gestion de Maintenance Assistée par Ordinateur (GMAO)**  
 *Développée pour Senelec - DSI*
 
-[📥 Télécharger](#-installation-et-démarrage) • [📖 Documentation](#-architecture-et-composants) • [🐛 Signaler un bug](https://github.com/your-repo/issues) • [💡 Demander une fonctionnalité](https://github.com/your-repo/issues)
+[📥 Télécharger](#-installation-et-démarrage) • [📖 Documentation](#-architecture-et-composants) • [🐛 Signaler un bug](https://github.com/PapaSN07/AppMobileGmao.git) • [💡 Demander une fonctionnalité](https://github.com/your-repo/issues)
 
 </center>
 
@@ -163,7 +163,7 @@ Développée dans le cadre d'un stage chez **Senelec - DSI** (Direction des Syst
 
 ```bash
 # 1️⃣ Cloner le repository
-git clone https://github.com/your-username/AppMobileGmao.git
+git clone https://github.com/PapaSN07/AppMobileGmao.git
 cd AppMobileGmao
 
 # 2️⃣ Installer les dépendances Flutter
@@ -406,42 +406,6 @@ SecondaryButton(
 - [ ] 🌐 **API REST** complète
 - [ ] 💾 **Base de données locale** (SQLite)
 - [ ] 🔐 **Authentification JWT**
-
----
-
-## 🤝 Contribution
-
-### 📝 Guide de contribution
-
-1. 🍴 **Fork** le projet
-2. 🌿 **Créer** une branche feature (`git checkout -b feature/AmazingFeature`)
-3. 💾 **Commit** les changements (`git commit -m 'Add some AmazingFeature'`)
-4. 📤 **Push** vers la branche (`git push origin feature/AmazingFeature`)
-5. 🔃 **Ouvrir** une Pull Request
-
-### 🐛 Signalement de bugs
-
-Utilisez le [template d'issue](https://github.com/your-repo/issues/new?template=bug_report.md) pour signaler un bug.
-
-### 💡 Demandes de fonctionnalités
-
-Utilisez le [template de feature request](https://github.com/your-repo/issues/new?template=feature_request.md) pour proposer une amélioration.
-
----
-
-## 📞 Contact & Support
-
-### 👥 Équipe de développement
-
-- **Développeur Principal** : [Votre Nom](mailto:votre.email@senelec.sn)
-- **Superviseur** : [Nom Superviseur](mailto:superviseur@senelec.sn)
-- **Organisation** : Senelec - Direction des Systèmes d'Information (DSI)
-
-### 📧 Support
-
-- **Email** : support.gmao@senelec.sn
-- **Issues GitHub** : [Créer une issue](https://github.com/your-repo/issues)
-- **Documentation** : [Wiki du projet](https://github.com/your-repo/wiki)
 
 ---
 

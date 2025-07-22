@@ -20,71 +20,76 @@ class EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Icône avec animation
-            TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0.0, end: 1.0),
-              duration: const Duration(milliseconds: 800),
-              builder: (context, value, child) {
-                return Transform.scale(
-                  scale: value,
-                  child: Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryColor15,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: AppTheme.thirdColor, width: 2),
+    return SingleChildScrollView(
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Icône avec animation
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.0, end: 1.0),
+                duration: const Duration(milliseconds: 800),
+                builder: (context, value, child) {
+                  return Transform.scale(
+                    scale: value,
+                    child: Container(
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryColor15,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: AppTheme.thirdColor,
+                          width: 2,
+                        ),
+                      ),
+                      child: Icon(icon, size: 50, color: AppTheme.thirdColor),
                     ),
-                    child: Icon(icon, size: 50, color: AppTheme.thirdColor),
-                  ),
-                );
-              },
-            ),
-
-            const SizedBox(height: 24),
-
-            // Titre
-            Text(
-              title,
-              style: TextStyle(
-                fontFamily: AppTheme.fontMontserrat,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.secondaryColor,
-                fontSize: 20,
+                  );
+                },
               ),
-              textAlign: TextAlign.center,
-            ),
 
-            const SizedBox(height: 12),
+              const SizedBox(height: 24),
 
-            // Message
-            Text(
-              message,
-              style: TextStyle(
-                fontFamily: AppTheme.fontRoboto,
-                fontWeight: FontWeight.normal,
-                color: AppTheme.thirdColor,
-                fontSize: 16,
+              // Titre
+              Text(
+                title,
+                style: TextStyle(
+                  fontFamily: AppTheme.fontMontserrat,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.secondaryColor,
+                  fontSize: 20,
+                ),
+                textAlign: TextAlign.center,
               ),
-              textAlign: TextAlign.center,
-            ),
 
-            const SizedBox(height: 24),
+              const SizedBox(height: 12),
 
-            // Bouton optionnel
-            if (onRetry != null)
-              PrimaryButton(
-                text: retryButtonText!,
-                onPressed: onRetry,
-                icon: Icons.refresh,
+              // Message
+              Text(
+                message,
+                style: TextStyle(
+                  fontFamily: AppTheme.fontRoboto,
+                  fontWeight: FontWeight.normal,
+                  color: AppTheme.thirdColor,
+                  fontSize: 16,
+                ),
+                textAlign: TextAlign.center,
               ),
-          ],
+
+              const SizedBox(height: 24),
+
+              // Bouton optionnel
+              if (onRetry != null)
+                PrimaryButton(
+                  text: retryButtonText!,
+                  onPressed: onRetry,
+                  icon: Icons.refresh,
+                ),
+            ],
+          ),
         ),
       ),
     );
