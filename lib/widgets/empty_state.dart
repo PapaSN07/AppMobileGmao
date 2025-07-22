@@ -1,4 +1,5 @@
 import 'package:appmobilegmao/theme/app_theme.dart';
+import 'package:appmobilegmao/widgets/custom_buttons.dart'; // Ajout de l'import
 import 'package:flutter/material.dart';
 
 class EmptyState extends StatelessWidget {
@@ -38,10 +39,7 @@ class EmptyState extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: AppTheme.primaryColor15,
                       shape: BoxShape.circle,
-                      border: Border.all(
-                        color: AppTheme.thirdColor,
-                        width: 2,
-                      ),
+                      border: Border.all(color: AppTheme.thirdColor, width: 2),
                     ),
                     child: Icon(icon, size: 50, color: AppTheme.thirdColor),
                   ),
@@ -80,29 +78,12 @@ class EmptyState extends StatelessWidget {
             const SizedBox(height: 24),
 
             // Bouton optionnel
-            if (onRetry != null) ...[
-              ElevatedButton.icon(
+            if (onRetry != null)
+              PrimaryButton(
+                text: retryButtonText!,
                 onPressed: onRetry,
-                icon: const Icon(Icons.refresh, size: 20),
-                label: Text(retryButtonText!),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.secondaryColor,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 12,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(25),
-                  ),
-                  textStyle: TextStyle(
-                    fontFamily: AppTheme.fontMontserrat,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
-                ),
+                icon: Icons.refresh,
               ),
-            ],
           ],
         ),
       ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:appmobilegmao/screens/equipments/modify_equipment_screen.dart';
+import 'package:appmobilegmao/widgets/custom_buttons.dart'; // Ajout de l'import
 
 class OverlayContent extends StatelessWidget {
   final String title;
@@ -139,58 +140,23 @@ class OverlayContent extends StatelessWidget {
   Widget _buildActionButtons(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(top: 20),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          // Bouton Modifier
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  // Fermer l'overlay d'abord
-                  Navigator.of(context).pop();
+      child: SecondaryButton(
+        text: 'Modifier',
+        icon: Icons.edit,
+        width: double.infinity,
+        onPressed: () {
+          // Fermer l'overlay d'abord
+          Navigator.of(context).pop();
 
-                  // Puis naviguer vers l'écran de modification
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder:
-                          (context) =>
-                              ModifyEquipmentScreen(equipmentData: details),
-                    ),
-                  );
-                },
-                icon: const Icon(
-                  Icons.edit,
-                  size: 18,
-                  color: AppTheme.primaryColor,
-                ),
-                label: const Text(
-                  'Modifier',
-                  style: TextStyle(
-                    fontFamily: AppTheme.fontMontserrat,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                    color: AppTheme.primaryColor,
-                  ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.secondaryColor,
-                  elevation: 2,
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 12,
-                    horizontal: 16,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: AppTheme.primaryColor15, width: 1),
-                  ),
-                ),
-              ),
+          // Puis naviguer vers l'écran de modification
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder:
+                  (context) => ModifyEquipmentScreen(equipmentData: details),
             ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }

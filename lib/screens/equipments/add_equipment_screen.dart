@@ -1,5 +1,6 @@
 import 'package:appmobilegmao/provider/equipment_provider.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
+import 'package:appmobilegmao/widgets/custom_buttons.dart';
 import 'package:appmobilegmao/widgets/notification_bar.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -800,118 +801,108 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
     );
   }
 
-  Widget _buildButton(String label, VoidCallback onPressed) {
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppTheme.secondaryColor,
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontFamily: AppTheme.fontMontserrat,
-          fontWeight: FontWeight.bold,
-          color: AppTheme.primaryColor,
-          fontSize: 16,
-        ),
-      ),
-    );
-  }
-
   Widget _buildActionButtons() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [_buildCancelButton(), _buildSaveButton()],
+      children: [_buildCancelButton(), const SizedBox(width: 10), _buildSaveButton()],
     );
   }
 
   Widget _buildCancelButton() {
-    return _buildButton('Annuler', () {
-      Navigator.of(context).pop();
-    });
+    return Expanded(
+      child: SecondaryButton(
+        text: 'Annuler',
+        onPressed: () => Navigator.of(context).pop(),
+      ),
+    );
   }
 
   Widget _buildSaveButton() {
-    return _buildButton('Enregistrer', () async {
-      if (_formKey.currentState!.validate()) {
-        try {
-          // Collecter les données du formulaire
-          final equipmentData = {
-            'codeParent': selectedCodeParent,
-            'code': selectedCodeParent,
-            'feeder': selectedFeeder,
-            'infoFeeder': selectedFeeder,
-            'famille': selectedFamille,
-            'zone': selectedZone,
-            'entity': selectedEntity,
-            'unite': selectedUnite,
-            'centreCharge': selectedCentreCharge,
-            'description': _descriptionController.text,
-            'longitude': '12311231',
-            'latitude': '12311231',
-            'attributs': selectedAttributeValues,
-          };
+    return Expanded(
+      child: PrimaryButton(
+        text: 'Enregistrer',
+        icon: Icons.save,
+        onPressed: () async {
+          if (_formKey.currentState!.validate()) {
+            try {
+              // Collecter les données du formulaire
+              final equipmentData = {
+                'codeParent': selectedCodeParent,
+                'code': selectedCodeParent,
+                'feeder': selectedFeeder,
+                'infoFeeder': selectedFeeder,
+                'famille': selectedFamille,
+                'zone': selectedZone,
+                'entity': selectedEntity,
+                'unite': selectedUnite,
+                'centreCharge': selectedCentreCharge,
+                'description': _descriptionController.text,
+                'longitude': '12311231',
+                'latitude': '12311231',
+              };
 
-          // Appeler la méthode pour ajouter l'équipement
-          await context.read<EquipmentProvider>().addEquipment(equipmentData);
+              // Ajouter l'équipement via le provider
+              await context.read<EquipmentProvider>().addEquipment(
+                equipmentData,
+              );
 
-          // Vérifier si le widget est toujours monté avant d'afficher la notification
-          if (mounted && Navigator.canPop(context)) {
-            // Afficher la notification de succès AVANT de fermer l'écran
-            NotificationService.showSuccess(
-              context,
-              title: '🎉 Succès',
-              message: 'Équipement ajouté avec succès !',
-              showAction: false, // Pas d'action pour éviter les conflits
-              duration: const Duration(seconds: 2),
-              showProgressBar: false,
-            );
+              // Vérifier si le widget est toujours monté avant d'afficher la notification
+              if (mounted && Navigator.canPop(context)) {
+                // Afficher la notification de succès AVANT de fermer l'écran
+                NotificationService.showSuccess(
+                  context,
+                  title: '🎉 Succès',
+                  message: 'Équipement ajouté avec succès !',
+                  showAction: false, // Pas d'action pour éviter les conflits
+                  duration: const Duration(seconds: 2),
+                  showProgressBar: false,
+                );
 
-            // Attendre un délai plus court avant de fermer
-            await Future.delayed(const Duration(milliseconds: 800));
+                // Attendre un délai plus court avant de fermer
+                await Future.delayed(const Duration(milliseconds: 800));
 
-            // Vérifier encore une fois avant de fermer
-            if (mounted && Navigator.canPop(context)) {
-              Navigator.of(
+                // Vérifier encore une fois avant de fermer
+                if (mounted && Navigator.canPop(context)) {
+                  Navigator.of(
+                    context,
+                  ).pop(true); // Passer true pour indiquer le succès
+                }
+              }
+            } catch (e) {
+              if (kDebugMode) {
+                print('❌ Erreur lors de l\'ajout: $e');
+              }
+
+              // Vérifier si le widget est toujours monté avant d'afficher l'erreur
+              if (mounted) {
+                NotificationService.showError(
+                  context,
+                  title: '❌ Erreur',
+                  message: 'Impossible d\'ajouter l\'équipement: $e',
+                  showAction: true,
+                  actionText: 'Réessayer',
+                  onActionPressed: () {
+                    // Relancer l'action d'ajout
+                    _buildSaveButton();
+                  },
+                  duration: const Duration(seconds: 4),
+                );
+              }
+            }
+          } else {
+            // Validation échouée
+            if (mounted) {
+              NotificationService.showWarning(
                 context,
-              ).pop(true); // Passer true pour indiquer le succès
+                title: '⚠️ Formulaire incomplet',
+                message: 'Veuillez remplir tous les champs obligatoires',
+                duration: const Duration(seconds: 3),
+                showProgressBar: false,
+              );
             }
           }
-        } catch (e) {
-          if (kDebugMode) {
-            print('❌ Erreur lors de l\'ajout: $e');
-          }
-
-          // Vérifier si le widget est toujours monté avant d'afficher l'erreur
-          if (mounted) {
-            NotificationService.showError(
-              context,
-              title: '❌ Erreur',
-              message: 'Impossible d\'ajouter l\'équipement: $e',
-              showAction: true,
-              actionText: 'Réessayer',
-              onActionPressed: () {
-                // Relancer l'action d'ajout
-                _buildSaveButton();
-              },
-              duration: const Duration(seconds: 4),
-            );
-          }
-        }
-      } else {
-        // Validation échouée
-        if (mounted) {
-          NotificationService.showWarning(
-            context,
-            title: '⚠️ Formulaire incomplet',
-            message: 'Veuillez remplir tous les champs obligatoires',
-            duration: const Duration(seconds: 3),
-            showProgressBar: false,
-          );
-        }
-      }
-    });
+        },
+      ),
+    );
   }
 }

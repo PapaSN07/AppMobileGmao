@@ -1,5 +1,6 @@
 import 'package:appmobilegmao/provider/equipment_provider.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
+import 'package:appmobilegmao/widgets/custom_buttons.dart';
 import 'package:appmobilegmao/widgets/notification_bar.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -892,126 +893,116 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     );
   }
 
-  Widget _buildButton(String label, VoidCallback onPressed) {
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppTheme.secondaryColor,
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontFamily: AppTheme.fontMontserrat,
-          fontWeight: FontWeight.bold,
-          color: AppTheme.primaryColor,
-          fontSize: 16,
-        ),
-      ),
-    );
-  }
-
   Widget _buildActionButtons() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [_buildCancelButton(), _buildSaveButton()],
+      children: [_buildCancelButton(), const SizedBox(width: 10), _buildSaveButton()],
     );
   }
 
   Widget _buildCancelButton() {
-    return _buildButton('Annuler', () {
-      Navigator.of(context).pop();
-    });
+    return Expanded(
+      child: SecondaryButton(
+        text: 'Annuler',
+        onPressed: () => Navigator.of(context).pop(),
+      ),
+    );
   }
 
   Widget _buildSaveButton() {
-    return _buildButton('Modifier', () async {
-      if (_formKey.currentState!.validate()) {
-        // Créer un map seulement avec les champs modifiés
-        final updatedFields = <String, dynamic>{};
+    return Expanded(
+      child: PrimaryButton(
+        text: 'Modifier',
+        icon: Icons.edit,
+        onPressed: () async {
+          if (_formKey.currentState!.validate()) {
+            // Créer un map seulement avec les champs modifiés
+            final updatedFields = <String, dynamic>{};
 
-        // Ajouter seulement les champs qui ont changé
-        if (selectedCodeParent != null && selectedCodeParent!.isNotEmpty) {
-          updatedFields['codeParent'] = selectedCodeParent;
-        }
+            // Ajouter seulement les champs qui ont changé
+            if (selectedCodeParent != null && selectedCodeParent!.isNotEmpty) {
+              updatedFields['codeParent'] = selectedCodeParent;
+            }
 
-        if (selectedFeeder != null && selectedFeeder!.isNotEmpty) {
-          updatedFields['feeder'] = selectedFeeder;
-        }
+            if (selectedFeeder != null && selectedFeeder!.isNotEmpty) {
+              updatedFields['feeder'] = selectedFeeder;
+            }
 
-        if (selectedFamille != null && selectedFamille!.isNotEmpty) {
-          updatedFields['famille'] = selectedFamille;
-        }
+            if (selectedFamille != null && selectedFamille!.isNotEmpty) {
+              updatedFields['famille'] = selectedFamille;
+            }
 
-        if (selectedZone != null && selectedZone!.isNotEmpty) {
-          updatedFields['zone'] = selectedZone;
-        }
+            if (selectedZone != null && selectedZone!.isNotEmpty) {
+              updatedFields['zone'] = selectedZone;
+            }
 
-        if (selectedEntity != null && selectedEntity!.isNotEmpty) {
-          updatedFields['entity'] = selectedEntity;
-        }
+            if (selectedEntity != null && selectedEntity!.isNotEmpty) {
+              updatedFields['entity'] = selectedEntity;
+            }
 
-        if (selectedUnite != null && selectedUnite!.isNotEmpty) {
-          updatedFields['unite'] = selectedUnite;
-        }
+            if (selectedUnite != null && selectedUnite!.isNotEmpty) {
+              updatedFields['unite'] = selectedUnite;
+            }
 
-        if (selectedCentreCharge != null && selectedCentreCharge!.isNotEmpty) {
-          updatedFields['centreCharge'] = selectedCentreCharge;
-        }
+            if (selectedCentreCharge != null &&
+                selectedCentreCharge!.isNotEmpty) {
+              updatedFields['centreCharge'] = selectedCentreCharge;
+            }
 
-        if (_descriptionController.text.isNotEmpty) {
-          updatedFields['description'] = _descriptionController.text;
-        }
+            if (_descriptionController.text.isNotEmpty) {
+              updatedFields['description'] = _descriptionController.text;
+            }
 
-        if (valueLongitude != null && valueLongitude!.isNotEmpty) {
-          updatedFields['longitude'] = valueLongitude;
-        }
+            if (valueLongitude != null && valueLongitude!.isNotEmpty) {
+              updatedFields['longitude'] = valueLongitude;
+            }
 
-        if (valueLatitude != null && valueLatitude!.isNotEmpty) {
-          updatedFields['latitude'] = valueLatitude;
-        }
-        
-        try {
-          await context.read<EquipmentProvider>().updateEquipment(
-            widget.equipmentData!['ID']!, // ID de l'équipement à modifier
-            updatedFields,
-          );
+            if (valueLatitude != null && valueLatitude!.isNotEmpty) {
+              updatedFields['latitude'] = valueLatitude;
+            }
 
-          if (mounted) {
-            // Utiliser la nouvelle notification
-            NotificationService.showSuccess(
-              context,
-              title: '✅ Succès',
-              message: 'Équipement modifié avec succès !',
-              showAction: true,
-              onActionPressed: () {
-                // Action personnalisée
-                Navigator.of(context).pop();
-              },
-            );
+            try {
+              await context.read<EquipmentProvider>().updateEquipment(
+                widget.equipmentData!['ID']!, // ID de l'équipement à modifier
+                updatedFields,
+              );
 
-            // Attendre un peu avant de fermer l'écran
-            await Future.delayed(const Duration(seconds: 1));
-            if (mounted) {
-              Navigator.of(context).pop();
+              if (mounted) {
+                // Utiliser la nouvelle notification
+                NotificationService.showSuccess(
+                  context,
+                  title: '✅ Succès',
+                  message: 'Équipement modifié avec succès !',
+                  showAction: true,
+                  onActionPressed: () {
+                    // Action personnalisée
+                    Navigator.of(context).pop();
+                  },
+                );
+
+                // Attendre un peu avant de fermer l'écran
+                await Future.delayed(const Duration(seconds: 1));
+                if (mounted) {
+                  Navigator.of(context).pop();
+                }
+              }
+            } catch (e) {
+              if (mounted) {
+                NotificationService.showError(
+                  context,
+                  title: '❌ Erreur',
+                  message: 'Échec de la modification: $e',
+                  showAction: true,
+                  actionText: 'Réessayer',
+                  onActionPressed: () {
+                    // Relancer l'action
+                  },
+                );
+              }
             }
           }
-        } catch (e) {
-          if (mounted) {
-            NotificationService.showError(
-              context,
-              title: '❌ Erreur',
-              message: 'Échec de la modification: $e',
-              showAction: true,
-              actionText: 'Réessayer',
-              onActionPressed: () {
-                // Relancer l'action
-              },
-            );
-          }
-        }
-      }
-    });
+        },
+      ),
+    );
   }
 }

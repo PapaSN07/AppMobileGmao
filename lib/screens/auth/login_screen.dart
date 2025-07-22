@@ -1,4 +1,5 @@
 import 'package:appmobilegmao/theme/app_theme.dart';
+import 'package:appmobilegmao/widgets/custom_buttons.dart'; // Ajout de l'import
 import 'package:flutter/material.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -10,8 +11,8 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  bool _isPasswordVisible =
-      false; // État pour gérer la visibilité du mot de passe
+  bool _isPasswordVisible = false;
+  bool _isLoading = false; // Ajout pour l'état de chargement
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +33,7 @@ class _LoginScreenState extends State<LoginScreen> {
               SizedBox(height: 40),
               TextFormField(
                 decoration: InputDecoration(
-                  labelText: 'Nom d’utilisateur',
+                  labelText: 'Nom d\'utilisateur',
                   labelStyle: TextStyle(
                     color: AppTheme.secondaryColor,
                     fontFamily: AppTheme.fontMontserrat,
@@ -51,7 +52,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Veuillez entrer votre nom d’utilisateur';
+                    return 'Veuillez entrer votre nom d\'utilisateur';
                   }
                   return null;
                 },
@@ -99,29 +100,27 @@ class _LoginScreenState extends State<LoginScreen> {
                 },
               ),
               SizedBox(height: 60),
-              ElevatedButton(
-                onPressed: () {
+              // Remplacement du bouton existant
+              PrimaryButton(
+                text: 'Se connecter',
+                width: double.infinity,
+                height: 54,
+                fontSize: 16,
+                isLoading: _isLoading,
+                onPressed: () async {
                   if (_formKey.currentState!.validate()) {
-                    // Logique de connexion ici
+                    setState(() => _isLoading = true);
+
+                    // Simulation d'une requête
+                    await Future.delayed(Duration(seconds: 2));
+
+                    setState(() => _isLoading = false);
+
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('Connexion réussie')),
                     );
                   }
                 },
-                style: ElevatedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  backgroundColor: AppTheme.secondaryColor,
-                  padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  textStyle: TextStyle(
-                    fontFamily: AppTheme.fontMontserrat,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                child: Text('Se connecter'),
               ),
             ],
           ),
