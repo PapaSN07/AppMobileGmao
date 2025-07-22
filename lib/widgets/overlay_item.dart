@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
-import 'package:appmobilegmao/screens/modify_equipment_screen.dart';
+import 'package:appmobilegmao/screens/equipments/modify_equipment_screen.dart';
 
 class OverlayContent extends StatelessWidget {
   final String title;

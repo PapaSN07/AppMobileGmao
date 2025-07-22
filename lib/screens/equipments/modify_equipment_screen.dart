@@ -20,14 +20,19 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
   String? selectedEntity;
   String? selectedUnite;
   String? selectedCentreCharge;
+  String? valueLongitude;
+  String? valueLatitude;
 
   final _formKey = GlobalKey<FormState>();
   final FocusNode _descriptionFocusNode = FocusNode();
   final TextEditingController _descriptionController = TextEditingController();
 
   // Listes des valeurs disponibles pour chaque dropdown
-  final List<String> codeParentItems = ['#12345', '#67890', '#54321'];
+  final List<String> codeParentItems = ['EQ001', 'EQ002', 'EQ003', '#12345', '#67890', '#54321'];
   final List<String> feederItems = [
+    'Feeder 1',
+    'Feeder 2',
+    'Feeder 3',
     '1250977676AF11TG',
     '8129731276AF11TG',
     '1287377676AF11TG',
@@ -82,6 +87,8 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
       }
 
       // Initialiser les dropdowns avec les valeurs mappées
+      selectedFeeder = mapValueToDropdown(data['Feeder'], feederItems);
+      selectedCodeParent = mapValueToDropdown(data['Code Parent'], codeParentItems);
       selectedFamille = mapValueToDropdown(data['Famille'], familleItems);
       selectedZone = mapValueToDropdown(data['Zone'], zoneItems);
       selectedEntity = mapValueToDropdown(data['Entité'], entityItems);
@@ -94,9 +101,9 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
       // Initialiser le champ description
       _descriptionController.text = data['Description'] ?? '';
 
-      if (kDebugMode) {
-        print('🔄 Données reçues: $data');
-      }
+      // Initialiser les valeurs de longitude et latitude
+      valueLongitude = data['Longitude']?.toString();
+      valueLatitude = data['Latitude']?.toString();
     }
   }
 
@@ -182,7 +189,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                         _buildDropdownField(
                           label: 'Code Parent',
                           msgError: 'Veuillez sélectionner un code parent',
-                          items: ['#12345', '#67890', '#54321'],
+                          items: codeParentItems,
                           selectedValue: selectedCodeParent,
                           onChanged: (value) {
                             setState(() {
@@ -387,11 +394,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
           child: _buildDropdownField(
             label: 'Feeder',
             msgError: 'Veuillez sélectionner un feeder',
-            items: [
-              '1250977676AF11TG',
-              '8129731276AF11TG',
-              '1287377676AF11TG',
-            ], // Liste des options
+            items: feederItems,
             selectedValue: selectedFeeder,
             onChanged: (value) {
               setState(() {
@@ -521,9 +524,9 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Expanded(child: _buildText(label: 'Longitude', value: '12311231')),
+        Expanded(child: _buildText(label: 'Longitude', value: valueLongitude ?? '12311231')),
         SizedBox(width: 10), // Espace entre les champs
-        Expanded(child: _buildText(label: 'Latitude', value: '12311231')),
+        Expanded(child: _buildText(label: 'Latitude', value: valueLatitude ?? '12311231')),
       ],
     );
   }

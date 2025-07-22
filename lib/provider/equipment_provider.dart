@@ -21,6 +21,7 @@ class EquipmentProvider extends ChangeNotifier {
 
     try {
       final response = await _equipmentService.getAllEquipments();
+      
       _equipments = response;
       _filteredEquipments = []; // Réinitialiser les filtres
     } catch (e) {

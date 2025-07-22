@@ -36,6 +36,9 @@ class ListItemCustom extends StatelessWidget {
   // Constructeur pour les équipements
   factory ListItemCustom.equipment({
     String? id,
+    required String codeParent,
+    required String feeder,
+    required String feederDescription,
     required String code,
     required String famille,
     required String zone,
@@ -43,6 +46,8 @@ class ListItemCustom extends StatelessWidget {
     required String unite,
     required String centre,
     required String description,
+    required String longitude,
+    required String latitude,
     bool showModifyButton = true,
     String overlayTitle = 'Détails de l\'équipement',
     VoidCallback? onTap,
@@ -59,6 +64,9 @@ class ListItemCustom extends StatelessWidget {
         ItemField(label: 'Unité', value: unite),
       ],
       overlayDetails: {
+        'Code Parent': codeParent,
+        'Feeder': feeder,
+        'Feeder Description': feederDescription,
         'Code': code,
         'Famille': famille,
         'Zone': zone,
@@ -66,6 +74,8 @@ class ListItemCustom extends StatelessWidget {
         'Unité': unite,
         'Centre': centre,
         'Description': description,
+        'Longitude': longitude,
+        'Latitude': latitude,
       },
       overlayTitle: overlayTitle,
       showModifyButton: showModifyButton,

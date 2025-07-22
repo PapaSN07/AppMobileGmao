@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:appmobilegmao/screens/home_screen.dart';
-import 'package:appmobilegmao/screens/ot_screen.dart';
-import 'package:appmobilegmao/screens/di_screen.dart';
-import 'package:appmobilegmao/screens/equipment_screen.dart';
+import 'package:appmobilegmao/screens/ot/ot_screen.dart';
+import 'package:appmobilegmao/screens/di/di_screen.dart';
+import 'package:appmobilegmao/screens/equipments/equipment_screen.dart';
 import 'package:appmobilegmao/widgets/bottom_navigation_bar.dart';
 
 class MainScreen extends StatefulWidget {

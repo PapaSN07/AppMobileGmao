@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:appmobilegmao/provider/equipment_provider.dart';
-import 'package:appmobilegmao/screens/add_equipment_screen.dart';
+import 'package:appmobilegmao/screens/equipments/add_equipment_screen.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:appmobilegmao/widgets/list_item.dart';
 import 'package:appmobilegmao/widgets/loading_indicator.dart';
@@ -177,7 +177,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
               children: [
                 _buildStatCard(
                   equipmentProvider.equipments.length.toString(),
-                  'Équipements',
+                  equipmentProvider.equipments.isEmpty ? 'Équipements' : 'Équipement',
                 ),
                 _buildStatCard('222', 'OT'),
               ],
@@ -337,6 +337,9 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
   Widget _itemBuilder(dynamic equipment) {
     return ListItemCustom.equipment(
       id: equipment['id']?.toString() ?? '',
+      codeParent: equipment['codeParent'] ?? '',
+      feeder: equipment['feeder'] ?? '',
+      feederDescription: equipment['feederDescription'] ?? '',
       code: equipment['code'] ?? '',
       famille: equipment['famille'] ?? '',
       zone: equipment['zone'] ?? '',
@@ -344,6 +347,8 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
       unite: equipment['unite'] ?? '',
       centre: equipment['centreCharge'] ?? '',
       description: equipment['description'] ?? '',
+      longitude: equipment['longitude']?.toString() ?? '',
+      latitude: equipment['latitude']?.toString() ?? '',
     );
   }
 }
