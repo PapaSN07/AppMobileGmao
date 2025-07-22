@@ -251,8 +251,8 @@ class _HomeScreenState extends State<HomeScreen> {
             right: 0,
             child: ClipRRect(
               borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(10),
-                bottomRight: Radius.circular(10),
+                bottomLeft: Radius.circular(8),
+                bottomRight: Radius.circular(8),
               ),
               child: SizedBox(
                 height: 80,
@@ -357,8 +357,8 @@ class _HomeScreenState extends State<HomeScreen> {
             right: 0,
             child: ClipRRect(
               borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(10),
-                bottomRight: Radius.circular(10),
+                bottomLeft: Radius.circular(8),
+                bottomRight: Radius.circular(8),
               ),
               child: SizedBox(
                 height: 80,
