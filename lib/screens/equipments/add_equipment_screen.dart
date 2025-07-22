@@ -1,6 +1,8 @@
+import 'package:appmobilegmao/provider/equipment_provider.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class AddEquipmentScreen extends StatefulWidget {
   const AddEquipmentScreen({super.key});
@@ -21,6 +23,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
   final _formKey = GlobalKey<FormState>();
   final FocusNode _descriptionFocusNode =
       FocusNode(); // FocusNode pour la description
+  final TextEditingController _descriptionController = TextEditingController();
 
   // Ajouter des variables pour les attributs
   List<String> selectedAttributeValues = List.filled(10, '1922309AHDNAJ');
@@ -29,6 +32,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
   void dispose() {
     // Libérer le FocusNode lorsque l'écran est détruit
     _descriptionFocusNode.dispose();
+    _descriptionController.dispose();
     super.dispose();
   }
 
@@ -43,122 +47,130 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.primaryColor,
-      body: Stack(
-        children: [
-          // AppBar personnalisée
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              height: 150,
-              width: double.infinity,
-              decoration: BoxDecoration(color: AppTheme.secondaryColor),
-              child: SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 0, left: 16, right: 16),
-                  child: Row(
-                    // spacing: 20,
+      body: Consumer<EquipmentProvider>(
+        builder: (context, equipmentProvider, child) {
+          return _buildBody(equipmentProvider);
+        },
+      ),
+    );
+  }
+
+  Widget _buildBody(EquipmentProvider equipmentProvider) {
+    return Stack(
+      children: [
+        // AppBar personnalisée
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: Container(
+            height: 150,
+            width: double.infinity,
+            decoration: BoxDecoration(color: AppTheme.secondaryColor),
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 0, left: 16, right: 16),
+                child: Row(
+                  // spacing: 20,
+                  children: [
+                    IconButton(
+                      icon: const Icon(
+                        Icons.arrow_back,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                      onPressed: () {
+                        Navigator.pop(context); // Retour à l'écran précédent
+                      },
+                    ),
+                    const Spacer(), // Ajoute un espace flexible avant le texte
+                    const Text(
+                      'Ajouter un équipement',
+                      style: TextStyle(
+                        fontFamily: AppTheme.fontMontserrat,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                        fontSize: 20,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const Spacer(), // Ajoute un espace flexible avant le texte
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+
+        // Contenu du body
+        Positioned(
+          top: 156, // Commence après l'AppBar
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: Container(
+            padding: const EdgeInsets.only(
+              top: 10, // Espace pour la carte qui déborde
+              left: 0,
+              right: 0,
+            ),
+            child: SingleChildScrollView(
+              // Permet de rendre le contenu scrollable
+              child: Padding(
+                padding: const EdgeInsets.only(top: 0, right: 16, left: 16),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.start,
                     children: [
-                      IconButton(
-                        icon: const Icon(
-                          Icons.arrow_back,
-                          color: Colors.white,
-                          size: 28,
-                        ),
-                        onPressed: () {
-                          Navigator.pop(context); // Retour à l'écran précédent
+                      _fieldsets('Informations parents'),
+                      _buildDropdownField(
+                        label: 'Code Parent',
+                        msgError: 'Veuillez sélectionner un code parent',
+                        items: [
+                          '#12345',
+                          '#67890',
+                          '#54321',
+                        ], // Liste des options
+                        selectedValue: selectedCodeParent,
+                        onChanged: (value) {
+                          setState(() {
+                            selectedCodeParent =
+                                value; // Met à jour la valeur sélectionnée
+                          });
                         },
                       ),
-                      const Spacer(), // Ajoute un espace flexible avant le texte
-                      const Text(
-                        'Ajouter un équipement',
-                        style: TextStyle(
-                          fontFamily: AppTheme.fontMontserrat,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                          fontSize: 20,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const Spacer(), // Ajoute un espace flexible avant le texte
+                      SizedBox(height: 20),
+                      _rowOne(),
+                      SizedBox(height: 40),
+                      _fieldsets('Informations'),
+                      SizedBox(height: 10),
+                      _rowTwo(),
+                      SizedBox(height: 20),
+                      _rowThree(),
+                      SizedBox(height: 20),
+                      _rowFour(),
+                      SizedBox(height: 20),
+                      _rowFive(),
+                      SizedBox(height: 40),
+                      _fieldsets('Informations de positionnement'),
+                      SizedBox(height: 10),
+                      _rowSix(),
+                      SizedBox(height: 20),
+                      _rowSeven(),
+                      SizedBox(height: 20),
+                      _rowEight(),
+                      SizedBox(height: 20),
+                      _buildActionButtons(),
+                      SizedBox(height: 40),
                     ],
                   ),
                 ),
               ),
             ),
           ),
-
-          // Contenu du body
-          Positioned(
-            top: 156, // Commence après l'AppBar
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: Container(
-              padding: const EdgeInsets.only(
-                top: 10, // Espace pour la carte qui déborde
-                left: 0,
-                right: 0,
-              ),
-              child: SingleChildScrollView(
-                // Permet de rendre le contenu scrollable
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 0, right: 16, left: 16),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        _fieldsets('Informations parents'),
-                        _buildDropdownField(
-                          label: 'Code Parent',
-                          msgError: 'Veuillez sélectionner un code parent',
-                          items: [
-                            '#12345',
-                            '#67890',
-                            '#54321',
-                          ], // Liste des options
-                          selectedValue: selectedCodeParent,
-                          onChanged: (value) {
-                            setState(() {
-                              selectedCodeParent =
-                                  value; // Met à jour la valeur sélectionnée
-                            });
-                          },
-                        ),
-                        SizedBox(height: 20),
-                        _rowOne(),
-                        SizedBox(height: 40),
-                        _fieldsets('Informations'),
-                        SizedBox(height: 10),
-                        _rowTwo(),
-                        SizedBox(height: 20),
-                        _rowThree(),
-                        SizedBox(height: 20),
-                        _rowFour(),
-                        SizedBox(height: 20),
-                        _rowFive(),
-                        SizedBox(height: 40),
-                        _fieldsets('Informations de positionnement'),
-                        SizedBox(height: 10),
-                        _rowSix(),
-                        SizedBox(height: 20),
-                        _rowSeven(),
-                        SizedBox(height: 20),
-                        _rowEight(),
-                        SizedBox(height: 20),
-                        _buildActionButtons(),
-                        SizedBox(height: 40),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -166,9 +178,11 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
     required String label,
     required String msgError,
     FocusNode? focusNode,
+    TextEditingController? controller,
   }) {
     return TextFormField(
       focusNode: focusNode,
+      controller: controller, // Associer le contrôleur
       decoration: InputDecoration(
         labelText: label,
         labelStyle: TextStyle(
@@ -176,11 +190,11 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
           fontFamily: AppTheme.fontMontserrat,
           fontWeight: FontWeight.w600,
         ),
-        border: UnderlineInputBorder(),
-        enabledBorder: UnderlineInputBorder(
+        border: const UnderlineInputBorder(),
+        enabledBorder: const UnderlineInputBorder(
           borderSide: BorderSide(color: AppTheme.thirdColor),
         ),
-        focusedBorder: UnderlineInputBorder(
+        focusedBorder: const UnderlineInputBorder(
           borderSide: BorderSide(color: AppTheme.secondaryColor, width: 2.0),
         ),
       ),
@@ -347,7 +361,12 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Expanded(child: _buildText(label: 'Code', value: '#12345')),
+        Expanded(
+          child: _buildText(
+            label: 'Code',
+            value: selectedCodeParent ?? '#12345',
+          ),
+        ),
         SizedBox(width: 10), // Espace entre les champs
         Expanded(
           child: _buildDropdownField(
@@ -458,6 +477,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
             label: 'Description',
             msgError: 'Veuillez entrer la description',
             focusNode: _descriptionFocusNode,
+            controller: _descriptionController, // Utiliser le contrôleur
           ),
         ),
       ],
@@ -814,7 +834,38 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
 
   Widget _buildSaveButton() {
     return _buildButton('Enregistrer', () {
-      // Logique pour enregistrer les attributs
+      if (_formKey.currentState!.validate()) {
+        // Collecter les données du formulaire
+        final equipmentData = {
+          'codeParent': selectedCodeParent,
+          'code': selectedCodeParent,
+          'feeder': selectedFeeder,
+          'infoFeeder': selectedFeeder,
+          'famille': selectedFamille,
+          'zone': selectedZone,
+          'entity': selectedEntity,
+          'unite': selectedUnite,
+          'centreCharge': selectedCentreCharge,
+          'description': _descriptionController.text,
+          'longitude': '12311231', // Exemple de valeur
+          'latitude': '12311231', // Exemple de valeur
+          'attributs': selectedAttributeValues,
+        };
+
+        // Appeler la méthode pour insérer l'équipement
+        context.read<EquipmentProvider>().addEquipment(equipmentData);
+
+        // Afficher un message de confirmation
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Équipement ajouté avec succès !'),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        // Retourner à l'écran précédent
+        Navigator.of(context).pop();
+      }
     });
   }
 }
