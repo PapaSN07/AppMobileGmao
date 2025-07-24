@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:appmobilegmao/services/api_service.dart';
 
 class EquipmentProvider extends ChangeNotifier {
-  final EquipmentService _equipmentService = EquipmentService(ApiService());
+  late final EquipmentService _equipmentService;
 
   bool _isLoading = false;
   List<dynamic> _equipments = [];
@@ -11,11 +11,15 @@ class EquipmentProvider extends ChangeNotifier {
   String _errorMessage = '';
   String _currentSearchQuery = '';
 
+  // Constructeur avec injection de dépendance optionnelle
+  EquipmentProvider({EquipmentService? equipmentService}) {
+    _equipmentService = equipmentService ?? EquipmentService(ApiService());
+  }
+
   bool get isLoading => _isLoading;
   String get errorMessage => _errorMessage;
   String get currentSearchQuery => _currentSearchQuery;
 
-  // Corriger le getter pour gérer correctement les données
   List<dynamic> get equipments =>
       _currentSearchQuery.isEmpty ? _equipments : _filteredEquipments;
 
@@ -23,6 +27,7 @@ class EquipmentProvider extends ChangeNotifier {
     _isLoading = true;
     _currentSearchQuery = '';
     _filteredEquipments = [];
+    _errorMessage = ''; // Reset error message
     notifyListeners();
 
     try {

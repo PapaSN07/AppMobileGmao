@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
 
@@ -12,8 +13,8 @@ class NotificationBar extends StatelessWidget {
   final bool showAction;
   final String? actionText;
   final VoidCallback? onActionPressed;
-  final Duration? duration;
   final bool showProgressBar;
+  final Duration? duration;
 
   const NotificationBar({
     super.key,
@@ -25,11 +26,11 @@ class NotificationBar extends StatelessWidget {
     this.showAction = false,
     this.actionText,
     this.onActionPressed,
-    this.duration,
     this.showProgressBar = false,
+    this.duration,
   });
 
-  // Factory constructors pour différents types
+  // Constructeurs factory inchangés
   factory NotificationBar.success({
     required String title,
     required String message,
@@ -38,8 +39,8 @@ class NotificationBar extends StatelessWidget {
     bool showAction = false,
     String? actionText,
     VoidCallback? onActionPressed,
-    Duration? duration,
     bool showProgressBar = false,
+    Duration? duration,
   }) {
     return NotificationBar(
       title: title,
@@ -50,8 +51,8 @@ class NotificationBar extends StatelessWidget {
       showAction: showAction,
       actionText: actionText,
       onActionPressed: onActionPressed,
-      duration: duration,
       showProgressBar: showProgressBar,
+      duration: duration,
     );
   }
 
@@ -63,8 +64,8 @@ class NotificationBar extends StatelessWidget {
     bool showAction = false,
     String? actionText,
     VoidCallback? onActionPressed,
-    Duration? duration,
     bool showProgressBar = false,
+    Duration? duration,
   }) {
     return NotificationBar(
       title: title,
@@ -75,8 +76,8 @@ class NotificationBar extends StatelessWidget {
       showAction: showAction,
       actionText: actionText,
       onActionPressed: onActionPressed,
-      duration: duration,
       showProgressBar: showProgressBar,
+      duration: duration,
     );
   }
 
@@ -88,8 +89,8 @@ class NotificationBar extends StatelessWidget {
     bool showAction = false,
     String? actionText,
     VoidCallback? onActionPressed,
-    Duration? duration,
     bool showProgressBar = false,
+    Duration? duration,
   }) {
     return NotificationBar(
       title: title,
@@ -100,8 +101,8 @@ class NotificationBar extends StatelessWidget {
       showAction: showAction,
       actionText: actionText,
       onActionPressed: onActionPressed,
-      duration: duration,
       showProgressBar: showProgressBar,
+      duration: duration,
     );
   }
 
@@ -113,8 +114,8 @@ class NotificationBar extends StatelessWidget {
     bool showAction = false,
     String? actionText,
     VoidCallback? onActionPressed,
-    Duration? duration,
     bool showProgressBar = false,
+    Duration? duration,
   }) {
     return NotificationBar(
       title: title,
@@ -125,13 +126,14 @@ class NotificationBar extends StatelessWidget {
       showAction: showAction,
       actionText: actionText,
       onActionPressed: onActionPressed,
-      duration: duration,
       showProgressBar: showProgressBar,
+      duration: duration,
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    // Retourner directement le contenu sans Positioned
     return _NotificationBarContent(
       title: title,
       message: message,
@@ -141,9 +143,36 @@ class NotificationBar extends StatelessWidget {
       showAction: showAction,
       actionText: actionText,
       onActionPressed: onActionPressed,
-      duration: duration ?? const Duration(seconds: 4),
       showProgressBar: showProgressBar,
+      duration: duration,
     );
+  }
+
+  // Méthodes helper pour les icônes et couleurs
+  static IconData _getIcon(NotificationType type) {
+    switch (type) {
+      case NotificationType.success:
+        return Icons.check_circle_outline;
+      case NotificationType.error:
+        return Icons.error_outline;
+      case NotificationType.warning:
+        return Icons.warning_amber_outlined;
+      case NotificationType.info:
+        return Icons.info_outline;
+    }
+  }
+
+  static Color _getColor(NotificationType type) {
+    switch (type) {
+      case NotificationType.success:
+        return Colors.green;
+      case NotificationType.error:
+        return Colors.red;
+      case NotificationType.warning:
+        return Colors.orange;
+      case NotificationType.info:
+        return AppTheme.secondaryColor;
+    }
   }
 }
 
@@ -156,8 +185,8 @@ class _NotificationBarContent extends StatefulWidget {
   final bool showAction;
   final String? actionText;
   final VoidCallback? onActionPressed;
-  final Duration duration;
   final bool showProgressBar;
+  final Duration? duration;
 
   const _NotificationBarContent({
     required this.title,
@@ -165,11 +194,11 @@ class _NotificationBarContent extends StatefulWidget {
     required this.type,
     this.onTap,
     this.onClose,
-    required this.showAction,
+    this.showAction = false,
     this.actionText,
     this.onActionPressed,
-    required this.duration,
-    required this.showProgressBar,
+    this.showProgressBar = false,
+    this.duration,
   });
 
   @override
@@ -178,19 +207,17 @@ class _NotificationBarContent extends StatefulWidget {
 }
 
 class _NotificationBarContentState extends State<_NotificationBarContent>
-    with TickerProviderStateMixin {
-  late AnimationController _slideController;
-  late AnimationController _progressController;
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animationController;
   late Animation<Offset> _slideAnimation;
-  late Animation<double> _progressAnimation;
+  Timer? _autoCloseTimer;
 
   @override
   void initState() {
     super.initState();
 
-    // Animation de glissement
-    _slideController = AnimationController(
-      duration: const Duration(milliseconds: 400),
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
       vsync: this,
     );
 
@@ -198,30 +225,17 @@ class _NotificationBarContentState extends State<_NotificationBarContent>
       begin: const Offset(0, -1),
       end: Offset.zero,
     ).animate(
-      CurvedAnimation(parent: _slideController, curve: Curves.easeOutBack),
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
     );
 
-    // Animation de progress bar
-    _progressController = AnimationController(
-      duration: widget.duration,
-      vsync: this,
-    );
+    // Démarrer l'animation d'entrée
+    _animationController.forward();
 
-    _progressAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(
-      CurvedAnimation(parent: _progressController, curve: Curves.linear),
-    );
-
-    // Démarrer les animations
-    _slideController.forward();
-    if (widget.showProgressBar) {
-      _progressController.forward();
-    }
-
-    // Auto-fermeture après la durée spécifiée
-    if (widget.onClose != null) {
-      Future.delayed(widget.duration, () {
-        if (mounted) {
-          _dismiss();
+    // Timer pour fermeture automatique (si duration est spécifiée)
+    if (widget.duration != null) {
+      _autoCloseTimer = Timer(widget.duration!, () {
+        if (mounted && widget.onClose != null) {
+          widget.onClose!();
         }
       });
     }
@@ -229,211 +243,111 @@ class _NotificationBarContentState extends State<_NotificationBarContent>
 
   @override
   void dispose() {
-    _slideController.dispose();
-    _progressController.dispose();
+    _autoCloseTimer?.cancel();
+    _animationController.dispose();
     super.dispose();
-  }
-
-  void _dismiss() async {
-    await _slideController.reverse();
-    if (mounted && widget.onClose != null) {
-      widget.onClose!();
-    }
-  }
-
-  Color _getBackgroundColor() {
-    switch (widget.type) {
-      case NotificationType.success:
-        return AppTheme.successColor;
-      case NotificationType.error:
-        return AppTheme.errorColor;
-      case NotificationType.warning:
-        return AppTheme.warningColor;
-      case NotificationType.info:
-        return AppTheme.infoColor;
-    }
-  }
-
-  // ignore: unused_element
-  Color _getAccentColor() {
-    switch (widget.type) {
-      case NotificationType.success:
-        return AppTheme.successColorDark;
-      case NotificationType.error:
-        return AppTheme.errorColorDark;
-      case NotificationType.warning:
-        return AppTheme.warningColorDark;
-      case NotificationType.info:
-        return AppTheme.infoColorDark;
-    }
-  }
-
-  IconData _getIcon() {
-    switch (widget.type) {
-      case NotificationType.success:
-        return Icons.check_circle_outline;
-      case NotificationType.error:
-        return Icons.error_outline;
-      case NotificationType.warning:
-        return Icons.warning_amber_outlined;
-      case NotificationType.info:
-        return Icons.info_outline;
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Positioned(
-      top: MediaQuery.of(context).padding.top + 16, // Respecter la safe area
-      left: 16,
-      right: 16,
-      child: SlideTransition(
-        position: _slideAnimation,
-        child: Material(
-          color: Colors.transparent,
-          child: Container(
-            constraints: const BoxConstraints(
-              maxHeight: 120, // Limiter la hauteur
-              minHeight: 80,
-            ),
-            decoration: BoxDecoration(
-              color: _getBackgroundColor(),
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: AppTheme.notificationShadowColor,
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  GestureDetector(
-                    onTap: widget.onTap,
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
+    return SlideTransition(
+      position: _slideAnimation,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Contenu principal
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    // Icône
+                    Icon(
+                      NotificationBar._getIcon(widget.type),
+                      color: NotificationBar._getColor(widget.type),
+                      size: 24,
+                    ),
+                    const SizedBox(width: 12),
+
+                    // Contenu
+                    Expanded(
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Icône
-                          Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: const Color.fromRGBO(255, 255, 255, 0.2),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Icon(
-                              _getIcon(),
-                              color: AppTheme.primaryColor,
-                              size: 20,
+                          Text(
+                            widget.title,
+                            style: TextStyle(
+                              fontFamily: AppTheme.fontMontserrat,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.secondaryColor,
+                              fontSize: 16,
                             ),
                           ),
-
-                          const SizedBox(width: 12),
-
-                          // Contenu
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  widget.title,
-                                  style: AppTheme.notificationTitle,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                if (widget.message.isNotEmpty) ...[
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    widget.message,
-                                    style: AppTheme.notificationMessage
-                                        .copyWith(
-                                          color: const Color.fromRGBO(255, 255, 255, 0.9),
-                                        ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ],
+                          const SizedBox(height: 4),
+                          Text(
+                            widget.message,
+                            style: TextStyle(
+                              fontFamily: AppTheme.fontMontserrat,
+                              color: AppTheme.thirdColor,
+                              fontSize: 14,
                             ),
-                          ),
-
-                          // Actions
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (widget.showAction &&
-                                  widget.actionText != null) ...[
-                                TextButton(
-                                  onPressed: widget.onActionPressed,
-                                  style: TextButton.styleFrom(
-                                    foregroundColor: Colors.white,
-                                    backgroundColor: const Color.fromRGBO(255, 255, 255, 0.2),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 6,
-                                    ),
-                                    minimumSize: Size.zero,
-                                    tapTargetSize:
-                                        MaterialTapTargetSize.shrinkWrap,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    widget.actionText!,
-                                    style: AppTheme.notificationAction,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                              ],
-
-                              if (widget.onClose != null)
-                                GestureDetector(
-                                  onTap: _dismiss,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(4),
-                                    decoration: BoxDecoration(
-                                      color: const Color.fromRGBO(255, 255, 255, 0.2),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: const Icon(
-                                      Icons.close,
-                                      color: Colors.white,
-                                      size: 16,
-                                    ),
-                                  ),
-                                ),
-                            ],
                           ),
                         ],
                       ),
                     ),
-                  ),
 
-                  // Progress bar
-                  if (widget.showProgressBar)
-                    AnimatedBuilder(
-                      animation: _progressAnimation,
-                      builder: (context, child) {
-                        return LinearProgressIndicator(
-                          value: _progressAnimation.value,
-                          backgroundColor: const Color.fromRGBO(255, 255, 255, 0.2),
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            const Color.fromRGBO(255, 255, 255, 0.7),
+                    // Bouton d'action (optionnel)
+                    if (widget.showAction && widget.actionText != null) ...[
+                      const SizedBox(width: 8),
+                      TextButton(
+                        onPressed: widget.onActionPressed,
+                        child: Text(
+                          widget.actionText!,
+                          style: TextStyle(
+                            color: NotificationBar._getColor(widget.type),
+                            fontWeight: FontWeight.w600,
                           ),
-                          minHeight: 2,
-                        );
-                      },
-                    ),
-                ],
+                        ),
+                      ),
+                    ],
+
+                    // Bouton de fermeture
+                    if (widget.onClose != null) ...[
+                      const SizedBox(width: 8),
+                      IconButton(
+                        onPressed: widget.onClose,
+                        icon: const Icon(Icons.close),
+                        iconSize: 20,
+                        color: AppTheme.thirdColor,
+                      ),
+                    ],
+                  ],
+                ),
               ),
-            ),
+
+              // Barre de progression (optionnelle)
+              if (widget.showProgressBar)
+                LinearProgressIndicator(
+                  backgroundColor: Colors.grey[200],
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    NotificationBar._getColor(widget.type),
+                  ),
+                ),
+            ],
           ),
         ),
       ),
@@ -441,44 +355,29 @@ class _NotificationBarContentState extends State<_NotificationBarContent>
   }
 }
 
-// Service pour gérer les notifications
+// Service pour gérer les notifications avec Overlay
 class NotificationService {
   static OverlayEntry? _currentOverlay;
-
-  static void show(BuildContext context, NotificationBar notification) {
-    // Supprimer la notification précédente si elle existe
-    _currentOverlay?.remove();
-
-    _currentOverlay = OverlayEntry(
-      builder: (context) => Stack(children: [notification]),
-    );
-
-    Overlay.of(context).insert(_currentOverlay!);
-  }
 
   static void showSuccess(
     BuildContext context, {
     required String title,
     required String message,
-    VoidCallback? onTap,
     bool showAction = false,
     String? actionText,
     VoidCallback? onActionPressed,
-    Duration? duration,
-    bool showProgressBar = true,
+    Duration duration = const Duration(seconds: 4),
   }) {
-    show(
+    _showNotification(
       context,
       NotificationBar.success(
         title: title,
         message: message,
-        onTap: onTap,
-        onClose: () => _currentOverlay?.remove(),
         showAction: showAction,
         actionText: actionText,
         onActionPressed: onActionPressed,
         duration: duration,
-        showProgressBar: showProgressBar,
+        onClose: () => _hideCurrentNotification(),
       ),
     );
   }
@@ -487,25 +386,21 @@ class NotificationService {
     BuildContext context, {
     required String title,
     required String message,
-    VoidCallback? onTap,
     bool showAction = false,
     String? actionText,
     VoidCallback? onActionPressed,
-    Duration? duration,
-    bool showProgressBar = true,
+    Duration duration = const Duration(seconds: 6),
   }) {
-    show(
+    _showNotification(
       context,
       NotificationBar.error(
         title: title,
         message: message,
-        onTap: onTap,
-        onClose: () => _currentOverlay?.remove(),
         showAction: showAction,
         actionText: actionText,
         onActionPressed: onActionPressed,
         duration: duration,
-        showProgressBar: showProgressBar,
+        onClose: () => _hideCurrentNotification(),
       ),
     );
   }
@@ -514,25 +409,23 @@ class NotificationService {
     BuildContext context, {
     required String title,
     required String message,
-    VoidCallback? onTap,
     bool showAction = false,
     String? actionText,
     VoidCallback? onActionPressed,
-    Duration? duration,
-    bool showProgressBar = true,
+    Duration duration = const Duration(seconds: 5),
+    bool showProgressBar = false,
   }) {
-    show(
+    _showNotification(
       context,
       NotificationBar.warning(
         title: title,
         message: message,
-        onTap: onTap,
-        onClose: () => _currentOverlay?.remove(),
         showAction: showAction,
         actionText: actionText,
         onActionPressed: onActionPressed,
         duration: duration,
         showProgressBar: showProgressBar,
+        onClose: () => _hideCurrentNotification(),
       ),
     );
   }
@@ -541,30 +434,47 @@ class NotificationService {
     BuildContext context, {
     required String title,
     required String message,
-    VoidCallback? onTap,
     bool showAction = false,
     String? actionText,
     VoidCallback? onActionPressed,
-    Duration? duration,
-    bool showProgressBar = true,
+    Duration duration = const Duration(seconds: 4),
   }) {
-    show(
+    _showNotification(
       context,
       NotificationBar.info(
         title: title,
         message: message,
-        onTap: onTap,
-        onClose: () => _currentOverlay?.remove(),
         showAction: showAction,
         actionText: actionText,
         onActionPressed: onActionPressed,
         duration: duration,
-        showProgressBar: showProgressBar,
+        onClose: () => _hideCurrentNotification(),
       ),
     );
   }
 
-  static void dismiss() {
+  static void _showNotification(
+    BuildContext context,
+    NotificationBar notification,
+  ) {
+    // Fermer la notification précédente si elle existe
+    _hideCurrentNotification();
+
+    final overlay = Overlay.of(context);
+    _currentOverlay = OverlayEntry(
+      builder:
+          (context) => Positioned(
+            top: 50,
+            left: 16,
+            right: 16,
+            child: Material(color: Colors.transparent, child: notification),
+          ),
+    );
+
+    overlay.insert(_currentOverlay!);
+  }
+
+  static void _hideCurrentNotification() {
     _currentOverlay?.remove();
     _currentOverlay = null;
   }

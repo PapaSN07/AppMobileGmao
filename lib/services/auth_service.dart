@@ -2,8 +2,12 @@ import 'package:appmobilegmao/services/api_service.dart';
 import 'package:flutter/foundation.dart';
 
 class AuthService extends ApiService {
+  final ApiService apiClient;
+
+  AuthService({ApiService? apiClient}) : apiClient = apiClient ?? ApiService();
+
   Future<void> login(String username, String password) async {
-    final response = await post('/auth/login', {
+    final response = await apiClient.post('/auth/login', {
       'username': username,
       'password': password,
     });
@@ -17,6 +21,44 @@ class AuthService extends ApiService {
     } else {
       if (kDebugMode) {
         print('Échec de l\'authentification pour $username');
+      }
+    }
+  }
+
+  Future<void> logout() async {
+    try {
+      final response = await apiClient.post('/auth/logout', {});
+      if (response != null && response['success'] == true) {
+        if (kDebugMode) {
+          print('Déconnexion réussie');
+        }
+      } else {
+        if (kDebugMode) {
+          print('Échec de la déconnexion');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Erreur lors de la déconnexion : $e');
+      }
+    }
+  }
+
+  Future<void> updateProfile(Map<String, dynamic> profileData) async {
+    try {
+      final response = await apiClient.patch('/auth/profile', profileData);
+      if (response != null && response['success'] == true) {
+        if (kDebugMode) {
+          print('Profil mis à jour avec succès');
+        }
+      } else {
+        if (kDebugMode) {
+          print('Échec de la mise à jour du profil');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Erreur lors de la mise à jour du profil : $e');
       }
     }
   }

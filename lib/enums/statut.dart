@@ -1,0 +1,4 @@
+enum Statut {
+  Actif,
+  Inactif,
+}

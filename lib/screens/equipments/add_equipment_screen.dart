@@ -125,6 +125,16 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.start,
                     children: [
+                      _fieldsets('Informations'),
+                      SizedBox(height: 10),
+                      _rowTwo(),
+                      SizedBox(height: 20),
+                      _rowThree(),
+                      SizedBox(height: 20),
+                      _rowFour(),
+                      SizedBox(height: 20),
+                      _rowFive(),
+                      SizedBox(height: 40),
                       _fieldsets('Informations parents'),
                       _buildDropdownField(
                         label: 'Code Parent',
@@ -144,16 +154,6 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
                       ),
                       SizedBox(height: 20),
                       _rowOne(),
-                      SizedBox(height: 40),
-                      _fieldsets('Informations'),
-                      SizedBox(height: 10),
-                      _rowTwo(),
-                      SizedBox(height: 20),
-                      _rowThree(),
-                      SizedBox(height: 20),
-                      _rowFour(),
-                      SizedBox(height: 20),
-                      _rowFive(),
                       SizedBox(height: 40),
                       _fieldsets('Informations de positionnement'),
                       SizedBox(height: 10),
@@ -855,7 +855,6 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
                   message: 'Équipement ajouté avec succès !',
                   showAction: false, // Pas d'action pour éviter les conflits
                   duration: const Duration(seconds: 2),
-                  showProgressBar: false,
                 );
 
                 // Attendre un délai plus court avant de fermer

@@ -22,66 +22,49 @@ class CustomBottomNavigationBar extends StatelessWidget {
           topRight: Radius.circular(20), // Coins arrondis en haut à droite
         ),
       ),
-      child: BottomNavigationBar(
-        type:
-            BottomNavigationBarType
-                .fixed, // Force l'utilisation de la couleur personnalisée
-        backgroundColor:
-            Colors
-                .transparent, // Transparent pour laisser le Container gérer la couleur
-        elevation: 0, // Supprime l'ombre
-        items: const [
-          BottomNavigationBarItem(
-            icon: Padding(
-              padding: EdgeInsets.only(
-                top: 8,
-              ), // Ajuste l'icône pour réduire l'espace
-              child: Icon(Icons.home),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 5),
+        child: BottomNavigationBar(
+          currentIndex: currentIndex,
+          onTap: onTap,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          selectedItemColor:
+              AppTheme.primaryColor, // Couleur des éléments sélectionnés
+          unselectedItemColor:
+              AppTheme.primaryColor75, // Couleur des éléments non sélectionnés
+          type: BottomNavigationBarType.fixed,
+          items: const [
+            BottomNavigationBarItem(
+              icon: Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: Icon(Icons.home),
+              ),
+              label: 'Accueil',
             ),
-            label: 'Accueil',
-          ),
-          BottomNavigationBarItem(
-            icon: Padding(
-              padding: EdgeInsets.only(top: 8),
-              child: Icon(
-                Icons.assignment,
-              ), // Icône pour Ordre de Transfert (OT)
+            BottomNavigationBarItem(
+              icon: Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: Icon(Icons.settings),
+              ),
+              label: 'Équipements',
             ),
-            label: 'OT',
-          ),
-          BottomNavigationBarItem(
-            icon: Padding(
-              padding: EdgeInsets.only(top: 8),
-              child: Icon(
-                Icons.build,
-              ), // Icône pour Demande d'Intervention (DI)
+            BottomNavigationBarItem(
+              icon: Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: Icon(Icons.assignment),
+              ),
+              label: 'OT',
             ),
-            label: 'DI',
-          ),
-          BottomNavigationBarItem(
-            icon: Padding(
-              padding: EdgeInsets.only(top: 8),
-              child: Icon(Icons.settings),
+            BottomNavigationBarItem(
+              icon: Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: Icon(Icons.build),
+              ),
+              label: 'DI',
             ),
-            label: 'Équipements',
-          ),
-        ],
-        currentIndex: currentIndex, // Index de l'élément sélectionné
-        selectedItemColor:
-            AppTheme.primaryColor, // Couleur de l'élément sélectionné
-        unselectedItemColor:
-            AppTheme.primaryColor75, // Couleur des éléments non sélectionnés
-        selectedLabelStyle: TextStyle(
-          fontFamily: AppTheme.fontMontserrat,
-          fontWeight: FontWeight.w600,
-          color: AppTheme.primaryColor,
+          ],
         ),
-        unselectedLabelStyle: TextStyle(
-          fontFamily: AppTheme.fontMontserrat,
-          fontWeight: FontWeight.normal,
-          color: AppTheme.primaryColor75,
-        ),
-        onTap: onTap, // Appelle la fonction passée en paramètre
       ),
     );
   }

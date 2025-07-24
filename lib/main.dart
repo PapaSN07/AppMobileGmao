@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:appmobilegmao/screens/main_screen.dart';
 import 'package:appmobilegmao/provider/equipment_provider.dart';
+import 'package:appmobilegmao/theme/app_theme.dart'; // Ajout
 
 void main() {
   runApp(
@@ -16,12 +17,36 @@ void main() {
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
-  
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'GMAO',
-      theme: ThemeData(primaryColor: Colors.blue),
+      title: 'GMAO - Senelec',
+      theme: ThemeData(
+        primaryColor: AppTheme.secondaryColor,
+        fontFamily: AppTheme.fontRoboto,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: AppTheme.secondaryColor,
+          primary: AppTheme.secondaryColor,
+          secondary: AppTheme.thirdColor,
+        ),
+        useMaterial3: true,
+        textTheme: const TextTheme(
+          headlineLarge: AppTheme.headline1,
+          bodyLarge: AppTheme.bodyText1,
+          bodyMedium: AppTheme.bodyText2,
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppTheme.secondaryColor,
+            foregroundColor: AppTheme.primaryColor,
+            textStyle: const TextStyle(
+              fontFamily: AppTheme.fontMontserrat,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ),
       home: const MainScreen(),
       debugShowCheckedModeBanner: false,
     );

@@ -179,6 +179,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                   equipmentProvider.equipments.length.toString(),
                   equipmentProvider.equipments.isEmpty ? 'Équipements' : 'Équipement',
                 ),
+                _buildVerticalDivider(),
                 _buildStatCard('222', 'OT'),
               ],
             ),
@@ -212,6 +213,15 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildVerticalDivider() {
+    return Container(
+      height: 40,
+      width: 1,
+      color: const Color.fromRGBO(144, 144, 144, 0.3),
+      margin: const EdgeInsets.symmetric(horizontal: 8),
     );
   }
 

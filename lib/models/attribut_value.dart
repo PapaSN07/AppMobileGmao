@@ -1,29 +1,25 @@
 class AttributValue {
-  String? id;
-  String code;
-  String? description;
+  final String nom;
+  final String? valeurs;
 
   AttributValue({
-    this.id,
-    required this.code,
-    this.description,
+    required this.nom,
+    this.valeurs,
   });
 
   AttributValue.fromJson(Map<String, dynamic> json)
-      : id = json['id'],
-        code = json['code'],
-        description = json['description'];
+      : nom = json['nom'],
+        valeurs = json['valeurs'];
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
-      'code': code,
-      'description': description,
+      'nom': nom,
+      'valeurs': valeurs,
     };
   }
 
   @override
   String toString() {
-    return 'AttributValue(id: $id, code: $code, description: $description)';
+    return 'AttributValue(nom: $nom, valeurs: $valeurs)';
   }
 }

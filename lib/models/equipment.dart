@@ -1,10 +1,10 @@
-import 'package:appmobilegmao/models/attribut.dart';
+import 'package:appmobilegmao/models/attribut_value.dart';
 
 class Equipment {
   String? id;
-  String codeParent;
-  String feeder;
-  String feederDescription;
+  String? codeParent;
+  String? feeder;
+  String? feederDescription;
   String code;
   String famille;
   String zone;
@@ -14,13 +14,13 @@ class Equipment {
   String description;
   String longitude;
   String latitude;
-  List<Attribut?> attributs = [];
+  List<AttributValue?> attributs = [];
 
   Equipment({
     this.id,
-    required this.codeParent,
-    required this.feeder,
-    required this.feederDescription,
+    this.codeParent,
+    this.feeder,
+    this.feederDescription,
     required this.code,
     required this.famille,
     required this.zone,
@@ -49,7 +49,7 @@ class Equipment {
       latitude = json['latitude'] {
         if (json['attributs'] != null) {
           attributs = (json['attributs'] as List)
-              .map((item) => item == null ? null : Attribut.fromJson(item))
+              .map((item) => item == null ? null : AttributValue.fromJson(item))
               .toList();
         }
       }

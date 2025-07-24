@@ -25,9 +25,9 @@ class _MainScreenState extends State<MainScreen> {
     // Initialiser les pages avec les services injectés
     _pages = [
       const HomeScreen(),
+      EquipmentScreen(),
       const OtScreen(),
       const DiScreen(),
-      EquipmentScreen(),
     ];
   }
 
