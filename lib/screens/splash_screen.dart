@@ -16,6 +16,7 @@ class _SplashScreenState extends State<SplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            // Logo de l'application
             Image.asset(
               'assets/images/logo.png',
               width: 200,
@@ -23,8 +24,11 @@ class _SplashScreenState extends State<SplashScreen> {
               fit: BoxFit.cover,
             ),
             const SizedBox(height: 20),
-            const CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(AppTheme.secondaryColor),
+            // Indicateur de chargement
+            CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(
+                AppTheme.secondaryColor,
+              ),
             ),
           ],
         ),
