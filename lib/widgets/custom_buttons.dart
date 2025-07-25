@@ -122,6 +122,7 @@ class SecondaryButton extends StatelessWidget {
       child: OutlinedButton(
         onPressed: isLoading ? null : onPressed,
         style: OutlinedButton.styleFrom(
+          backgroundColor: AppTheme.primaryColor,
           foregroundColor: AppTheme.secondaryColor,
           side: const BorderSide(color: AppTheme.secondaryColor, width: 2),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
