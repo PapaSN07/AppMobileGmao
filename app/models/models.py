@@ -1,16 +1,261 @@
+from pydantic import BaseModel, Field, validator
+from typing import Optional, Dict, Any, List
+from datetime import datetime
+
 class EquipmentModel(BaseModel):
-    id: str
-    codeParent: str
-    code: str
-    famille: str
-    zone: str
-    entity: str
-    unite: str
-    centreCharge: str
-    description: str
-    longitude: str
-    latitude: str
-    feeder: str
-    feederDescription: str
+    """
+    Modèle de données pour les équipements Coswin.
+    """
+    id: str = Field(..., description="Identifiant unique de l'équipement")
+    codeParent: Optional[str] = Field(None, description="Code de l'équipement parent")
+    code: str = Field(..., description="Code de l'équipement")
+    famille: str = Field(..., description="Famille d'équipement")
+    zone: str = Field(..., description="Zone géographique")
+    entity: str = Field(..., description="Entité responsable")
+    unite: str = Field(..., description="Unité organisationnelle")
+    centreCharge: str = Field(..., description="Centre de charge")
+    description: str = Field(..., description="Description de l'équipement")
+    longitude: Optional[str] = Field(None, description="Coordonnée longitude")
+    latitude: Optional[str] = Field(None, description="Coordonnée latitude")
+    feeder: Optional[str] = Field(None, description="Identifiant du feeder")
+    feederDescription: Optional[str] = Field(None, description="Description du feeder")
+
+    class Config:
+        """Configuration Pydantic"""
+        str_strip_whitespace = True  # Supprime les espaces en début/fin
+        validate_assignment = True   # Valide lors des assignations
+        use_enum_values = True      # Utilise les valeurs des enums
+        
+    @validator('id', 'code', 'famille', 'zone', 'entity', 'unite', 'centreCharge', 'description')
+    def validate_required_fields(cls, v):
+        """Valide que les champs obligatoires ne sont pas vides"""
+        if not v or v.strip() == "":
+            raise ValueError("Ce champ ne peut pas être vide")
+        return v.strip()
+
+    @validator('longitude', 'latitude')
+    def validate_coordinates(cls, v):
+        """Valide les coordonnées géographiques"""
+        if v is not None and v.strip():
+            try:
+                float_val = float(v)
+                return str(float_val)  # Normalise le format
+            except ValueError:
+                raise ValueError("Les coordonnées doivent être des nombres valides")
+        return None
+
+    @classmethod
+    def from_db_row(cls, row: tuple) -> 'EquipmentModel':
+        """
+        Crée une instance EquipmentModel à partir d'une ligne de base de données.
+        
+        Args:
+            row: Tuple contenant les données de la base de données Oracle
+            
+        Returns:
+            Instance EquipmentModel
+            
+        Raises:
+            ValueError: Si les données sont invalides
+        """
+        try:
+            return cls(
+                id=str(row[0]) if row[0] is not None else "",
+                codeParent=str(row[1]) if row[1] is not None else None,
+                code=str(row[2]) if row[2] is not None else "",
+                famille=str(row[3]) if row[3] is not None else "",
+                zone=str(row[4]) if row[4] is not None else "",
+                entity=str(row[5]) if row[5] is not None else "",
+                unite=str(row[6]) if row[6] is not None else "",
+                centreCharge=str(row[7]) if row[7] is not None else "",
+                description=str(row[8]) if row[8] is not None else "",
+                longitude=str(row[9]) if row[9] is not None and str(row[9]).strip() else None,
+                latitude=str(row[10]) if row[10] is not None and str(row[10]).strip() else None,
+                feeder=str(row[11]) if row[11] is not None else None,
+                feederDescription=str(row[12]) if row[12] is not None else None
+            )
+        except IndexError as e:
+            raise ValueError(f"Ligne de base de données incomplète: {e}")
+        except Exception as e:
+            raise ValueError(f"Erreur lors de la création du modèle: {e}")
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Convertit le modèle en dictionnaire.
+        
+        Returns:
+            Dictionnaire représentant l'équipement
+        """
+        return self.dict(exclude_none=False)
+
+    def to_api_response(self) -> Dict[str, Any]:
+        """
+        Convertit le modèle en format de réponse API.
+        
+        Returns:
+            Dictionnaire formaté pour l'API
+        """
+        data = self.to_dict()
+        # Ajouter des métadonnées utiles
+        data['has_coordinates'] = bool(self.longitude and self.latitude)
+        data['has_feeder'] = bool(self.feeder)
+        return data
+
+    def __str__(self) -> str:
+        """Représentation string de l'équipement"""
+        return f"Equipment({self.code} - {self.description})"
+
+    def __repr__(self) -> str:
+        """Représentation détaillée de l'équipement"""
+        return f"EquipmentModel(id={self.id}, code={self.code}, zone={self.zone})"
+
+
+class ZoneModel(BaseModel):
+    """
+    Modèle pour les zones géographiques.
+    """
+    name: str = Field(..., description="Nom de la zone")
+    count: Optional[int] = Field(None, description="Nombre d'équipements dans cette zone")
+
+    @classmethod
+    def from_db_row(cls, row: tuple) -> 'ZoneModel':
+        """Crée une instance ZoneModel à partir d'une ligne de DB"""
+        return cls(
+            name=str(row[0]) if row[0] is not None else "",
+            count=int(row[1]) if len(row) > 1 and row[1] is not None else None
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convertit en dictionnaire"""
+        return self.dict(exclude_none=True)
+
+
+class FamilleModel(BaseModel):
+    """
+    Modèle pour les familles d'équipements.
+    """
+    name: str = Field(..., description="Nom de la famille")
+    count: Optional[int] = Field(None, description="Nombre d'équipements de cette famille")
+
+    @classmethod
+    def from_db_row(cls, row: tuple) -> 'FamilleModel':
+        """Crée une instance FamilleModel à partir d'une ligne de DB"""
+        return cls(
+            name=str(row[0]) if row[0] is not None else "",
+            count=int(row[1]) if len(row) > 1 and row[1] is not None else None
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convertit en dictionnaire"""
+        return self.dict(exclude_none=True)
+
+
+class EntityModel(BaseModel):
+    """
+    Modèle pour les entités.
+    """
+    name: str = Field(..., description="Nom de l'entité")
+    count: Optional[int] = Field(None, description="Nombre d'équipements de cette entité")
+
+    @classmethod
+    def from_db_row(cls, row: tuple) -> 'EntityModel':
+        """Crée une instance EntityModel à partir d'une ligne de DB"""
+        return cls(
+            name=str(row[0]) if row[0] is not None else "",
+            count=int(row[1]) if len(row) > 1 and row[1] is not None else None
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convertit en dictionnaire"""
+        return self.dict(exclude_none=True)
+
+
+class EquipmentFilterModel(BaseModel):
+    """
+    Modèle pour les filtres de recherche d'équipements.
+    """
+    zone: Optional[str] = None
+    famille: Optional[str] = None
+    entity: Optional[str] = None
+    search_term: Optional[str] = None
+    page: int = Field(1, ge=1, description="Numéro de page")
+    page_size: int = Field(10, ge=1, le=100, description="Taille de page")
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convertit en dictionnaire pour la requête"""
+        return {k: v for k, v in self.dict().items() if v is not None}
+
+    def has_filters(self) -> bool:
+        """Vérifie si des filtres sont appliqués"""
+        return any([self.zone, self.famille, self.entity, self.search_term])
+
+
+class EquipmentStatsModel(BaseModel):
+    """
+    Modèle pour les statistiques des équipements.
+    """
+    total_count: int = Field(..., description="Nombre total d'équipements")
+    zones_count: int = Field(..., description="Nombre de zones")
+    familles_count: int = Field(..., description="Nombre de familles")
+    entities_count: int = Field(..., description="Nombre d'entités")
+    equipment_with_coordinates: int = Field(0, description="Équipements avec coordonnées")
+    equipment_with_feeder: int = Field(0, description="Équipements avec feeder")
+    last_updated: Optional[datetime] = Field(None, description="Dernière mise à jour")
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convertit en dictionnaire"""
+        return self.dict()
+
+
+# Classes d'erreur personnalisées
+class EquipmentNotFoundError(Exception):
+    """Exception levée quand un équipement n'est pas trouvé"""
+    pass
+
+
+class InvalidEquipmentDataError(Exception):
+    """Exception levée quand les données d'équipement sont invalides"""
+    pass
+
+
+# Fonctions utilitaires
+def validate_equipment_data(data: Dict[str, Any]) -> bool:
+    """
+    Valide les données d'équipement.
     
+    Args:
+        data: Dictionnaire contenant les données à valider
+        
+    Returns:
+        True si valide, False sinon
+    """
+    required_fields = ['id', 'code', 'famille', 'zone', 'entity', 'unite', 'centreCharge', 'description']
     
+    for field in required_fields:
+        if field not in data or not data[field]:
+            return False
+    
+    return True
+
+
+def create_equipment_from_dict(data: Dict[str, Any]) -> EquipmentModel:
+    """
+    Crée un EquipmentModel à partir d'un dictionnaire.
+    
+    Args:
+        data: Dictionnaire contenant les données d'équipement
+        
+    Returns:
+        Instance EquipmentModel
+        
+    Raises:
+        InvalidEquipmentDataError: Si les données sont invalides
+    """
+    if not validate_equipment_data(data):
+        raise InvalidEquipmentDataError("Données d'équipement invalides")
+    
+    try:
+        return EquipmentModel(**data)
+    except Exception as e:
+        raise InvalidEquipmentDataError(f"Erreur lors de la création du modèle: {e}")
+
