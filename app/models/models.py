@@ -71,8 +71,8 @@ class EquipmentModel(BaseModel):
                 description=str(row[8]) if row[8] is not None else "",
                 longitude=str(row[9]) if row[9] is not None and str(row[9]).strip() else None,
                 latitude=str(row[10]) if row[10] is not None and str(row[10]).strip() else None,
-                feeder=str(row[11]) if row[11] is not None else None,
-                feederDescription=str(row[12]) if row[12] is not None else None
+                feeder=str(row[11]) if len(row) > 11 and row[11] is not None else None,
+                feederDescription=str(row[12]) if len(row) > 12 and row[12] is not None else None
             )
         except IndexError as e:
             raise ValueError(f"Ligne de base de données incomplète: {e}")
@@ -108,6 +108,44 @@ class EquipmentModel(BaseModel):
     def __repr__(self) -> str:
         """Représentation détaillée de l'équipement"""
         return f"EquipmentModel(id={self.id}, code={self.code}, zone={self.zone})"
+
+    def to_mobile_dict(self) -> Dict[str, Any]:
+        """Format optimisé pour liste mobile"""
+        return {
+            'id': self.id,
+            'code': self.code,
+            'famille': self.famille,
+            'zone': self.zone,
+            'entity': self.entity,
+            'description': self.description[:100] + '...' if len(self.description) > 100 else self.description,
+            'has_coordinates': bool(self.longitude and self.latitude),
+            'coordinates': {
+                'lat': float(self.latitude) if self.latitude else None,
+                'lng': float(self.longitude) if self.longitude else None
+            } if self.longitude and self.latitude else None
+        }
+
+    def to_mobile_detail(self) -> Dict[str, Any]:
+        """Format détaillé pour mobile"""
+        return {
+            'id': self.id,
+            'code': self.code,
+            'famille': self.famille,
+            'zone': self.zone,
+            'entity': self.entity,
+            'unite': self.unite,
+            'centre_charge': self.centreCharge,
+            'description': self.description,
+            'coordinates': {
+                'latitude': float(self.latitude) if self.latitude else None,
+                'longitude': float(self.longitude) if self.longitude else None,
+                'has_location': bool(self.longitude and self.latitude)
+            },
+            'feeder': {
+                'id': self.feeder,
+                'description': self.feederDescription
+            } if self.feeder else None
+        }
 
 
 class ZoneModel(BaseModel):

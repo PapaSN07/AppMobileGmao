@@ -191,5 +191,7 @@ tmp/
 temp/
 *.tmp
 
+# IDE specific files
 test.md
 requests.py
+switch_db.md
