@@ -117,6 +117,7 @@ class EquipmentModel(BaseModel):
             'famille': self.famille,
             'zone': self.zone,
             'entity': self.entity,
+            'unite': self.unite,
             'description': self.description[:100] + '...' if len(self.description) > 100 else self.description,
             'has_coordinates': bool(self.longitude and self.latitude),
             'coordinates': {

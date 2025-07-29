@@ -21,6 +21,7 @@ def get_equipments_infinite(
     
     # Cache key
     cache_key = f"mobile_eq_{cursor}_{limit}_{zone}_{famille}_{entity}_{search_term}"
+
     cached = cache.get_data_only(cache_key)
     if cached:
         return cached
@@ -30,11 +31,11 @@ def get_equipments_infinite(
     SELECT 
         pk_equipment, 
         ereq_parent_equipment, 
-        ereq_code, ereq_category, 
+        ereq_code, 
+        ereq_category, 
         ereq_zone, 
         ereq_entity, 
-        ereq_unite, 
-        ereq_function, 
+        ereq_function,
         ereq_costcentre, 
         ereq_description, 
         ereq_longitude, 
