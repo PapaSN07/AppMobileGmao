@@ -5,6 +5,7 @@ import time
 import logging
 
 from app.routers.equipment_router import equipment_router
+from app.routers.user_router import authenticate_user_router
 from app.core.config import REDIS_HOST, REDIS_PORT
 from app.core.cache import cache
 from app.db.database import test_connection
@@ -84,7 +85,9 @@ async def health():
     }
 
 # Inclusion du routeur
-app.include_router(equipment_router, prefix="/api/v1")
+PREFIX = "/api/v1"
+app.include_router(equipment_router, prefix=PREFIX)
+app.include_router(authenticate_user_router, prefix=PREFIX)
 
 if __name__ == "__main__":
     import uvicorn

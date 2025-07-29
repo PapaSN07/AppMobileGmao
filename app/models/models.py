@@ -149,6 +149,118 @@ class EquipmentModel(BaseModel):
         }
 
 
+class UserModel(BaseModel):
+    """
+    Modèle de données pour les utilisateurs.
+    """
+    id: str = Field(..., description="Identifiant unique de l'utilisateur")
+    code: str = Field(..., description="Code de l'utilisateur")
+    username: str = Field(..., description="Nom d'utilisateur")
+    password: Optional[str] = Field(None, description="Mot de passe de l'utilisateur")
+    email: Optional[str] = Field(None, description="Adresse e-mail de l'utilisateur")
+    entity: Optional[str] = Field(None, description="Nom de l'entité de l'utilisateur")
+    group: Optional[str] = Field(None, description="Groupe de l'utilisateur")
+    url_image: Optional[str] = Field(None, description="URL de l'image de profil")
+    is_active: bool = Field(True, description="Indique si l'utilisateur est actif")
+
+    class Config:
+        """Configuration Pydantic"""
+        str_strip_whitespace = True  # Supprime les espaces en début/fin
+        validate_assignment = True   # Valide lors des assignations
+        use_enum_values = True      # Utilise les valeurs des enums
+    
+    @validator('id', 'username')
+    def validate_required_fields(cls, v):
+        """Valide que les champs obligatoires ne sont pas vides"""
+        if not v or v.strip() == "":
+            raise ValueError("Ce champ ne peut pas être vide")
+        return v.strip()
+    
+    @classmethod
+    def from_db_row(cls, row: tuple) -> 'UserModel':
+        """
+        Crée une instance UserModel à partir d'une ligne de base de données.
+        
+        Args:
+            row: Tuple contenant les données de la base de données Oracle
+            
+        Returns:
+            Instance UserModel
+            
+        Raises:
+            ValueError: Si les données sont invalides
+        """
+        try:
+            return cls(
+                id=str(row[0]) if row[0] is not None else "",
+                code=str(row[1]) if row[1] is not None else "",
+                username=str(row[2]) if row[2] is not None else "",
+                email=str(row[3]) if row[3] is not None else None,
+                entity=str(row[4]) if row[4] is not None else None,
+                group=str(row[5]) if row[5] is not None else None,
+                url_image=str(row[6]) if row[6] is not None else None,
+                is_active=bool(row[7]) if len(row) > 7 and row[7] is not None else True,
+                password=str(row[8]) if len(row) > 8 and row[8] is not None else None
+            )
+        except IndexError as e:
+            raise ValueError(f"Ligne de base de données incomplète: {e}")
+        except Exception as e:
+            raise ValueError(f"Erreur lors de la création du modèle: {e}")
+        
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Convertit le modèle en dictionnaire.
+        
+        Returns:
+            Dictionnaire représentant l'utilisateur
+        """
+        return self.dict(exclude_none=False)
+    
+    def to_api_response(self) -> Dict[str, Any]:
+        """
+        Convertit le modèle en format de réponse API.
+        
+        Returns:
+            Dictionnaire formaté pour l'API
+        """
+        data = self.to_dict()
+        # Ajouter des métadonnées utiles
+        data['has_image'] = bool(self.url_image)
+        return data
+    
+    def __str__(self) -> str:
+        """Représentation string de l'utilisateur"""
+        return f"User({self.username} - {self.email})"
+    
+    def __repr__(self) -> str:
+        """Représentation détaillée de l'utilisateur"""
+        return f"UserModel(id={self.id}, username={self.username}, entity={self.entity})"
+    
+    def to_mobile_dict(self) -> Dict[str, Any]:
+        """Format optimisé pour liste mobile"""
+        return {
+            'id': self.id,
+            'username': self.username,
+            'email': self.email,
+            'entity': self.entity,
+            'group': self.group,
+            'url_image': self.url_image,
+            'is_active': self.is_active
+        }
+    
+    def to_mobile_detail(self) -> Dict[str, Any]:
+        """Format détaillé pour mobile"""
+        return {
+            'id': self.id,
+            'username': self.username,
+            'email': self.email,
+            'entity': self.entity,
+            'group': self.group,
+            'url_image': self.url_image,
+            'is_active': self.is_active
+        }
+
+
 class ZoneModel(BaseModel):
     """
     Modèle pour les zones géographiques.

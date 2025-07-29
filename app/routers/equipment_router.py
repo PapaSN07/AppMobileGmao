@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 # Routeur simplifié pour mobile
 equipment_router = APIRouter(
     prefix="/equipments",
-    tags=["Mobile GMAO API"],
+    tags=["Équipements GMAO - Mobile API"],
 )
 
 # === ENDPOINTS CORE POUR MOBILE ===
