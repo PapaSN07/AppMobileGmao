@@ -14,7 +14,7 @@ class Equipment {
   String description;
   String longitude;
   String latitude;
-  List<AttributValue?> attributs = [];
+  List<AttributValue> attributs;
 
   Equipment({
     this.id,
@@ -33,26 +33,28 @@ class Equipment {
     this.attributs = const [],
   });
 
-  Equipment.fromJson(Map<String, dynamic> json)
-    : id = json['id'],
-      codeParent = json['codeParent'],
-      feeder = json['feeder'],
-      feederDescription = json['feederDescription'],
-      code = json['code'],
-      famille = json['famille'],
-      zone = json['zone'],
-      entity = json['entity'],
-      unite = json['unite'],
-      centreCharge = json['centreCharge'],
-      description = json['description'],
-      longitude = json['longitude'],
-      latitude = json['latitude'] {
-        if (json['attributs'] != null) {
-          attributs = (json['attributs'] as List)
-              .map((item) => item == null ? null : AttributValue.fromJson(item))
-              .toList();
-        }
-      }
+  factory Equipment.fromJson(Map<String, dynamic> json) {
+    return Equipment(
+      id: json['id']?.toString(),
+      codeParent: json['codeParent'],
+      feeder: json['feeder'],
+      feederDescription: json['feederDescription'],
+      code: json['code'] ?? '',
+      famille: json['famille'] ?? '',
+      zone: json['zone'] ?? '',
+      entity: json['entity'] ?? '',
+      unite: json['unite'] ?? '',
+      centreCharge: json['centreCharge'] ?? '',
+      description: json['description'] ?? '',
+      longitude: json['longitude']?.toString() ?? '',
+      latitude: json['latitude']?.toString() ?? '',
+      attributs:
+          (json['attributs'] as List?)
+              ?.map((attr) => AttributValue.fromJson(attr))
+              .toList() ??
+          [],
+    );
+  }
 
   Map<String, dynamic> toJson() {
     return {
@@ -69,12 +71,7 @@ class Equipment {
       'description': description,
       'longitude': longitude,
       'latitude': latitude,
-      'attributs': attributs.map((item) => item?.toJson()).toList(),
+      'attributs': attributs.map((attr) => attr.toJson()).toList(),
     };
-  }
-
-  @override
-  String toString() {
-    return 'Equipment(id: $id, codeParent: $codeParent, feeder: $feeder, feederDescription: $feederDescription, code: $code, famille: $famille, zone: $zone, entity: $entity, unite: $unite, centreCharge: $centreCharge, description: $description, longitude: $longitude, latitude: $latitude, attributs: $attributs)';
   }
 }

@@ -1,10 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:appmobilegmao/screens/main_screen.dart';
 import 'package:appmobilegmao/provider/equipment_provider.dart';
-import 'package:appmobilegmao/theme/app_theme.dart'; // Ajout
+import 'package:appmobilegmao/theme/app_theme.dart';
+import 'package:appmobilegmao/services/hive_service.dart';
+import 'package:appmobilegmao/models/equipment_hive.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialiser Hive
+  await Hive.initFlutter();
+
+  // Enregistrer les adaptateurs Hive
+  Hive.registerAdapter(EquipmentHiveAdapter());
+  Hive.registerAdapter(AttributeValueHiveAdapter());
+  Hive.registerAdapter(ReferenceDataHiveAdapter());
+
+  // Initialiser le service Hive
+  await HiveService.init();
+
   runApp(
     MultiProvider(
       providers: [

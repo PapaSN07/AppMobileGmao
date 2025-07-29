@@ -21,6 +21,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
   final TextEditingController _searchController =
       TextEditingController(); // Contrôleur pour le champ de recherche
   Timer? _debounce;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -29,12 +30,17 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<EquipmentProvider>().fetchEquipments();
     });
+
+    // Écouter le scroll pour déclencher le chargement automatique
+    _scrollController.addListener(_onScroll);
   }
 
   @override
   void dispose() {
     _searchController.dispose(); // Libérer le contrôleur
     _debounce?.cancel(); // Annuler le Timer si actif
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -43,6 +49,18 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     // Fermer le clavier avant la désactivation
     FocusScope.of(context).unfocus();
     super.deactivate();
+  }
+
+  // Détecteur de scroll pour infinite scroll
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      // Déclencher le chargement quand on arrive à 200px du bas
+      final provider = context.read<EquipmentProvider>();
+      if (provider.hasMore && !provider.isLoadingMore) {
+        provider.loadMoreEquipments();
+      }
+    }
   }
 
   @override
@@ -177,7 +195,9 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
               children: [
                 _buildStatCard(
                   equipmentProvider.equipments.length.toString(),
-                  equipmentProvider.equipments.isEmpty ? 'Équipements' : 'Équipement',
+                  equipmentProvider.equipments.isEmpty
+                      ? 'Équipements'
+                      : 'Équipement',
                 ),
                 _buildVerticalDivider(),
                 _buildStatCard('222', 'OT'),
@@ -285,9 +305,20 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
             child:
                 hasResults
                     ? ListView.builder(
+                      controller:
+                          _scrollController, // Attacher le ScrollController
                       padding: EdgeInsets.zero,
-                      itemCount: equipmentProvider.equipments.length,
+                      itemCount:
+                          equipmentProvider.equipments.length +
+                          (equipmentProvider.hasMore
+                              ? 1
+                              : 0), // +1 pour le loader
                       itemBuilder: (context, index) {
+                        // Afficher le loader en bas de liste
+                        if (index == equipmentProvider.equipments.length) {
+                          return _buildLoadingFooter(equipmentProvider);
+                        }
+
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 10),
                           child: _itemBuilder(
@@ -299,6 +330,27 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                     : _buildEmptyState(equipmentProvider),
           ),
         );
+  }
+
+  // Widget de chargement en bas de liste
+  Widget _buildLoadingFooter(EquipmentProvider provider) {
+    if (provider.isLoadingMore) {
+      return Container(
+        padding: EdgeInsets.all(16),
+        alignment: Alignment.center,
+        child: CircularProgressIndicator(),
+      );
+    } else if (!provider.hasMore) {
+      return Container(
+        padding: EdgeInsets.all(16),
+        alignment: Alignment.center,
+        child: Text(
+          'Tous les équipements ont été chargés',
+          style: TextStyle(color: Colors.grey),
+        ),
+      );
+    }
+    return SizedBox.shrink();
   }
 
   Widget _buildEmptyState(EquipmentProvider equipmentProvider) {

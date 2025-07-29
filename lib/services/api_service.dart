@@ -1,58 +1,139 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
 
+/// Exception personnalisée pour les erreurs API
+class ApiException implements Exception {
+  final String message;
+  final int? statusCode;
+  final String? endpoint;
+
+  ApiException(this.message, {this.statusCode, this.endpoint});
+
+  @override
+  String toString() {
+    if (statusCode != null && endpoint != null) {
+      return 'ApiException ($statusCode): $message [Endpoint: $endpoint]';
+    }
+    return 'ApiException: $message';
+  }
+}
+
+/// Service API de base utilisant Dio pour toute l'application
 class ApiService {
-  // URL de base adaptée selon la plateforme
+  late final Dio _dio;
   late String baseUrl;
 
-  // Timeout pour les requêtes HTTP
-  static const Duration timeout = Duration(seconds: 30);
+  // Configuration par défaut
+  static const Duration connectTimeout = Duration(seconds: 60);
+  static const Duration receiveTimeout = Duration(seconds: 60);
+  static const Duration sendTimeout = Duration(seconds: 60);
 
-  // Port par défaut de JSON Server
-  static const int defaultPort = 3000;
+  // Port par défaut du serveur
+  static const int defaultPort = 8000; // Changé pour votre backend FastAPI
 
   // Adresse IP de l'ordinateur pour les appareils iOS physiques
-  static const String _macIpAddress = '169.254.156.100';
+  static const String _macIpAddress = '169.254.205.147';
 
-  ApiService() {
-    _initializeBaseUrl();
-    init();
+  ApiService({int? port, String? customBaseUrl}) {
+    if (customBaseUrl != null) {
+      baseUrl = customBaseUrl;
+    } else {
+      _initializeBaseUrl(port ?? defaultPort);
+    }
+    _initializeDio();
   }
 
   /// Initialise l'URL de base selon la plateforme
-  void _initializeBaseUrl() {
+  void _initializeBaseUrl(int port) {
     if (kIsWeb) {
-      // Pour le web
-      baseUrl = 'http://localhost:$defaultPort';
+      baseUrl = 'http://localhost:$port';
     } else if (Platform.isAndroid) {
-      // Pour Android (émulateur)
-      baseUrl = 'http://10.0.2.2:$defaultPort';
+      // Pour Android (émulateur) - utilise l'adresse de pont
+      baseUrl = 'http://10.217.24.22:$port';
     } else if (Platform.isIOS) {
       // Détecter si on est sur simulateur ou appareil physique
       if (_isSimulator()) {
-        baseUrl = 'http://localhost:$defaultPort';
+        baseUrl = 'http://localhost:$port';
       } else {
         // Appareil physique iOS
-        baseUrl = 'http://$_macIpAddress:$defaultPort';
+        // baseUrl = 'http://127.0.0.1:$port';
+        baseUrl = 'http://$_macIpAddress:$port';
       }
     } else {
       // Fallback pour autres plateformes
-      baseUrl = 'http://localhost:$defaultPort';
+      baseUrl = 'http://localhost:$port';
     }
 
     if (kDebugMode) {
       print(
-        '🌐 Base URL configurée: $baseUrl (Plateforme: ${_getPlatformName()})',
+        '🌐 ApiService - Base URL configurée: $baseUrl (Plateforme: ${_getPlatformName()})',
       );
     }
   }
 
+  /// Initialise Dio avec la configuration
+  void _initializeDio() {
+    _dio = Dio(BaseOptions(
+      baseUrl: baseUrl,
+      connectTimeout: connectTimeout,
+      receiveTimeout: receiveTimeout,
+      sendTimeout: sendTimeout,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'User-Agent': 'Flutter-${_getPlatformName()}',
+      },
+    ));
+
+    _setupInterceptors();
+
+    if (kDebugMode) {
+      print('🔧 ApiService - Dio configuré avec baseUrl: ${_dio.options.baseUrl}');
+    }
+  }
+
+  /// Configure les intercepteurs Dio
+  void _setupInterceptors() {
+    // Intercepteur de logging
+    _dio.interceptors.add(LogInterceptor(
+      requestBody: true,
+      responseBody: true,
+      logPrint: (obj) {
+        if (kDebugMode) {
+          print('🌐 ApiService: $obj');
+        }
+      },
+    ));
+
+    // Intercepteur d'erreurs
+    _dio.interceptors.add(InterceptorsWrapper(
+      onRequest: (options, handler) {
+        if (kDebugMode) {
+          print('🔍 ApiService Request: ${options.method} ${options.uri}');
+        }
+        handler.next(options);
+      },
+      onResponse: (response, handler) {
+        if (kDebugMode) {
+          print('✅ ApiService Response: ${response.statusCode} ${response.requestOptions.uri}');
+        }
+        handler.next(response);
+      },
+      onError: (error, handler) {
+        if (kDebugMode) {
+          print('❌ ApiService Error: ${error.message}');
+          print('❌ Error Type: ${error.type}');
+          print('❌ Request URL: ${error.requestOptions.uri}');
+        }
+        handler.next(error);
+      },
+    ));
+  }
+
   // Méthode pour détecter si on est sur simulateur
   static bool _isSimulator() {
-    // Cette méthode n'est pas parfaite, mais fonctionne dans la plupart des cas
     return Platform.environment['SIMULATOR_DEVICE_NAME'] != null;
   }
 
@@ -69,262 +150,169 @@ class ApiService {
 
   /// Permet de changer le port manuellement si nécessaire
   void setPort(int port) {
-    if (kIsWeb) {
-      baseUrl = 'http://localhost:$port';
-    } else if (Platform.isAndroid) {
-      baseUrl = 'http://10.0.2.2:$port';
-    } else if (Platform.isIOS) {
-      baseUrl = 'http://localhost:$port';
-    } else {
-      baseUrl = 'http://localhost:$port';
-    }
+    _initializeBaseUrl(port);
+    _dio.options.baseUrl = baseUrl;
 
     if (kDebugMode) {
-      print('🔄 Base URL mise à jour: $baseUrl');
+      print('🔄 ApiService - Base URL mise à jour: $baseUrl');
     }
   }
 
   /// Permet de définir une URL personnalisée (pour production)
   void setCustomBaseUrl(String url) {
     baseUrl = url;
+    _dio.options.baseUrl = baseUrl;
+
     if (kDebugMode) {
-      print('🔧 URL personnalisée définie: $baseUrl');
+      print('🔧 ApiService - URL personnalisée définie: $baseUrl');
     }
   }
 
-  Future<void> init() async {
-    // Test de connectivité au démarrage
-    await _testConnection();
-  }
-
   /// Teste la connexion au serveur
-  Future<bool> _testConnection() async {
+  Future<bool> testConnection({String endpoint = '/health'}) async {
     try {
-      final response = await http
-          .get(Uri.parse(baseUrl))
-          .timeout(const Duration(seconds: 5));
+      final response = await _dio.get(endpoint);
 
       if (response.statusCode == 200) {
         if (kDebugMode) {
-          print('✅ Connexion au serveur réussie');
+          print('✅ ApiService - Connexion au serveur réussie');
         }
         return true;
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Impossible de se connecter au serveur: $e');
-        print(
-          '💡 Assurez-vous que JSON Server est démarré sur le port $defaultPort',
-        );
+        print('❌ ApiService - Impossible de se connecter au serveur: $e');
+        _printConnectionHelp();
       }
     }
     return false;
   }
 
-  /// Méthode pour obtenir les en-têtes de la requête
-  Future<Map<String, String>> _getHeaders() async {
-    Map<String, String> headers = {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    };
-
-    // Ajouter le User-Agent pour identifier la plateforme
-    headers['User-Agent'] = 'Flutter-${_getPlatformName()}';
-
-    return headers;
-  }
-
-  /// Méthode pour traiter la réponse de l'API
-  Future<dynamic> _processResponse(http.Response response) async {
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      if (response.body.isEmpty) {
-        return null;
-      }
-      return json.decode(response.body);
-    } else {
-      throw Exception(
-        'Erreur de l\'API: ${response.statusCode} - ${response.body}',
-      );
-    }
-  }
-
-  Future<dynamic> get(String endpoint) async {
-    final headers = await _getHeaders();
-
-    // Nettoie l'endpoint pour éviter les problèmes de double slash
-    if (endpoint.startsWith('/')) {
-      endpoint = endpoint.substring(1);
-    }
-
+  /// Méthode GET
+  Future<dynamic> get(String endpoint, {Map<String, dynamic>? queryParameters}) async {
     try {
-      final url = '$baseUrl/$endpoint';
-      if (kDebugMode) {
-        print('🔍 GET: $url');
-      }
-
-      final response = await http
-          .get(Uri.parse(url), headers: headers)
-          .timeout(
-            timeout,
-            onTimeout:
-                () =>
-                    throw Exception(
-                      'Délai d\'attente dépassé pour la requête GET $endpoint',
-                    ),
-          );
-
-      return _processResponse(response);
+      final response = await _dio.get(endpoint, queryParameters: queryParameters);
+      return response.data;
+    } on DioException catch (e) {
+      throw _handleDioError(e, endpoint);
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ Erreur GET: $e');
-        _printConnectionHelp();
-      }
-      throw Exception('Erreur de connexion: $e');
+      throw ApiException('Erreur de connexion: $e', endpoint: endpoint);
     }
   }
 
-  Future<dynamic> post(String endpoint, dynamic data) async {
-    final headers = await _getHeaders();
-
-    if (endpoint.startsWith('/')) {
-      endpoint = endpoint.substring(1);
-    }
-
+  /// Méthode POST
+  Future<dynamic> post(String endpoint, {dynamic data, Map<String, dynamic>? queryParameters}) async {
     try {
-      final url = '$baseUrl/$endpoint';
-      if (kDebugMode) {
-        print('📤 POST: $url');
-        print('📦 Données: ${jsonEncode(data)}');
-      }
-
-      final response = await http
-          .post(Uri.parse(url), headers: headers, body: jsonEncode(data))
-          .timeout(
-            timeout,
-            onTimeout: () => throw Exception('Délai d\'attente dépassé'),
-          );
-
-      return _processResponse(response);
+      final response = await _dio.post(endpoint, data: data, queryParameters: queryParameters);
+      return response.data;
+    } on DioException catch (e) {
+      throw _handleDioError(e, endpoint);
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ Erreur POST: $e');
-        _printConnectionHelp();
-      }
-      throw Exception('Erreur de connexion: $e');
+      throw ApiException('Erreur de connexion: $e', endpoint: endpoint);
     }
   }
 
-  Future<dynamic> put(String endpoint, dynamic data) async {
-    final headers = await _getHeaders();
-
-    if (endpoint.startsWith('/')) {
-      endpoint = endpoint.substring(1);
-    }
-
+  /// Méthode PUT
+  Future<dynamic> put(String endpoint, {dynamic data, Map<String, dynamic>? queryParameters}) async {
     try {
-      final url = '$baseUrl/$endpoint';
-      if (kDebugMode) {
-        print('🔄 PUT: $url');
-        print('📦 Données: ${jsonEncode(data)}');
-      }
-
-      final response = await http
-          .put(Uri.parse(url), headers: headers, body: jsonEncode(data))
-          .timeout(
-            timeout,
-            onTimeout: () => throw Exception('Délai d\'attente dépassé'),
-          );
-
-      return _processResponse(response);
+      final response = await _dio.put(endpoint, data: data, queryParameters: queryParameters);
+      return response.data;
+    } on DioException catch (e) {
+      throw _handleDioError(e, endpoint);
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ Erreur PUT: $e');
-        _printConnectionHelp();
-      }
-      throw Exception('Erreur de connexion: $e');
+      throw ApiException('Erreur de connexion: $e', endpoint: endpoint);
     }
   }
 
-  Future<dynamic> delete(String endpoint) async {
-    final headers = await _getHeaders();
-
-    if (endpoint.startsWith('/')) {
-      endpoint = endpoint.substring(1);
-    }
-
+  /// Méthode PATCH
+  Future<dynamic> patch(String endpoint, {dynamic data, Map<String, dynamic>? queryParameters}) async {
     try {
-      final url = '$baseUrl/$endpoint';
-      if (kDebugMode) {
-        print('🗑️ DELETE: $url');
-      }
-
-      final response = await http
-          .delete(Uri.parse(url), headers: headers)
-          .timeout(
-            timeout,
-            onTimeout: () => throw Exception('Délai d\'attente dépassé'),
-          );
-
-      return _processResponse(response);
+      final response = await _dio.patch(endpoint, data: data, queryParameters: queryParameters);
+      return response.data;
+    } on DioException catch (e) {
+      throw _handleDioError(e, endpoint);
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ Erreur DELETE: $e');
-        _printConnectionHelp();
-      }
-      throw Exception('Erreur de connexion: $e');
+      throw ApiException('Erreur de connexion: $e', endpoint: endpoint);
     }
   }
 
-  Future<dynamic> patch(String endpoint, dynamic data) async {
-    final headers = await _getHeaders();
-
-    if (endpoint.startsWith('/')) {
-      endpoint = endpoint.substring(1);
-    }
-
+  /// Méthode DELETE
+  Future<dynamic> delete(String endpoint, {Map<String, dynamic>? queryParameters}) async {
     try {
-      final url = '$baseUrl/$endpoint';
-      if (kDebugMode) {
-        print('🔧 PATCH: $url');
-        print('📦 Données: ${jsonEncode(data)}');
-      }
-
-      final response = await http
-          .patch(Uri.parse(url), headers: headers, body: jsonEncode(data))
-          .timeout(
-            timeout,
-            onTimeout: () => throw Exception('Délai d\'attente dépassé'),
-          );
-
-      return _processResponse(response);
+      final response = await _dio.delete(endpoint, queryParameters: queryParameters);
+      return response.data;
+    } on DioException catch (e) {
+      throw _handleDioError(e, endpoint);
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ Erreur PATCH: $e');
-        _printConnectionHelp();
-      }
-      throw Exception('Erreur de connexion: $e');
+      throw ApiException('Erreur de connexion: $e', endpoint: endpoint);
     }
+  }
+
+  /// Gestion centralisée des erreurs Dio
+  ApiException _handleDioError(DioException e, String endpoint) {
+    String message;
+
+    switch (e.type) {
+      case DioExceptionType.connectionTimeout:
+        message = 'Connexion impossible au serveur - Timeout';
+        break;
+      case DioExceptionType.receiveTimeout:
+        message = 'Réponse trop lente du serveur';
+        break;
+      case DioExceptionType.connectionError:
+        message = 'Erreur de connexion au serveur - Vérifiez que le serveur est démarré';
+        break;
+      case DioExceptionType.badResponse:
+        final statusCode = e.response?.statusCode ?? 0;
+        if (statusCode >= 500) {
+          message = 'Erreur serveur ($statusCode)';
+        } else if (statusCode == 404) {
+          message = 'Ressource non trouvée (404)';
+        } else if (statusCode == 401) {
+          message = 'Non autorisé (401)';
+        } else if (statusCode == 403) {
+          message = 'Accès interdit (403)';
+        } else {
+          message = 'Erreur API ($statusCode)';
+        }
+        break;
+      case DioExceptionType.cancel:
+        message = 'Requête annulée';
+        break;
+      default:
+        message = 'Erreur réseau: ${e.message}';
+    }
+
+    return ApiException(
+      message,
+      statusCode: e.response?.statusCode,
+      endpoint: endpoint,
+    );
   }
 
   /// Affiche des conseils de connexion en cas d'erreur
   void _printConnectionHelp() {
     if (kDebugMode) {
       print('');
-      print('🛠️  AIDE À LA CONNEXION:');
+      print('🛠️  AIDE À LA CONNEXION ApiService:');
       print('📱 Plateforme détectée: ${_getPlatformName()}');
       print('🌐 URL utilisée: $baseUrl');
       print('');
-      print('📋 Instructions pour démarrer JSON Server:');
-      print('   json-server --watch db.json --port $defaultPort');
+      print('📋 Instructions pour démarrer le serveur:');
+      print('   uvicorn main:app --host 0.0.0.0 --port $defaultPort --reload');
       print('');
       if (Platform.isAndroid) {
-        print(
-          '🤖 Pour Android: Utilisation de 10.0.2.2 (bridge réseau émulateur)',
-        );
+        print('🤖 Pour Android: Utilisation de 10.0.2.2 (bridge réseau émulateur)');
       } else if (Platform.isIOS) {
         print('🍎 Pour iOS: Utilisation de localhost (simulateur)');
       }
       print('');
     }
   }
+
+  /// Getter pour accéder à l'instance Dio si nécessaire
+  Dio get dio => _dio;
+
+  /// Getter pour l'URL de base
+  String get currentBaseUrl => baseUrl;
 }

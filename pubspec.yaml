@@ -37,12 +37,19 @@ dependencies:
   cupertino_icons: ^1.0.8
   http: ^1.4.0
   provider: ^6.1.3
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  dio: ^5.4.0
+  connectivity_plus: ^5.0.2
+  json_annotation: ^4.8.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   mockito: ^5.4.4
   build_runner: ^2.4.9 # Nécessaire pour générer les mocks
+  hive_generator: ^2.0.1
+  json_serializable: ^6.7.1
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is

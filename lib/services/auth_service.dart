@@ -7,7 +7,7 @@ class AuthService extends ApiService {
   AuthService({ApiService? apiClient}) : apiClient = apiClient ?? ApiService();
 
   Future<void> login(String username, String password) async {
-    final response = await apiClient.post('/auth/login', {
+    final response = await apiClient.post('/auth/login', data:  {
       'username': username,
       'password': password,
     });
@@ -27,7 +27,7 @@ class AuthService extends ApiService {
 
   Future<void> logout() async {
     try {
-      final response = await apiClient.post('/auth/logout', {});
+      final response = await apiClient.post('/auth/logout');
       if (response != null && response['success'] == true) {
         if (kDebugMode) {
           print('Déconnexion réussie');
@@ -46,7 +46,7 @@ class AuthService extends ApiService {
 
   Future<void> updateProfile(Map<String, dynamic> profileData) async {
     try {
-      final response = await apiClient.patch('/auth/profile', profileData);
+      final response = await apiClient.patch('/auth/profile', data: profileData);
       if (response != null && response['success'] == true) {
         if (kDebugMode) {
           print('Profil mis à jour avec succès');

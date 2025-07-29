@@ -1,25 +1,19 @@
 class AttributValue {
-  final String nom;
-  final String? valeurs;
+  String? name;
+  String? value;
+  String? type;
 
-  AttributValue({
-    required this.nom,
-    this.valeurs,
-  });
+  AttributValue({this.name, this.value, this.type});
 
-  AttributValue.fromJson(Map<String, dynamic> json)
-      : nom = json['nom'],
-        valeurs = json['valeurs'];
-
-  Map<String, dynamic> toJson() {
-    return {
-      'nom': nom,
-      'valeurs': valeurs,
-    };
+  factory AttributValue.fromJson(Map<String, dynamic> json) {
+    return AttributValue(
+      name: json['name'],
+      value: json['value'],
+      type: json['type'],
+    );
   }
 
-  @override
-  String toString() {
-    return 'AttributValue(nom: $nom, valeurs: $valeurs)';
+  Map<String, dynamic> toJson() {
+    return {'name': name, 'value': value, 'type': type};
   }
 }
