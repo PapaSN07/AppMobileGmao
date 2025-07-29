@@ -28,13 +28,19 @@ def get_equipments_infinite(
     # Query de base avec conditions
     base_query = """
     SELECT 
-        pk_equipment, ereq_parent_equipment, ereq_code, ereq_category, ereq_zone, 
-        ereq_entity, ereq_function, ereq_costcentre, ereq_description, 
-        ereq_longitude, ereq_latitude,
-        (SELECT pk_equipment FROM coswin.t_equipment t2 
-         WHERE coswin.t_equipment.ereq_string2 = t2.ereq_code) as feeder,
-        (SELECT ereq_description FROM coswin.t_equipment t2 
-         WHERE coswin.t_equipment.ereq_string2 = t2.ereq_code) as feeder_description
+        pk_equipment, 
+        ereq_parent_equipment, 
+        ereq_code, ereq_category, 
+        ereq_zone, 
+        ereq_entity, 
+        ereq_unite, 
+        ereq_function, 
+        ereq_costcentre, 
+        ereq_description, 
+        ereq_longitude, 
+        ereq_latitude,
+        (SELECT pk_equipment FROM coswin.t_equipment t2 WHERE coswin.t_equipment.ereq_string2 = t2.ereq_code) as feeder,
+        (SELECT ereq_description FROM coswin.t_equipment t2 WHERE coswin.t_equipment.ereq_string2 = t2.ereq_code) as feeder_description
     FROM coswin.t_equipment
     WHERE 1=1
     """
@@ -102,6 +108,12 @@ def get_equipments_infinite(
                 },
                 'filters_applied': bool(zone or famille or entity or search_term)
             }
+            
+            # ✅ Assurer que next_cursor est toujours défini quand has_more=True
+            if has_more and next_cursor:
+                logger.info(f"✅ Pagination: next_cursor={next_cursor}, has_more={has_more}")
+            else:
+                logger.info(f"📄 Fin de pagination: has_more={has_more}")
             
             cache.set(cache_key, response, CACHE_TTL_MEDIUM)
             logger.info(f"✅ Infinite scroll: {len(equipments)} équipements, has_more: {has_more}")
