@@ -57,7 +57,12 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
         _scrollController.position.maxScrollExtent - 200) {
       // Déclencher le chargement quand on arrive à 200px du bas
       final provider = context.read<EquipmentProvider>();
-      if (provider.hasMore && !provider.isLoadingMore) {
+
+      // ✅ CORRECTION: Ajouter plus de vérifications
+      if (provider.hasMore &&
+          !provider.isLoadingMore &&
+          !provider.isLoading &&
+          provider.equipments.isNotEmpty) {
         provider.loadMoreEquipments();
       }
     }
@@ -283,6 +288,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
         onFieldSubmitted: (value) {
           // Déclencher la recherche lorsque l'utilisateur appuie sur "Terminé"
           equipmentProvider.filterEquipments(value);
+          FocusScope.of(context).unfocus(); // Fermer le clavier
         },
         validator: (value) {
           if (value == null || value.isEmpty) {
@@ -290,6 +296,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
           }
           return null;
         },
+        textInputAction: TextInputAction.done, // Afficher l'icône de recherche
       ),
     );
   }

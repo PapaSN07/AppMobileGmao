@@ -73,7 +73,7 @@ class EquipmentProvider extends ChangeNotifier {
 
       List<Equipment> equipments;
 
-      // Cache-first strategy
+      // ✅ CORRECTION: Cache-first strategy mais vérifier le cursor
       if (!forceRefresh && (!_isOffline || await _isCacheValid())) {
         equipments = await _hiveService.getCachedEquipments(filters: _filters);
         if (equipments.isNotEmpty) {
@@ -83,15 +83,24 @@ class EquipmentProvider extends ChangeNotifier {
           _allEquipments = _convertToMapList(equipments);
           _equipments = List.from(_allEquipments);
 
-          // ✅ CORRECTION: Récupérer le cursor depuis le cache
+          // ✅ CORRECTION: Récupérer le cursor ET vérifier s'il est valide
           _nextCursor = await _hiveService.getLastCursor();
-          _hasMore =
-              _nextCursor !=
-              null; // S'il y a un cursor, il y a peut-être plus de données
 
-          _isLoading = false;
-          notifyListeners();
-          return;
+          // ✅ NOUVELLE LOGIQUE: Si pas de cursor mais des données en cache,
+          // considérer qu'il faut recharger depuis l'API pour récupérer le cursor
+          if (_nextCursor == null && equipments.isNotEmpty) {
+            if (kDebugMode) {
+              print(
+                '🔄 GMAO: Pas de cursor en cache, rechargement depuis API pour pagination',
+              );
+            }
+            // Ne pas retourner ici, continuer vers l'API pour récupérer le cursor
+          } else {
+            _hasMore = _nextCursor != null;
+            _isLoading = false;
+            notifyListeners();
+            return;
+          }
         }
       }
 
@@ -116,14 +125,17 @@ class EquipmentProvider extends ChangeNotifier {
         _nextCursor = response.pagination.nextCursor;
         _currentPage = 1;
 
-        // ✅ CORRECTION: Sauvegarder le cursor dans le cache
+        // ✅ CORRECTION: Toujours sauvegarder le cursor même s'il est null
         if (_nextCursor != null) {
           await _hiveService.saveLastCursor(_nextCursor!);
+        } else {
+          // Effacer le cursor s'il n'y en a pas
+          await _hiveService.clearCursor();
         }
 
         // Mettre en cache si pas de filtres
         if (_filters.isEmpty) {
-          await _hiveService.cacheEquipments(equipments);
+          await _hiveService.cacheEquipments(equipments, cursor: _nextCursor);
         }
       } else {
         // Mode hors ligne
@@ -351,18 +363,18 @@ class EquipmentProvider extends ChangeNotifier {
   }
 
   // Dans EquipmentProvider
-Future<void> refresh() async {
-  // ✅ Effacer le cursor avant le refresh
-  await _hiveService.clearCursor();
-  await fetchEquipments(forceRefresh: true);
-}
+  Future<void> refresh() async {
+    // ✅ Effacer le cursor avant le refresh
+    await _hiveService.clearCursor();
+    await fetchEquipments(forceRefresh: true);
+  }
 
-Future<void> applyFilters(Map<String, String> filters) async {
-  _filters = Map.from(filters);
-  // ✅ Effacer le cursor lors de nouveaux filtres
-  await _hiveService.clearCursor();
-  await fetchEquipments();
-}
+  Future<void> applyFilters(Map<String, String> filters) async {
+    _filters = Map.from(filters);
+    // ✅ Effacer le cursor lors de nouveaux filtres
+    await _hiveService.clearCursor();
+    await fetchEquipments();
+  }
 
   // Effacer les filtres
   Future<void> clearFilters() async {

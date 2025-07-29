@@ -21,6 +21,10 @@ void main() async {
   // Initialiser le service Hive
   await HiveService.init();
 
+  // Optionnel : Effacer le cache Hive au démarrage (décommenter si nécessaire)
+  // final hiveService = HiveService();
+  // await hiveService.clearAllCache();
+
   runApp(
     MultiProvider(
       providers: [

@@ -45,7 +45,7 @@ class HiveService {
     }
   }
 
-  /// ✅ NOUVELLE MÉTHODE : Cache equipments avec option append pour pagination
+  /// ✅ MÉTHODE AMÉLIORÉE : Cache equipments avec gestion du cursor
   Future<void> cacheEquipments(
     List<Equipment> equipments, {
     bool append = false,
@@ -57,25 +57,28 @@ class HiveService {
       if (!append) {
         // Effacer le cache existant lors d'un refresh complet
         await equipmentBox.clear();
-        await clearCursor(); // Effacer aussi le cursor
+        // ✅ CORRECTION: Ne pas effacer le cursor lors d'un append=false standard
+        // await clearCursor(); // Commenté pour préserver le cursor
         if (kDebugMode) {
-          print('🗑️ GMAO: Cache équipements effacé pour refresh complet');
+          print('🗑️ GMAO: Cache équipements effacé pour refresh');
         }
       }
 
       // Ajouter les nouveaux équipements
       for (final equipment in equipments) {
         final hiveEquipment = _equipmentToHive(equipment, now);
-        // Utiliser l'ID comme clé ou générer une clé unique pour éviter les doublons
         final key =
             equipment.id ??
             '${equipment.code}_${DateTime.now().millisecondsSinceEpoch}';
         await equipmentBox.put(key, hiveEquipment);
       }
 
-      // Sauvegarder le cursor si fourni
-      if (cursor != null) {
+      // ✅ CORRECTION: Sauvegarder le cursor seulement s'il est fourni et valide
+      if (cursor != null && cursor.isNotEmpty) {
         await saveLastCursor(cursor);
+        if (kDebugMode) {
+          print('💾 GMAO: Cursor sauvegardé: $cursor');
+        }
       }
 
       // Sauvegarder le timestamp de synchronisation
@@ -86,9 +89,6 @@ class HiveService {
           '💾 GMAO: ${equipments.length} équipements mis en cache (append: $append)',
         );
         print('📦 GMAO: Total en cache: ${equipmentBox.length}');
-        if (cursor != null) {
-          print('💾 GMAO: Cursor sauvegardé: $cursor');
-        }
       }
     } catch (e) {
       if (kDebugMode) {
