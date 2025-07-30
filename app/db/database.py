@@ -228,6 +228,48 @@ class OracleDatabase:
             if cursor:
                 cursor.close()
     
+    def execute_update(self, query: str, params: Optional[Dict[str, Any]] = None) -> int:
+        """
+        Exécute une requête UPDATE/INSERT/DELETE.
+        
+        Args:
+            query: Requête SQL à exécuter
+            params: Paramètres nommés pour la requête
+            
+        Returns:
+            Nombre de lignes affectées
+            
+        Raises:
+            ConnectionError: Si pas de connexion à la DB
+            oracledb.DatabaseError: Pour les erreurs SQL
+        """
+        if not self.connection:
+            raise ConnectionError("Pas de connexion à la base de données")
+        
+        cursor = None
+        try:
+            cursor = self.connection.cursor()
+            cursor.execute(query, params or {})
+            affected_rows = cursor.rowcount
+            self.connection.commit()  # Important pour Oracle
+            
+            print(f"📝 Mise à jour exécutée: {affected_rows} ligne(s) affectée(s)")
+            return affected_rows
+            
+        except oracledb.DatabaseError as e:
+            if self.connection:
+                self.connection.rollback()
+            print(f"❌ Erreur SQL update: {e}")
+            raise
+        except Exception as e:
+            if self.connection:
+                self.connection.rollback()
+            print(f"❌ Erreur inattendue lors de la mise à jour: {e}")
+            raise
+        finally:
+            if cursor:
+                cursor.close()
+    
     def close_connection(self):
         """Ferme la connexion à la base de données"""
         if self.connection:

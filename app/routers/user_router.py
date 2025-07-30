@@ -1,5 +1,6 @@
 from typing import Any, Dict
 from fastapi import APIRouter, Query, HTTPException
+from app.schemas.rest_response import create_simple_response
 from app.services.user_service import (
     authenticate_user,
     logout_user
@@ -30,12 +31,17 @@ async def login_user(
         if not login or not password:
             logger.warning("Login ou mot de passe manquant.")
             raise HTTPException(status_code=400, detail="Login et mot de passe requis")
+        
         user = authenticate_user(login, password)
         if not user:
             raise HTTPException(status_code=401, detail="Identifiants invalides")
         logger.info(f"Utilisateur {login} authentifié avec succès")
         
-        return {"message": "Authentification réussie", "user": user}
+        return create_simple_response(
+            message="Authentification réussie",
+            data=user.to_api_response(),
+        )
+        
     except oracledb.DatabaseError as e:
         logger.error(f"❌ Erreur base de données: {e}")
         raise HTTPException(status_code=500, detail="Erreur base de données")

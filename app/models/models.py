@@ -161,7 +161,7 @@ class UserModel(BaseModel):
     entity: Optional[str] = Field(None, description="Nom de l'entité de l'utilisateur")
     group: Optional[str] = Field(None, description="Groupe de l'utilisateur")
     url_image: Optional[str] = Field(None, description="URL de l'image de profil")
-    is_active: bool = Field(True, description="Indique si l'utilisateur est actif")
+    is_absent: bool = Field(True, description="Indique si l'utilisateur est absent")
 
     class Config:
         """Configuration Pydantic"""
@@ -199,7 +199,7 @@ class UserModel(BaseModel):
                 entity=str(row[4]) if row[4] is not None else None,
                 group=str(row[5]) if row[5] is not None else None,
                 url_image=str(row[6]) if row[6] is not None else None,
-                is_active=bool(row[7]) if len(row) > 7 and row[7] is not None else True,
+                is_absent=bool(row[7]) if len(row) > 7 and row[7] is not None else True,
                 password=str(row[8]) if len(row) > 8 and row[8] is not None else None
             )
         except IndexError as e:
@@ -245,7 +245,7 @@ class UserModel(BaseModel):
             'entity': self.entity,
             'group': self.group,
             'url_image': self.url_image,
-            'is_active': self.is_active
+            'is_absent': self.is_absent
         }
     
     def to_mobile_detail(self) -> Dict[str, Any]:
@@ -257,7 +257,7 @@ class UserModel(BaseModel):
             'entity': self.entity,
             'group': self.group,
             'url_image': self.url_image,
-            'is_active': self.is_active
+            'is_absent': self.is_absent
         }
 
 
