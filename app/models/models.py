@@ -285,40 +285,120 @@ class FamilleModel(BaseModel):
     """
     Modèle pour les familles d'équipements.
     """
-    name: str = Field(..., description="Nom de la famille")
-    count: Optional[int] = Field(None, description="Nombre d'équipements de cette famille")
-
+    code: str = Field(..., description="Code de la famille")
+    description: str = Field(..., description="Description de la famille")
+    parent_category: Optional[str] = Field(None, description="Catégorie parent de la famille")
+    system_category: Optional[str] = Field(None, description="Catégorie système de la famille")
+    level: Optional[int] = Field(None, description="Niveau de la famille dans la hiérarchie")
+    entity: Optional[str] = Field(None, description="Entité associée à la famille")
+    
     @classmethod
     def from_db_row(cls, row: tuple) -> 'FamilleModel':
         """Crée une instance FamilleModel à partir d'une ligne de DB"""
         return cls(
-            name=str(row[0]) if row[0] is not None else "",
-            count=int(row[1]) if len(row) > 1 and row[1] is not None else None
+            code=str(row[0]) if row[0] is not None else "",
+            description=str(row[1]) if row[1] is not None else "",
+            parent_category=str(row[2]) if len(row) > 2 and row[2] is not None else None,
+            system_category=str(row[3]) if len(row) > 3 and row[3] is not None else None,
+            level=int(row[4]) if len(row) > 4 and row[4] is not None else None,
+            entity=str(row[5]) if len(row) > 5 and row[5] is not None else None
         )
-
+    
     def to_dict(self) -> Dict[str, Any]:
         """Convertit en dictionnaire"""
         return self.dict(exclude_none=True)
+    
+    def to_api_response(self) -> Dict[str, Any]:
+        """Convertit en format de réponse API"""
+        return {
+            'code': self.code,
+            'description': self.description,
+            'parent_category': self.parent_category,
+            'system_category': self.system_category,
+            'level': self.level,
+            'entity': self.entity
+        }
+    
+    def __str__(self) -> str:
+        """Représentation string de la famille"""
+        return f"Famille({self.code} - {self.description})"
+    
+    def __repr__(self) -> str:
+        """Représentation détaillée de la famille"""
+        return f"FamilleModel(code={self.code}, description={self.description}, entity={self.entity})"
+    
+    def to_mobile_dict(self) -> Dict[str, Any]:
+        """Format optimisé pour liste mobile"""
+        return {
+            'code': self.code,
+            'description': self.description,
+            'parent_category': self.parent_category,
+            'system_category': self.system_category,
+            'level': self.level,
+            'entity': self.entity
+        }
 
 
 class EntityModel(BaseModel):
     """
     Modèle pour les entités.
     """
-    name: str = Field(..., description="Nom de l'entité")
-    count: Optional[int] = Field(None, description="Nombre d'équipements de cette entité")
-
+    id: str = Field(..., description="Identifiant unique de l'entité")
+    code: str = Field(..., description="Code de l'entité")
+    description: str = Field(..., description="Description de l'entité")
+    entity_type: str = Field(..., description="Type d'entité")
+    level: int = Field(..., description="Niveau de l'entité dans la hiérarchie")
+    parent_entity: Optional[str] = Field(None, description="Entité parent")
+    system_entity: Optional[str] = Field(None, description="Entité système")
+    
     @classmethod
     def from_db_row(cls, row: tuple) -> 'EntityModel':
         """Crée une instance EntityModel à partir d'une ligne de DB"""
         return cls(
-            name=str(row[0]) if row[0] is not None else "",
-            count=int(row[1]) if len(row) > 1 and row[1] is not None else None
+            id=str(row[0]) if row[0] is not None else "",
+            code=str(row[1]) if row[1] is not None else "",
+            description=str(row[2]) if row[2] is not None else "",
+            entity_type=str(row[3]) if row[3] is not None else "",
+            level=int(row[4]) if row[4] is not None else 0,
+            parent_entity=str(row[5]) if len(row) > 5 and row[5] is not None else None,
+            system_entity=str(row[6]) if len(row) > 6 and row[6] is not None else None
         )
-
+    
     def to_dict(self) -> Dict[str, Any]:
         """Convertit en dictionnaire"""
         return self.dict(exclude_none=True)
+    
+    def to_api_response(self) -> Dict[str, Any]:
+        """Convertit en format de réponse API"""
+        return {
+            'id': self.id,
+            'code': self.code,
+            'description': self.description,
+            'entity_type': self.entity_type,
+            'level': self.level,
+            'parent_entity': self.parent_entity,
+            'system_entity': self.system_entity
+        }
+    
+    def __str__(self) -> str:
+        """Représentation string de l'entité"""
+        return f"Entity({self.code} - {self.description})"
+    
+    def __repr__(self) -> str:
+        """Représentation détaillée de l'entité"""
+        return f"EntityModel(id={self.id}, code={self.code}, entity_type={self.entity_type})"
+    
+    def to_mobile_dict(self) -> Dict[str, Any]:
+        """Format optimisé pour liste mobile"""
+        return {
+            'id': self.id,
+            'code': self.code,
+            'description': self.description,
+            'entity_type': self.entity_type,
+            'level': self.level,
+            'parent_entity': self.parent_entity,
+            'system_entity': self.system_entity
+        }
 
 
 class EquipmentFilterModel(BaseModel):

@@ -2,6 +2,7 @@ from app.db.database import get_database_connection
 from app.models.models import UserModel
 from app.core.config import CACHE_TTL_LONG
 from app.core.cache import cache
+from app.db.requests import (GET_USER_AUTHENTICATION_QUERY, UPDATE_USER_QUERY, GET_USER_CONNECT_QUERY)
 import logging
 import oracledb
 
@@ -31,20 +32,7 @@ def authenticate_user(login: str, password: str) -> UserModel:
         return cached
     
     # Query de base avec conditions
-    base_query = """
-    SELECT 
-        pk_coswin_user, 
-        cwcu_code, 
-        cwcu_signature, 
-        cwcu_email, 
-        cwcu_entity, 
-        cwcu_preferred_group, 
-        cwcu_url_image,
-        cwcu_is_absent, 
-        cwcu_password
-    FROM coswin.coswin_user
-    WHERE 1=1
-    """
+    base_query = GET_USER_AUTHENTICATION_QUERY
     
     params = {}
     
@@ -128,18 +116,7 @@ def update_user(user: UserModel) -> bool:
     
     try:
         with get_database_connection() as db:
-            query = """
-            UPDATE coswin.coswin_user
-            SET 
-                cwcu_code = :code,
-                cwcu_signature = :signature,
-                cwcu_email = :email,
-                cwcu_entity = :entity,
-                cwcu_preferred_group = :preferred_group,
-                cwcu_url_image = :url_image,
-                cwcu_is_absent = :is_absent
-            WHERE pk_coswin_user = :pk
-            """
+            query = UPDATE_USER_QUERY
             params = {
                 'code': user.code,
                 'signature': user.username,
@@ -176,20 +153,7 @@ def get_user_connect(login: str) -> UserModel:
     
     try:
         with get_database_connection() as db:
-            query = """
-            SELECT 
-                pk_coswin_user, 
-                cwcu_code, 
-                cwcu_signature, 
-                cwcu_email, 
-                cwcu_entity, 
-                cwcu_preferred_group, 
-                cwcu_url_image,
-                cwcu_is_absent
-            FROM coswin.coswin_user
-            WHERE (cwcu_signature = :login OR cwcu_email = :login)
-            AND ROWNUM <= 1
-            """
+            query = GET_USER_CONNECT_QUERY
             params = {'login': login}
             results = db.execute_query(query, params=params)
             
@@ -200,6 +164,7 @@ def get_user_connect(login: str) -> UserModel:
             else:
                 logger.warning(f"Utilisateur {login} introuvable.")
                 return None
+    
     except oracledb.DatabaseError as e:
         logger.error(f"❌ Erreur base de données lors de la récupération de l'utilisateur: {e}")
         return None

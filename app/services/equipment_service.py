@@ -1,6 +1,8 @@
 from app.db.database import get_database_connection
 from app.core.config import CACHE_TTL_MEDIUM, CACHE_TTL_LONG
-from app.models.models import EquipmentModel, ZoneModel, FamilleModel, EntityModel
+from app.models.models import EquipmentModel
+from app.services.famille_service import get_familles
+from app.db.requests import (EQUIPMENT_INFINITE_QUERY, EQUIPMENT_BY_ID_QUERY)
 from app.core.cache import cache
 from typing import List, Dict, Any, Optional
 import logging
@@ -26,25 +28,8 @@ def get_equipments_infinite(
     if cached:
         return cached
     
-    # Query de base avec conditions
-    base_query = """
-    SELECT 
-        pk_equipment, 
-        ereq_parent_equipment, 
-        ereq_code, 
-        ereq_category, 
-        ereq_zone, 
-        ereq_entity, 
-        ereq_function,
-        ereq_costcentre, 
-        ereq_description, 
-        ereq_longitude, 
-        ereq_latitude,
-        (SELECT pk_equipment FROM coswin.t_equipment t2 WHERE coswin.t_equipment.ereq_string2 = t2.ereq_code) as feeder,
-        (SELECT ereq_description FROM coswin.t_equipment t2 WHERE coswin.t_equipment.ereq_string2 = t2.ereq_code) as feeder_description
-    FROM coswin.t_equipment
-    WHERE 1=1
-    """
+    # Query de base avec conditions - CORRECTION: Application manuelle de la limite
+    base_query = EQUIPMENT_INFINITE_QUERY
     
     params = {}
     
@@ -67,21 +52,14 @@ def get_equipments_infinite(
         base_query += " AND (LOWER(ereq_code) LIKE LOWER(:search) OR LOWER(ereq_description) LIKE LOWER(:search))"
         params['search'] = f"%{search_term}%"
     
-    # Ajouter ORDER BY avant la limitation
-    base_query += " ORDER BY pk_equipment"
-    
-    # Utiliser ROWNUM pour la limitation Oracle (+ 1 pour vérifier s'il y a plus de données)
-    query = f"""
-    SELECT * FROM (
-        {base_query}
-    ) WHERE ROWNUM <= :limit_param
-    """
-    params['limit_param'] = limit + 1
+    # Ajouter ORDER BY et la limitation Oracle
+    base_query += f" ORDER BY pk_equipment) WHERE ROWNUM <= {limit + 1}"
     
     try:
         with get_database_connection() as db:
-            results = db.execute_query(query, params=params)
-            
+            # CORRECTION: Ne pas passer le paramètre limit à execute_query
+            results = db.execute_query(base_query, params=params)
+
             # Vérifier s'il y a plus de données
             has_more = len(results) > limit
             if has_more:
@@ -110,14 +88,10 @@ def get_equipments_infinite(
                 'filters_applied': bool(zone or famille or entity or search_term)
             }
             
-            # ✅ Assurer que next_cursor est toujours défini quand has_more=True
-            if has_more and next_cursor:
-                logger.info(f"✅ Pagination: next_cursor={next_cursor}, has_more={has_more}")
-            else:
-                logger.info(f"📄 Fin de pagination: has_more={has_more}")
+            # Log pour debug
+            logger.info(f"✅ Infinite scroll: {len(equipments)} équipements récupérés sur {limit} demandés, has_more: {has_more}")
             
             cache.set(cache_key, response, CACHE_TTL_MEDIUM)
-            logger.info(f"✅ Infinite scroll: {len(equipments)} équipements, has_more: {has_more}")
             return response
             
     except Exception as e:
@@ -144,26 +118,6 @@ def get_zones() -> Dict[str, Any]:
             return response
     except Exception as e:
         logger.error(f"❌ Erreur zones: {e}")
-        raise
-
-def get_familles() -> Dict[str, Any]:
-    """Liste des familles pour mobile"""
-    cached = cache.get_data_only("mobile_familles")
-    if cached:
-        return cached
-    
-    query = "SELECT DISTINCT ereq_category, COUNT(*) as count FROM coswin.t_equipment WHERE ereq_category IS NOT NULL GROUP BY ereq_category ORDER BY ereq_category"
-    
-    try:
-        with get_database_connection() as db:
-            results = db.execute_query(query)
-            familles = [{"name": row[0], "count": row[1]} for row in results]
-            
-            response = {"familles": familles, "count": len(familles)}
-            cache.set("mobile_familles", response, CACHE_TTL_LONG)
-            return response
-    except Exception as e:
-        logger.error(f"❌ Erreur familles: {e}")
         raise
 
 def get_entities() -> Dict[str, Any]:
@@ -193,18 +147,7 @@ def get_equipment_by_id(equipment_id: str) -> Optional[Dict[str, Any]]:
     if cached:
         return cached
     
-    query = """
-    SELECT 
-        pk_equipment, ereq_parent_equipment, ereq_code, ereq_category, ereq_zone, 
-        ereq_entity, ereq_function, ereq_costcentre, ereq_description, 
-        ereq_longitude, ereq_latitude,
-        (SELECT pk_equipment FROM coswin.t_equipment t2 
-         WHERE coswin.t_equipment.ereq_string2 = t2.ereq_code) as feeder,
-        (SELECT ereq_description FROM coswin.t_equipment t2 
-         WHERE coswin.t_equipment.ereq_string2 = t2.ereq_code) as feeder_description
-    FROM coswin.t_equipment 
-    WHERE pk_equipment = :equipment_id
-    """
+    query = EQUIPMENT_BY_ID_QUERY
     
     try:
         with get_database_connection() as db:

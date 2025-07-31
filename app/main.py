@@ -77,12 +77,34 @@ async def root():
 
 @app.get("/health")
 async def health():
-    db_ok = test_connection()
-    return {
-        "status": "healthy" if db_ok else "degraded",
-        "database": db_ok,
-        "cache": cache.is_available
-    }
+    """Health check global simple"""
+    try:
+        from app.db.database import get_database_connection
+        from app.core.cache import cache
+        
+        # Test DB simple
+        db_ok = True
+        try:
+            with get_database_connection() as db:
+                db.execute_query("SELECT 1 FROM DUAL")
+        except Exception as e:
+            logger.error(f"DB Health check failed: {e}")
+            db_ok = False
+        
+        return {
+            "status": "healthy" if db_ok else "degraded",
+            "database": db_ok,
+            "cache": cache.is_available,
+            "tables_status": "checking tables requires equipment health endpoint"
+        }
+    except Exception as e:
+        logger.error(f"Global health check error: {e}")
+        return {
+            "status": "error", 
+            "database": False,
+            "cache": False,
+            "error": str(e)
+        }
 
 # Inclusion du routeur
 PREFIX = "/api/v1"

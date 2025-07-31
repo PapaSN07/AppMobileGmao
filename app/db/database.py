@@ -69,19 +69,6 @@ class OracleDatabase:
     def execute_query(self, query: str, params: Optional[Dict[str, Any]] = None, limit: Optional[int] = None) -> List[tuple]:
         """
         Exécute une requête SQL avec paramètres optionnels et limitation.
-        
-        Args:
-            query: Requête SQL à exécuter
-            params: Paramètres nommés pour la requête
-            limit: Nombre maximum de résultats à retourner
-            
-        Returns:
-            Liste des résultats sous forme de tuples
-            
-        Raises:
-            ConnectionError: Si pas de connexion à la DB
-            ValueError: Si la limite est invalide
-            oracledb.DatabaseError: Pour les erreurs SQL
         """
         if not self.connection:
             raise ConnectionError("Pas de connexion à la base de données")
@@ -95,19 +82,22 @@ class OracleDatabase:
         try:
             cursor = self.connection.cursor()
             
-            # Appliquer la limitation si spécifiée
+            # CORRECTION: Appliquer la limitation différemment
             if limit:
-                # Utiliser ROWNUM pour limiter les résultats en Oracle
-                limited_query = f"""
-                SELECT * FROM (
-                    {query}
-                ) WHERE ROWNUM <= :query_limit
-                """
-                # Ajouter le paramètre de limite
-                query_params = params.copy() if params else {}
-                query_params['query_limit'] = limit
-                
-                cursor.execute(limited_query, query_params)
+                # Vérifier si la requête contient déjà ROWNUM ou une sous-requête
+                if "ROWNUM" in query.upper() or query.strip().startswith("SELECT * FROM ("):
+                    # La requête gère déjà la limitation
+                    cursor.execute(query, params or {})
+                else:
+                    # Appliquer ROWNUM pour limiter les résultats
+                    limited_query = f"""
+                    SELECT * FROM (
+                        {query}
+                    ) WHERE ROWNUM <= :query_limit
+                    """
+                    query_params = params.copy() if params else {}
+                    query_params['query_limit'] = limit
+                    cursor.execute(limited_query, query_params)
             else:
                 cursor.execute(query, params or {})
             
@@ -304,9 +294,22 @@ def test_connection():
         with OracleDatabase() as db:
             if db.is_connected():
                 print("✅ Test de connexion réussi")
-                # Test simple
+                # Test simple avec DUAL uniquement
                 results = db.execute_query("SELECT SYSDATE FROM DUAL")
                 print(f"📅 Date système: {results[0][0]}")
+                
+                # Test optionnel de vérification des tables
+                try:
+                    # Vérifier que les tables existent
+                    table_check = db.execute_query("""
+                        SELECT COUNT(*) FROM user_tables 
+                        WHERE table_name IN ('T_EQUIPMENT', 'COSWIN_USER', 'CATEGORY')
+                    """)
+                    tables_count = table_check[0][0] if table_check else 0
+                    print(f"📋 Tables trouvées: {tables_count}/3")
+                except Exception as table_error:
+                    print(f"⚠️ Avertissement tables: {table_error}")
+                
                 return True
             else:
                 print("❌ Test de connexion échoué")

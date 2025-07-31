@@ -102,22 +102,3 @@ async def refresh_data() -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"❌ Erreur refresh: {e}")
         raise HTTPException(status_code=500, detail="Erreur rafraîchissement")
-
-@equipment_router.get("/health")
-async def mobile_health_check() -> Dict[str, Any]:
-    """Health check simplifié pour mobile"""
-    try:
-        from app.db.database import test_connection
-        from app.core.cache import cache
-        
-        db_ok = test_connection()
-        cache_ok = cache.is_available
-        
-        return {
-            "status": "healthy" if db_ok else "degraded",
-            "database": db_ok,
-            "cache": cache_ok,
-            "version": "1.0.0"
-        }
-    except Exception as e:
-        return {"status": "error", "error": str(e)}
