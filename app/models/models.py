@@ -401,7 +401,6 @@ class EntityModel(BaseModel):
         }
 
 
-
 class CentreChargeModel(BaseModel):
     """
     Modèle pour les centres de charge.
