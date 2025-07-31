@@ -463,6 +463,51 @@ class CentreChargeModel(BaseModel):
         return f"CentreChargeModel(id={self.id}, code={self.code}, entity={self.entity})"
 
 
+class UniteModel(BaseModel):
+    """Modèle pour les unités organisationnelles.
+    """
+    id: str = Field(..., description="Identifiant unique de l'unité")
+    code: str = Field(..., description="Code de l'unité")
+    description: str = Field(..., description="Description de l'unité")
+    entity: Optional[str] = Field(None, description="Entité associée à l'unité")
+    parent_entity: Optional[str] = Field(None, description="Entité parente de l'unité")
+    system_entity: Optional[str] = Field(None, description="Entité système de l'unité")
+    
+    @classmethod
+    def from_db_row(cls, row: tuple) -> 'UniteModel':
+        """Crée une instance UniteModel à partir d'une ligne de DB"""
+        return cls(
+            id=str(row[0]) if row[0] is not None else "",
+            code=str(row[1]) if row[1] is not None else "",
+            description=str(row[2]) if row[2] is not None else "",
+            entity=str(row[3]) if len(row) > 3 and row[3] is not None else None,
+            parent_entity=str(row[4]) if len(row) > 4 and row[4] is not None else None,
+            system_entity=str(row[5]) if len(row) > 5 and row[5] is not None else None
+        )
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convertit en dictionnaire"""
+        return self.dict(exclude_none=True)
+    
+    def to_api_response(self) -> Dict[str, Any]:
+        """Convertit en format de réponse API"""
+        return {
+            'id': self.id,
+            'code': self.code,
+            'description': self.description,
+            'entity': self.entity,
+            'parent_entity': self.parent_entity,
+            'system_entity': self.system_entity
+        }
+    
+    def __str__(self) -> str:
+        """Représentation string de l'unité"""
+        return f"Unite({self.code} - {self.description})"
+    
+    def __repr__(self) -> str:
+        """Représentation détaillée de l'unité"""
+        return f"UniteModel(id={self.id}, code={self.code}, entity={self.entity}, parent_entity={self.parent_entity}, system_entity={self.system_entity})"
+
 class EquipmentFilterModel(BaseModel):
     """
     Modèle pour les filtres de recherche d'équipements.

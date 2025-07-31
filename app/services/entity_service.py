@@ -31,7 +31,7 @@ def get_entities() -> Dict[str, Any]:
             
             response = {"entities": entities, "count": len(entities)}
             cache.set("mobile_entities", response, CACHE_TTL_LONG)
-            return entities
+            return response
     except Exception as e:
         logger.error(f"❌ Erreur entités: {e}")
         raise
