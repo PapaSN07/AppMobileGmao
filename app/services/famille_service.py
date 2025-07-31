@@ -3,9 +3,8 @@ from app.core.config import CACHE_TTL_LONG
 from app.core.cache import cache
 from app.models.models import FamilleModel
 from app.db.requests import CATEGORY_QUERY
-import logging
 from typing import Any, Dict
-import oracledb
+import logging
 
 logger = logging.getLogger(__name__)
 
