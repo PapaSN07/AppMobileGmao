@@ -116,8 +116,8 @@ def get_entities_hierarchy_by_type(entity_type: str) -> Dict[str, Any]:
     
     try:
         with get_database_connection() as db:
-            # Récupérer l'entité principale du type demandé
-            main_entity_query = """
+            # Version simple : récupérer toutes les entités et construire la hiérarchie en Python
+            simple_query = """
             SELECT 
                 pk_entity,
                 chen_code,
@@ -125,16 +125,25 @@ def get_entities_hierarchy_by_type(entity_type: str) -> Dict[str, Any]:
                 chen_entity_type,
                 chen_level,
                 chen_parent_entity,
-                chen_system_entity
-            FROM coswin.entity 
+                chen_system_entity,
+                (SELECT p.chen_description 
+                 FROM coswin.entity p 
+                 WHERE p.chen_code = e.chen_parent_entity
+                ) AS parent_description
+            FROM coswin.entity e
             WHERE chen_entity_type = :entity_type
-            AND ROWNUM = 1
-            ORDER BY chen_level
+               OR chen_code IN (
+                   SELECT chen_parent_entity FROM coswin.entity WHERE chen_entity_type = :entity_type
+               )
+               OR chen_parent_entity IN (
+                   SELECT chen_code FROM coswin.entity WHERE chen_entity_type = :entity_type
+               )
+            ORDER BY chen_level, chen_code
             """
             
-            main_results = db.execute_query(main_entity_query, {'entity_type': entity_type})
+            results = db.execute_query(simple_query, {'entity_type': entity_type})
             
-            if not main_results:
+            if not results:
                 return {
                     "main_entity": None,
                     "hierarchy": [],
@@ -143,85 +152,41 @@ def get_entities_hierarchy_by_type(entity_type: str) -> Dict[str, Any]:
                     "message": f"Aucune entité trouvée pour le type {entity_type}"
                 }
             
-            # Créer l'entité principale
-            main_entity = EntityModel.from_db_row(main_results[0])
-            
-            # CORRECTION: Requête CTE récursive avec alias de colonnes
-            hierarchy_query = """
-            WITH hierarchy_tree (
-                pk_entity,
-                chen_code, 
-                chen_description,
-                chen_entity_type,
-                chen_level,
-                chen_parent_entity,
-                chen_system_entity,
-                hierarchy_level,
-                root_entity
-            ) AS (
-                -- Entité racine du type demandé
-                SELECT 
-                    pk_entity,
-                    chen_code,
-                    chen_description,
-                    chen_entity_type,
-                    chen_level,
-                    chen_parent_entity,
-                    chen_system_entity,
-                    0 as hierarchy_level,
-                    chen_code as root_entity
-                FROM coswin.entity 
-                WHERE chen_entity_type = :entity_type
-                
-                UNION ALL
-                
-                -- Entités enfants (récursif)
-                SELECT 
-                    e.pk_entity,
-                    e.chen_code,
-                    e.chen_description,
-                    e.chen_entity_type,
-                    e.chen_level,
-                    e.chen_parent_entity,
-                    e.chen_system_entity,
-                    h.hierarchy_level + 1,
-                    h.root_entity
-                FROM coswin.entity e
-                INNER JOIN hierarchy_tree h ON e.chen_parent_entity = h.chen_code
-                WHERE h.hierarchy_level < 5  -- Limite pour éviter les boucles infinies
-            )
-            SELECT 
-                h.chen_code,
-                h.chen_description,
-                h.chen_level,
-                h.chen_entity_type,
-                h.chen_parent_entity,
-                h.hierarchy_level,
-                (SELECT p.chen_description 
-                 FROM coswin.entity p 
-                 WHERE p.chen_code = h.chen_parent_entity
-                ) AS parent_description
-            FROM hierarchy_tree h
-            ORDER BY h.hierarchy_level, h.chen_level, h.chen_code
-            """
-            
-            hierarchy_results = db.execute_query(hierarchy_query, {'entity_type': entity_type})
+            # Trouver l'entité principale (du type demandé)
+            main_entity = None
             hierarchy = []
             
-            for row in hierarchy_results:
-                hierarchy.append({
-                    'code': row[0],
-                    'description': row[1],
-                    'entity_level': row[2],  # Niveau dans l'organisation SENELEC
+            for row in results:
+                entity_data = {
+                    'code': row[1],
+                    'description': row[2],
+                    'entity_level': row[4],
                     'entity_type': row[3],
-                    'parent_code': row[4],
-                    'hierarchy_level': row[5],  # Niveau dans la hiérarchie de l'arbre
-                    'parent_description': row[6]
-                })
+                    'parent_code': row[5],
+                    'parent_description': row[7],
+                    'hierarchy_level': 0  # Sera calculé après
+                }
+                
+                if row[3] == entity_type and main_entity is None:
+                    main_entity = EntityModel.from_db_row(row)
+                
+                hierarchy.append(entity_data)
+            
+            # Calculer les niveaux hiérarchiques
+            if main_entity:
+                for entity in hierarchy:
+                    if entity['code'] == main_entity.code:
+                        entity['hierarchy_level'] = 0
+                    elif entity['parent_code'] == main_entity.code:
+                        entity['hierarchy_level'] = 1
+                    elif any(h['code'] == entity['parent_code'] and h['hierarchy_level'] == 1 for h in hierarchy):
+                        entity['hierarchy_level'] = 2
+                    else:
+                        entity['hierarchy_level'] = 3
 
             response = {
-                "main_entity": main_entity.to_api_response(),
-                "hierarchy": hierarchy,
+                "main_entity": main_entity.to_api_response() if main_entity else None,
+                "hierarchy": sorted(hierarchy, key=lambda x: (x['hierarchy_level'], x['entity_level'])),
                 "count": len(hierarchy),
                 "entity_type": entity_type,
                 "total_levels": max([h['hierarchy_level'] for h in hierarchy]) + 1 if hierarchy else 1
