@@ -265,20 +265,41 @@ class ZoneModel(BaseModel):
     """
     Modèle pour les zones géographiques.
     """
-    name: str = Field(..., description="Nom de la zone")
-    count: Optional[int] = Field(None, description="Nombre d'équipements dans cette zone")
-
+    id: str = Field(..., description="Identifiant unique de la zone")
+    code: str = Field(..., description="Code de la zone")
+    description: str = Field(..., description="Description de la zone")
+    entity: Optional[str] = Field(None, description="Entité associée à la zone")
+    
     @classmethod
     def from_db_row(cls, row: tuple) -> 'ZoneModel':
         """Crée une instance ZoneModel à partir d'une ligne de DB"""
         return cls(
-            name=str(row[0]) if row[0] is not None else "",
-            count=int(row[1]) if len(row) > 1 and row[1] is not None else None
+            id=str(row[0]) if row[0] is not None else "",
+            code=str(row[1]) if row[1] is not None else "",
+            description=str(row[2]) if row[2] is not None else "",
+            entity=str(row[3]) if len(row) > 3 and row[3] is not None else None
         )
-
+    
     def to_dict(self) -> Dict[str, Any]:
         """Convertit en dictionnaire"""
         return self.dict(exclude_none=True)
+    
+    def to_api_response(self) -> Dict[str, Any]:
+        """Convertit en format de réponse API"""
+        return {
+            'id': self.id,
+            'code': self.code,
+            'description': self.description,
+            'entity': self.entity
+        }
+    
+    def __str__(self) -> str:
+        """Représentation string de la zone"""
+        return f"Zone({self.code} - {self.description})"
+    
+    def __repr__(self) -> str:
+        """Représentation détaillée de la zone"""
+        return f"ZoneModel(id={self.id}, code={self.code}, entity={self.entity})"
 
 
 class FamilleModel(BaseModel):
