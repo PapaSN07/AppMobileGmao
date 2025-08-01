@@ -1,5 +1,5 @@
 from app.db.database import get_database_connection
-from app.core.config import CACHE_TTL_LONG
+from app.core.config import CACHE_TTL_SHORT
 from app.core.cache import cache
 from app.models.models import UniteModel
 from app.db.requests import FUNCTION_QUERY
@@ -28,7 +28,7 @@ def get_unites() -> Dict[str, Any]:
                     continue
 
             response = {"unites": unites, "count": len(unites)}
-            cache.set("mobile_unites", response, CACHE_TTL_LONG)
+            cache.set("mobile_unites", response, CACHE_TTL_SHORT)
             return response
     except Exception as e:
         logger.error(f"❌ Erreur unités: {e}")

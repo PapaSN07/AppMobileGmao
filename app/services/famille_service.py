@@ -1,5 +1,5 @@
 from app.db.database import get_database_connection
-from app.core.config import CACHE_TTL_LONG
+from app.core.config import CACHE_TTL_SHORT
 from app.core.cache import cache
 from app.models.models import FamilleModel
 from app.db.requests import CATEGORY_QUERY
@@ -28,7 +28,7 @@ def get_familles() -> Dict[str, Any]:
                     continue
 
             response = {"familles": familles, "count": len(familles)}
-            cache.set("mobile_familles", response, CACHE_TTL_LONG)
+            cache.set("mobile_familles", response, CACHE_TTL_SHORT)
             return response
     except Exception as e:
         logger.error(f"❌ Erreur familles: {e}")

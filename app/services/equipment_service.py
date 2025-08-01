@@ -1,5 +1,5 @@
 from app.db.database import get_database_connection
-from app.core.config import CACHE_TTL_MEDIUM, CACHE_TTL_LONG
+from app.core.config import CACHE_TTL_SHORT
 from app.models.models import EquipmentModel
 from app.services.famille_service import get_familles
 from app.db.requests import (EQUIPMENT_INFINITE_QUERY, EQUIPMENT_BY_ID_QUERY)
@@ -91,7 +91,7 @@ def get_equipments_infinite(
             # Log pour debug
             logger.info(f"✅ Infinite scroll: {len(equipments)} équipements récupérés sur {limit} demandés, has_more: {has_more}")
             
-            cache.set(cache_key, response, CACHE_TTL_MEDIUM)
+            cache.set(cache_key, response, CACHE_TTL_SHORT)
             return response
             
     except Exception as e:
@@ -114,7 +114,7 @@ def get_zones() -> Dict[str, Any]:
             zones = [{"name": row[0], "count": row[1]} for row in results]
             
             response = {"zones": zones, "count": len(zones)}
-            cache.set("mobile_zones", response, CACHE_TTL_LONG)
+            cache.set("mobile_zones", response, CACHE_TTL_SHORT)
             return response
     except Exception as e:
         logger.error(f"❌ Erreur zones: {e}")
@@ -134,7 +134,7 @@ def get_entities() -> Dict[str, Any]:
             entities = [{"name": row[0], "count": row[1]} for row in results]
             
             response = {"entities": entities, "count": len(entities)}
-            cache.set("mobile_entities", response, CACHE_TTL_LONG)
+            cache.set("mobile_entities", response, CACHE_TTL_SHORT)
             return response
     except Exception as e:
         logger.error(f"❌ Erreur entités: {e}")
@@ -179,7 +179,7 @@ def get_equipment_by_id(equipment_id: str) -> Optional[Dict[str, Any]]:
                 ]  # À adapter selon vos besoins
             }
             
-            cache.set(cache_key, detail, CACHE_TTL_LONG)
+            cache.set(cache_key, detail, CACHE_TTL_SHORT)
             return detail
             
     except Exception as e:
@@ -206,7 +206,7 @@ def get_equipment_stats() -> Dict[str, Any]:
             
             stats['last_updated'] = db.execute_query("SELECT SYSDATE FROM DUAL")[0][0]
             
-            cache.set("mobile_stats", stats, CACHE_TTL_LONG)
+            cache.set("mobile_stats", stats, CACHE_TTL_SHORT)
             return stats
             
     except Exception as e:

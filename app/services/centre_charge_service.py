@@ -1,6 +1,6 @@
 from app.db.database import get_database_connection
 from app.models.models import CentreChargeModel
-from app.core.config import CACHE_TTL_LONG
+from app.core.config import CACHE_TTL_SHORT
 from app.db.requests import COSTCENTRE_QUERY
 from app.core.cache import cache
 from typing import Any, Dict, List
@@ -44,7 +44,7 @@ def get_centre_charges(limit: int = 20) -> Dict[str, Any]:
                 "total_available": _get_total_count()  # Nombre total en DB
             }
             
-            cache.set(cache_key, response, CACHE_TTL_LONG)
+            cache.set(cache_key, response, CACHE_TTL_SHORT)
             logger.info(f"✅ {len(centre_charges)} centres de charge récupérés")
             return response
             

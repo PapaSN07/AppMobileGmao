@@ -1,6 +1,6 @@
 from app.db.database import get_database_connection
 from app.models.models import UserModel
-from app.core.config import CACHE_TTL_LONG
+from app.core.config import CACHE_TTL_SHORT
 from app.core.cache import cache
 from app.db.requests import (GET_USER_AUTHENTICATION_QUERY, UPDATE_USER_QUERY, GET_USER_CONNECT_QUERY)
 import logging
@@ -67,7 +67,7 @@ def authenticate_user(login: str, password: str) -> UserModel:
                 update_user(user)  # Mettre à jour l'utilisateur pour marquer comme absent
 
                 # Mettre en cache le résultat
-                cache.set(cache_key, user, CACHE_TTL_LONG)
+                cache.set(cache_key, user, CACHE_TTL_SHORT)
                 logger.info(f"Utilisateur {login} authentifié avec succès.")
                 return user
             else:

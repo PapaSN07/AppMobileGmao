@@ -19,8 +19,8 @@ ORDER BY mdct_level, mdct_code
 # --- Feeder (Équipements de référence)
 FEEDER_QUERY = """
 SELECT
-    ereq_code AS Code_Equipement_GMAO_REFERENCE,
-    ereq_description AS Nom_Equipement,
+    ereq_code AS Code_Equipment_GMAO_REFERENCE,
+    ereq_description AS Nom_Equipment,
     ereq_entity
 FROM coswin.t_equipment
 WHERE ereq_category IN (
@@ -65,6 +65,11 @@ SELECT
     (SELECT e1.chen_description FROM coswin.entity e1 WHERE e1.chen_code = e.chen_parent_entity AND e.chen_level > 1) AS ParentDescription
 FROM coswin.entity e
 ORDER BY e.chen_level, e.chen_code
+"""
+
+HIERARCHIC = """
+SELECT COLUMN_VALUE as entity_code 
+FROM TABLE(coswin.sn_hierarchie(:entity))
 """
 
 # --- Centre de charges
@@ -126,6 +131,7 @@ SELECT * FROM (
     FROM coswin.t_equipment
     WHERE 1=1
 """
+
 EQUIPMENT_BY_ID_QUERY = """
 SELECT 
     pk_equipment, ereq_parent_equipment, ereq_code, ereq_category, ereq_zone, 

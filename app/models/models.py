@@ -119,11 +119,12 @@ class EquipmentModel(BaseModel):
             'entity': self.entity,
             'unite': self.unite,
             'description': self.description[:100] + '...' if len(self.description) > 100 else self.description,
+            'centre_charge': self.centreCharge,
+            'feeder': self.feeder,
+            'feeder_description': self.feederDescription,
             'has_coordinates': bool(self.longitude and self.latitude),
-            'coordinates': {
-                'lat': float(self.latitude) if self.latitude else None,
-                'lng': float(self.longitude) if self.longitude else None
-            } if self.longitude and self.latitude else None
+            'longitude': float(self.longitude) if self.longitude else None,
+            'latitude': float(self.latitude) if self.latitude else None,
         }
 
     def to_mobile_detail(self) -> Dict[str, Any]:

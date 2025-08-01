@@ -1,5 +1,5 @@
 from app.db.database import get_database_connection
-from app.core.config import CACHE_TTL_LONG
+from app.core.config import CACHE_TTL_SHORT
 from app.core.cache import cache
 from app.models.models import ZoneModel
 from app.db.requests import ZONE_QUERY
@@ -28,7 +28,7 @@ def get_zones() -> Dict[str, Any]:
                     continue
 
             response = {"zones": zones, "count": len(zones)}
-            cache.set("mobile_zones", response, CACHE_TTL_LONG)
+            cache.set("mobile_zones", response, CACHE_TTL_SHORT)
             return response
     except Exception as e:
         logger.error(f"❌ Erreur zones: {e}")
