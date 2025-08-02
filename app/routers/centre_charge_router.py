@@ -20,11 +20,10 @@ centre_charge_router = APIRouter(
 )
 async def get_centre_charge_mobile(
     entity: str = Query(..., description="Entité obligatoire (hiérarchie automatique)"),
-    limit: int = Query(20, ge=10, le=100, description="Nombre d'éléments (10-100)")
 ) -> Dict[str, Any]:
     """Liste des centres de charge pour mobile"""
     try:
-        result = get_centre_charges(entity=entity, limit=limit)
+        result = get_centre_charges(entity=entity)
         
         return {
             "status": "success",
@@ -33,7 +32,6 @@ async def get_centre_charge_mobile(
                 "centre_charges": result["centre_charges"],
                 "pagination": {
                     "count": result["count"],
-                    "limit": limit,
                     "total_available": result.get("total_available", result["count"])
                 }
             }

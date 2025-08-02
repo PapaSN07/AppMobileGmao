@@ -8,12 +8,12 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def get_centre_charges(entity: str, limit: int = 20) -> Dict[str, Any]:
+def get_centre_charges(entity: str) -> Dict[str, Any]:
     """Récupère les centres de charge depuis la base de données."""
     # Import local pour éviter les imports circulaires
     from app.services.entity_service import get_hierarchy
-    
-    cache_key = f"mobile_centre_charges_{limit}_{entity}"
+
+    cache_key = f"mobile_centre_charges_{entity}"
     cached = cache.get_data_only(cache_key)
     if cached:
         return cached
@@ -50,7 +50,7 @@ def get_centre_charges(entity: str, limit: int = 20) -> Dict[str, Any]:
 
             query += f" ORDER BY mdcc_entity, mdcc_code"
             
-            results = db.execute_query(query, params=params, limit=limit)
+            results = db.execute_query(query, params=params)
             centre_charges = []
             
             for row in results:
