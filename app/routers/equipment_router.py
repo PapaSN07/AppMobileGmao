@@ -4,12 +4,7 @@ import logging
 
 from app.services.equipment_service import (
     get_equipments_infinite,
-    get_zones,
-    get_familles,
-    get_entities,
-    get_equipment_by_id,
-    get_equipment_stats,
-    refresh_reference_data
+    get_equipment_by_id
 )
 
 logger = logging.getLogger(__name__)
@@ -28,8 +23,6 @@ equipment_router = APIRouter(
 )
 async def get_equipments_mobile(
     entity: str = Query(..., description="Entité obligatoire (hiérarchie automatique)"),
-    limit: int = Query(20, ge=10, le=50, description="Nombre d'éléments (10-50)"),
-    cursor: Optional[str] = Query(None, description="Curseur de pagination"),
     zone: Optional[str] = Query(None, description="Filtre zone"),
     famille: Optional[str] = Query(None, description="Filtre famille"),
     search: Optional[str] = Query(None, description="Recherche textuelle")
@@ -38,8 +31,6 @@ async def get_equipments_mobile(
     try:
         result = get_equipments_infinite(
             entity=entity,
-            cursor=cursor,
-            limit=limit,
             zone=zone,
             famille=famille,
             search_term=search
@@ -71,40 +62,3 @@ async def get_equipment_detail(equipment_id: str) -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"❌ Erreur détail: {e}")
         raise HTTPException(status_code=500, detail="Erreur récupération équipement")
-
-# === DONNÉES DE RÉFÉRENCE ===
-
-@equipment_router.get("/reference/sync")
-async def sync_reference_data() -> Dict[str, Any]:
-    """Synchronisation des données de référence pour mobile"""
-    try:
-        zones = get_zones()
-        familles = get_familles()
-        entities = get_entities()
-        stats = get_equipment_stats()
-        
-        return {
-            "zones": zones["zones"],
-            "familles": familles["familles"], 
-            "entities": entities["entities"],
-            "stats": {
-                "total_equipments": stats["total_count"],
-                "last_updated": stats["last_updated"]
-            },
-            "cache_version": "1.0"
-        }
-    except Exception as e:
-        logger.error(f"❌ Erreur sync: {e}")
-        raise HTTPException(status_code=500, detail="Erreur synchronisation")
-
-# === ADMINISTRATION MINIMALE ===
-
-@equipment_router.post("/admin/refresh")
-async def refresh_data() -> Dict[str, Any]:
-    """Rafraîchissement des données"""
-    try:
-        result = refresh_reference_data()
-        return {"status": "success", "message": "Données rafraîchies"}
-    except Exception as e:
-        logger.error(f"❌ Erreur refresh: {e}")
-        raise HTTPException(status_code=500, detail="Erreur rafraîchissement")

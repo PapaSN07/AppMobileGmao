@@ -112,8 +112,8 @@ async def health():
 
 # Inclusion du routeur
 PREFIX = "/api/v1"
-app.include_router(equipment_router, prefix=PREFIX)
 app.include_router(authenticate_user_router, prefix=PREFIX)
+app.include_router(equipment_router, prefix=PREFIX)
 app.include_router(entity_router, prefix=PREFIX)
 app.include_router(centre_charge_router, prefix=PREFIX)
 app.include_router(famille_router, prefix=PREFIX)

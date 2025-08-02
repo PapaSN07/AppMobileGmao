@@ -26,7 +26,7 @@ class EquipmentModel(BaseModel):
         validate_assignment = True   # Valide lors des assignations
         use_enum_values = True      # Utilise les valeurs des enums
         
-    @validator('id', 'code', 'famille', 'zone', 'entity', 'unite', 'centreCharge', 'description')
+    @validator('id', 'code', 'famille', 'zone', 'entity', 'unite', 'centreCharge')
     def validate_required_fields(cls, v):
         """Valide que les champs obligatoires ne sont pas vides"""
         if not v or v.strip() == "":
@@ -108,24 +108,6 @@ class EquipmentModel(BaseModel):
     def __repr__(self) -> str:
         """Représentation détaillée de l'équipement"""
         return f"EquipmentModel(id={self.id}, code={self.code}, zone={self.zone})"
-
-    def to_mobile_dict(self) -> Dict[str, Any]:
-        """Format optimisé pour liste mobile"""
-        return {
-            'id': self.id,
-            'code': self.code,
-            'famille': self.famille,
-            'zone': self.zone,
-            'entity': self.entity,
-            'unite': self.unite,
-            'description': self.description[:100] + '...' if len(self.description) > 100 else self.description,
-            'centre_charge': self.centreCharge,
-            'feeder': self.feeder,
-            'feeder_description': self.feederDescription,
-            'has_coordinates': bool(self.longitude and self.latitude),
-            'longitude': float(self.longitude) if self.longitude else None,
-            'latitude': float(self.latitude) if self.latitude else None,
-        }
 
     def to_mobile_detail(self) -> Dict[str, Any]:
         """Format détaillé pour mobile"""
@@ -510,6 +492,48 @@ class UniteModel(BaseModel):
     def __repr__(self) -> str:
         """Représentation détaillée de l'unité"""
         return f"UniteModel(id={self.id}, code={self.code}, entity={self.entity}, parent_entity={self.parent_entity}, system_entity={self.system_entity})"
+
+
+class FeederModel(BaseModel):
+    """
+    Modèle pour les feeders.
+    """
+    id: str = Field(..., description="Identifiant unique du feeder")
+    code: str = Field(..., description="Code du feeder")
+    description: str = Field(..., description="Description du feeder")
+    entity: Optional[str] = Field(None, description="Entité associée au feeder")
+    
+    @classmethod
+    def from_db_row(cls, row: tuple) -> 'FeederModel':
+        """Crée une instance FeederModel à partir d'une ligne de DB"""
+        return cls(
+            id=str(row[0]) if row[0] is not None else "",
+            code=str(row[1]) if row[1] is not None else "",
+            description=str(row[2]) if row[2] is not None else "",
+            entity=str(row[3]) if len(row) > 3 and row[3] is not None else None
+        )
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convertit en dictionnaire"""
+        return self.dict(exclude_none=True)
+    
+    def to_api_response(self) -> Dict[str, Any]:
+        """Convertit en format de réponse API"""
+        return {
+            'id': self.id,
+            'code': self.code,
+            'description': self.description,
+            'entity': self.entity
+        }
+    
+    def __str__(self) -> str:
+        """Représentation string du feeder"""
+        return f"Feeder({self.code} - {self.description})"
+    
+    def __repr__(self) -> str:
+        """Représentation détaillée du feeder"""
+        return f"FeederModel(id={self.id}, code={self.code}, entity={self.entity})"
+
 
 class EquipmentFilterModel(BaseModel):
     """

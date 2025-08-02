@@ -18,6 +18,7 @@ FROM coswin.category
 # --- Feeder (Équipements de référence)
 FEEDER_QUERY = """
 SELECT
+    pk_equipment,
     ereq_code AS Code_Equipment_GMAO_REFERENCE,
     ereq_description AS Nom_Equipment,
     ereq_entity
