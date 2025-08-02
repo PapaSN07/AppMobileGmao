@@ -37,7 +37,6 @@ SELECT
     mdzo_description,
     mdzo_entity 
 FROM coswin.zone
-ORDER BY mdzo_entity, mdzo_code
 """
 
 # --- Entité

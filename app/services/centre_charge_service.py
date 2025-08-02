@@ -40,7 +40,6 @@ def get_centre_charges(entity: str) -> Dict[str, Any]:
     
     try:
         with get_database_connection() as db:
-            
             # Filtre par hiérarchie d'entités (OBLIGATOIRE)
             placeholders = ','.join([f':entity_{i}' for i in range(len(hierarchy_entities))])
             query += f" WHERE mdcc_entity IN ({placeholders})"
