@@ -14,7 +14,7 @@ unite_router = APIRouter(
 )
 
 # === ENDPOINTS CORE POUR MOBILE ===
-@unite_router.get("/",
+@unite_router.get("",
     summary="Liste des unités",
     description="Récupère la liste des unités pour mobile"
 )

@@ -18,29 +18,21 @@ entity_router = APIRouter(
 
 # === ENDPOINTS CORE POUR MOBILE ===
 
-@entity_router.get("/",
+@entity_router.get("",
     summary="Liste des entités",
     description="Récupère la liste des entités pour mobile"
 )
 async def get_entity_mobile(
-    limit: int = Query(20, ge=10, le=100, description="Nombre d'éléments (10-100)"),
-    code: str = Query(..., description="Code de l'entité à récupérer")
+    entity: str = Query(..., description="Entité de l'entité à récupérer")
 ) -> Dict[str, Any]:
     """Liste des entités pour mobile"""
     try:
-        result = get_entities(limit=limit, code=code)
+        result = get_entities(entity=entity)
 
         return {
             "status": "success",
             "message": "Entités récupérées avec succès",
-            "data": {
-                "entities": result["entities"],
-                "pagination": {
-                    "count": result["count"],
-                    "limit": limit,
-                    "total_available": result.get("total_available", result["count"])
-                }
-            }
+            "data": result
         }
         
     except oracledb.DatabaseError as e:

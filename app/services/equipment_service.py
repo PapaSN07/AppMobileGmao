@@ -102,9 +102,9 @@ def get_equipments_infinite(
         logger.error(f"❌ Erreur infinite scroll pour {entity}: {e}")
         raise
 
-def get_equipment_by_id(equipment_id: str) -> Optional[Dict[str, Any]]:
+def get_equipment_by_id(code: str) -> Optional[Dict[str, Any]]:
     """Détail équipement pour mobile avec feeder corrigé"""
-    cache_key = f"mobile_eq_detail_{equipment_id}"
+    cache_key = f"mobile_eq_detail_{code}"
     cached = cache.get_data_only(cache_key)
     if cached:
         return cached
@@ -113,7 +113,7 @@ def get_equipment_by_id(equipment_id: str) -> Optional[Dict[str, Any]]:
     
     try:
         with get_database_connection() as db:
-            results = db.execute_query(query, params={'equipment_id': equipment_id})
+            results = db.execute_query(query, params={'code': code})
             
             if not results:
                 return None

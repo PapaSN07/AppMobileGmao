@@ -14,7 +14,7 @@ centre_charge_router = APIRouter(
 )
 
 # === ENDPOINTS CORE POUR MOBILE ===
-@centre_charge_router.get("/",
+@centre_charge_router.get("",
     summary="Liste des centres de charge",
     description="Récupère la liste des centres de charge pour mobile"
 )

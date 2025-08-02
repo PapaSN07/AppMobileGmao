@@ -14,7 +14,7 @@ zone_router = APIRouter(
 )
 
 # === ENDPOINTS CORE POUR MOBILE ===
-@zone_router.get("/",
+@zone_router.get("",
     summary="Liste des zones",
     description="Récupère la liste des zones pour mobile"
 )

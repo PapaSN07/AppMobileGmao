@@ -14,7 +14,7 @@ famille_router = APIRouter(
 )
 
 # === ENDPOINTS CORE POUR MOBILE ===
-@famille_router.get("/",
+@famille_router.get("",
     summary="Liste des familles",
     description="Récupère la liste des familles pour mobile"
 )

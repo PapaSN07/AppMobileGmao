@@ -27,20 +27,6 @@ WHERE ereq_category LIKE :category
 ORDER BY ereq_code
 """
 
-BASE_FEEDER_QUERY = """
-SELECT
-    pk_equipment,
-    ereq_code AS Code_Equipment_GMAO_REFERENCE,
-    ereq_description AS Nom_Equipment,
-    ereq_entity
-FROM coswin.t_equipment
-WHERE ereq_category IN (
-    'DEPART30KV',   -- Feeder 30kV
-    'DEPART6,6KV'   -- Feeder 6,6kV
-)
-ORDER BY ereq_code
-"""
-
 # --- Zone
 ZONE_QUERY = """
 SELECT 
@@ -62,8 +48,6 @@ SELECT
     chen_parent_entity,
     chen_system_entity
 FROM coswin.entity
-WHERE chen_code IN (:placeholders)
-ORDER BY chen_level, chen_code
 """
 
 HIERARCHIC = """
@@ -124,7 +108,7 @@ SELECT
     (SELECT pk_equipment FROM coswin.t_equipment t2 WHERE coswin.t_equipment.ereq_string2 = t2.ereq_code) as feeder,
     (SELECT ereq_description FROM coswin.t_equipment t2 WHERE coswin.t_equipment.ereq_string2 = t2.ereq_code) as feeder_description
 FROM coswin.t_equipment 
-WHERE pk_equipment = :equipment_id
+WHERE ereq_code = :code
 """
 
 

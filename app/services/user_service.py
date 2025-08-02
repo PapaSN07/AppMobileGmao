@@ -25,7 +25,7 @@ def authenticate_user(username: str, password: str) -> UserModel:
             if results:
                 user = UserModel.from_db_row(results[0])
                 cache_key = f"user_hierarchy_{user.code}"
-                cached = cache.set(cache_key)
+                cache.set(cache_key, user, CACHE_TTL_SHORT)
                 
                 logger.info(f"Utilisateur {username} authentifié avec succès.")
                 return user

@@ -76,7 +76,17 @@ async def root():
         "api": "GMAO Mobile API",
         "version": "1.0.0",
         "status": "running",
-        "endpoints": "/api/v1/equipments"
+        "endpoints": {
+            "equipments": "/api/v1/equipments",
+            "equipment_detail": "/api/v1/equipments/{equipment_id}",
+            "feeders": "/api/v1/equipments/feeders/{famille}",
+            "zones": "/api/v1/zones",
+            "entities": "/api/v1/entities",
+            "costcentres": "/api/v1/costcentres",
+            "functions": "/api/v1/functions",
+            "families": "/api/v1/families",
+            "units": "/api/v1/units"
+        },
     }
 
 @app.get("/health")

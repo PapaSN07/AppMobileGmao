@@ -18,7 +18,7 @@ equipment_router = APIRouter(
 
 # === ENDPOINTS CORE POUR MOBILE ===
 
-@equipment_router.get("/", 
+@equipment_router.get("", 
     summary="Infinite scroll pour mobile avec hiérarchie",
     description="Endpoint principal pour l'infinite scroll mobile avec hiérarchie d'entité obligatoire"
 )
@@ -47,14 +47,14 @@ async def get_equipments_mobile(
         logger.error(f"❌ Erreur: {e}")
         raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
 
-@equipment_router.get("/{equipment_id}",
-    summary="Récupérer un équipement par ID",
+@equipment_router.get("/{code}",
+    summary="Récupérer un équipement par code",
     description="Récupère les détails complets d'un équipement spécifique"
 )
-async def get_equipment_detail(equipment_id: str) -> Dict[str, Any]:
+async def get_equipment_detail(code: str) -> Dict[str, Any]:
     """Détails d'un équipement"""
     try:
-        equipment = get_equipment_by_id(equipment_id)
+        equipment = get_equipment_by_id(code)
         if not equipment:
             raise HTTPException(status_code=404, detail="Équipement non trouvé")
         return {"equipment": equipment}
