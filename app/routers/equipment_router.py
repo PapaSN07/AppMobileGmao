@@ -4,7 +4,8 @@ import logging
 
 from app.services.equipment_service import (
     get_equipments_infinite,
-    get_equipment_by_id
+    get_equipment_by_id,
+    get_feeders
 )
 
 logger = logging.getLogger(__name__)
@@ -62,3 +63,24 @@ async def get_equipment_detail(equipment_id: str) -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"❌ Erreur détail: {e}")
         raise HTTPException(status_code=500, detail="Erreur récupération équipement")
+
+@equipment_router.get("/feeders/{famille}",
+    summary="Récupérer les feeders",
+    description="Récupère la liste des équipements de type feeder"
+)
+async def get_feeders_mobile(famille: str) -> Dict[str, Any]:
+    """Liste des feeders"""
+    try:
+        result = get_feeders(famille)
+        return {
+            "status": "success",
+            "message": f"Feeders récupérés pour la catégorie {famille}",
+            "data": result
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Erreur récupération feeders: {e}")
+        raise HTTPException(status_code=500, detail=f"Erreur récupération feeders: {str(e)}")
+    

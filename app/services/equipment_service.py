@@ -1,16 +1,14 @@
 from app.db.database import get_database_connection
 from app.core.config import CACHE_TTL_SHORT
-from app.models.models import EquipmentModel
-from app.services.famille_service import get_familles
-from app.db.requests import (EQUIPMENT_INFINITE_QUERY, EQUIPMENT_BY_ID_QUERY)
+from app.models.models import (EquipmentModel, FeederModel)
+from app.db.requests import (EQUIPMENT_INFINITE_QUERY, EQUIPMENT_BY_ID_QUERY, FEEDER_QUERY)
 from app.core.cache import cache
-from typing import List, Dict, Any, Optional
+from typing import Dict, Any, Optional
 import logging
 
 logger = logging.getLogger(__name__)
 
 # === FONCTION PRINCIPALE POUR MOBILE ===
-
 def get_equipments_infinite(
     entity: str,
     zone: Optional[str] = None,
@@ -148,4 +146,27 @@ def get_equipment_by_id(equipment_id: str) -> Optional[Dict[str, Any]]:
             
     except Exception as e:
         logger.error(f"❌ Erreur détail équipement: {e}")
+        raise
+
+def get_feeders(famille: str) -> Dict[str, Any]:
+    """Récupère la liste des feeders."""
+    cache_key = f"feeders_list_{famille}"
+    cached = cache.get_data_only(cache_key)
+    if cached:
+        return cached
+
+    query = FEEDER_QUERY
+    params = {'category': famille}
+
+    try:
+        with get_database_connection() as db:
+            results = db.execute_query(query, params=params)
+
+            feeders = [FeederModel.from_db_row(row) for row in results]
+
+            response = {"feeders": feeders, "count": len(feeders)}
+            cache.set(cache_key, response, CACHE_TTL_SHORT)
+            return response
+    except Exception as e:
+        logger.error(f"❌ Erreur récupération feeders: {e}")
         raise

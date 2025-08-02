@@ -23,6 +23,17 @@ SELECT
     ereq_description AS Nom_Equipment,
     ereq_entity
 FROM coswin.t_equipment
+WHERE ereq_category LIKE :category
+ORDER BY ereq_code
+"""
+
+BASE_FEEDER_QUERY = """
+SELECT
+    pk_equipment,
+    ereq_code AS Code_Equipment_GMAO_REFERENCE,
+    ereq_description AS Nom_Equipment,
+    ereq_entity
+FROM coswin.t_equipment
 WHERE ereq_category IN (
     'DEPART30KV',   -- Feeder 30kV
     'DEPART6,6KV'   -- Feeder 6,6kV
