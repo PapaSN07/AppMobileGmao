@@ -9,6 +9,7 @@ from app.routers.user_router import authenticate_user_router
 from app.routers.centre_charge_router import centre_charge_router
 from app.routers.famille_router import famille_router
 from app.routers.entity_router import entity_router
+from app.routers.unite_router import unite_router
 from app.core.cache import cache
 from app.db.database import test_connection
 
@@ -115,6 +116,7 @@ app.include_router(authenticate_user_router, prefix=PREFIX)
 app.include_router(entity_router, prefix=PREFIX)
 app.include_router(centre_charge_router, prefix=PREFIX)
 app.include_router(famille_router, prefix=PREFIX)
+app.include_router(unite_router, prefix=PREFIX)
 
 if __name__ == "__main__":
     import uvicorn

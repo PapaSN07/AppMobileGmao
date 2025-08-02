@@ -80,7 +80,6 @@ SELECT
     mdfn_parent_function,
     mdfn_system_function 
 FROM coswin.function_
-ORDER BY mdfn_entity, mdfn_code
 """
 
 # === REQUÊTES POUR LES SERVICES BACKEND ===
