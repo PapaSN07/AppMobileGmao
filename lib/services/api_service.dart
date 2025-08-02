@@ -51,7 +51,7 @@ class ApiService {
       baseUrl = 'http://localhost:$port';
     } else if (Platform.isAndroid) {
       // Pour Android (émulateur) - utilise l'adresse de pont
-      baseUrl = 'http://10.217.24.22:$port';
+      baseUrl = 'http://10.0.2.2:$port';
     } else if (Platform.isIOS) {
       // Détecter si on est sur simulateur ou appareil physique
       if (_isSimulator()) {
@@ -100,7 +100,8 @@ class ApiService {
     _dio.interceptors.add(LogInterceptor(
       requestBody: true,
       responseBody: true,
-      logPrint: (obj) {
+      // Message verbeux pour le logging
+      logPrint: (obj) { 
         if (kDebugMode) {
           print('🌐 ApiService: $obj');
         }

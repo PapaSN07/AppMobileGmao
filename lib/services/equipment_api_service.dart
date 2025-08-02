@@ -17,21 +17,19 @@ class EquipmentApiService {
 
   /// Récupère la liste des équipements avec pagination et filtres
   Future<ApiResponse<Equipment>> getEquipments({
-    String? cursor,
-    int limit = 20,
     String? zone,
     String? famille,
     String? entity,
     String? search,
+    String? description,
   }) async {
     try {
       final queryParams = <String, dynamic>{
-        'limit': limit,
-        if (cursor != null) 'cursor': cursor,
         if (zone != null) 'zone': zone,
         if (famille != null) 'famille': famille,
         if (entity != null) 'entity': entity,
         if (search != null) 'search': search,
+        if (description != null) 'description': description,
       };
       
       if (kDebugMode) {
@@ -49,13 +47,13 @@ class EquipmentApiService {
   }
 
   /// Récupère les détails d'un équipement spécifique
-  Future<Equipment> getEquipmentDetail(String id) async {
+  Future<Equipment> getEquipmentDetail(String code) async {
     try {
       if (kDebugMode) {
-        print('🔍 EquipmentApi - Récupération détail équipement: $id');
+        print('🔍 EquipmentApi - Récupération détail équipement: $code');
       }
       
-      final data = await _apiService.get('/api/v1/equipments/$id');
+      final data = await _apiService.get('/api/v1/equipments/$code');
       return Equipment.fromJson(data['equipment']);
     } catch (e) {
       if (kDebugMode) {
@@ -100,60 +98,19 @@ class EquipmentApiService {
   }
 
   /// Met à jour un équipement existant
-  Future<Equipment> updateEquipment(String id, Map<String, dynamic> updatedFields) async {
+  Future<Equipment> updateEquipment(String code, Map<String, dynamic> updatedFields) async {
     try {
       if (kDebugMode) {
-        print('🔄 EquipmentApi - Mise à jour équipement: $id');
+        print('🔄 EquipmentApi - Mise à jour équipement: $code');
       }
-      
-      final data = await _apiService.patch('/api/v1/equipments/$id', data: updatedFields);
+
+      final data = await _apiService.patch('/api/v1/equipments/$code', data: updatedFields);
       return Equipment.fromJson(data);
     } catch (e) {
       if (kDebugMode) {
         print('❌ EquipmentApi - Erreur updateEquipment: $e');
       }
       rethrow;
-    }
-  }
-
-  /// Supprime un équipement
-  Future<void> deleteEquipment(String id) async {
-    try {
-      if (kDebugMode) {
-        print('🗑️ EquipmentApi - Suppression équipement: $id');
-      }
-      
-      await _apiService.delete('/api/v1/equipments/$id');
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ EquipmentApi - Erreur deleteEquipment: $e');
-      }
-      rethrow;
-    }
-  }
-
-  /// Vérifie l'état de santé de l'API
-  Future<bool> healthCheck() async {
-    try {
-      return await _apiService.testConnection(endpoint: '/health');
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ EquipmentApi - Health check failed: $e');
-      }
-      return false;
-    }
-  }
-
-  /// Teste la connexion spécifiquement aux équipements
-  Future<bool> testEquipmentEndpoint() async {
-    try {
-      await _apiService.get('/api/v1/equipments/', queryParameters: {'limit': 1});
-      return true;
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ EquipmentApi - Test endpoint failed: $e');
-      }
-      return false;
     }
   }
 

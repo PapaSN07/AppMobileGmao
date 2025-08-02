@@ -47,6 +47,5 @@ app.*.map.json
 flutter/
 .vscode/
 mocks/
-bon_info.plist
 update_ip.sh
-note_hive.md
+note_ldap.md
