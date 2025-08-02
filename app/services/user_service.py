@@ -2,6 +2,7 @@ from app.db.database import get_database_connection
 from app.models.models import UserModel
 from app.core.config import CACHE_TTL_SHORT
 from app.core.cache import cache
+from app.schemas.rest_response import create_simple_response
 from app.db.requests import (GET_USER_AUTHENTICATION_QUERY, UPDATE_USER_QUERY, GET_USER_CONNECT_QUERY)
 import logging
 import oracledb
@@ -28,10 +29,16 @@ def authenticate_user(username: str, password: str) -> UserModel:
                 cache.set(cache_key, user, CACHE_TTL_SHORT)
                 
                 logger.info(f"Utilisateur {username} authentifié avec succès.")
-                return user
+                return create_simple_response(
+                    message="Authentification réussie",
+                    data=user.to_mobile_dict(),
+                )
             else:
                 logger.warning(f"Échec de l'authentification pour {username}.")
-                return None
+                return create_simple_response(
+                    message="Identifiants invalides",
+                    data=None,
+                )
     except oracledb.DatabaseError as e:
         logger.error(f"❌ Erreur base de données: {e}")
         raise

@@ -206,10 +206,7 @@ class UserModel(BaseModel):
         Returns:
             Dictionnaire formaté pour l'API
         """
-        data = self.to_dict()
-        # Ajouter des métadonnées utiles
-        data['has_image'] = bool(self.url_image)
-        return data
+        return self.to_dict()
     
     def __str__(self) -> str:
         """Représentation string de l'utilisateur"""
@@ -224,6 +221,7 @@ class UserModel(BaseModel):
         return {
             'id': self.id,
             'username': self.username,
+            'code': self.code,
             'email': self.email,
             'entity': self.entity,
             'group': self.group,

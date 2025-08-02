@@ -37,10 +37,7 @@ async def login_user(
             raise HTTPException(status_code=401, detail="Identifiants invalides")
         logger.info(f"Utilisateur {username} authentifié avec succès")
         
-        return create_simple_response(
-            message="Authentification réussie",
-            data=user.to_api_response(),
-        )
+        return user
         
     except oracledb.DatabaseError as e:
         logger.error(f"❌ Erreur base de données: {e}")
