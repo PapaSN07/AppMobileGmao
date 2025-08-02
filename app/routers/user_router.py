@@ -23,19 +23,19 @@ authenticate_user_router = APIRouter(
     description="Authentifie un utilisateur avec login et mot de passe"
 )
 async def login_user(
-    login: str = Query(..., description="Identifiant de l'utilisateur"),
+    username: str = Query(..., description="Identifiant de l'utilisateur"),
     password: str = Query(..., description="Mot de passe de l'utilisateur")
 ) -> Dict[str, Any]:
     """Authentification utilisateur"""
     try:
-        if not login or not password:
-            logger.warning("Login ou mot de passe manquant.")
-            raise HTTPException(status_code=400, detail="Login et mot de passe requis")
-        
-        user = authenticate_user(login, password)
+        if not username or not password:
+            logger.warning("Username ou mot de passe manquant.")
+            raise HTTPException(status_code=400, detail="Username et mot de passe requis")
+
+        user = authenticate_user(username, password)
         if not user:
             raise HTTPException(status_code=401, detail="Identifiants invalides")
-        logger.info(f"Utilisateur {login} authentifié avec succès")
+        logger.info(f"Utilisateur {username} authentifié avec succès")
         
         return create_simple_response(
             message="Authentification réussie",
@@ -54,19 +54,21 @@ async def login_user(
     description="Déconnecte l'utilisateur en cours"
 )
 async def logout_user_endpoint(
-    login: str = Query(..., description="Identifiant de l'utilisateur")
+    username: str = Query(..., description="Identifiant de l'utilisateur")
 ) -> Dict[str, Any]:
     """Déconnexion utilisateur"""
     try:
-        if not login or login.strip() == "":
+        if not username or username.strip() == "":
             logger.warning("Login manquant ou invalide pour la déconnexion.")
             raise HTTPException(status_code=400, detail="Login requis pour la déconnexion")
-        success = logout_user(login)
+        
+        success = logout_user(username)
         if not success:
-            logger.warning(f"Échec de la déconnexion pour {login}.")
+            logger.warning(f"Échec de la déconnexion pour {username}.")
             raise HTTPException(status_code=500, detail="Erreur lors de la déconnexion")
-        logger.info(f"Utilisateur {login} déconnecté avec succès")
-        return {"message": "Déconnexion réussie"}
+        
+        logger.info(f"Utilisateur {username} déconnecté avec succès")
+        return {"status": "success", "message": "Déconnexion réussie"}
     except Exception as e:
         logger.error(f"❌ Erreur de déconnexion: {e}")
         raise HTTPException(status_code=500, detail="Erreur lors de la déconnexion")

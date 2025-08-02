@@ -307,6 +307,7 @@ class FamilleModel(BaseModel):
     """
     Modèle pour les familles d'équipements.
     """
+    id: str = Field(..., description="Identifiant unique de la famille")
     code: str = Field(..., description="Code de la famille")
     description: str = Field(..., description="Description de la famille")
     parent_category: Optional[str] = Field(None, description="Catégorie parent de la famille")
@@ -318,12 +319,13 @@ class FamilleModel(BaseModel):
     def from_db_row(cls, row: tuple) -> 'FamilleModel':
         """Crée une instance FamilleModel à partir d'une ligne de DB"""
         return cls(
-            code=str(row[0]) if row[0] is not None else "",
-            description=str(row[1]) if row[1] is not None else "",
-            parent_category=str(row[2]) if len(row) > 2 and row[2] is not None else None,
-            system_category=str(row[3]) if len(row) > 3 and row[3] is not None else None,
-            level=int(row[4]) if len(row) > 4 and row[4] is not None else None,
-            entity=str(row[5]) if len(row) > 5 and row[5] is not None else None
+            id=str(row[0]) if row[0] is not None else "",
+            code=str(row[1]) if row[1] is not None else "",
+            description=str(row[2]) if row[2] is not None else "",
+            parent_category=str(row[3]) if len(row) > 3 and row[3] is not None else None,
+            system_category=str(row[4]) if len(row) > 4 and row[4] is not None else None,
+            level=int(row[5]) if len(row) > 5 and row[5] is not None else None,
+            entity=str(row[6]) if len(row) > 6 and row[6] is not None else None
         )
     
     def to_dict(self) -> Dict[str, Any]:

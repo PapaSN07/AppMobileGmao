@@ -23,31 +23,37 @@ equipment_router = APIRouter(
 # === ENDPOINTS CORE POUR MOBILE ===
 
 @equipment_router.get("/", 
-    summary="Infinite scroll pour mobile",
-    description="Endpoint principal pour l'infinite scroll mobile avec filtres"
+    summary="Infinite scroll pour mobile avec hiérarchie",
+    description="Endpoint principal pour l'infinite scroll mobile avec hiérarchie d'entité obligatoire"
 )
 async def get_equipments_mobile(
-    cursor: Optional[str] = Query(None, description="Curseur de pagination"),
+    entity: str = Query(..., description="Entité obligatoire (hiérarchie automatique)"),
     limit: int = Query(20, ge=10, le=50, description="Nombre d'éléments (10-50)"),
+    cursor: Optional[str] = Query(None, description="Curseur de pagination"),
     zone: Optional[str] = Query(None, description="Filtre zone"),
     famille: Optional[str] = Query(None, description="Filtre famille"),
-    entity: Optional[str] = Query(None, description="Filtre entité"),
     search: Optional[str] = Query(None, description="Recherche textuelle")
 ) -> Dict[str, Any]:
-    """Endpoint principal optimisé pour mobile avec infinite scroll"""
+    """Endpoint principal optimisé pour mobile avec infinite scroll et hiérarchie"""
     try:
         result = get_equipments_infinite(
+            entity=entity,
             cursor=cursor,
             limit=limit,
             zone=zone,
             famille=famille,
-            entity=entity,
             search_term=search
         )
-        return result
+        
+        return {
+            "status": "success",
+            "message": f"Équipements récupérés avec succès pour l'entité {entity}",
+            "data": result
+        }
+        
     except Exception as e:
-        logger.error(f"❌ Erreur mobile: {e}")
-        raise HTTPException(status_code=500, detail="Erreur chargement données")
+        logger.error(f"❌ Erreur: {e}")
+        raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
 
 @equipment_router.get("/{equipment_id}",
     summary="Récupérer un équipement par ID",

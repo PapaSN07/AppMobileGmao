@@ -23,12 +23,13 @@ entity_router = APIRouter(
     description="Récupère la liste des entités pour mobile"
 )
 async def get_entity_mobile(
-    limit: int = Query(20, ge=10, le=100, description="Nombre d'éléments (10-100)")
+    limit: int = Query(20, ge=10, le=100, description="Nombre d'éléments (10-100)"),
+    code: str = Query(..., description="Code de l'entité à récupérer")
 ) -> Dict[str, Any]:
     """Liste des entités pour mobile"""
     try:
-        result = get_entities(limit=limit)
-        
+        result = get_entities(limit=limit, code=code)
+
         return {
             "status": "success",
             "message": "Entités récupérées avec succès",

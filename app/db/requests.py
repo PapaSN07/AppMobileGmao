@@ -13,7 +13,6 @@ SELECT
     mdct_level,
     mdct_entity
 FROM coswin.category
-ORDER BY mdct_level, mdct_code
 """
 
 # --- Feeder (Équipements de référence)
@@ -52,19 +51,8 @@ SELECT
     chen_parent_entity,
     chen_system_entity
 FROM coswin.entity
+WHERE chen_code IN (:placeholders)
 ORDER BY chen_level, chen_code
-"""
-
-# --- Récupérer parent de l'entité (requête corrigée)
-ENTITY_WITH_PARENT_QUERY = """
-SELECT 
-    e.chen_code,
-    e.chen_description,
-    e.chen_level,
-    (SELECT e1.chen_code FROM coswin.entity e1 WHERE e1.chen_code = e.chen_parent_entity AND e.chen_level > 1) AS ParentNiveau1,
-    (SELECT e1.chen_description FROM coswin.entity e1 WHERE e1.chen_code = e.chen_parent_entity AND e.chen_level > 1) AS ParentDescription
-FROM coswin.entity e
-ORDER BY e.chen_level, e.chen_code
 """
 
 HIERARCHIC = """
@@ -80,7 +68,6 @@ SELECT
     mdcc_description,
     mdcc_entity 
 FROM coswin.costcentre
-ORDER BY mdcc_entity, mdcc_code
 """
 
 # --- Unité/Fonction (requête corrigée)
@@ -94,19 +81,6 @@ SELECT
     mdfn_system_function 
 FROM coswin.function_
 ORDER BY mdfn_entity, mdfn_code
-"""
-
-# --- Fonction avec parent (hiérarchie complète)
-FUNCTION_WITH_PARENT_QUERY = """
-SELECT 
-    f.mdfn_code,
-    f.mdfn_description,
-    f.mdfn_entity,
-    f.mdfn_parent_function,
-    (SELECT p.mdfn_description FROM coswin.function_ p WHERE p.mdfn_code = f.mdfn_parent_function) AS parent_description,
-    f.mdfn_system_function
-FROM coswin.function_ f
-ORDER BY f.mdfn_entity, f.mdfn_code
 """
 
 # === REQUÊTES POUR LES SERVICES BACKEND ===
@@ -180,17 +154,19 @@ ORDER BY chen_entity_type, chen_description
 # Pour user_service.py
 GET_USER_AUTHENTICATION_QUERY = """
 SELECT 
-        pk_coswin_user, 
-        cwcu_code, 
-        cwcu_signature, 
-        cwcu_email, 
-        cwcu_entity, 
-        cwcu_preferred_group, 
-        cwcu_url_image,
-        cwcu_is_absent, 
-        cwcu_password
-    FROM coswin.coswin_user
-    WHERE 1=1
+    pk_coswin_user, 
+    cwcu_code, 
+    cwcu_signature, 
+    cwcu_email, 
+    cwcu_entity, 
+    cwcu_preferred_group, 
+    cwcu_url_image,
+    cwcu_is_absent, 
+    cwcu_password
+FROM coswin.coswin_user
+WHERE (cwcu_signature = :username OR cwcu_email = :username)
+AND cwcu_password = :password
+AND ROWNUM <= 1
 """
 UPDATE_USER_QUERY = """
 UPDATE coswin.coswin_user
@@ -215,7 +191,7 @@ SELECT
     cwcu_url_image,
     cwcu_is_absent
 FROM coswin.coswin_user
-WHERE (cwcu_signature = :login OR cwcu_email = :login)
+WHERE (cwcu_signature = :username OR cwcu_email = :username)
 AND ROWNUM <= 1
 """
 

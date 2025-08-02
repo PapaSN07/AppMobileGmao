@@ -12,25 +12,44 @@ logger = logging.getLogger(__name__)
 # === FONCTION PRINCIPALE POUR MOBILE ===
 
 def get_equipments_infinite(
-    cursor: Optional[str] = None,
+    entity: str,
     limit: int = 20,
+    cursor: Optional[str] = None,
     zone: Optional[str] = None,
     famille: Optional[str] = None,
-    entity: Optional[str] = None,
     search_term: Optional[str] = None
 ) -> Dict[str, Any]:
-    """Infinite scroll optimisé pour mobile"""
+    """Infinite scroll optimisé pour mobile avec hiérarchie d'entité obligatoire"""
     
-    # Cache key
-    cache_key = f"mobile_eq_{cursor}_{limit}_{zone}_{famille}_{entity}_{search_term}"
+    # Import local pour éviter les imports circulaires
+    from app.services.entity_service import get_hierarchy
+    
+    # Cache key incluant l'entité
+    cache_key = f"mobile_eq_{entity}_{cursor}_{limit}_{zone}_{famille}_{search_term}"
 
     cached = cache.get_data_only(cache_key)
     if cached:
         return cached
     
-    # Query de base avec conditions - CORRECTION: Application manuelle de la limite
-    base_query = EQUIPMENT_INFINITE_QUERY
+    # Récupérer la hiérarchie de l'entité
+    try:
+        hierarchy_result = get_hierarchy(entity)
+        hierarchy_entities = hierarchy_result.get('hierarchy', [])
+        
+        if not hierarchy_entities:
+            # Si pas de hiérarchie, utiliser seulement l'entité fournie
+            hierarchy_entities = [entity]
+            logger.warning(f"Aucune hiérarchie trouvée pour {entity}, utilisation de l'entité seule")
+        
+        logger.info(f"Hiérarchie pour {entity}: {hierarchy_entities}")
+        
+    except Exception as e:
+        logger.error(f"Erreur récupération hiérarchie pour {entity}: {e}")
+        # En cas d'erreur, utiliser seulement l'entité fournie
+        hierarchy_entities = [entity]
     
+    # Query de base avec conditions
+    base_query = EQUIPMENT_INFINITE_QUERY
     params = {}
     
     # Cursor pagination
@@ -38,26 +57,29 @@ def get_equipments_infinite(
         base_query += " AND pk_equipment > :cursor"
         params['cursor'] = cursor
     
-    # Filtres
+    # Filtre par hiérarchie d'entités (OBLIGATOIRE)
+    placeholders = ','.join([f':entity_{i}' for i in range(len(hierarchy_entities))])
+    base_query += f" AND ereq_entity IN ({placeholders})"
+    
+    for i, entity_code in enumerate(hierarchy_entities):
+        params[f'entity_{i}'] = entity_code
+    
+    # Autres filtres optionnels
     if zone:
         base_query += " AND ereq_zone = :zone"
         params['zone'] = zone
     if famille:
         base_query += " AND ereq_category = :famille" 
         params['famille'] = famille
-    if entity:
-        base_query += " AND ereq_entity = :entity"
-        params['entity'] = entity
     if search_term:
         base_query += " AND (LOWER(ereq_code) LIKE LOWER(:search) OR LOWER(ereq_description) LIKE LOWER(:search))"
         params['search'] = f"%{search_term}%"
     
     # Ajouter ORDER BY et la limitation Oracle
-    base_query += f" ORDER BY pk_equipment) WHERE ROWNUM <= {limit + 1}"
+    base_query += f" ORDER BY ereq_entity, pk_equipment) WHERE ROWNUM <= {limit + 1}"
     
     try:
         with get_database_connection() as db:
-            # CORRECTION: Ne pas passer le paramètre limit à execute_query
             results = db.execute_query(base_query, params=params)
 
             # Vérifier s'il y a plus de données
@@ -85,17 +107,23 @@ def get_equipments_infinite(
                     'count': len(equipments),
                     'requested_limit': limit
                 },
-                'filters_applied': bool(zone or famille or entity or search_term)
+                'filters_applied': bool(zone or famille or search_term),
+                'entity_hierarchy': {
+                    'requested_entity': entity,
+                    'hierarchy_used': hierarchy_entities,
+                    'hierarchy_count': len(hierarchy_entities)
+                }
             }
             
             # Log pour debug
-            logger.info(f"✅ Infinite scroll: {len(equipments)} équipements récupérés sur {limit} demandés, has_more: {has_more}")
+            logger.info(f"✅ Infinite scroll pour {entity}: {len(equipments)} équipements récupérés sur {limit} demandés")
+            logger.info(f"✅ Hiérarchie appliquée: {len(hierarchy_entities)} entités")
             
             cache.set(cache_key, response, CACHE_TTL_SHORT)
             return response
             
     except Exception as e:
-        logger.error(f"❌ Erreur infinite scroll: {e}")
+        logger.error(f"❌ Erreur infinite scroll pour {entity}: {e}")
         raise
 
 # === DONNÉES DE RÉFÉRENCE SIMPLIFIÉES ===

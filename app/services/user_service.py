@@ -8,97 +8,59 @@ import oracledb
 
 logger = logging.getLogger(__name__)
 
-def authenticate_user(login: str, password: str) -> UserModel:
+def authenticate_user(username: str, password: str) -> UserModel:
     """
     Authentifie un utilisateur avec son nom d'utilisateur et mot de passe.
-    
-    Args:
-        login: Nom d'utilisateur ou email
-        password: Mot de passe
-        
-    Returns:
-        UserModel si l'authentification réussit, sinon False
     """
-    # Validation des paramètres d'entrée
-    if not login or not password:
+    if not username or not password:
         logger.warning("Login ou mot de passe manquant.")
-        return False
-    
-    # Cache key
-    cache_key = f"mobile_eq_{login}_auth"
+        raise ValueError("Username et mot de passe requis")
 
-    cached = cache.get_data_only(cache_key)
-    if cached:
-        return cached
-    
-    # Query de base avec conditions
-    base_query = GET_USER_AUTHENTICATION_QUERY
-    
-    params = {}
-    
-    # Ajouter les conditions de filtrage
-    if login:
-        base_query += " AND (cwcu_signature = :login OR cwcu_email = :login)"
-        params['login'] = login
-
-    if password:
-        base_query += " AND cwcu_password = :password"
-        params['password'] = password
-    
-    # Vérifier les utilisateurs actifs (cwcu_is_absent = 0 pour Oracle NUMBER)
-    base_query += " AND cwcu_is_absent = 0"
-    
-    # Ajouter la limitation à la fin
-    base_query += " AND ROWNUM <= 1"
-    
     try:
         with get_database_connection() as db:
-            results = db.execute_query(base_query, params=params)
+            query = GET_USER_AUTHENTICATION_QUERY
+            params = {'username': username, 'password': password}
+            results = db.execute_query(query, params=params)
             
             if results:
-                if len(results[0]) < 9:  # Nous avons 9 colonnes
-                    logger.warning("Données utilisateur incomplètes.")
-                    return False
-                
                 user = UserModel.from_db_row(results[0])
-
-                # Marquer l'utilisateur comme absent
-                user.is_absent = False
-                update_user(user)  # Mettre à jour l'utilisateur pour marquer comme absent
-
-                # Mettre en cache le résultat
-                cache.set(cache_key, user, CACHE_TTL_SHORT)
-                logger.info(f"Utilisateur {login} authentifié avec succès.")
+                cache_key = f"user_hierarchy_{user.code}"
+                cached = cache.set(cache_key)
+                
+                logger.info(f"Utilisateur {username} authentifié avec succès.")
                 return user
             else:
-                logger.warning(f"Échec de l'authentification pour {login}.")
-                return False
-    
+                logger.warning(f"Échec de l'authentification pour {username}.")
+                return None
     except oracledb.DatabaseError as e:
         logger.error(f"❌ Erreur base de données: {e}")
-        return False
+        raise
     except Exception as e:
         logger.error(f"❌ Erreur inattendue: {e}")
-        return False
+        raise
 
-def logout_user(login: str) -> bool:
+def logout_user(username: str) -> bool:
     """
     Déconnecte un utilisateur en supprimant son cache et en le marquant comme inactif.
     """
-    if not login:
+    if not username:
         logger.warning("Login manquant pour la déconnexion.")
         return False
     
-    user = get_user_connect(login)
+    user = get_user_connect(username)
     if user:
         user.is_absent = True  # Marquer comme absent
-        update_user(user)  # Mettre à jour l'utilisateur
-        cache_key = f"mobile_eq_{login}_auth"
-        cache.delete(cache_key)
-        logger.info(f"Utilisateur {login} déconnecté avec succès.")
-        return True
+        success = update_user(user)  # Mettre à jour l'utilisateur
+        if success:
+            cache_key = f"mobile_eq_{username}_auth"
+            cache.delete(cache_key)
+            logger.info(f"Utilisateur {username} déconnecté avec succès.")
+            return True
+        else:
+            logger.warning(f"Échec de la mise à jour de l'utilisateur {username}.")
+            return False
     else:
-        logger.warning(f"Utilisateur {login} introuvable pour la déconnexion.")
+        logger.warning(f"Utilisateur {username} introuvable pour la déconnexion.")
         return False
 
 def update_user(user: UserModel) -> bool:
@@ -137,32 +99,32 @@ def update_user(user: UserModel) -> bool:
         logger.error(f"❌ Erreur inattendue lors de la mise à jour: {e}")
         return False
 
-def get_user_connect(login: str) -> UserModel:
+def get_user_connect(username: str) -> UserModel:
     """
-    Récupère un utilisateur connecté à partir de son login ou email.
+    Récupère un utilisateur connecté à partir de son username ou email.
     
     Args:
-        login: Nom d'utilisateur ou email
+        username: Nom d'utilisateur ou email
         
     Returns:
         UserModel si l'utilisateur est trouvé, sinon None
     """
-    if not login:
+    if not username:
         logger.warning("Login manquant pour la récupération de l'utilisateur.")
         return None
     
     try:
         with get_database_connection() as db:
             query = GET_USER_CONNECT_QUERY
-            params = {'login': login}
+            params = {'username': username}
             results = db.execute_query(query, params=params)
             
             if results:
                 user = UserModel.from_db_row(results[0])
-                logger.info(f"Utilisateur {login} récupéré avec succès.")
+                logger.info(f"Utilisateur {username} récupéré avec succès.")
                 return user
             else:
-                logger.warning(f"Utilisateur {login} introuvable.")
+                logger.warning(f"Utilisateur {username} introuvable.")
                 return None
     
     except oracledb.DatabaseError as e:

@@ -8,15 +8,18 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def get_entities(limit: int = 20) -> Dict[str, Any]:
+def get_entities(limit: int = 20, code: str = 'SDDV') -> Dict[str, Any]:
     """Récupère les entités depuis la base de données."""
     # Inclure la limite dans la clé de cache
-    cache_key = f"mobile_entities_{limit}"
+    cache_key = f"mobile_entities_{limit}_{code}"
     cached = cache.get_data_only(cache_key)
     if cached:
         return cached
     
     query = ENTITY_QUERY
+    hierarchy = get_hierarchy(code).get('hierarchy', [])
+    if hierarchy:
+        placeholders = ','.join([f"'{h}'" for h in hierarchy])
     
     try:
         with get_database_connection() as db:
@@ -27,7 +30,7 @@ def get_entities(limit: int = 20) -> Dict[str, Any]:
             ) WHERE ROWNUM <= {limit}
             """
             
-            results = db.execute_query(limited_query)
+            results = db.execute_query(limited_query, {'placeholders': placeholders} if hierarchy else {})
             entities = []
             
             for row in results:
@@ -72,7 +75,6 @@ def get_hierarchy(entity_code: str) -> Dict[str, Any]:
                     "count": 0,
                     "message": f"Aucune hiérarchie trouvée pour l'entité {entity_code}"
                 }
-            print(f"Results: {results}")
             
             # Récupérer les détails complets pour chaque code retourné
             hierarchy = [row[0] for row in results]

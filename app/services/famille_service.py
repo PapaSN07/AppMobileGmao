@@ -8,17 +8,47 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def get_familles() -> Dict[str, Any]:
+def get_familles(entity: str) -> Dict[str, Any]:
     """Récupère toutes les familles depuis la base de données."""
+    # Import local pour éviter les imports circulaires
+    from app.services.entity_service import get_hierarchy
+    
     cached = cache.get_data_only("mobile_familles")
     if cached:
         return cached
     
+    # Récupérer la hiérarchie de l'entité
+    try:
+        hierarchy_result = get_hierarchy(entity)
+        hierarchy_entities = hierarchy_result.get('hierarchy', [])
+        
+        if not hierarchy_entities:
+            # Si pas de hiérarchie, utiliser seulement l'entité fournie
+            hierarchy_entities = [entity]
+            logger.warning(f"Aucune hiérarchie trouvée pour {entity}, utilisation de l'entité seule")
+        
+        logger.info(f"Hiérarchie pour {entity}: {hierarchy_entities}")
+        
+    except Exception as e:
+        logger.error(f"Erreur récupération hiérarchie pour {entity}: {e}")
+        # En cas d'erreur, utiliser seulement l'entité fournie
+        hierarchy_entities = [entity]
+    
     query = CATEGORY_QUERY
+    params = {}
     
     try:
         with get_database_connection() as db:
-            results = db.execute_query(query)
+            # Filtre par hiérarchie d'entités (OBLIGATOIRE)
+            placeholders = ','.join([f':entity_{i}' for i in range(len(hierarchy_entities))])
+            query += f" WHERE mdct_entity IN ({placeholders})"
+            
+            for i, entity_code in enumerate(hierarchy_entities):
+                params[f'entity_{i}'] = entity_code
+
+            query += f" ORDER BY mdct_level, mdct_code"
+
+            results = db.execute_query(query, params=params)
             familles = []
             for row in results:
                 try:
