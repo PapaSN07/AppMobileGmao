@@ -37,11 +37,7 @@ async def get_equipments_mobile(
             search_term=search
         )
         
-        return {
-            "status": "success",
-            "message": f"Équipements récupérés avec succès pour l'entité {entity}",
-            "data": result
-        }
+        return result
         
     except Exception as e:
         logger.error(f"❌ Erreur: {e}")
