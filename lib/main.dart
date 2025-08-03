@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:appmobilegmao/screens/main_screen.dart';
+import 'package:appmobilegmao/screens/splash_screen.dart';
+import 'package:appmobilegmao/provider/auth_provider.dart';
 import 'package:appmobilegmao/provider/equipment_provider.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:appmobilegmao/services/hive_service.dart';
 import 'package:appmobilegmao/models/equipment_hive.dart';
+import 'package:appmobilegmao/models/user_hive.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,18 +19,18 @@ void main() async {
   Hive.registerAdapter(EquipmentHiveAdapter());
   Hive.registerAdapter(AttributeValueHiveAdapter());
   Hive.registerAdapter(ReferenceDataHiveAdapter());
+  Hive.registerAdapter(UserHiveAdapter()); // ✅ Ajouter l'adaptateur UserHive
 
   // Initialiser le service Hive
   await HiveService.init();
-
-  // Optionnel : Effacer le cache Hive au démarrage (décommenter si nécessaire)
-  // final hiveService = HiveService();
-  // await hiveService.clearAllCache();
 
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (context) => EquipmentProvider()),
+        ChangeNotifierProvider(
+          create: (context) => AuthProvider()..initialize(),
+        ),
       ],
       child: const MyApp(),
     ),
@@ -67,7 +69,8 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const MainScreen(),
+      // ✅ Commencer par le Splash Screen
+      home: const SplashScreen(),
       debugShowCheckedModeBanner: false,
     );
   }

@@ -1,7 +1,9 @@
 import 'package:appmobilegmao/models/order.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:appmobilegmao/widgets/list_item.dart';
+import 'package:appmobilegmao/provider/auth_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -48,83 +50,50 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: _appBar(),
-      body: _bodyContent(),
-      backgroundColor: AppTheme.primaryColor,
+      backgroundColor: Colors.transparent, // ✅ Fond transparent pour l'accueil
+      body: _buildBody(),
     );
   }
 
-  PreferredSize _appBar() {
-    return PreferredSize(
-      preferredSize: const Size.fromHeight(56),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Container(
-          decoration: BoxDecoration(
-            color: AppTheme.primaryColor,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: AppBar(
-            title: const Text(
-              'Bienvenue sur l\'accueil',
-              style: TextStyle(
-                fontFamily: AppTheme.fontMontserrat,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.secondaryColor,
-                fontSize: 20,
+  Widget _buildBody() {
+    return Consumer<AuthProvider>(
+      builder: (context, authProvider, child) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 20,
+          ), // ✅ SIMPLIFIÉ: Padding direct
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _cardSectionOne(),
+              const SizedBox(height: 20),
+              // Affichage du titre dynamique
+              Text(
+                selectedCategory == 'OT'
+                    ? '${otOrders.length} Ordres de Travail en cours'
+                    : '${diOrders.length} Demandes d\'Intervention en cours',
+                style: TextStyle(
+                  fontFamily: AppTheme.fontMontserrat,
+                  fontWeight: FontWeight.normal,
+                  color: AppTheme.thirdColor,
+                  fontSize: 15,
+                ),
               ),
-            ),
-            backgroundColor: AppTheme.primaryColor,
-            elevation: 0,
-            scrolledUnderElevation: 0,
-            leading: IconButton(
-              icon: const Icon(
-                Icons.menu,
-                color: AppTheme.secondaryColor,
-                size: 28,
+              const SizedBox(height: 10),
+              Expanded(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 300),
+                  child:
+                      selectedCategory == 'OT'
+                          ? _buildList(otOrders, 'OT')
+                          : _buildList(diOrders, 'DI'),
+                ),
               ),
-              onPressed: () {
-                // Action pour le menu
-              },
-            ),
+            ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _bodyContent() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 26),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _cardSectionOne(),
-          const SizedBox(height: 20),
-          // Affichage du titre dynamique
-          Text(
-            selectedCategory == 'OT'
-                ? '${otOrders.length} Ordres de Travail en cours'
-                : '${diOrders.length} Demandes d\'Intervention en cours',
-            style: TextStyle(
-              fontFamily: AppTheme.fontMontserrat,
-              fontWeight: FontWeight.normal,
-              color: AppTheme.thirdColor,
-              fontSize: 15,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Expanded(
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
-              child:
-                  selectedCategory == 'OT'
-                      ? _buildList(otOrders, 'OT')
-                      : _buildList(diOrders, 'DI'),
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 

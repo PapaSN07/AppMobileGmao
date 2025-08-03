@@ -7,16 +7,15 @@ import 'package:appmobilegmao/models/reference_data.dart';
 
 class EquipmentProvider extends ChangeNotifier {
   final EquipmentApiService _apiService = EquipmentApiService();
-  final HiveService _hiveService = HiveService();
   final Connectivity _connectivity = Connectivity();
 
   // État de la liste d'équipements
   List<Map<String, dynamic>> _equipments = [];
   List<Map<String, dynamic>> _allEquipments = [];
-  bool _isLoading = false;
-  String? _error;
   Map<String, String> _filters = {};
+  bool _isLoading = false;
   bool _isOffline = false;
+  String? _error;
 
   // Données de référence
   ReferenceData? _referenceData;
@@ -44,7 +43,7 @@ class EquipmentProvider extends ChangeNotifier {
   }
 
   // Charger les équipements
-  Future<void> fetchEquipments({bool forceRefresh = false}) async {
+  Future<void> fetchEquipments({String? code, bool forceRefresh = false}) async {
     if (_isLoading) return;
 
     _isLoading = true;
@@ -59,7 +58,7 @@ class EquipmentProvider extends ChangeNotifier {
 
       // Charger depuis le cache si disponible
       if (!forceRefresh && (!_isOffline || await _isCacheValid())) {
-        equipments = await _hiveService.getCachedEquipments(filters: _filters);
+        equipments = await HiveService.getCachedEquipments(filters: _filters);
         if (equipments.isNotEmpty) {
           if (kDebugMode) {
             print('📋 GMAO: Chargement depuis cache');
@@ -79,9 +78,9 @@ class EquipmentProvider extends ChangeNotifier {
         }
 
         final response = await _apiService.getEquipments(
+          entity: code ?? _filters['entity'] ?? '',
           zone: _filters['zone'],
           famille: _filters['famille'],
-          entity: _filters['entity'],
           search: _filters['search'],
           description: _filters['description'],
         );
@@ -90,11 +89,11 @@ class EquipmentProvider extends ChangeNotifier {
 
         // Mettre en cache si pas de filtres
         if (_filters.isEmpty) {
-          await _hiveService.cacheEquipments(equipments);
+          await HiveService.cacheEquipments(equipments);
         }
       } else {
         // Mode hors ligne
-        equipments = await _hiveService.getCachedEquipments(filters: _filters);
+        equipments = await HiveService.getCachedEquipments(filters: _filters);
         if (equipments.isEmpty) {
           throw Exception('Aucune donnée disponible hors ligne');
         }
@@ -157,7 +156,7 @@ class EquipmentProvider extends ChangeNotifier {
 
     try {
       if (!forceRefresh) {
-        final cached = await _hiveService.getCachedReferenceData();
+        final cached = await HiveService.getCachedReferenceData();
         if (cached != null) {
           _referenceData = cached;
           _isLoadingReference = false;
@@ -169,13 +168,13 @@ class EquipmentProvider extends ChangeNotifier {
       if (!_isOffline) {
         final data = await _apiService.syncReferenceData();
         _referenceData = data;
-        await _hiveService.cacheReferenceData(data);
+        await HiveService.cacheReferenceData(data);
       }
     } catch (e) {
       if (kDebugMode) {
         print('❌ GMAO: Erreur données référence: $e');
       }
-      final cached = await _hiveService.getCachedReferenceData();
+      final cached = await HiveService.getCachedReferenceData();
       if (cached != null) {
         _referenceData = cached;
       }
@@ -198,7 +197,7 @@ class EquipmentProvider extends ChangeNotifier {
 
   Future<void> _tryLoadFromCache() async {
     try {
-      final cached = await _hiveService.getCachedEquipments(filters: _filters);
+      final cached = await HiveService.getCachedEquipments(filters: _filters);
       if (cached.isNotEmpty) {
         _allEquipments = _convertToMapList(cached);
         _equipments = List.from(_allEquipments);
@@ -243,7 +242,7 @@ class EquipmentProvider extends ChangeNotifier {
         _equipments.insert(0, newEquipmentMap);
 
         // Mettre en cache
-        await _hiveService.cacheEquipments([equipment]);
+        await HiveService.cacheEquipments([equipment]);
 
         if (kDebugMode) {
           print('✅ GMAO: Équipement ajouté avec succès');
@@ -317,7 +316,7 @@ class EquipmentProvider extends ChangeNotifier {
 
   // Vérifier si le cache est valide
   Future<bool> _isCacheValid() async {
-    return !await _hiveService.isCacheExpired();
+    return !await HiveService.isCacheExpired('equipments');
   }
 
   // Conversion helper

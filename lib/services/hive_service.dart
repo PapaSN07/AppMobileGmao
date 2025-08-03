@@ -1,104 +1,202 @@
-import 'package:appmobilegmao/models/attribut_value.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/equipment_hive.dart';
 import '../models/equipment.dart';
 import '../models/reference_data.dart';
+import '../models/user_hive.dart';
+import '../models/attribut_value.dart';
 
+/// Service de cache Hive générique pour toute l'application GMAO
+/// Gère le stockage local des données avec synchronisation différée
 class HiveService {
+  // Boxes de cache
   static late Box<EquipmentHive> equipmentBox;
   static late Box<ReferenceDataHive> referenceBox;
-  static late Box<String> metadataBox; // Pour stocker curseurs et métadonnées
+  static late Box<UserHive> userBox;
+  static late Box<String> metadataBox;
+  static late Box<Map<String, dynamic>> pendingActionsBox; // Actions en attente
+  static late Box<Map<String, dynamic>> workOrderBox; // Ordres de travail
+  static late Box<Map<String, dynamic>>
+  interventionBox; // Demandes d'intervention
 
+  /// Initialisation du service Hive
   static Future<void> init() async {
     try {
       // Initialiser Hive
       await Hive.initFlutter();
 
-      // Enregistrer les adaptateurs si pas déjà fait
-      if (!Hive.isAdapterRegistered(0)) {
-        Hive.registerAdapter(EquipmentHiveAdapter());
-      }
-      if (!Hive.isAdapterRegistered(1)) {
-        Hive.registerAdapter(AttributeValueHiveAdapter());
-      }
-      if (!Hive.isAdapterRegistered(2)) {
-        Hive.registerAdapter(ReferenceDataHiveAdapter());
-      }
+      // Enregistrer les adaptateurs
+      _registerAdapters();
 
       // Ouvrir les boxes
-      equipmentBox = await Hive.openBox<EquipmentHive>('gmao_equipment_cache');
-      referenceBox = await Hive.openBox<ReferenceDataHive>(
-        'gmao_reference_cache',
-      );
-      metadataBox = await Hive.openBox<String>('gmao_metadata_cache');
+      await _openBoxes();
 
       if (kDebugMode) {
-        print('✅ Hive GMAO initialisé avec succès');
-        print('📦 Équipements en cache: ${equipmentBox.length}');
+        print('✅ HiveService GMAO initialisé avec succès');
+        _printCacheStats();
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Erreur initialisation Hive GMAO: $e');
+        print('❌ Erreur initialisation HiveService GMAO: $e');
       }
       rethrow;
     }
   }
 
-  /// ✅ MÉTHODE AMÉLIORÉE : Cache equipments avec gestion du cursor
-  Future<void> cacheEquipments(
-    List<Equipment> equipments, {
-    bool append = false,
-    String? cursor,
+  /// Enregistrement des adaptateurs Hive
+  static void _registerAdapters() {
+    if (!Hive.isAdapterRegistered(0)) {
+      Hive.registerAdapter(EquipmentHiveAdapter());
+    }
+    if (!Hive.isAdapterRegistered(1)) {
+      Hive.registerAdapter(AttributeValueHiveAdapter());
+    }
+    if (!Hive.isAdapterRegistered(2)) {
+      Hive.registerAdapter(ReferenceDataHiveAdapter());
+    }
+    if (!Hive.isAdapterRegistered(3)) {
+      Hive.registerAdapter(UserHiveAdapter());
+    }
+  }
+
+  /// Ouverture des boxes
+  static Future<void> _openBoxes() async {
+    equipmentBox = await Hive.openBox<EquipmentHive>('gmao_equipment_cache');
+    referenceBox = await Hive.openBox<ReferenceDataHive>(
+      'gmao_reference_cache',
+    );
+    userBox = await Hive.openBox<UserHive>('gmao_user_cache');
+    metadataBox = await Hive.openBox<String>('gmao_metadata_cache');
+    pendingActionsBox = await Hive.openBox<Map<String, dynamic>>(
+      'gmao_pending_actions',
+    );
+    workOrderBox = await Hive.openBox<Map<String, dynamic>>('gmao_work_orders');
+    interventionBox = await Hive.openBox<Map<String, dynamic>>(
+      'gmao_interventions',
+    );
+  }
+
+  /// Affichage des statistiques du cache
+  static void _printCacheStats() {
+    if (kDebugMode) {
+      print('📦 GMAO Cache Stats:');
+      print('   - Équipements: ${equipmentBox.length}');
+      print('   - Utilisateurs: ${userBox.length}');
+      print('   - Actions en attente: ${pendingActionsBox.length}');
+      print('   - Ordres de travail: ${workOrderBox.length}');
+      print('   - Interventions: ${interventionBox.length}');
+    }
+  }
+
+  // ========================================
+  // MÉTHODES GÉNÉRIQUES DE CACHE
+  // ========================================
+
+  /// Cache des données avec timestamp automatique
+  static Future<void> cacheData<T>(
+    Box<T> box,
+    String key,
+    T data, {
+    bool updateTimestamp = true,
   }) async {
+    try {
+      await box.put(key, data);
+
+      if (updateTimestamp) {
+        await _updateTimestamp('${box.name}_$key');
+      }
+
+      if (kDebugMode) {
+        print('💾 GMAO: Données mises en cache - ${box.name}:$key');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ GMAO: Erreur cache ${box.name}: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// Récupération de données du cache
+  static T? getCachedData<T>(Box<T> box, String key) {
+    try {
+      final data = box.get(key);
+      if (data != null) {
+        if (kDebugMode) {
+          print('📋 GMAO: Données récupérées du cache - ${box.name}:$key');
+        }
+      }
+      return data;
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ GMAO: Erreur lecture cache ${box.name}: $e');
+      }
+      return null;
+    }
+  }
+
+  /// Vérification d'expiration du cache
+  static Future<bool> isCacheExpired(
+    String key, {
+    Duration maxAge = const Duration(hours: 1),
+  }) async {
+    final timestampKey = '${key}_timestamp';
+    final timestamp = metadataBox.get(timestampKey);
+
+    if (timestamp == null) return true;
+
+    final cachedTime = DateTime.tryParse(timestamp);
+    if (cachedTime == null) return true;
+
+    final isExpired = DateTime.now().difference(cachedTime) > maxAge;
+
+    if (kDebugMode) {
+      print('⏰ GMAO: Cache $key expiré: $isExpired');
+    }
+
+    return isExpired;
+  }
+
+  /// Mise à jour du timestamp
+  static Future<void> _updateTimestamp(String key) async {
+    await metadataBox.put('${key}_timestamp', DateTime.now().toIso8601String());
+  }
+
+  // ========================================
+  // GESTION DES ÉQUIPEMENTS
+  // ========================================
+
+  /// Cache des équipements
+  static Future<void> cacheEquipments(List<Equipment> equipments) async {
     try {
       final now = DateTime.now();
 
-      if (!append) {
-        // Effacer le cache existant lors d'un refresh complet
-        await equipmentBox.clear();
-        // ✅ CORRECTION: Ne pas effacer le cursor lors d'un append=false standard
-        // await clearCursor(); // Commenté pour préserver le cursor
-        if (kDebugMode) {
-          print('🗑️ GMAO: Cache équipements effacé pour refresh');
-        }
-      }
+      // Effacer le cache existant
+      await equipmentBox.clear();
 
       // Ajouter les nouveaux équipements
       for (final equipment in equipments) {
         final hiveEquipment = _equipmentToHive(equipment, now);
         final key =
-            equipment.id ??
-            '${equipment.code}_${DateTime.now().millisecondsSinceEpoch}';
+            equipment.id ?? '${equipment.code}_${now.millisecondsSinceEpoch}';
         await equipmentBox.put(key, hiveEquipment);
       }
 
-      // ✅ CORRECTION: Sauvegarder le cursor seulement s'il est fourni et valide
-      if (cursor != null && cursor.isNotEmpty) {
-        await saveLastCursor(cursor);
-        if (kDebugMode) {
-          print('💾 GMAO: Cursor sauvegardé: $cursor');
-        }
-      }
-
-      // Sauvegarder le timestamp de synchronisation
-      await metadataBox.put('last_sync_time', DateTime.now().toIso8601String());
+      await _updateTimestamp('equipments');
 
       if (kDebugMode) {
-        print(
-          '💾 GMAO: ${equipments.length} équipements mis en cache (append: $append)',
-        );
-        print('📦 GMAO: Total en cache: ${equipmentBox.length}');
+        print('💾 GMAO: ${equipments.length} équipements mis en cache');
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Erreur cache équipements GMAO: $e');
+        print('❌ GMAO: Erreur cache équipements: $e');
       }
       rethrow;
     }
   }
 
-  Future<List<Equipment>> getCachedEquipments({
+  /// Récupération des équipements avec filtres
+  static Future<List<Equipment>> getCachedEquipments({
     Map<String, String>? filters,
   }) async {
     try {
@@ -115,41 +213,73 @@ class HiveService {
       // Filtrage local
       final filtered =
           cached.where((equipment) {
+            // Filtre par zone
             if (filters.containsKey('zone') &&
                 equipment.zone != filters['zone']) {
               return false;
             }
+
+            // Filtre par famille
             if (filters.containsKey('famille') &&
                 equipment.famille != filters['famille']) {
               return false;
             }
+
+            // Filtre par entité
             if (filters.containsKey('entity') &&
                 equipment.entity != filters['entity']) {
               return false;
             }
+
+            // Filtre par description
+            if (filters.containsKey('description')) {
+              final description = filters['description']!.toLowerCase();
+              if (!equipment.description.toLowerCase().contains(description)) {
+                return false;
+              }
+            }
+
+            // Recherche générale
             if (filters.containsKey('search')) {
               final search = filters['search']!.toLowerCase();
-              return equipment.code.toLowerCase().contains(search) ||
-                  equipment.description.toLowerCase().contains(search);
+              final searchableText =
+                  [
+                    equipment.code,
+                    equipment.description,
+                    equipment.zone,
+                    equipment.famille,
+                    equipment.entity,
+                  ].join(' ').toLowerCase();
+
+              if (!searchableText.contains(search)) {
+                return false;
+              }
             }
+
             return true;
           }).toList();
 
       if (kDebugMode) {
         print(
-          '🔍 ${filtered.length}/${cached.length} équipements filtrés depuis cache GMAO',
+          '🔍 GMAO: ${filtered.length}/${cached.length} équipements filtrés',
         );
       }
+
       return filtered.map(_hiveToEquipment).toList();
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Erreur lecture cache équipements GMAO: $e');
+        print('❌ GMAO: Erreur lecture cache équipements: $e');
       }
       return [];
     }
   }
 
-  Future<void> cacheReferenceData(ReferenceData data) async {
+  // ========================================
+  // GESTION DES DONNÉES DE RÉFÉRENCE
+  // ========================================
+
+  /// Cache des données de référence
+  static Future<void> cacheReferenceData(ReferenceData data) async {
     try {
       final hiveData = ReferenceDataHive(
         zones: data.zones.map((z) => z.name).toList(),
@@ -159,18 +289,21 @@ class HiveService {
       );
 
       await referenceBox.put('reference_data', hiveData);
+      await _updateTimestamp('reference_data');
+
       if (kDebugMode) {
-        print('💾 Données de référence GMAO mises en cache');
+        print('💾 GMAO: Données de référence mises en cache');
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Erreur cache référence GMAO: $e');
+        print('❌ GMAO: Erreur cache référence: $e');
       }
       rethrow;
     }
   }
 
-  Future<ReferenceData?> getCachedReferenceData() async {
+  /// Récupération des données de référence
+  static Future<ReferenceData?> getCachedReferenceData() async {
     try {
       final cached = referenceBox.get('reference_data');
       if (cached == null) return null;
@@ -191,96 +324,252 @@ class HiveService {
       );
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Erreur lecture cache référence GMAO: $e');
+        print('❌ GMAO: Erreur lecture cache référence: $e');
       }
       return null;
     }
   }
 
-  /// ✅ NOUVELLE MÉTHODE : Sauvegarder le dernier cursor de pagination
-  Future<void> saveLastCursor(String cursor) async {
-    try {
-      await metadataBox.put('last_cursor', cursor);
-      if (kDebugMode) {
-        print('💾 GMAO: Cursor sauvegardé: $cursor');
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ GMAO: Erreur sauvegarde cursor: $e');
-      }
+  // ========================================
+  // GESTION DES UTILISATEURS
+  // ========================================
+
+  /// Cache de l'utilisateur connecté
+  static Future<void> cacheCurrentUser(UserHive user) async {
+    await cacheData(userBox, 'current_user', user);
+  }
+
+  /// Récupération de l'utilisateur connecté
+  static UserHive? getCurrentUser() {
+    return getCachedData(userBox, 'current_user');
+  }
+
+  /// Suppression de l'utilisateur connecté
+  static Future<void> clearCurrentUser() async {
+    await userBox.delete('current_user');
+    if (kDebugMode) {
+      print('🗑️ GMAO: Utilisateur connecté supprimé du cache');
     }
   }
 
-  /// ✅ NOUVELLE MÉTHODE : Récupérer le dernier cursor de pagination
-  Future<String?> getLastCursor() async {
-    try {
-      final cursor = metadataBox.get('last_cursor');
-      if (kDebugMode) {
-        print('📄 GMAO: Cursor récupéré: $cursor');
-      }
-      return cursor;
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ GMAO: Erreur récupération cursor: $e');
-      }
-      return null;
-    }
-  }
+  // ========================================
+  // GESTION DES ACTIONS EN ATTENTE
+  // ========================================
 
-  /// ✅ NOUVELLE MÉTHODE : Effacer le cursor (lors de refresh complet)
-  Future<void> clearCursor() async {
+  /// Ajouter une action en attente (pour synchronisation différée)
+  static Future<void> addPendingAction(Map<String, dynamic> action) async {
     try {
-      await metadataBox.delete('last_cursor');
+      final key =
+          '${DateTime.now().millisecondsSinceEpoch}_${action['type'] ?? 'unknown'}';
+      action['timestamp'] = DateTime.now().toIso8601String();
+      action['status'] = 'pending';
+
+      await pendingActionsBox.put(key, action);
+
       if (kDebugMode) {
-        print('🗑️ GMAO: Cursor effacé');
+        print('📝 GMAO: Action en attente ajoutée: ${action['type']}');
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ GMAO: Erreur effacement cursor: $e');
+        print('❌ GMAO: Erreur ajout action en attente: $e');
       }
+      rethrow;
     }
   }
 
-  Future<bool> isCacheExpired({
-    Duration maxAge = const Duration(hours: 1),
-  }) async {
-    final lastSync = metadataBox.get('last_sync_time');
-    if (lastSync == null) return true;
+  /// Récupération des actions en attente
+  static List<Map<String, dynamic>> getPendingActions() {
+    try {
+      return pendingActionsBox.values.toList();
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ GMAO: Erreur lecture actions en attente: $e');
+      }
+      return [];
+    }
+  }
 
-    final lastSyncTime = DateTime.tryParse(lastSync);
-    if (lastSyncTime == null) return true;
+  /// Supprimer une action en attente
+  static Future<void> removePendingAction(String key) async {
+    await pendingActionsBox.delete(key);
+    if (kDebugMode) {
+      print('🗑️ GMAO: Action en attente supprimée: $key');
+    }
+  }
 
-    final isExpired = DateTime.now().difference(lastSyncTime) > maxAge;
+  /// Vider toutes les actions en attente
+  static Future<void> clearPendingActions() async {
+    await pendingActionsBox.clear();
+    if (kDebugMode) {
+      print('🗑️ GMAO: Toutes les actions en attente supprimées');
+    }
+  }
+
+  // ========================================
+  // GESTION DES ORDRES DE TRAVAIL
+  // ========================================
+
+  /// Cache des ordres de travail
+  static Future<void> cacheWorkOrders(
+    List<Map<String, dynamic>> workOrders,
+  ) async {
+    try {
+      await workOrderBox.clear();
+
+      for (int i = 0; i < workOrders.length; i++) {
+        await workOrderBox.put('wo_$i', workOrders[i]);
+      }
+
+      await _updateTimestamp('work_orders');
+
+      if (kDebugMode) {
+        print('💾 GMAO: ${workOrders.length} ordres de travail mis en cache');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ GMAO: Erreur cache ordres de travail: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// Récupération des ordres de travail
+  static List<Map<String, dynamic>> getCachedWorkOrders() {
+    try {
+      return workOrderBox.values.toList();
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ GMAO: Erreur lecture cache ordres de travail: $e');
+      }
+      return [];
+    }
+  }
+
+  // ========================================
+  // GESTION DES DEMANDES D'INTERVENTION
+  // ========================================
+
+  /// Cache des demandes d'intervention
+  static Future<void> cacheInterventions(
+    List<Map<String, dynamic>> interventions,
+  ) async {
+    try {
+      await interventionBox.clear();
+
+      for (int i = 0; i < interventions.length; i++) {
+        await interventionBox.put('int_$i', interventions[i]);
+      }
+
+      await _updateTimestamp('interventions');
+
+      if (kDebugMode) {
+        print(
+          '💾 GMAO: ${interventions.length} demandes d\'intervention mises en cache',
+        );
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ GMAO: Erreur cache interventions: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// Récupération des demandes d'intervention
+  static List<Map<String, dynamic>> getCachedInterventions() {
+    try {
+      return interventionBox.values.toList();
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ GMAO: Erreur lecture cache interventions: $e');
+      }
+      return [];
+    }
+  }
+
+  // ========================================
+  // MÉTHODES DE NETTOYAGE
+  // ========================================
+
+  /// Nettoyage sélectif du cache
+  static Future<void> clearCache(String cacheType) async {
+    switch (cacheType) {
+      case 'equipments':
+        await equipmentBox.clear();
+        break;
+      case 'reference':
+        await referenceBox.clear();
+        break;
+      case 'users':
+        await userBox.clear();
+        break;
+      case 'work_orders':
+        await workOrderBox.clear();
+        break;
+      case 'interventions':
+        await interventionBox.clear();
+        break;
+      case 'pending_actions':
+        await pendingActionsBox.clear();
+        break;
+    }
 
     if (kDebugMode) {
-      print('⏰ GMAO: Cache expiré: $isExpired (dernier sync: $lastSyncTime)');
-    }
-
-    return isExpired;
-  }
-
-  Future<void> clearEquipmentCache() async {
-    await equipmentBox.clear();
-    await clearCursor(); // ✅ Effacer aussi le cursor
-    await metadataBox.delete(
-      'last_sync_time',
-    ); // ✅ Effacer le timestamp de synchronisation
-    if (kDebugMode) {
-      print('🗑️ Cache équipements GMAO vidé');
+      print('🗑️ GMAO: Cache $cacheType vidé');
     }
   }
 
-  Future<void> clearAllCache() async {
+  /// Nettoyage complet du cache
+  static Future<void> clearAllCache() async {
     await equipmentBox.clear();
     await referenceBox.clear();
+    await userBox.clear();
     await metadataBox.clear();
+    await pendingActionsBox.clear();
+    await workOrderBox.clear();
+    await interventionBox.clear();
+
     if (kDebugMode) {
-      print('🗑️ Tout le cache GMAO vidé');
+      print('🗑️ GMAO: Tout le cache vidé');
     }
   }
 
-  // Méthodes de conversion
-  EquipmentHive _equipmentToHive(Equipment equipment, DateTime cachedAt) {
+  /// Nettoyage du cache expiré
+  static Future<void> clearExpiredCache({
+    Duration maxAge = const Duration(hours: 1),
+  }) async {
+    final keys =
+        metadataBox.keys
+            .where((key) => key.toString().endsWith('_timestamp'))
+            .toList();
+
+    for (final key in keys) {
+      final cacheKey = key.toString().replaceAll('_timestamp', '');
+      if (await isCacheExpired(cacheKey, maxAge: maxAge)) {
+        // Déterminer quel cache nettoyer
+        if (cacheKey.contains('equipment')) {
+          await equipmentBox.clear();
+        } else if (cacheKey.contains('reference')) {
+          await referenceBox.clear();
+        }
+        // ... autres caches
+      }
+    }
+
+    if (kDebugMode) {
+      print('🗑️ GMAO: Cache expiré nettoyé');
+    }
+  }
+
+  // ========================================
+  // MÉTHODES DE CONVERSION
+  // ========================================
+
+  /// Conversion Equipment vers EquipmentHive
+  static EquipmentHive _equipmentToHive(
+    Equipment equipment,
+    DateTime cachedAt,
+  ) {
     return EquipmentHive(
       id: equipment.id,
       codeParent: equipment.codeParent,
@@ -310,7 +599,8 @@ class HiveService {
     );
   }
 
-  Equipment _hiveToEquipment(EquipmentHive hiveEquipment) {
+  /// Conversion EquipmentHive vers Equipment
+  static Equipment _hiveToEquipment(EquipmentHive hiveEquipment) {
     return Equipment(
       id: hiveEquipment.id,
       codeParent: hiveEquipment.codeParent,
@@ -336,5 +626,35 @@ class HiveService {
               )
               .toList(),
     );
+  }
+
+  // ========================================
+  // UTILITAIRES
+  // ========================================
+
+  /// Statistiques détaillées du cache
+  static Map<String, dynamic> getCacheStats() {
+    return {
+      'equipments': equipmentBox.length,
+      'users': userBox.length,
+      'reference_data': referenceBox.length,
+      'pending_actions': pendingActionsBox.length,
+      'work_orders': workOrderBox.length,
+      'interventions': interventionBox.length,
+      'metadata': metadataBox.length,
+    };
+  }
+
+  /// Taille du cache en données
+  static Future<Map<String, int>> getCacheSizes() async {
+    return {
+      'equipments_mb':
+          (equipmentBox.toMap().toString().length / (1024 * 1024)).round(),
+      'users_mb': (userBox.toMap().toString().length / (1024 * 1024)).round(),
+      'work_orders_mb':
+          (workOrderBox.toMap().toString().length / (1024 * 1024)).round(),
+      'interventions_mb':
+          (interventionBox.toMap().toString().length / (1024 * 1024)).round(),
+    };
   }
 }

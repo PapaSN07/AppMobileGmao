@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:appmobilegmao/provider/auth_provider.dart';
 import 'package:appmobilegmao/provider/equipment_provider.dart';
 import 'package:appmobilegmao/screens/equipments/add_equipment_screen.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
@@ -24,141 +25,86 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
   @override
   void initState() {
     super.initState();
-    // Charger les équipements au démarrage de l'écran
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<EquipmentProvider>().fetchEquipments();
+      _loadEquipmentsWithUserInfo();
     });
   }
 
   @override
   void dispose() {
-    _searchController.dispose(); // Libérer le contrôleur
-    _debounce?.cancel(); // Annuler le Timer si actif
+    _searchController.dispose();
+    _debounce?.cancel();
     super.dispose();
   }
 
   @override
   void deactivate() {
-    // Fermer le clavier avant la désactivation
     FocusScope.of(context).unfocus();
     super.deactivate();
+  }
+
+  void _loadEquipmentsWithUserInfo() {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final user = authProvider.currentUser;
+
+    if (user != null) {
+      context.read<EquipmentProvider>().fetchEquipments(code: user.code);
+    } else {
+      context.read<EquipmentProvider>().fetchEquipments();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.primaryColor,
-      body: Consumer<EquipmentProvider>(
-        builder: (context, equipmentProvider, child) {
-          return _buildBody(equipmentProvider);
+      backgroundColor: AppTheme.primaryColor, // ✅ Fond bleu pour équipements
+      body: Consumer2<EquipmentProvider, AuthProvider>(
+        builder: (context, equipmentProvider, authProvider, child) {
+          return _buildBody(equipmentProvider, authProvider);
         },
       ),
     );
   }
 
-  Widget _buildBody(EquipmentProvider equipmentProvider) {
+  Widget _buildBody(
+    EquipmentProvider equipmentProvider,
+    AuthProvider authProvider,
+  ) {
     return Stack(
       children: [
-        // AppBar personnalisée
+        // ✅ MODIFIÉ: Contenu principal qui commence sous la carte de statistiques
         Positioned(
-          top: -70,
-          left: 0,
-          right: 0,
-          child: Container(
-            height: 250,
-            width: double.infinity,
-            decoration: BoxDecoration(color: AppTheme.secondaryColor),
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.only(top: 0, left: 16, right: 16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    IconButton(
-                      icon: const Icon(
-                        Icons.menu,
-                        color: Colors.white,
-                        size: 28,
-                      ),
-                      onPressed: () {
-                        // Action pour le menu
-                      },
-                    ),
-                    const Text(
-                      'Équipement',
-                      style: TextStyle(
-                        fontFamily: AppTheme.fontMontserrat,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                        fontSize: 20,
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(
-                        Icons.add,
-                        color: Colors.white,
-                        size: 28,
-                      ),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const AddEquipmentScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-
-        // Contenu du body
-        Positioned(
-          top: 156,
+          top: 120, // ✅ CHANGÉ: Position ajustée pour commencer sous la carte
           left: 0,
           right: 0,
           bottom: 0,
           child: Container(
-            padding: const EdgeInsets.only(top: 40, left: 0, right: 0),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Column(
               children: [
+                _searchBar(equipmentProvider),
                 const SizedBox(height: 20),
-                Expanded(
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: Padding(
-                      padding: const EdgeInsets.only(
-                        top: 20,
-                        right: 16,
-                        left: 16,
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        children: [
-                          _searchBar(equipmentProvider),
-                          const SizedBox(height: 20),
-                          _buildEquipmentList(equipmentProvider),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
+                Expanded(child: _buildEquipmentList(equipmentProvider)),
               ],
             ),
           ),
         ),
 
-        // Carte des statistiques
         Positioned(
-          top: 136,
-          left: 26,
-          right: 26,
+          top: 0,
+          left: 0,
+          right: 0,
+          child: Container(color: AppTheme.secondaryColor, height: 70),
+        ),
+
+        // ✅ AJOUTÉ: Carte de statistiques positionnée au-dessus du contenu principal
+        Positioned(
+          top:
+              20, // ✅ Position depuis le haut de l'écran (sous l'AppBar étendue)
+          left: 20,
+          right: 20,
           child: Container(
-            width: double.infinity,
-            height: 90,
+            height: 90, // ✅ Hauteur fixe de la carte
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
             decoration: BoxDecoration(
               color: Colors.white,
@@ -231,40 +177,52 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
       key: _formKey,
       child: TextFormField(
         controller: _searchController,
+        style: const TextStyle(
+          color: Colors.white,
+        ), // ✅ CHANGÉ: Texte blanc pour contraste
         decoration: InputDecoration(
           labelText: 'Rechercher par...',
-          labelStyle: TextStyle(
-            color: AppTheme.thirdColor,
+          labelStyle: const TextStyle(
+            color: AppTheme.thirdColor, // ✅ CHANGÉ: Label blanc transparent
             fontFamily: AppTheme.fontRoboto,
             fontWeight: FontWeight.bold,
             fontSize: 14,
           ),
-          border: const UnderlineInputBorder(),
+          border: const UnderlineInputBorder(
+            borderSide: BorderSide(
+              color: AppTheme.thirdColor,
+            ), // ✅ CHANGÉ: Bordure blanche
+          ),
           enabledBorder: const UnderlineInputBorder(
-            borderSide: BorderSide(color: AppTheme.thirdColor),
+            borderSide: BorderSide(
+              color: AppTheme.thirdColor,
+            ), // ✅ CHANGÉ: Bordure blanche
           ),
           focusedBorder: const UnderlineInputBorder(
-            borderSide: BorderSide(color: AppTheme.secondaryColor, width: 2.0),
+            borderSide: BorderSide(
+              color: AppTheme.thirdColor,
+              width: 2.0,
+            ), // ✅ CHANGÉ: Focus blanc
           ),
           suffixIcon: IconButton(
-            icon: Icon(Icons.search, color: AppTheme.secondaryColor),
+            icon: const Icon(
+              Icons.search,
+              color: AppTheme.thirdColor,
+            ), // ✅ CHANGÉ: Icône blanche
             onPressed: () {
-              // Appliquer le filtre
               equipmentProvider.filterEquipments(_searchController.text);
             },
           ),
         ),
         onChanged: (value) {
-          // Déclencher la recherche après 1 seconde d'inactivité
           if (_debounce?.isActive ?? false) _debounce!.cancel();
           _debounce = Timer(const Duration(seconds: 1), () {
             equipmentProvider.filterEquipments(value);
           });
         },
         onFieldSubmitted: (value) {
-          // Déclencher la recherche lorsque l'utilisateur appuie sur "Terminé"
           equipmentProvider.filterEquipments(value);
-          FocusScope.of(context).unfocus(); // Fermer le clavier
+          FocusScope.of(context).unfocus();
         },
         validator: (value) {
           if (value == null || value.isEmpty) {
@@ -272,7 +230,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
           }
           return null;
         },
-        textInputAction: TextInputAction.done, // Afficher l'icône de recherche
+        textInputAction: TextInputAction.done,
       ),
     );
   }
@@ -282,25 +240,23 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
 
     return equipmentProvider.isLoading
         ? const LoadingIndicator()
-        : Expanded(
-          child: RefreshIndicator(
-            onRefresh: () => equipmentProvider.fetchEquipments(),
-            child:
-                hasResults
-                    ? ListView.builder(
-                      padding: EdgeInsets.zero,
-                      itemCount: equipmentProvider.equipments.length,
-                      itemBuilder: (context, index) {
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: _itemBuilder(
-                            equipmentProvider.equipments[index],
-                          ),
-                        );
-                      },
-                    )
-                    : _buildEmptyState(equipmentProvider),
-          ),
+        : RefreshIndicator(
+          onRefresh: () => equipmentProvider.fetchEquipments(),
+          child:
+              hasResults
+                  ? ListView.builder(
+                    padding: EdgeInsets.zero,
+                    itemCount: equipmentProvider.equipments.length,
+                    itemBuilder: (context, index) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _itemBuilder(
+                          equipmentProvider.equipments[index],
+                        ),
+                      );
+                    },
+                  )
+                  : _buildEmptyState(equipmentProvider),
         );
   }
 

@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:appmobilegmao/screens/home_screen.dart';
 import 'package:appmobilegmao/screens/ot/ot_screen.dart';
 import 'package:appmobilegmao/screens/di/di_screen.dart';
 import 'package:appmobilegmao/screens/equipments/equipment_screen.dart';
+import 'package:appmobilegmao/screens/equipments/add_equipment_screen.dart'; // ✅ AJOUTÉ: Import pour add equipment
+import 'package:appmobilegmao/screens/shared/profile_screen.dart';
+import 'package:appmobilegmao/screens/auth/login_screen.dart';
 import 'package:appmobilegmao/widgets/bottom_navigation_bar.dart';
+import 'package:appmobilegmao/provider/auth_provider.dart';
+import 'package:appmobilegmao/theme/app_theme.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -14,18 +20,17 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  // Créer les pages avec injection des services
   late final List<Widget> _pages;
 
   @override
   void initState() {
     super.initState();
 
-    // Initialiser les pages avec les services injectés
     _pages = [
       const HomeScreen(),
-      EquipmentScreen(),
+      const EquipmentScreen(),
       const OtScreen(),
       const DiScreen(),
     ];
@@ -37,14 +42,358 @@ class _MainScreenState extends State<MainScreen> {
     });
   }
 
+  String _getPageTitle(int index) {
+    switch (index) {
+      case 0:
+        return 'Accueil';
+      case 1:
+        return 'Équipements';
+      case 2:
+        return 'Ordres de Travail';
+      case 3:
+        return 'Demandes d\'Intervention';
+      default:
+        return 'SENELEC GMAO';
+    }
+  }
+
+  // ✅ NOUVELLE MÉTHODE: Obtenir la couleur de l'AppBar selon la page
+  Color _getAppBarBackgroundColor() {
+    switch (_currentIndex) {
+      case 0: // Home
+        return Colors.white; // ✅ Blanc pour l'accueil
+      case 1: // Equipment
+      case 2: // OT
+      case 3: // DI
+      default:
+        return AppTheme.secondaryColor; // ✅ Bleu pour les autres
+    }
+  }
+
+  // ✅ NOUVELLE MÉTHODE: Obtenir la couleur du texte selon la page
+  Color _getAppBarTextColor() {
+    switch (_currentIndex) {
+      case 0: // Home
+        return AppTheme.secondaryColor; // ✅ Texte bleu sur fond blanc
+      case 1: // Equipment
+      case 2: // OT
+      case 3: // DI
+      default:
+        return Colors.white; // ✅ Texte blanc sur fond bleu
+    }
+  }
+
+  void _openProfile() {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final user = authProvider.currentUser;
+
+    if (user != null) {
+      Navigator.of(context).push(
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) => ProfilMenu(
+            nom: user.username.split('.').last,
+            prenom: user.username.split('.').first,
+            email: user.email,
+            role: user.group ?? 'Utilisateur',
+            onLogout: _handleLogout,
+          ),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(-1.0, 0.0),
+                end: Offset.zero,
+              ).animate(CurvedAnimation(parent: animation, curve: Curves.easeInOut)),
+              child: child,
+            );
+          },
+          transitionDuration: const Duration(milliseconds: 300),
+        ),
+      );
+    }
+  }
+
+  // ✅ NOUVELLE MÉTHODE: Action conditionnelle pour le bouton de droite
+  void _handleRightButtonAction() {
+    switch (_currentIndex) {
+      case 1: // Equipment
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const AddEquipmentScreen()),
+        );
+        break;
+      case 0: // Home
+      case 2: // OT
+      case 3: // DI
+      default:
+        // Pour les autres pages, ne rien faire ou ouvrir les notifications
+        break;
+    }
+  }
+
+  // ✅ NOUVELLE MÉTHODE: Obtenir l'icône du bouton de droite
+  Widget _getRightButton() {
+    final user = Provider.of<AuthProvider>(context, listen: false).currentUser;
+    final textColor = _getAppBarTextColor();
+    final isHome = _currentIndex == 0;
+
+    if (_currentIndex == 1) {
+      // Page Equipment - Bouton +
+      return IconButton(
+        icon: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: isHome 
+                ? AppTheme.secondaryColor.withOpacity(0.1)
+                : Colors.white.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            Icons.add,
+            color: textColor,
+            size: 20,
+          ),
+        ),
+        onPressed: _handleRightButtonAction,
+        tooltip: 'Ajouter un équipement',
+      );
+    } else {
+      // Autres pages - Affichage des infos utilisateur
+      if (user != null) {
+        return Padding(
+          padding: const EdgeInsets.only(right: 16),
+          child: Center(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: isHome 
+                        ? AppTheme.secondaryColor.withOpacity(0.1)
+                        : AppTheme.primaryColor20,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    user.username.split('.').map((part) => part[0].toUpperCase()).join(''),
+                    style: TextStyle(
+                      color: textColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      user.username,
+                      style: TextStyle(
+                        color: textColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Text(
+                      user.group ?? 'Utilisateur',
+                      style: TextStyle(
+                        color: isHome 
+                            ? textColor.withOpacity(0.7)
+                            : textColor.withOpacity(0.8),
+                        fontSize: 10,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+    }
+    return const SizedBox.shrink();
+  }
+
+  Future<void> _handleLogout() async {
+    // Afficher dialog de confirmation
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Row(
+            children: [
+              Icon(Icons.logout, color: AppTheme.secondaryColor, size: 28),
+              const SizedBox(width: 12),
+              const Text('Déconnexion'),
+            ],
+          ),
+          content: const Text(
+            'Êtes-vous sûr de vouloir vous déconnecter ?',
+            style: TextStyle(fontSize: 16),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(
+                'Annuler',
+                style: TextStyle(
+                  color: AppTheme.thirdColor,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text(
+                'Déconnecter',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldLogout == true && mounted) {
+      // Afficher indicateur de chargement
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder:
+            (context) => Center(
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        AppTheme.secondaryColor,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Déconnexion en cours...',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+      );
+
+      try {
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+        await authProvider.logout();
+
+        if (mounted) {
+          Navigator.of(context).pop(); // Fermer le dialog de chargement
+
+          // Naviguer vers l'écran de connexion et supprimer toute la pile
+          Navigator.of(context).pushAndRemoveUntil(
+            PageRouteBuilder(
+              pageBuilder:
+                  (context, animation, secondaryAnimation) =>
+                      const LoginScreen(),
+              transitionsBuilder: (
+                context,
+                animation,
+                secondaryAnimation,
+                child,
+              ) {
+                return FadeTransition(opacity: animation, child: child);
+              },
+              transitionDuration: const Duration(milliseconds: 300),
+            ),
+            (route) => false,
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          Navigator.of(context).pop(); // Fermer le dialog de chargement
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Erreur lors de la déconnexion: $e'),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          );
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: IndexedStack(index: _currentIndex, children: _pages),
-      bottomNavigationBar: CustomBottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: _onTabTapped,
-      ),
+    return Consumer<AuthProvider>(
+      builder: (context, authProvider, child) {
+        final appBarBgColor = _getAppBarBackgroundColor();
+        final textColor = _getAppBarTextColor();
+        final isHome = _currentIndex == 0;
+
+        return Scaffold(
+          key: _scaffoldKey,
+          appBar: AppBar(
+            title: Text(
+              _getPageTitle(_currentIndex),
+              style: TextStyle(
+                fontFamily: AppTheme.fontMontserrat,
+                fontWeight: FontWeight.w600,
+                color: textColor, // ✅ CHANGÉ: Couleur conditionnelle
+                fontSize: 20,
+              ),
+            ),
+            backgroundColor: appBarBgColor, // ✅ CHANGÉ: Couleur conditionnelle
+            elevation: isHome ? 0.5 : 0, // ✅ AJOUTÉ: Légère ombre pour l'accueil
+            leading: Builder(
+              builder: (context) => IconButton(
+                icon: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: isHome 
+                        ? AppTheme.secondaryColor.withOpacity(0.1)
+                        : Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.menu,
+                    color: textColor, // ✅ CHANGÉ: Couleur conditionnelle
+                    size: 20,
+                  ),
+                ),
+                onPressed: _openProfile,
+                tooltip: 'Profil utilisateur',
+              ),
+            ),
+            actions: [_getRightButton()], // ✅ CHANGÉ: Action conditionnelle
+          ),
+          body: IndexedStack(index: _currentIndex, children: _pages),
+          bottomNavigationBar: CustomBottomNavigationBar(
+            currentIndex: _currentIndex,
+            onTap: _onTabTapped,
+          ),
+        );
+      },
     );
   }
 }

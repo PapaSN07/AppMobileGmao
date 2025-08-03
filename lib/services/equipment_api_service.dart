@@ -17,9 +17,9 @@ class EquipmentApiService {
 
   /// Récupère la liste des équipements avec pagination et filtres
   Future<ApiResponse<Equipment>> getEquipments({
+    required String entity,
     String? zone,
     String? famille,
-    String? entity,
     String? search,
     String? description,
   }) async {
@@ -27,7 +27,7 @@ class EquipmentApiService {
       final queryParams = <String, dynamic>{
         if (zone != null) 'zone': zone,
         if (famille != null) 'famille': famille,
-        if (entity != null) 'entity': entity,
+        if (entity.isNotEmpty) 'entity': entity,
         if (search != null) 'search': search,
         if (description != null) 'description': description,
       };
