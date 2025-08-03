@@ -58,7 +58,7 @@ Cette API backend fournit les services nécessaires pour l'application mobile GM
 - Détails complets d'équipement
 - Coordonnées GPS intégrées
 
-### 🏢 Données référentielles
+### 🏢 Endpoints données référentielles
 
 - **Entités** avec hiérarchie automatique
 - **Zones géographiques**

@@ -5,6 +5,7 @@ from app.services.user_service import (
     authenticate_user,
     logout_user
 )
+from app.schemas.requests.auth_request import (LoginRequest, LogoutRequest)
 import logging
 import oracledb
 
@@ -23,11 +24,14 @@ authenticate_user_router = APIRouter(
     description="Authentifie un utilisateur avec login et mot de passe"
 )
 async def login_user(
-    username: str = Query(..., description="Identifiant de l'utilisateur"),
-    password: str = Query(..., description="Mot de passe de l'utilisateur")
+    login_request: LoginRequest
 ) -> Dict[str, Any]:
     """Authentification utilisateur"""
     try:
+        # Extraction des données depuis le body
+        username = login_request.username.strip()
+        password = login_request.password.strip()
+
         if not username or not password:
             logger.warning("Username ou mot de passe manquant.")
             raise HTTPException(status_code=400, detail="Username et mot de passe requis")
@@ -51,10 +55,13 @@ async def login_user(
     description="Déconnecte l'utilisateur en cours"
 )
 async def logout_user_endpoint(
-    username: str = Query(..., description="Identifiant de l'utilisateur")
+    logout_request: LogoutRequest
 ) -> Dict[str, Any]:
     """Déconnexion utilisateur"""
     try:
+        # Extraction des données depuis le body
+        username = logout_request.username.strip()
+        
         if not username or username.strip() == "":
             logger.warning("Login manquant ou invalide pour la déconnexion.")
             raise HTTPException(status_code=400, detail="Login requis pour la déconnexion")
