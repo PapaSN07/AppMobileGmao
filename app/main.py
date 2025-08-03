@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Request
+from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import time
@@ -58,11 +59,11 @@ async def log_requests(request: Request, call_next):
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
+        "*",  # Pour développement, à restreindre en production
         "http://localhost:*",
         "http://127.0.0.1:*", 
         "http://10.0.2.2:*",
-        "http://192.168.*.*:*",  # Pour réseaux locaux
-        "*"  # Pour développement, à restreindre en production
+        "http://192.168.*.*:*"  # Pour réseaux locaux
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST"],
@@ -119,6 +120,10 @@ async def health():
             "cache": False,
             "error": str(e)
         }
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    return RedirectResponse(url="/static/favicon.ico")
 
 # Inclusion du routeur
 PREFIX = "/api/v1"

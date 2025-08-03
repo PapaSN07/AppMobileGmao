@@ -152,13 +152,6 @@ class UserModel(BaseModel):
         validate_assignment = True   # Valide lors des assignations
         use_enum_values = True      # Utilise les valeurs des enums
     
-    @validator('username', 'password')
-    def validate_required_fields(cls, v):
-        """Valide que les champs obligatoires ne sont pas vides"""
-        if not v or v.strip() == "":
-            raise ValueError("Ce champ ne peut pas être vide")
-        return v.strip()
-    
     @classmethod
     def from_db_row(cls, row: tuple) -> 'UserModel':
         """
