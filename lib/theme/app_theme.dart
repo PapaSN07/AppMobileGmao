@@ -4,11 +4,18 @@ class AppTheme {
   // Couleurs principales existantes
   static const Color primaryColor = Color.fromRGBO(255, 255, 255, 1);
   static const Color primaryColor75 = Color.fromRGBO(255, 255, 255, 0.75);
+  static const Color primaryColor50 = Color.fromRGBO(255, 255, 255, 0.5);
   static const Color primaryColor30 = Color.fromRGBO(255, 255, 255, 0.3);
   static const Color primaryColor20 = Color.fromRGBO(255, 255, 255, 0.2);
   static const Color primaryColor15 = Color.fromRGBO(255, 255, 255, 0.15);
+  static const Color primaryColor10 = Color.fromRGBO(255, 255, 255, 0.1);
   static const Color secondaryColor = Color.fromRGBO(1, 92, 192, 1);
+  static const Color secondaryColor10 = Color.fromRGBO(1, 92, 192, 0.1);
+  static const Color secondaryColor20 = Color.fromRGBO(1, 92, 192, 0.2);
+  static const Color secondaryColor30 = Color.fromRGBO(1, 92, 192, 0.3);
+  static const Color secondaryColor80 = Color.fromRGBO(1, 92, 192, 0.8);
   static const Color thirdColor = Color.fromRGBO(144, 144, 144, 1);
+  static const Color thirdColor20 = Color.fromRGBO(144, 144, 144, 0.2);
   static const Color blurColor = Color.fromRGBO(196, 196, 196, 0.25);
   static const Color boxShadowColor = Color.fromRGBO(0, 0, 0, 0.25);
 

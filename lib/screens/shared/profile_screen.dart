@@ -42,7 +42,7 @@ class ProfilMenu extends StatelessWidget {
             end: Alignment.bottomCenter,
             colors: [
               AppTheme.secondaryColor, // ✅ CHANGÉ: Commence par bleu
-              AppTheme.secondaryColor.withOpacity(0.8),
+              AppTheme.secondaryColor80,
             ],
           ),
         ),
@@ -51,17 +51,15 @@ class ProfilMenu extends StatelessWidget {
             children: [
               // AppBar personnalisée avec meilleur contraste
               Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(26),
                 child: Row(
                   children: [
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(
-                          0.3,
-                        ), // ✅ AMÉLIORÉ: Plus de contraste
+                        color: AppTheme.primaryColor30, // ✅ AMÉLIORÉ: Plus de contraste
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: Colors.white.withOpacity(0.5),
+                          color: AppTheme.primaryColor50, // ✅ AMÉLIORÉ: Plus de contraste
                           width: 1,
                         ),
                       ),
@@ -89,12 +87,10 @@ class ProfilMenu extends StatelessWidget {
                     ),
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(
-                          0.3,
-                        ), // ✅ AMÉLIORÉ: Plus de contraste
+                        color: AppTheme.primaryColor30, // ✅ AMÉLIORÉ: Plus de contraste
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: Colors.white.withOpacity(0.5),
+                          color: AppTheme.primaryColor50,
                           width: 1,
                         ),
                       ),
@@ -111,20 +107,17 @@ class ProfilMenu extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(height: 10), // ✅ RÉDUIT: Moins d'espace
+              // const SizedBox(height: 10), // ✅ RÉDUIT: Moins d'espace
               // Contenu principal - Scrollable et taille adaptée
               Expanded(
                 child: Container(
                   margin: const EdgeInsets.symmetric(
-                    horizontal: 16,
+                    horizontal: 26,
                   ), // ✅ RÉDUIT: Marges plus petites
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(
-                        24,
-                      ), // ✅ RÉDUIT: Coins moins arrondis
-                      topRight: Radius.circular(24),
+                    borderRadius: const BorderRadius.all(
+                      Radius.circular(20),
                     ),
                     boxShadow: [
                       BoxShadow(
@@ -137,9 +130,7 @@ class ProfilMenu extends StatelessWidget {
                   child: SingleChildScrollView(
                     // ✅ AJOUTÉ: Rendre scrollable
                     child: Padding(
-                      padding: const EdgeInsets.all(
-                        20,
-                      ), // ✅ RÉDUIT: Padding plus petit
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20), // ✅ RÉDUIT: Padding plus petit
                       child: Column(
                         children: [
                           // Photo de profil avec taille réduite
@@ -150,7 +141,7 @@ class ProfilMenu extends StatelessWidget {
                                 width: 100, // ✅ RÉDUIT: Taille plus petite
                                 height: 100,
                                 decoration: BoxDecoration(
-                                  color: AppTheme.primaryColor.withOpacity(0.1),
+                                  color: AppTheme.primaryColor10,
                                   shape: BoxShape.circle,
                                   border: Border.all(
                                     color: AppTheme.secondaryColor,
@@ -210,7 +201,7 @@ class ProfilMenu extends StatelessWidget {
                             ),
                           ),
 
-                          const SizedBox(height: 6), // ✅ RÉDUIT: Moins d'espace
+                          // const SizedBox(height: 6), // ✅ RÉDUIT: Moins d'espace
                           // Email
                           Text(
                             email,
@@ -230,12 +221,12 @@ class ProfilMenu extends StatelessWidget {
                               vertical: 4,
                             ), // ✅ RÉDUIT: Padding plus petit
                             decoration: BoxDecoration(
-                              color: AppTheme.secondaryColor.withOpacity(0.1),
+                              color: AppTheme.secondaryColor10,
                               borderRadius: BorderRadius.circular(
                                 16,
                               ), // ✅ RÉDUIT: Coins moins arrondis
                               border: Border.all(
-                                color: AppTheme.secondaryColor.withOpacity(0.3),
+                                color: AppTheme.secondaryColor30,
                               ),
                             ),
                             child: Text(
@@ -492,7 +483,7 @@ class ProfilMenu extends StatelessWidget {
         vertical: 4,
       ), // ✅ RÉDUIT: Marges plus petites
       height: 1,
-      color: AppTheme.thirdColor.withOpacity(0.2),
+      color: AppTheme.thirdColor20,
     );
   }
 }
