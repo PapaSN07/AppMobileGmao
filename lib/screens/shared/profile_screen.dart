@@ -327,6 +327,7 @@ class ProfilMenu extends StatelessWidget {
                                               14, // ✅ RÉDUIT: Police plus petite
                                           fontWeight: FontWeight.bold,
                                           fontFamily: AppTheme.fontMontserrat,
+                                          color: AppTheme.primaryColor,
                                         ),
                                       ),
                                     ],

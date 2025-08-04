@@ -178,7 +178,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
       child: TextFormField(
         controller: _searchController,
         style: const TextStyle(
-          color: Colors.white,
+          color: AppTheme.thirdColor,
         ), // ✅ CHANGÉ: Texte blanc pour contraste
         decoration: InputDecoration(
           labelText: 'Rechercher par...',

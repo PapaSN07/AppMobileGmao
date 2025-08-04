@@ -1,3 +1,4 @@
+import 'package:appmobilegmao/widgets/custom_buttons.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:appmobilegmao/screens/home_screen.dart';
@@ -90,19 +91,22 @@ class _MainScreenState extends State<MainScreen> {
     if (user != null) {
       Navigator.of(context).push(
         PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) => ProfilMenu(
-            nom: user.username.split('.').last,
-            prenom: user.username.split('.').first,
-            email: user.email,
-            role: user.group ?? 'Utilisateur',
-            onLogout: _handleLogout,
-          ),
+          pageBuilder:
+              (context, animation, secondaryAnimation) => ProfilMenu(
+                nom: user.username.split('.').last,
+                prenom: user.username.split('.').first,
+                email: user.email,
+                role: user.group ?? 'Utilisateur',
+                onLogout: _handleLogout,
+              ),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SlideTransition(
               position: Tween<Offset>(
                 begin: const Offset(-1.0, 0.0),
                 end: Offset.zero,
-              ).animate(CurvedAnimation(parent: animation, curve: Curves.easeInOut)),
+              ).animate(
+                CurvedAnimation(parent: animation, curve: Curves.easeInOut),
+              ),
               child: child,
             );
           },
@@ -142,16 +146,13 @@ class _MainScreenState extends State<MainScreen> {
         icon: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: isHome 
-                ? AppTheme.secondaryColor.withOpacity(0.1)
-                : Colors.white.withOpacity(0.2),
+            color:
+                isHome
+                    ? AppTheme.secondaryColor.withOpacity(0.1)
+                    : Colors.white.withOpacity(0.2),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(
-            Icons.add,
-            color: textColor,
-            size: 20,
-          ),
+          child: Icon(Icons.add, color: textColor, size: 20),
         ),
         onPressed: _handleRightButtonAction,
         tooltip: 'Ajouter un équipement',
@@ -168,13 +169,17 @@ class _MainScreenState extends State<MainScreen> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: isHome 
-                        ? AppTheme.secondaryColor.withOpacity(0.1)
-                        : AppTheme.primaryColor20,
+                    color:
+                        isHome
+                            ? AppTheme.secondaryColor.withOpacity(0.1)
+                            : AppTheme.primaryColor20,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    user.username.split('.').map((part) => part[0].toUpperCase()).join(''),
+                    user.username
+                        .split('.')
+                        .map((part) => part[0].toUpperCase())
+                        .join(''),
                     style: TextStyle(
                       color: textColor,
                       fontWeight: FontWeight.bold,
@@ -198,9 +203,10 @@ class _MainScreenState extends State<MainScreen> {
                     Text(
                       user.group ?? 'Utilisateur',
                       style: TextStyle(
-                        color: isHome 
-                            ? textColor.withOpacity(0.7)
-                            : textColor.withOpacity(0.8),
+                        color:
+                            isHome
+                                ? textColor.withOpacity(0.7)
+                                : textColor.withOpacity(0.8),
                         fontSize: 10,
                       ),
                     ),
@@ -229,7 +235,15 @@ class _MainScreenState extends State<MainScreen> {
             children: [
               Icon(Icons.logout, color: AppTheme.secondaryColor, size: 28),
               const SizedBox(width: 12),
-              const Text('Déconnexion'),
+              const Text(
+                'Déconnexion',
+                style: TextStyle(
+                  fontFamily: AppTheme.fontMontserrat,
+                  fontWeight: FontWeight.w500,
+                  fontSize: 24,
+                  color: AppTheme.secondaryColor, // ✅ Couleur du titre
+                ),
+              ),
             ],
           ),
           content: const Text(
@@ -237,29 +251,32 @@ class _MainScreenState extends State<MainScreen> {
             style: TextStyle(fontSize: 16),
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: Text(
-                'Annuler',
-                style: TextStyle(
-                  color: AppTheme.thirdColor,
-                  fontWeight: FontWeight.w500,
+            Row(
+              mainAxisAlignment:
+                  MainAxisAlignment.spaceBetween, // ✅ Aligne les boutons à droite
+              children: [
+                SecondaryButton(
+                  text: 'Annuler',
+                  onPressed: () => Navigator.of(context).pop(false),
+                  width: 150,
+                  height: 42,
                 ),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                // const SizedBox(width: 5),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text(
+                    'Déconnecter',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 ),
-              ),
-              child: const Text(
-                'Déconnecter',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
+              ],
             ),
           ],
         );
@@ -364,26 +381,29 @@ class _MainScreenState extends State<MainScreen> {
               ),
             ),
             backgroundColor: appBarBgColor, // ✅ CHANGÉ: Couleur conditionnelle
-            elevation: isHome ? 0.5 : 0, // ✅ AJOUTÉ: Légère ombre pour l'accueil
+            elevation:
+                isHome ? 0.5 : 0, // ✅ AJOUTÉ: Légère ombre pour l'accueil
             leading: Builder(
-              builder: (context) => IconButton(
-                icon: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: isHome 
-                        ? AppTheme.secondaryColor.withOpacity(0.1)
-                        : Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
+              builder:
+                  (context) => IconButton(
+                    icon: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color:
+                            isHome
+                                ? AppTheme.secondaryColor.withOpacity(0.1)
+                                : Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        Icons.menu,
+                        color: textColor, // ✅ CHANGÉ: Couleur conditionnelle
+                        size: 20,
+                      ),
+                    ),
+                    onPressed: _openProfile,
+                    tooltip: 'Profil utilisateur',
                   ),
-                  child: Icon(
-                    Icons.menu,
-                    color: textColor, // ✅ CHANGÉ: Couleur conditionnelle
-                    size: 20,
-                  ),
-                ),
-                onPressed: _openProfile,
-                tooltip: 'Profil utilisateur',
-              ),
             ),
             actions: [_getRightButton()], // ✅ CHANGÉ: Action conditionnelle
           ),

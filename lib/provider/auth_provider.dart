@@ -47,7 +47,7 @@ class AuthProvider extends ChangeNotifier {
     await _authService.logout(user);
 
     // Supprimer l'utilisateur de Hive
-    await HiveService.clearCurrentUser();
+    await HiveService.clearAllCache();
 
     // Réinitialiser l'état local
     _currentUser = null;
