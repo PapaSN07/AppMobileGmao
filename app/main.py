@@ -60,10 +60,10 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "*",  # Pour développement, à restreindre en production
-        "http://localhost:*",
-        "http://127.0.0.1:*", 
-        "http://10.0.2.2:*",
-        "http://192.168.*.*:*"  # Pour réseaux locaux
+        # "http://localhost:*",
+        # "http://127.0.0.1:*", 
+        # "http://10.0.2.2:*",
+        # "http://192.168.*.*:*"  # Pour réseaux locaux
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST"],
