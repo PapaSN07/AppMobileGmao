@@ -192,8 +192,6 @@ def get_feeders(entity: str) -> Dict[str, Any]:
             query += f" AND EREQ_CATEGORY IN ('DEPART30KV', 'DEPART6,6KV')"
             query += f" ORDER BY ereq_code"
             
-            print(f"Executing query: {query} \nwith params: {params}")
-            
             results = db.execute_query(query, params=params)
 
             feeders = []

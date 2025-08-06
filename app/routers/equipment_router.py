@@ -97,6 +97,11 @@ async def get_equipment_values(entity: str) -> Dict[str, Any]:
         familles_result = get_familles(entity)
         unites_result = get_unites(entity)
         zones_result = get_zones(entity)
+        feeder_result = get_feeders(entity)
+
+        # Vérification des résultats
+        if not cost_charges_result or not entities_result or not familles_result or not unites_result or not zones_result:
+            raise HTTPException(status_code=404, detail="Aucune donnée trouvée pour l'entité spécifiée")
         
         return {
             "status": "success",
@@ -106,7 +111,8 @@ async def get_equipment_values(entity: str) -> Dict[str, Any]:
                 "unites": unites_result.get('unites', []),
                 "zones": zones_result.get('zones', []),
                 "familles": familles_result.get('familles', []),
-                "cost_charges": cost_charges_result.get('centre_charges', [])
+                "cost_charges": cost_charges_result.get('centre_charges', []),
+                "feeders": feeder_result.get('feeders', [])
             }
         }
     
