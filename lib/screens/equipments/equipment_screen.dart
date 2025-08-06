@@ -48,7 +48,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     final user = authProvider.currentUser;
 
     if (user != null) {
-      context.read<EquipmentProvider>().fetchEquipments(code: user.code);
+      context.read<EquipmentProvider>().fetchEquipments(entity: user.entity);
     } else {
       context.read<EquipmentProvider>().fetchEquipments();
     }

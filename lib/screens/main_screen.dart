@@ -258,7 +258,7 @@ class _MainScreenState extends State<MainScreen> {
                 SecondaryButton(
                   text: 'Annuler',
                   onPressed: () => Navigator.of(context).pop(false),
-                  width: 150,
+                  width: 100,
                   height: 42,
                 ),
                 // const SizedBox(width: 5),

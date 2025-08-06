@@ -43,7 +43,7 @@ class EquipmentProvider extends ChangeNotifier {
   }
 
   // Charger les équipements
-  Future<void> fetchEquipments({String? code, bool forceRefresh = false}) async {
+  Future<void> fetchEquipments({String? entity, bool forceRefresh = false}) async {
     if (_isLoading) return;
 
     _isLoading = true;
@@ -78,7 +78,7 @@ class EquipmentProvider extends ChangeNotifier {
         }
 
         final response = await _apiService.getEquipments(
-          entity: code ?? _filters['entity'] ?? '',
+          entity: entity ?? _filters['entity'] ?? '',
           zone: _filters['zone'],
           famille: _filters['famille'],
           search: _filters['search'],
