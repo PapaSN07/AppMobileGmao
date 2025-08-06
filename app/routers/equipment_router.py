@@ -7,6 +7,11 @@ from app.services.equipment_service import (
     get_equipment_by_id,
     get_feeders
 )
+from app.services.centre_charge_service import get_centre_charges
+from app.services.entity_service import get_entities
+from app.services.famille_service import get_familles
+from app.services.unite_service import get_unites
+from app.services.zone_service import get_zones
 
 logger = logging.getLogger(__name__)
 
@@ -79,5 +84,33 @@ async def get_feeders_mobile(entity: str) -> Dict[str, Any]:
         logger.error(f"❌ Erreur récupération feeders: {e}")
         raise HTTPException(status_code=500, detail=f"Erreur récupération feeders: {str(e)}")
 
-
+@equipment_router.get("/values/{entity}",
+    summary="Récupérer les valeurs des équipements",
+    description="Récupère les valeurs des équipements pour l'entité spécifiée"
+)
+async def get_equipment_values(entity: str) -> Dict[str, Any]:
+    """Récupération des valeurs des équipements"""
+    try:
+        # ✅ Correction : Suppression des await (fonctions synchrones)
+        cost_charges_result = get_centre_charges(entity)
+        entities_result = get_entities(entity)
+        familles_result = get_familles(entity)
+        unites_result = get_unites(entity)
+        zones_result = get_zones(entity)
+        
+        return {
+            "status": "success",
+            "message": f"Valeurs récupérées pour l'entité {entity}",
+            "data": {
+                "entities": entities_result.get('entities', []),
+                "unites": unites_result.get('unites', []),
+                "zones": zones_result.get('zones', []),
+                "familles": familles_result.get('familles', []),
+                "cost_charges": cost_charges_result.get('centre_charges', [])
+            }
+        }
+    
+    except Exception as e:
+        logger.error(f"❌ Erreur récupération valeurs: {e}")
+        raise HTTPException(status_code=500, detail=f"Erreur récupération valeurs: {str(e)}")
 # === FIN ENDPOINTS CORE POUR MOBILE ===

@@ -3,7 +3,7 @@ from app.models.models import CentreChargeModel
 from app.core.config import CACHE_TTL_SHORT
 from app.db.requests import COSTCENTRE_QUERY
 from app.core.cache import cache
-from typing import Any, Dict, List
+from typing import Any, Dict
 import logging
 
 logger = logging.getLogger(__name__)
