@@ -304,7 +304,6 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
 
   Widget _itemBuilder(dynamic equipment) {
     return ListItemCustom.equipment(
-      id: equipment['id']?.toString() ?? '',
       codeParent: equipment['codeParent'] ?? '',
       feeder: equipment['feeder'] ?? '',
       feederDescription: equipment['feederDescription'] ?? '',

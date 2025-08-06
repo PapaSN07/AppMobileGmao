@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/equipment_hive.dart';
 import '../models/equipment.dart';
-import '../models/reference_data.dart';
 import '../models/user_hive.dart';
 import '../models/attribut_value.dart';
 
@@ -271,62 +270,6 @@ class HiveService {
         print('❌ GMAO: Erreur lecture cache équipements: $e');
       }
       return [];
-    }
-  }
-
-  // ========================================
-  // GESTION DES DONNÉES DE RÉFÉRENCE
-  // ========================================
-
-  /// Cache des données de référence
-  static Future<void> cacheReferenceData(ReferenceData data) async {
-    try {
-      final hiveData = ReferenceDataHive(
-        zones: data.zones.map((z) => z.name).toList(),
-        familles: data.familles.map((f) => f.name).toList(),
-        entities: data.entities.map((e) => e.name).toList(),
-        lastSync: DateTime.now(),
-      );
-
-      await referenceBox.put('reference_data', hiveData);
-      await _updateTimestamp('reference_data');
-
-      if (kDebugMode) {
-        print('💾 GMAO: Données de référence mises en cache');
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ GMAO: Erreur cache référence: $e');
-      }
-      rethrow;
-    }
-  }
-
-  /// Récupération des données de référence
-  static Future<ReferenceData?> getCachedReferenceData() async {
-    try {
-      final cached = referenceBox.get('reference_data');
-      if (cached == null) return null;
-
-      return ReferenceData(
-        zones:
-            cached.zones
-                .map((name) => ReferenceItem(name: name, count: 0))
-                .toList(),
-        familles:
-            cached.familles
-                .map((name) => ReferenceItem(name: name, count: 0))
-                .toList(),
-        entities:
-            cached.entities
-                .map((name) => ReferenceItem(name: name, count: 0))
-                .toList(),
-      );
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ GMAO: Erreur lecture cache référence: $e');
-      }
-      return null;
     }
   }
 

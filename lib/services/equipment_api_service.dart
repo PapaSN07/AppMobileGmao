@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../models/equipment.dart';
 import '../models/api_response.dart';
-import '../models/reference_data.dart';
 import 'api_service.dart';
 
 class EquipmentApiService {
@@ -41,40 +40,6 @@ class EquipmentApiService {
     } catch (e) {
       if (kDebugMode) {
         print('❌ EquipmentApi - Erreur getEquipments: $e');
-      }
-      rethrow;
-    }
-  }
-
-  /// Récupère les détails d'un équipement spécifique
-  Future<Equipment> getEquipmentDetail(String code) async {
-    try {
-      if (kDebugMode) {
-        print('🔍 EquipmentApi - Récupération détail équipement: $code');
-      }
-      
-      final data = await _apiService.get('/api/v1/equipments/$code');
-      return Equipment.fromJson(data['equipment']);
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ EquipmentApi - Erreur getEquipmentDetail: $e');
-      }
-      rethrow;
-    }
-  }
-
-  /// Synchronise les données de référence (zones, familles, entités)
-  Future<ReferenceData> syncReferenceData() async {
-    try {
-      if (kDebugMode) {
-        print('📊 EquipmentApi - Synchronisation données de référence...');
-      }
-      
-      final data = await _apiService.get('/api/v1/equipments/reference/sync');
-      return ReferenceData.fromJson(data);
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ EquipmentApi - Erreur syncReferenceData: $e');
       }
       rethrow;
     }

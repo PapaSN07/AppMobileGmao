@@ -3,7 +3,6 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:appmobilegmao/services/equipment_api_service.dart';
 import 'package:appmobilegmao/services/hive_service.dart';
 import 'package:appmobilegmao/models/equipment.dart';
-import 'package:appmobilegmao/models/reference_data.dart';
 
 class EquipmentProvider extends ChangeNotifier {
   final EquipmentApiService _apiService = EquipmentApiService();
@@ -17,9 +16,6 @@ class EquipmentProvider extends ChangeNotifier {
   bool _isOffline = false;
   String? _error;
 
-  // Données de référence
-  ReferenceData? _referenceData;
-  bool _isLoadingReference = false;
 
   // Getters
   List<Map<String, dynamic>> get equipments => _equipments;
@@ -27,13 +23,10 @@ class EquipmentProvider extends ChangeNotifier {
   String? get error => _error;
   Map<String, String> get filters => _filters;
   bool get isOffline => _isOffline;
-  ReferenceData? get referenceData => _referenceData;
-  bool get isLoadingReference => _isLoadingReference;
 
   // Initialisation
   Future<void> initialize() async {
     await _checkConnectivity();
-    await loadReferenceData();
     await fetchEquipments();
   }
 
@@ -145,43 +138,6 @@ class EquipmentProvider extends ChangeNotifier {
   // Effacer les filtres
   Future<void> clearFilters() async {
     await applyFilters({});
-  }
-
-  // Charger les données de référence
-  Future<void> loadReferenceData({bool forceRefresh = false}) async {
-    if (_isLoadingReference) return;
-
-    _isLoadingReference = true;
-    notifyListeners();
-
-    try {
-      if (!forceRefresh) {
-        final cached = await HiveService.getCachedReferenceData();
-        if (cached != null) {
-          _referenceData = cached;
-          _isLoadingReference = false;
-          notifyListeners();
-          return;
-        }
-      }
-
-      if (!_isOffline) {
-        final data = await _apiService.syncReferenceData();
-        _referenceData = data;
-        await HiveService.cacheReferenceData(data);
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ GMAO: Erreur données référence: $e');
-      }
-      final cached = await HiveService.getCachedReferenceData();
-      if (cached != null) {
-        _referenceData = cached;
-      }
-    } finally {
-      _isLoadingReference = false;
-      notifyListeners();
-    }
   }
 
   // Méthode helper pour gérer les erreurs
