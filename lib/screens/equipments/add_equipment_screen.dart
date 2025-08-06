@@ -422,7 +422,16 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
         _buildDropdownField(
           label: 'Code Parent',
           msgError: 'Veuillez sélectionner un code parent',
-          items: ['#12345', '#67890', '#54321'],
+          items:
+              feeders
+                  .map((item) {
+                    final code = item['code']?.toString() ?? '';
+                    return code;
+                  })
+                  .where((item) => item.isNotEmpty)
+                  .toSet()
+                  .toList()
+                ..sort(),
           selectedValue: selectedCodeParent,
           onChanged: (value) {
             setState(() {
@@ -561,7 +570,15 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
           child: _buildDropdownField(
             label: 'Feeder',
             msgError: 'Veuillez sélectionner un feeder',
-            items: _getSelectorsOptions(feeders),
+            items: feeders
+                  .map((item) {
+                    final code = item['description']?.toString() ?? '';
+                    return code;
+                  })
+                  .where((item) => item.isNotEmpty)
+                  .toSet()
+                  .toList()
+                ..sort(),
             selectedValue: selectedFeeder,
             onChanged: (value) {
               setState(() {
