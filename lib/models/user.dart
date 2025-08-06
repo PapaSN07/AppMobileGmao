@@ -1,12 +1,26 @@
-class User {
+import 'package:hive/hive.dart';
+
+part 'user.g.dart';
+
+@HiveType(typeId: 2)
+class User extends HiveObject {
+  @HiveField(0)
   final String id;
+  @HiveField(1) 
   final String? code;
+  @HiveField(2)
   final String username;
+  @HiveField(3)
   final String? password;
+  @HiveField(4)
   final String email;
+  @HiveField(5)
   final String entity;
+  @HiveField(6)
   final String? group;
+  @HiveField(7)
   final String? urlImage;
+  @HiveField(8)
   final String? isAbsent;
 
   User({
@@ -23,15 +37,15 @@ class User {
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      id: json['id'] as String,
-      code: json['code'] as String?,
-      username: json['username'] as String,
-      password: json['password'] as String,
-      email: json['email'] as String,
-      entity: json['entity'] as String,
-      group: json['group'] as String?,
-      urlImage: json['urlImage'] as String?,
-      isAbsent: json['isAbsent'] as String?,
+      id: json['id'] ?? '',
+      code: json['code'] ?? '',
+      username: json['username'] ?? '',
+      password: json['password'] ?? '',
+      email: json['email'] ?? '',
+      entity: json['entity'] ?? '',
+      group: json['group'] ?? '',
+      urlImage: json['urlImage'] ?? '',
+      isAbsent: json['isAbsent'] ?? '',
     );
   }
 

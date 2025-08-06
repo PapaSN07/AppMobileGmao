@@ -1,22 +1,22 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'equipment_hive.dart';
+part of 'equipment.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
 
-class EquipmentHiveAdapter extends TypeAdapter<EquipmentHive> {
+class EquipmentAdapter extends TypeAdapter<Equipment> {
   @override
   final int typeId = 0;
 
   @override
-  EquipmentHive read(BinaryReader reader) {
+  Equipment read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return EquipmentHive(
+    return Equipment(
       id: fields[0] as String?,
       codeParent: fields[1] as String?,
       feeder: fields[2] as String?,
@@ -30,14 +30,14 @@ class EquipmentHiveAdapter extends TypeAdapter<EquipmentHive> {
       description: fields[10] as String,
       longitude: fields[11] as String,
       latitude: fields[12] as String,
-      attributs: (fields[13] as List).cast<AttributeValueHive>(),
+      attributs: (fields[13] as List).cast<AttributeValue>(),
       cachedAt: fields[14] as DateTime?,
       isSync: fields[15] as bool,
     );
   }
 
   @override
-  void write(BinaryWriter writer, EquipmentHive obj) {
+  void write(BinaryWriter writer, Equipment obj) {
     writer
       ..writeByte(16)
       ..writeByte(0)
@@ -80,22 +80,22 @@ class EquipmentHiveAdapter extends TypeAdapter<EquipmentHive> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is EquipmentHiveAdapter &&
+      other is EquipmentAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }
 
-class AttributeValueHiveAdapter extends TypeAdapter<AttributeValueHive> {
+class AttributeValueAdapter extends TypeAdapter<AttributeValue> {
   @override
   final int typeId = 1;
 
   @override
-  AttributeValueHive read(BinaryReader reader) {
+  AttributeValue read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return AttributeValueHive(
+    return AttributeValue(
       name: fields[0] as String?,
       value: fields[1] as String?,
       type: fields[2] as String?,
@@ -103,7 +103,7 @@ class AttributeValueHiveAdapter extends TypeAdapter<AttributeValueHive> {
   }
 
   @override
-  void write(BinaryWriter writer, AttributeValueHive obj) {
+  void write(BinaryWriter writer, AttributeValue obj) {
     writer
       ..writeByte(3)
       ..writeByte(0)
@@ -120,53 +120,7 @@ class AttributeValueHiveAdapter extends TypeAdapter<AttributeValueHive> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is AttributeValueHiveAdapter &&
-          runtimeType == other.runtimeType &&
-          typeId == other.typeId;
-}
-
-class ReferenceDataHiveAdapter extends TypeAdapter<ReferenceDataHive> {
-  @override
-  final int typeId = 2;
-
-  @override
-  ReferenceDataHive read(BinaryReader reader) {
-    final numOfFields = reader.readByte();
-    final fields = <int, dynamic>{
-      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
-    };
-    return ReferenceDataHive(
-      zones: (fields[0] as List).cast<String>(),
-      familles: (fields[1] as List).cast<String>(),
-      entities: (fields[2] as List).cast<String>(),
-      lastSync: fields[3] as DateTime?,
-      cacheVersion: fields[4] as String,
-    );
-  }
-
-  @override
-  void write(BinaryWriter writer, ReferenceDataHive obj) {
-    writer
-      ..writeByte(5)
-      ..writeByte(0)
-      ..write(obj.zones)
-      ..writeByte(1)
-      ..write(obj.familles)
-      ..writeByte(2)
-      ..write(obj.entities)
-      ..writeByte(3)
-      ..write(obj.lastSync)
-      ..writeByte(4)
-      ..write(obj.cacheVersion);
-  }
-
-  @override
-  int get hashCode => typeId.hashCode;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is ReferenceDataHiveAdapter &&
+      other is AttributeValueAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

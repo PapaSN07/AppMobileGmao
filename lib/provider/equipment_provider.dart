@@ -16,7 +16,6 @@ class EquipmentProvider extends ChangeNotifier {
   bool _isOffline = false;
   String? _error;
 
-
   // Getters
   List<Map<String, dynamic>> get equipments => _equipments;
   bool get isLoading => _isLoading;
@@ -36,7 +35,10 @@ class EquipmentProvider extends ChangeNotifier {
   }
 
   // Charger les équipements
-  Future<void> fetchEquipments({String? entity, bool forceRefresh = false}) async {
+  Future<void> fetchEquipments({
+    String? entity,
+    bool forceRefresh = false,
+  }) async {
     if (_isLoading) return;
 
     _isLoading = true;
@@ -106,25 +108,55 @@ class EquipmentProvider extends ChangeNotifier {
     }
   }
 
+  // Charger les sélecteurs
+  Future<Map<String, dynamic>> loadSelectors({required String entity}) async {
+    try {
+      if (kDebugMode) {
+        print(
+          '🔧 EquipmentProvider - Chargement des sélecteurs pour l\'entité $entity',
+        );
+      }
+
+      final selectors = HiveService.getCachedSelectors();
+      if (selectors != null && selectors.isNotEmpty) {
+        return selectors;
+      }
+
+      // Si le cache est vide, récupérer depuis l'API
+      final apiSelectors = await _apiService.getEquipmentSelectors(
+        entity: entity,
+      );
+      return apiSelectors;
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ EquipmentProvider - Erreur chargement des sélecteurs: $e');
+      }
+    }
+    return {};
+  }
+
   // Méthode de recherche
   void filterEquipments(String searchTerm) {
     if (searchTerm.isEmpty) {
       _equipments = List.from(_allEquipments);
     } else {
       final lowercaseSearch = searchTerm.toLowerCase();
-      _equipments = _allEquipments.where((equipment) {
-        final code = equipment['code']?.toString().toLowerCase() ?? '';
-        final description = equipment['description']?.toString().toLowerCase() ?? '';
-        final zone = equipment['zone']?.toString().toLowerCase() ?? '';
-        final famille = equipment['famille']?.toString().toLowerCase() ?? '';
-        final entity = equipment['entity']?.toString().toLowerCase() ?? '';
+      _equipments =
+          _allEquipments.where((equipment) {
+            final code = equipment['code']?.toString().toLowerCase() ?? '';
+            final description =
+                equipment['description']?.toString().toLowerCase() ?? '';
+            final zone = equipment['zone']?.toString().toLowerCase() ?? '';
+            final famille =
+                equipment['famille']?.toString().toLowerCase() ?? '';
+            final entity = equipment['entity']?.toString().toLowerCase() ?? '';
 
-        return code.contains(lowercaseSearch) ||
-            description.contains(lowercaseSearch) ||
-            zone.contains(lowercaseSearch) ||
-            famille.contains(lowercaseSearch) ||
-            entity.contains(lowercaseSearch);
-      }).toList();
+            return code.contains(lowercaseSearch) ||
+                description.contains(lowercaseSearch) ||
+                zone.contains(lowercaseSearch) ||
+                famille.contains(lowercaseSearch) ||
+                entity.contains(lowercaseSearch);
+          }).toList();
     }
     notifyListeners();
   }
@@ -277,7 +309,9 @@ class EquipmentProvider extends ChangeNotifier {
 
   // Conversion helper
   List<Map<String, dynamic>> _convertToMapList(List<Equipment> equipments) {
-    return equipments.map((equipment) => _convertEquipmentToMap(equipment)).toList();
+    return equipments
+        .map((equipment) => _convertEquipmentToMap(equipment))
+        .toList();
   }
 
   Map<String, dynamic> _convertEquipmentToMap(Equipment equipment) {
@@ -295,11 +329,16 @@ class EquipmentProvider extends ChangeNotifier {
       'description': equipment.description,
       'longitude': equipment.longitude,
       'latitude': equipment.latitude,
-      'attributs': equipment.attributs.map((attr) => {
-        'name': attr.name,
-        'value': attr.value,
-        'type': attr.type,
-      }).toList(),
+      'attributs':
+          equipment.attributs
+              .map(
+                (attr) => {
+                  'name': attr.name,
+                  'value': attr.value,
+                  'type': attr.type,
+                },
+              )
+              .toList(),
     };
   }
 }

@@ -1,17 +1,17 @@
 import 'package:appmobilegmao/services/hive_service.dart';
 import 'package:flutter/foundation.dart';
-import 'package:appmobilegmao/models/user_hive.dart';
+import 'package:appmobilegmao/models/user.dart';
 import 'package:appmobilegmao/services/auth_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final AuthService _authService;
 
-  UserHive? _currentUser;
+  User? _currentUser;
 
   AuthProvider({AuthService? authService})
     : _authService = authService ?? AuthService();
 
-  UserHive? get currentUser => _currentUser;
+  User? get currentUser => _currentUser;
 
   /// Initialiser le provider et charger l'utilisateur depuis Hive
   Future<void> initialize() async {
@@ -24,7 +24,7 @@ class AuthProvider extends ChangeNotifier {
     final result = await _authService.login(username, password);
 
     if (result['success']) {
-      // Créer un objet UserHive
+      // Créer un objet User
       final user = result['data'];
 
       // Sauvegarder l'utilisateur dans Hive

@@ -7,6 +7,7 @@ import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:appmobilegmao/widgets/list_item.dart';
 import 'package:appmobilegmao/widgets/loading_indicator.dart';
 import 'package:appmobilegmao/widgets/empty_state.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -43,12 +44,21 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     super.deactivate();
   }
 
-  void _loadEquipmentsWithUserInfo() {
+  void _loadEquipmentsWithUserInfo() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final equipmentProvider = Provider.of<EquipmentProvider>(context, listen: false);
     final user = authProvider.currentUser;
 
     if (user != null) {
-      context.read<EquipmentProvider>().fetchEquipments(entity: user.entity);
+      await equipmentProvider.fetchEquipments(entity: user.entity);
+
+    // Charger les sélecteurs après la récupération des équipements
+    final selectors = await equipmentProvider.loadSelectors(entity: user.entity);
+    if (selectors.isNotEmpty) {
+      if (kDebugMode) {
+        print('✅ Sélecteurs chargés et mis en cache : $selectors');
+      }
+    }
     } else {
       context.read<EquipmentProvider>().fetchEquipments();
     }

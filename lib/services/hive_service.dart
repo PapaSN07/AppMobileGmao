@@ -1,17 +1,15 @@
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import '../models/equipment_hive.dart';
 import '../models/equipment.dart';
-import '../models/user_hive.dart';
-import '../models/attribut_value.dart';
+import '../models/user.dart';
 
 /// Service de cache Hive générique pour toute l'application GMAO
 /// Gère le stockage local des données avec synchronisation différée
 class HiveService {
   // Boxes de cache
-  static late Box<EquipmentHive> equipmentBox;
-  static late Box<ReferenceDataHive> referenceBox;
-  static late Box<UserHive> userBox;
+  static late Box<Equipment> equipmentBox;
+  static late Box<User> userBox;
+  static late Box<dynamic> selectorsBox; // Sélecteurs
   static late Box<String> metadataBox;
   static late Box<Map<String, dynamic>> pendingActionsBox; // Actions en attente
   static late Box<Map<String, dynamic>> workOrderBox; // Ordres de travail
@@ -45,26 +43,21 @@ class HiveService {
   /// Enregistrement des adaptateurs Hive
   static void _registerAdapters() {
     if (!Hive.isAdapterRegistered(0)) {
-      Hive.registerAdapter(EquipmentHiveAdapter());
+      Hive.registerAdapter(EquipmentAdapter());
     }
     if (!Hive.isAdapterRegistered(1)) {
-      Hive.registerAdapter(AttributeValueHiveAdapter());
+      Hive.registerAdapter(AttributeValueAdapter());
     }
     if (!Hive.isAdapterRegistered(2)) {
-      Hive.registerAdapter(ReferenceDataHiveAdapter());
-    }
-    if (!Hive.isAdapterRegistered(3)) {
-      Hive.registerAdapter(UserHiveAdapter());
+      Hive.registerAdapter(UserAdapter());
     }
   }
 
   /// Ouverture des boxes
   static Future<void> _openBoxes() async {
-    equipmentBox = await Hive.openBox<EquipmentHive>('gmao_equipment_cache');
-    referenceBox = await Hive.openBox<ReferenceDataHive>(
-      'gmao_reference_cache',
-    );
-    userBox = await Hive.openBox<UserHive>('gmao_user_cache');
+    equipmentBox = await Hive.openBox<Equipment>('gmao_equipment_cache');
+    userBox = await Hive.openBox<User>('gmao_user_cache');
+    selectorsBox = await Hive.openBox<dynamic>('gmao_selectors_cache');
     metadataBox = await Hive.openBox<String>('gmao_metadata_cache');
     pendingActionsBox = await Hive.openBox<Map<String, dynamic>>(
       'gmao_pending_actions',
@@ -81,6 +74,7 @@ class HiveService {
       print('📦 GMAO Cache Stats:');
       print('   - Équipements: ${equipmentBox.length}');
       print('   - Utilisateurs: ${userBox.length}');
+      print('   - Sélecteurs: ${selectorsBox.length}');
       print('   - Actions en attente: ${pendingActionsBox.length}');
       print('   - Ordres de travail: ${workOrderBox.length}');
       print('   - Interventions: ${interventionBox.length}');
@@ -274,16 +268,71 @@ class HiveService {
   }
 
   // ========================================
+  // GESTION DES SÉlECTEURS
+  // ========================================
+
+  /// Cache des sélecteurs
+  static Future<void> cacheSelectors(Map<String, dynamic> selectors) async {
+    try {
+      await selectorsBox.clear();
+      await selectorsBox.putAll({
+        'entities': selectors['entities'],
+        'unites': selectors['unites'],
+        'zones': selectors['zones'],
+        'familles': selectors['familles'],
+        'centreCharges': selectors['centreCharges'],
+        'feeders': selectors['feeders'],
+      });
+
+      await _updateTimestamp('selectors');
+      if (kDebugMode) {
+        print('💾 GMAO: Sélecteurs mis en cache');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ GMAO: Erreur cache sélecteurs: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// Récupération des sélecteurs
+  static Map<String, dynamic>? getCachedSelectors() {
+  try {
+    final selectors = selectorsBox.toMap();
+    if (selectors.isNotEmpty) {
+      if (kDebugMode) {
+        print('📋 GMAO: Sélecteurs récupérés du cache');
+      }
+      // Validation des données
+      if (selectors.containsKey('entities') &&
+          selectors.containsKey('zones') &&
+          selectors.containsKey('familles') &&
+          selectors.containsKey('centreCharges') &&
+          selectors.containsKey('feeders')) {
+        return selectors['selectors'];
+      }
+    }
+    return {}; // Retourner une valeur par défaut si les données sont invalides
+  } catch (e) {
+    if (kDebugMode) {
+      print('❌ GMAO: Erreur lecture cache sélecteurs: $e');
+    }
+    return null;
+  }
+}
+
+  // ========================================
   // GESTION DES UTILISATEURS
   // ========================================
 
   /// Cache de l'utilisateur connecté
-  static Future<void> cacheCurrentUser(UserHive user) async {
+  static Future<void> cacheCurrentUser(User user) async {
     await cacheData(userBox, 'current_user', user);
   }
 
   /// Récupération de l'utilisateur connecté
-  static UserHive? getCurrentUser() {
+  static User? getCurrentUser() {
     return getCachedData(userBox, 'current_user');
   }
 
@@ -440,11 +489,11 @@ class HiveService {
       case 'equipments':
         await equipmentBox.clear();
         break;
-      case 'reference':
-        await referenceBox.clear();
-        break;
       case 'users':
         await userBox.clear();
+        break;
+      case 'selectors':
+        await selectorsBox.clear();
         break;
       case 'work_orders':
         await workOrderBox.clear();
@@ -465,8 +514,8 @@ class HiveService {
   /// Nettoyage complet du cache
   static Future<void> clearAllCache() async {
     await equipmentBox.clear();
-    await referenceBox.clear();
     await userBox.clear();
+    await selectorsBox.clear();
     await metadataBox.clear();
     await pendingActionsBox.clear();
     await workOrderBox.clear();
@@ -492,10 +541,21 @@ class HiveService {
         // Déterminer quel cache nettoyer
         if (cacheKey.contains('equipment')) {
           await equipmentBox.clear();
-        } else if (cacheKey.contains('reference')) {
-          await referenceBox.clear();
+        } else if (cacheKey.contains('user')) {
+          await userBox.clear();
+        } else if (cacheKey.contains('selectors')) {
+          await selectorsBox.clear();
+        } else if (cacheKey.contains('work_orders')) {
+          await workOrderBox.clear();
+        } else if (cacheKey.contains('interventions')) {
+          await interventionBox.clear();
+        } else if (cacheKey.contains('pending_actions')) {
+          await pendingActionsBox.clear();
         }
-        // ... autres caches
+        await metadataBox.delete(key);
+        if (kDebugMode) {
+          print('🗑️ GMAO: Cache expiré nettoyé: $cacheKey');
+        }
       }
     }
 
@@ -508,12 +568,12 @@ class HiveService {
   // MÉTHODES DE CONVERSION
   // ========================================
 
-  /// Conversion Equipment vers EquipmentHive
-  static EquipmentHive _equipmentToHive(
+  /// Conversion Equipment vers Equipment
+  static Equipment _equipmentToHive(
     Equipment equipment,
     DateTime cachedAt,
   ) {
-    return EquipmentHive(
+    return Equipment(
       id: equipment.id,
       codeParent: equipment.codeParent,
       feeder: equipment.feeder,
@@ -530,7 +590,7 @@ class HiveService {
       attributs:
           equipment.attributs
               .map(
-                (attr) => AttributeValueHive(
+                (attr) => AttributeValue(
                   name: attr.name,
                   value: attr.value,
                   type: attr.type,
@@ -542,8 +602,8 @@ class HiveService {
     );
   }
 
-  /// Conversion EquipmentHive vers Equipment
-  static Equipment _hiveToEquipment(EquipmentHive hiveEquipment) {
+  /// Conversion Equipment vers Equipment
+  static Equipment _hiveToEquipment(Equipment hiveEquipment) {
     return Equipment(
       id: hiveEquipment.id,
       codeParent: hiveEquipment.codeParent,
@@ -561,7 +621,7 @@ class HiveService {
       attributs:
           hiveEquipment.attributs
               .map(
-                (attr) => AttributValue(
+                (attr) => AttributeValue(
                   name: attr.name,
                   value: attr.value,
                   type: attr.type,
@@ -580,7 +640,7 @@ class HiveService {
     return {
       'equipments': equipmentBox.length,
       'users': userBox.length,
-      'reference_data': referenceBox.length,
+      'selectors': selectorsBox.length,
       'pending_actions': pendingActionsBox.length,
       'work_orders': workOrderBox.length,
       'interventions': interventionBox.length,
@@ -598,6 +658,8 @@ class HiveService {
           (workOrderBox.toMap().toString().length / (1024 * 1024)).round(),
       'interventions_mb':
           (interventionBox.toMap().toString().length / (1024 * 1024)).round(),
+      'selectors_mb':
+          (selectorsBox.toMap().toString().length / (1024 * 1024)).round(),
     };
   }
 }

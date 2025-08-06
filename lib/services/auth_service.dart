@@ -1,4 +1,4 @@
-import 'package:appmobilegmao/models/user_hive.dart';
+import 'package:appmobilegmao/models/user.dart';
 import 'package:appmobilegmao/services/api_service.dart';
 import 'package:appmobilegmao/services/hive_service.dart';
 import 'package:flutter/foundation.dart';
@@ -22,7 +22,7 @@ class AuthService extends ApiService {
       }
       return {
         'success': true,
-        'data': UserHive.fromJson(response['data']),
+        'data': User.fromJson(response['data']),
         'message': 'Connexion réussie',
       };
     } else {
@@ -79,7 +79,7 @@ class AuthService extends ApiService {
   /// Vérifier si l'utilisateur est connecté
   bool isLoggedIn() {
     // Vérifier si un utilisateur est présent dans le cache
-    final UserHive? cachedUser = HiveService.getCurrentUser();
+    final User? cachedUser = HiveService.getCurrentUser();
     return cachedUser != null;
   }
 }
