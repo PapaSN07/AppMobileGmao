@@ -77,7 +77,9 @@ def get_equipments_infinite(
             
             for row in results:
                 try:
-                    equipments.append(EquipmentModel.from_db_row(row))
+                    equipment = EquipmentModel.from_db_row(row)
+                    # Convertir en dictionnaire pour la sérialisation
+                    equipments.append(equipment.to_api_response())
                 except Exception as e:
                     logger.error(f"❌ Erreur mapping: {e}")
                     continue
@@ -148,21 +150,61 @@ def get_equipment_by_id(code: str) -> Optional[Dict[str, Any]]:
         logger.error(f"❌ Erreur détail équipement: {e}")
         raise
 
-def get_feeders(famille: str) -> Dict[str, Any]:
+def get_feeders(entity: str) -> Dict[str, Any]:
     """Récupère la liste des feeders."""
-    cache_key = f"feeders_list_{famille}"
+    # Import local pour éviter les imports circulaires
+    from app.services.entity_service import get_hierarchy
+    
+    cache_key = f"feeders_list_{entity}"
     cached = cache.get_data_only(cache_key)
     if cached:
         return cached
+    
+    # Récupérer la hiérarchie de l'entité
+    try:
+        hierarchy_result = get_hierarchy(entity)
+        hierarchy_entities = hierarchy_result.get('hierarchy', [])
+        
+        if not hierarchy_entities:
+            # Si pas de hiérarchie, utiliser seulement l'entité fournie
+            hierarchy_entities = [entity]
+            logger.warning(f"Aucune hiérarchie trouvée pour {entity}, utilisation de l'entité seule")
+        
+        logger.info(f"Hiérarchie pour {entity}: {hierarchy_entities}")
+        
+    except Exception as e:
+        logger.error(f"Erreur récupération hiérarchie pour {entity}: {e}")
+        # En cas d'erreur, utiliser seulement l'entité fournie
+        hierarchy_entities = [entity]
 
     query = FEEDER_QUERY
-    params = {'category': famille}
+    params = {}
 
     try:
         with get_database_connection() as db:
+            # Filtre par hiérarchie d'entités (OBLIGATOIRE)
+            placeholders = ','.join([f':entity_{i}' for i in range(len(hierarchy_entities))])
+            query += f" WHERE ereq_entity IN ({placeholders})"
+            
+            for i, entity_code in enumerate(hierarchy_entities):
+                params[f'entity_{i}'] = entity_code
+
+            query += f" AND EREQ_CATEGORY IN ('DEPART30KV', 'DEPART6,6KV')"
+            query += f" ORDER BY ereq_code"
+            
+            print(f"Executing query: {query} \nwith params: {params}")
+            
             results = db.execute_query(query, params=params)
 
-            feeders = [FeederModel.from_db_row(row) for row in results]
+            feeders = []
+            for row in results:
+                try:
+                    feeder = FeederModel.from_db_row(row)
+                    # Convertir en dictionnaire pour la sérialisation
+                    feeders.append(feeder.to_api_response())
+                except Exception as e:
+                    logger.error(f"❌ Erreur mapping feeder: {e}")
+                    continue
 
             response = {"feeders": feeders, "count": len(feeders)}
             cache.set(cache_key, response, CACHE_TTL_SHORT)

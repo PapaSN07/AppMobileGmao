@@ -23,8 +23,6 @@ SELECT
     ereq_description AS Nom_Equipment,
     ereq_entity
 FROM coswin.t_equipment
-WHERE ereq_category LIKE :category
-ORDER BY ereq_code
 """
 
 # --- Zone

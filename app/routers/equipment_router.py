@@ -38,7 +38,6 @@ async def get_equipments_mobile(
         )
         
         return result
-        
     except Exception as e:
         logger.error(f"❌ Erreur: {e}")
         raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
@@ -60,17 +59,17 @@ async def get_equipment_detail(code: str) -> Dict[str, Any]:
         logger.error(f"❌ Erreur détail: {e}")
         raise HTTPException(status_code=500, detail="Erreur récupération équipement")
 
-@equipment_router.get("/feeders/{famille}",
+@equipment_router.get("/feeders/{entity}",
     summary="Récupérer les feeders",
     description="Récupère la liste des équipements de type feeder"
 )
-async def get_feeders_mobile(famille: str) -> Dict[str, Any]:
+async def get_feeders_mobile(entity: str) -> Dict[str, Any]:
     """Liste des feeders"""
     try:
-        result = get_feeders(famille)
+        result = get_feeders(entity)
         return {
             "status": "success",
-            "message": f"Feeders récupérés pour la catégorie {famille}",
+            "message": f"Feeders récupérés pour l'entité {entity}",
             "data": result
         }
     
@@ -79,4 +78,6 @@ async def get_feeders_mobile(famille: str) -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"❌ Erreur récupération feeders: {e}")
         raise HTTPException(status_code=500, detail=f"Erreur récupération feeders: {str(e)}")
-    
+
+
+# === FIN ENDPOINTS CORE POUR MOBILE ===

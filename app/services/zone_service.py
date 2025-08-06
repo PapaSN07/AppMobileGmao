@@ -54,7 +54,9 @@ def get_zones(entity: str) -> Dict[str, Any]:
             
             for row in results:
                 try:
-                    zones.append(ZoneModel.from_db_row(row))
+                    zone = ZoneModel.from_db_row(row)
+                    # Convertir en dictionnaire pour la sérialisation
+                    zones.append(zone.to_api_response())
                 except Exception as e:
                     logger.error(f"❌ Erreur mapping zone: {e}")
                     continue

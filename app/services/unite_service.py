@@ -53,7 +53,9 @@ def get_unites(entity: str) -> Dict[str, Any]:
             unites = []
             for row in results:
                 try:
-                    unites.append(UniteModel.from_db_row(row))
+                    unite = UniteModel.from_db_row(row)
+                    # Convertir en dictionnaire pour la sérialisation
+                    unites.append(unite.to_api_response())
                 except Exception as e:
                     logger.error(f"❌ Erreur mapping unité: {e}")
                     continue

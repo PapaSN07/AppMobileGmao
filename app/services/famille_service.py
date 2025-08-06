@@ -52,7 +52,9 @@ def get_familles(entity: str) -> Dict[str, Any]:
             familles = []
             for row in results:
                 try:
-                    familles.append(FamilleModel.from_db_row(row))
+                    famille = FamilleModel.from_db_row(row)
+                    # Convertir en dictionnaire pour la sérialisation
+                    familles.append(famille.to_api_response())
                 except Exception as e:
                     logger.error(f"❌ Erreur mapping famille: {e}")
                     continue
