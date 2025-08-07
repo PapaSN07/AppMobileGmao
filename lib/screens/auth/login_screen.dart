@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:appmobilegmao/provider/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
@@ -30,7 +32,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
-
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -38,14 +39,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-
       final result = await authProvider.login(
         _usernameController.text.trim(),
         _passwordController.text,
       );
 
       if (result) {
-        // Navigation vers l'écran principal
         if (mounted) {
           Navigator.of(context).pushReplacement(
             PageRouteBuilder(
@@ -72,12 +71,17 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       } else {
         setState(() {
-          _errorMessage = 'Échec de la connexion';
+          _errorMessage = 'Nom d\'utilisateur ou mot de passe incorrect';
         });
       }
-    } catch (e) {
+    } on SocketException catch (_) {
       setState(() {
-        _errorMessage = 'Erreur inattendue: ${e.toString()}';
+        _errorMessage =
+            'Connexion impossible au serveur. Vérifiez votre connexion internet ou que le serveur est démarré.';
+      });
+    } on Exception catch (e) {
+      setState(() {
+        _errorMessage = 'Erreur inattendue : ${e.toString()}';
       });
     } finally {
       if (mounted) {
@@ -142,9 +146,45 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 // Formulaire de connexion
                 Container(
-                  padding: const EdgeInsets.only(left: 16, right: 16, top: 10, bottom: 10),
+                  padding: const EdgeInsets.only(
+                    left: 16,
+                    right: 16,
+                    top: 10,
+                    bottom: 10,
+                  ),
                   child: Column(
                     children: [
+                      // Message d'erreur
+                      if (_errorMessage != null)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          margin: const EdgeInsets.only(bottom: 20),
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.red.shade200),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.error_outline,
+                                color: Colors.red.shade700,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  _errorMessage!,
+                                  style: TextStyle(
+                                    color: Colors.red.shade700,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
                       // Champ nom d'utilisateur
                       TextFormField(
                         controller: _usernameController,
@@ -241,37 +281,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
 
                       const SizedBox(height: 32),
-
-                      // Message d'erreur
-                      if (_errorMessage != null)
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(16),
-                          margin: const EdgeInsets.only(bottom: 20),
-                          decoration: BoxDecoration(
-                            color: Colors.red.shade50,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.red.shade200),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.error_outline,
-                                color: Colors.red.shade700,
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  _errorMessage!,
-                                  style: TextStyle(
-                                    color: Colors.red.shade700,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
 
                       // Bouton de connexion
                       PrimaryButton(
