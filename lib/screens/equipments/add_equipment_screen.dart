@@ -4,6 +4,7 @@ import 'package:appmobilegmao/services/hive_service.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:appmobilegmao/widgets/custom_buttons.dart';
 import 'package:appmobilegmao/widgets/notification_bar.dart';
+import 'package:dropdown_search/dropdown_search.dart'; // ✅ Import de dropdown_search
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -212,17 +213,17 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
     feeders = _extractSelectorData(selectors['feeders']);
   }
 
-  // Helpers pour extraire les données des sélecteurs
+  // ✅ Helper pour extraire les options avec format intelligent
   List<String> _getSelectorsOptions(
     List<Map<String, dynamic>> data, {
-    String codeKey = 'code',
-    String descKey = 'description',
+    String codeKey = 'description',
   }) {
     return data
         .map((item) {
-          final code = item[codeKey]?.toString() ?? '';
-          final desc = item[descKey]?.toString() ?? '';
-          return desc.isNotEmpty ? '$code - $desc' : code;
+          final code = item[codeKey]?.toString().trim() ?? '';
+
+          final shortDesc = _formatDescription(code);
+          return shortDesc;
         })
         .where((item) => item.isNotEmpty)
         .toSet()
@@ -230,11 +231,196 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
       ..sort();
   }
 
-  String? _getSelectedCode(String? displayValue) {
-    if (displayValue == null || displayValue.isEmpty) return null;
-    return displayValue.split(' - ').first;
+  // ✅ Formatage intelligent des descriptions
+  String _formatDescription(String description) {
+    final cleanDesc =
+        description
+            .replaceAll(RegExp(r'\bCABLE\b', caseSensitive: false), 'C.')
+            .replaceAll(RegExp(r'\bCELLULE\b', caseSensitive: false), 'CELL.')
+            .replaceAll(
+              RegExp(r'\bTRANSFORMATEUR\b', caseSensitive: false),
+              'TRANSFO',
+            )
+            .replaceAll(
+              RegExp(r'\bDISTRIBUTION\b', caseSensitive: false),
+              'DISTRIB',
+            )
+            .replaceAll(
+              RegExp(r'\bSOUTERRAIN\b', caseSensitive: false),
+              'SOUT.',
+            )
+            .replaceAll(RegExp(r'\bLIAISON\b', caseSensitive: false), 'LIAIS.')
+            .replaceAll(
+              RegExp(r'\bPROTECTION\b', caseSensitive: false),
+              'PROT.',
+            )
+            .replaceAll(
+              RegExp(r'\bTRONCONS DE\b', caseSensitive: false),
+              'TRONC.',
+            )
+            .trim();
+
+    return cleanDesc.length > 40
+        ? '${cleanDesc.substring(0, 40)}...'
+        : cleanDesc;
   }
 
+  String? _getSelectedCode(String? displayValue) {
+    if (displayValue == null || displayValue.isEmpty) return null;
+    if (displayValue.contains(' - ')) {
+      return displayValue.split(' - ').first.trim();
+    }
+    return displayValue.trim();
+  }
+
+  // ✅ NOUVEAU : Widget ComboBox personnalisé avec recherche
+  Widget _buildComboBoxField({
+    required String label,
+    required String msgError,
+    required List<String> items,
+    required String? selectedValue,
+    required Function(String?) onChanged,
+    String hintText = 'Rechercher ou sélectionner...',
+  }) {
+    final cleanItems = items.toSet().toList()..sort();
+    if (cleanItems.isEmpty) {
+      cleanItems.add('Aucun élément disponible');
+    }
+
+    return DropdownSearch<String>(
+      items: cleanItems,
+      selectedItem: selectedValue,
+      onChanged: onChanged,
+
+      // ✅ Configuration du popup avec recherche
+      popupProps: PopupProps.menu(
+        showSearchBox: true,
+        searchFieldProps: TextFieldProps(
+          decoration: InputDecoration(
+            hintText: 'Rechercher...',
+            prefixIcon: const Icon(
+              Icons.search,
+              color: AppTheme.secondaryColor,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: AppTheme.thirdColor),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(
+                color: AppTheme.secondaryColor,
+                width: 2,
+              ),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 8,
+            ),
+          ),
+          style: const TextStyle(
+            fontFamily: AppTheme.fontMontserrat,
+            fontSize: 14,
+          ),
+        ),
+        menuProps: MenuProps(
+          backgroundColor: Colors.white,
+          elevation: 8,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        itemBuilder: (context, item, isSelected) {
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color:
+                  isSelected ? AppTheme.secondaryColor10 : null,
+              border: Border(
+                bottom: BorderSide(
+                  color: AppTheme.thirdColor30,
+                  width: 0.5,
+                ),
+              ),
+            ),
+            child: Row(
+              children: [
+                if (isSelected)
+                  const Icon(
+                    Icons.check_circle,
+                    color: AppTheme.secondaryColor,
+                    size: 18,
+                  ),
+                if (isSelected) const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    item,
+                    style: TextStyle(
+                      fontFamily: AppTheme.fontMontserrat,
+                      fontSize: 14,
+                      color:
+                          isSelected ? AppTheme.secondaryColor : Colors.black87,
+                      fontWeight:
+                          isSelected ? FontWeight.w600 : FontWeight.normal,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 2,
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+        searchDelay: const Duration(milliseconds: 300),
+      ),
+
+      // ✅ Configuration de l'apparence du champ
+      dropdownDecoratorProps: DropDownDecoratorProps(
+        dropdownSearchDecoration: InputDecoration(
+          labelText: label,
+          hintText: hintText,
+          labelStyle: const TextStyle(
+            color: AppTheme.secondaryColor,
+            fontFamily: AppTheme.fontMontserrat,
+            fontWeight: FontWeight.w600,
+            fontSize: 16,
+          ),
+          hintStyle: TextStyle(
+            color: AppTheme.thirdColor,
+            fontFamily: AppTheme.fontMontserrat,
+            fontSize: 14,
+          ),
+          border: const UnderlineInputBorder(),
+          enabledBorder: const UnderlineInputBorder(
+            borderSide: BorderSide(color: AppTheme.thirdColor),
+          ),
+          focusedBorder: const UnderlineInputBorder(
+            borderSide: BorderSide(color: AppTheme.secondaryColor, width: 2.0),
+          ),
+          suffixIcon: const Icon(
+            Icons.arrow_drop_down,
+            color: AppTheme.secondaryColor,
+          ),
+          contentPadding: const EdgeInsets.symmetric(vertical: 8),
+        ),
+      ),
+
+      // ✅ Validation
+      validator: (value) {
+        if (value == null ||
+            value.isEmpty ||
+            value == 'Aucun élément disponible') {
+          return msgError;
+        }
+        return null;
+      },
+
+      // ✅ Configuration du texte affiché
+      itemAsString: (String item) {
+        return item.length > 30 ? '${item.substring(0, 30)}...' : item;
+      },
+    );
+  }
+
+  // Les méthodes build restent identiques...
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -419,7 +605,9 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
     return Column(
       children: [
         _buildFieldset('Informations parents'),
-        _buildDropdownField(
+        const SizedBox(height: 10),
+        // ✅ Utilisation du ComboBox pour Code Parent
+        _buildComboBoxField(
           label: 'Code Parent',
           msgError: 'Veuillez sélectionner un code parent',
           items:
@@ -438,6 +626,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
               selectedCodeParent = value;
             });
           },
+          hintText: 'Rechercher ou sélectionner un code parent...',
         ),
         const SizedBox(height: 20),
         _buildFeederRow(),
@@ -470,7 +659,8 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
         ),
         const SizedBox(width: 10),
         Expanded(
-          child: _buildDropdownField(
+          // ✅ Utilisation du ComboBox pour Famille
+          child: _buildComboBoxField(
             label: 'Famille',
             msgError: 'Veuillez sélectionner une famille',
             items: _getSelectorsOptions(familles),
@@ -480,6 +670,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
                 selectedFamille = value;
               });
             },
+            hintText: 'Rechercher une famille...',
           ),
         ),
       ],
@@ -490,7 +681,8 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
     return Row(
       children: [
         Expanded(
-          child: _buildDropdownField(
+          // ✅ Utilisation du ComboBox pour Zone
+          child: _buildComboBoxField(
             label: 'Zone',
             msgError: 'Veuillez sélectionner une zone',
             items: _getSelectorsOptions(zones),
@@ -500,11 +692,13 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
                 selectedZone = value;
               });
             },
+            hintText: 'Rechercher une zone...',
           ),
         ),
         const SizedBox(width: 10),
         Expanded(
-          child: _buildDropdownField(
+          // ✅ Utilisation du ComboBox pour Entité
+          child: _buildComboBoxField(
             label: 'Entité',
             msgError: 'Veuillez sélectionner une entité',
             items: _getSelectorsOptions(entities),
@@ -514,6 +708,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
                 selectedEntity = value;
               });
             },
+            hintText: 'Rechercher une entité...',
           ),
         ),
       ],
@@ -524,7 +719,8 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
     return Row(
       children: [
         Expanded(
-          child: _buildDropdownField(
+          // ✅ Utilisation du ComboBox pour Unité
+          child: _buildComboBoxField(
             label: 'Unité',
             msgError: 'Veuillez sélectionner une unité',
             items: _getSelectorsOptions(unites),
@@ -534,11 +730,13 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
                 selectedUnite = value;
               });
             },
+            hintText: 'Rechercher une unité...',
           ),
         ),
         const SizedBox(width: 10),
         Expanded(
-          child: _buildDropdownField(
+          // ✅ Utilisation du ComboBox pour Centre de Charge
+          child: _buildComboBoxField(
             label: 'Centre de Charge',
             msgError: 'Veuillez sélectionner un centre de charge',
             items: _getSelectorsOptions(centreCharges),
@@ -548,6 +746,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
                 selectedCentreCharge = value;
               });
             },
+            hintText: 'Rechercher un centre...',
           ),
         ),
       ],
@@ -567,29 +766,35 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
     return Row(
       children: [
         Expanded(
-          child: _buildDropdownField(
+          // ✅ Utilisation du ComboBox pour Feeder
+          child: _buildComboBoxField(
             label: 'Feeder',
             msgError: 'Veuillez sélectionner un feeder',
-            items: feeders
-                  .map((item) {
-                    final code = item['description']?.toString() ?? '';
-                    return code;
-                  })
-                  .where((item) => item.isNotEmpty)
-                  .toSet()
-                  .toList()
-                ..sort(),
+            items:
+                feeders
+                    .map((item) {
+                      final desc = item['description']?.toString() ?? '';
+                      return desc;
+                    })
+                    .where((item) => item.isNotEmpty)
+                    .toSet()
+                    .toList()
+                  ..sort(),
             selectedValue: selectedFeeder,
             onChanged: (value) {
               setState(() {
                 selectedFeeder = value;
               });
             },
+            hintText: 'Rechercher un feeder...',
           ),
         ),
         const SizedBox(width: 10),
         Expanded(
-          child: _buildText(label: 'Info Feeder', value: selectedFeeder ?? ''),
+          child: _buildText(
+            label: 'Info Feeder',
+            value: _formatDescription(selectedFeeder ?? ''),
+          ),
         ),
       ],
     );
@@ -714,7 +919,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
     );
   }
 
-  // Widgets utilitaires optimisés
+  // Widgets utilitaires (gardés identiques)
   Widget _buildTextField({
     required String label,
     required String msgError,
@@ -752,7 +957,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 5),
+        const SizedBox(height: 10),
         Text(
           label,
           style: const TextStyle(
@@ -766,16 +971,13 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
         Text(
           value.isNotEmpty ? value : '------',
           style: TextStyle(
-            color:
-                value.isNotEmpty
-                    ? AppTheme.secondaryColor
-                    : AppTheme.thirdColor,
+            color: AppTheme.thirdColor,
             fontFamily: AppTheme.fontMontserrat,
             fontWeight: FontWeight.normal,
-            fontSize: 16,
+            fontSize: 18,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 20),
         Container(
           height: 1,
           width: double.infinity,
@@ -783,101 +985,6 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
         ),
       ],
     );
-  }
-
-  Widget _buildDropdownField({
-    required String label,
-    required String msgError,
-    required List<String> items,
-    required String? selectedValue,
-    required Function(String?) onChanged,
-  }) {
-    // Nettoyage et optimisation des items
-    final cleanItems = items.toSet().toList()..sort();
-    if (cleanItems.isEmpty) {
-      cleanItems.add('Aucun élément disponible');
-    }
-
-    return DropdownButtonFormField<String>(
-      value: selectedValue,
-      isExpanded: true, // ✅ Important pour éviter l'overflow
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(
-          color: AppTheme.secondaryColor,
-          fontFamily: AppTheme.fontMontserrat,
-          fontWeight: FontWeight.w600,
-          fontSize: 16,
-        ),
-        border: const UnderlineInputBorder(),
-        enabledBorder: const UnderlineInputBorder(
-          borderSide: BorderSide(color: AppTheme.thirdColor),
-        ),
-        focusedBorder: const UnderlineInputBorder(
-          borderSide: BorderSide(color: AppTheme.secondaryColor, width: 2.0),
-        ),
-      ),
-      items:
-          cleanItems.map((String item) {
-            return DropdownMenuItem<String>(
-              value: item,
-              child: SizedBox(
-                width: double.infinity, // ✅ Prendre toute la largeur disponible
-                child: Text(
-                  _truncateText(item, 25), // ✅ Tronquer le texte
-                  style: const TextStyle(
-                    color: AppTheme.secondaryColor,
-                    fontFamily: AppTheme.fontMontserrat,
-                    fontWeight: FontWeight.normal,
-                    fontSize: 14, // ✅ Réduire la taille de police
-                  ),
-                  overflow: TextOverflow.ellipsis, // ✅ Points de suspension
-                  maxLines: 1, // ✅ Une seule ligne
-                ),
-              ),
-            );
-          }).toList(),
-      onChanged: onChanged,
-      validator: (value) {
-        if (value == null ||
-            value.isEmpty ||
-            value == 'Aucun élément disponible') {
-          return msgError;
-        }
-        return null;
-      },
-      // ✅ Personnaliser l'icône dropdown
-      icon: const Icon(Icons.arrow_drop_down, color: AppTheme.secondaryColor),
-      // ✅ Style pour la zone sélectionnée
-      selectedItemBuilder: (BuildContext context) {
-        return cleanItems.map<Widget>((String item) {
-          return Container(
-            width: double.infinity,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              _truncateText(
-                item,
-                20,
-              ), // ✅ Texte encore plus court pour la sélection
-              style: const TextStyle(
-                color: AppTheme.secondaryColor,
-                fontFamily: AppTheme.fontMontserrat,
-                fontWeight: FontWeight.normal,
-                fontSize: 14,
-              ),
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
-            ),
-          );
-        }).toList();
-      },
-    );
-  }
-
-  // ✅ Méthode helper pour tronquer le texte
-  String _truncateText(String text, int maxLength) {
-    if (text.length <= maxLength) return text;
-    return '${text.substring(0, maxLength)}...';
   }
 
   Widget _buildFieldset(String title) {
@@ -893,7 +1000,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
             fontSize: 18,
           ),
         ),
-        const SizedBox(width: 5),
+        const SizedBox(width: 10),
         Expanded(
           child: Container(
             height: 1,
@@ -1063,7 +1170,8 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
           const SizedBox(width: 16),
           Expanded(
             flex: 3,
-            child: _buildDropdownField(
+            // ✅ Utilisation du ComboBox pour les attributs aussi
+            child: _buildComboBoxField(
               label: '',
               msgError: 'Veuillez sélectionner une valeur',
               items: values,
@@ -1073,6 +1181,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
                   selectedAttributeValues[index] = value!;
                 });
               },
+              hintText: 'Sélectionner...',
             ),
           ),
         ],

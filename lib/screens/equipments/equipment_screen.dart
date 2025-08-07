@@ -44,30 +44,65 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     super.deactivate();
   }
 
+  // ✅ Optimisation du chargement initial
   void _loadEquipmentsWithUserInfo() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final equipmentProvider = Provider.of<EquipmentProvider>(context, listen: false);
+    final equipmentProvider = Provider.of<EquipmentProvider>(
+      context,
+      listen: false,
+    );
     final user = authProvider.currentUser;
 
     if (user != null) {
-      await equipmentProvider.fetchEquipments(entity: user.entity);
+      // ✅ 1. Charger d'abord les sélecteurs (priorité cache)
+      try {
+        if (kDebugMode) {
+          print('🚀 EquipmentScreen - Chargement initial des sélecteurs');
+        }
 
-    // Charger les sélecteurs après la récupération des équipements
-    final selectors = await equipmentProvider.loadSelectors(entity: user.entity);
-    if (selectors.isNotEmpty) {
-      if (kDebugMode) {
-        print('✅ Sélecteurs chargés et mis en cache : $selectors');
+        // Chargement en arrière-plan des sélecteurs (cache prioritaire)
+        unawaited(_loadSelectorsInBackground(equipmentProvider, user.entity));
+
+        // ✅ 2. Charger les équipements normalement
+        await equipmentProvider.fetchEquipments(entity: user.entity);
+      } catch (e) {
+        if (kDebugMode) {
+          print('❌ EquipmentScreen - Erreur chargement initial: $e');
+        }
       }
-    }
     } else {
-      context.read<EquipmentProvider>().fetchEquipments();
+      // Utilisateur non connecté - charger uniquement les équipements
+      await context.read<EquipmentProvider>().fetchEquipments();
+    }
+  }
+
+  // ✅ NOUVEAU: Chargement en arrière-plan des sélecteurs
+  Future<void> _loadSelectorsInBackground(
+    EquipmentProvider equipmentProvider,
+    String entity,
+  ) async {
+    try {
+      final selectors = await equipmentProvider.loadSelectors(entity: entity);
+      if (selectors.isNotEmpty) {
+        if (kDebugMode) {
+          print(
+            '✅ EquipmentScreen - Sélecteurs chargés en arrière-plan (${selectors.keys.join(', ')})',
+          );
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print(
+          '❌ EquipmentScreen - Erreur chargement sélecteurs en arrière-plan: $e',
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.primaryColor, // ✅ Fond bleu pour équipements
+      backgroundColor: AppTheme.primaryColor,
       body: Consumer2<EquipmentProvider, AuthProvider>(
         builder: (context, equipmentProvider, authProvider, child) {
           return _buildBody(equipmentProvider, authProvider);
@@ -82,9 +117,8 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
   ) {
     return Stack(
       children: [
-        // ✅ MODIFIÉ: Contenu principal qui commence sous la carte de statistiques
         Positioned(
-          top: 120, // ✅ CHANGÉ: Position ajustée pour commencer sous la carte
+          top: 120,
           left: 0,
           right: 0,
           bottom: 0,
@@ -107,14 +141,12 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
           child: Container(color: AppTheme.secondaryColor, height: 70),
         ),
 
-        // ✅ AJOUTÉ: Carte de statistiques positionnée au-dessus du contenu principal
         Positioned(
-          top:
-              20, // ✅ Position depuis le haut de l'écran (sous l'AppBar étendue)
+          top: 20,
           left: 20,
           right: 20,
           child: Container(
-            height: 90, // ✅ Hauteur fixe de la carte
+            height: 90,
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
             decoration: BoxDecoration(
               color: Colors.white,

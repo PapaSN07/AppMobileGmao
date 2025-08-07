@@ -4,9 +4,7 @@ import 'package:appmobilegmao/models/famille.dart';
 import 'package:appmobilegmao/models/feeder.dart';
 import 'package:appmobilegmao/models/unite.dart';
 import 'package:appmobilegmao/models/zone.dart';
-import 'package:appmobilegmao/services/hive_service.dart';
 import 'package:flutter/foundation.dart';
-import 'package:hive/src/object/hive_object.dart';
 import '../models/equipment.dart';
 import '../models/api_response.dart';
 import 'api_service.dart';
@@ -63,21 +61,23 @@ class EquipmentApiService {
   }
 
   /// Récupération des valeurs des sélecteurs pour les équipements
-  Future<Map<String, List<HiveObject>>> getEquipmentSelectors({
+  Future<Map<String, List<dynamic>>> getEquipmentSelectors({
     required String entity,
   }) async {
     try {
       if (kDebugMode) {
-        print('🔧 EquipmentApi - Récupération des sélecteurs');
+        print(
+          '🔧 EquipmentApi - Récupération des sélecteurs pour entité: $entity',
+        );
       }
 
       final data = await _apiService.get('/api/v1/equipments/values/$entity');
 
       if (kDebugMode) {
-        print(data['data']['entities']);
-      } // Debug: Afficher les entités récupérées
+        print('📋 EquipmentApi - Données reçues: ${data['data']?.keys}');
+      }
 
-      // Traiter les listes correctement
+      // ✅ Traiter les listes correctement et retourner le bon type
       final entities =
           (data['data']['entities'] as List<dynamic>)
               .map((e) => Entity.fromJson(e))
@@ -103,17 +103,21 @@ class EquipmentApiService {
               .map((e) => Feeder.fromJson(e))
               .toList();
 
-      // Préparer les données pour le cache
+      // ✅ Retourner directement les objets typés (pas de mise en cache ici)
       final selectors = {
-        'entities': entities,
-        'unites': unites,
-        'zones': zones,
-        'familles': familles,
-        'centreCharges': centreCharges,
-        'feeders': feeders,
+        'entities': entities.cast<dynamic>(),
+        'unites': unites.cast<dynamic>(),
+        'zones': zones.cast<dynamic>(),
+        'familles': familles.cast<dynamic>(),
+        'centreCharges': centreCharges.cast<dynamic>(),
+        'feeders': feeders.cast<dynamic>(),
       };
-      // Mettre en cache les sélecteurs
-      await HiveService.cacheSelectors(selectors);
+
+      if (kDebugMode) {
+        print(
+          '✅ EquipmentApi - Sélecteurs traités: ${selectors.keys.join(', ')}',
+        );
+      }
 
       return selectors;
     } catch (e) {

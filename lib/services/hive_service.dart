@@ -131,7 +131,9 @@ class HiveService {
   /// Vérification d'expiration du cache
   static Future<bool> isCacheExpired(
     String key, {
-    Duration maxAge = const Duration(hours: 1),
+    Duration maxAge = const Duration(
+      hours: 24,
+    ), // ✅ Augmenté à 24h pour les sélecteurs
   }) async {
     final timestampKey = '${key}_timestamp';
     final timestamp = metadataBox.get(timestampKey);
@@ -144,7 +146,9 @@ class HiveService {
     final isExpired = DateTime.now().difference(cachedTime) > maxAge;
 
     if (kDebugMode) {
-      print('⏰ GMAO: Cache $key expiré: $isExpired');
+      print(
+        '⏰ GMAO: Cache $key expiré: $isExpired (âge: ${DateTime.now().difference(cachedTime).inHours}h)',
+      );
     }
 
     return isExpired;
@@ -268,25 +272,24 @@ class HiveService {
   }
 
   // ========================================
-  // GESTION DES SÉlECTEURS
+  // GESTION DES SÉLECTEURS
   // ========================================
 
   /// Cache des sélecteurs
   static Future<void> cacheSelectors(Map<String, dynamic> selectors) async {
     try {
       await selectorsBox.clear();
-      await selectorsBox.putAll({
-        'entities': selectors['entities'],
-        'unites': selectors['unites'],
-        'zones': selectors['zones'],
-        'familles': selectors['familles'],
-        'centreCharges': selectors['centreCharges'],
-        'feeders': selectors['feeders'],
-      });
+
+      // ✅ Stocker chaque type de sélecteur individuellement
+      for (final entry in selectors.entries) {
+        await selectorsBox.put(entry.key, entry.value);
+      }
 
       await _updateTimestamp('selectors');
       if (kDebugMode) {
-        print('💾 GMAO: Sélecteurs mis en cache');
+        print(
+          '💾 GMAO: Sélecteurs mis en cache (${selectors.keys.join(', ')})',
+        );
       }
     } catch (e) {
       if (kDebugMode) {
@@ -298,29 +301,63 @@ class HiveService {
 
   /// Récupération des sélecteurs
   static Map<String, dynamic>? getCachedSelectors() {
-  try {
-    final selectors = selectorsBox.toMap();
-    if (selectors.isNotEmpty) {
+    try {
+      final Map<String, dynamic> selectors = {};
+
+      // ✅ Récupérer chaque type de sélecteur
+      for (final key in selectorsBox.keys) {
+        selectors[key] = selectorsBox.get(key);
+      }
+
+      if (selectors.isNotEmpty) {
+        if (kDebugMode) {
+          print(
+            '📋 GMAO: Sélecteurs récupérés du cache (${selectors.keys.join(', ')})',
+          );
+        }
+        // ✅ Validation des données
+        if (selectors.containsKey('entities') &&
+            selectors.containsKey('zones') &&
+            selectors.containsKey('familles') &&
+            selectors.containsKey('centreCharges') &&
+            selectors.containsKey('feeders')) {
+          return selectors; // ✅ Retourner selectors, pas selectors['selectors']
+        }
+      }
+
       if (kDebugMode) {
-        print('📋 GMAO: Sélecteurs récupérés du cache');
+        print('⚠️ GMAO: Cache sélecteurs vide ou incomplet');
       }
-      // Validation des données
-      if (selectors.containsKey('entities') &&
-          selectors.containsKey('zones') &&
-          selectors.containsKey('familles') &&
-          selectors.containsKey('centreCharges') &&
-          selectors.containsKey('feeders')) {
-        return selectors['selectors'];
+      return null; // ✅ Retourner null si pas de données valides
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ GMAO: Erreur lecture cache sélecteurs: $e');
       }
+      return null;
     }
-    return {}; // Retourner une valeur par défaut si les données sont invalides
-  } catch (e) {
-    if (kDebugMode) {
-      print('❌ GMAO: Erreur lecture cache sélecteurs: $e');
-    }
-    return null;
   }
-}
+
+  /// ✅ NOUVEAU: Vérifier si les sélecteurs sont en cache et valides
+  static Future<bool> areSelectorsCached() async {
+    try {
+      final selectors = getCachedSelectors();
+      if (selectors == null || selectors.isEmpty) {
+        return false;
+      }
+
+      // Vérifier si le cache n'est pas expiré
+      final isExpired = await isCacheExpired(
+        'selectors',
+        maxAge: const Duration(hours: 24),
+      );
+      return !isExpired;
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ GMAO: Erreur vérification cache sélecteurs: $e');
+      }
+      return false;
+    }
+  }
 
   // ========================================
   // GESTION DES UTILISATEURS
@@ -569,10 +606,7 @@ class HiveService {
   // ========================================
 
   /// Conversion Equipment vers Equipment
-  static Equipment _equipmentToHive(
-    Equipment equipment,
-    DateTime cachedAt,
-  ) {
+  static Equipment _equipmentToHive(Equipment equipment, DateTime cachedAt) {
     return Equipment(
       id: equipment.id,
       codeParent: equipment.codeParent,

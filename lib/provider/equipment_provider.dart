@@ -16,12 +16,18 @@ class EquipmentProvider extends ChangeNotifier {
   bool _isOffline = false;
   String? _error;
 
+  // ✅ État pour les sélecteurs
+  Map<String, dynamic>? _cachedSelectors;
+  bool _selectorsLoaded = false;
+
   // Getters
   List<Map<String, dynamic>> get equipments => _equipments;
   bool get isLoading => _isLoading;
   String? get error => _error;
   Map<String, String> get filters => _filters;
   bool get isOffline => _isOffline;
+  Map<String, dynamic>? get cachedSelectors => _cachedSelectors;
+  bool get selectorsLoaded => _selectorsLoaded;
 
   // Initialisation
   Future<void> initialize() async {
@@ -108,7 +114,7 @@ class EquipmentProvider extends ChangeNotifier {
     }
   }
 
-  // Charger les sélecteurs
+  // ✅ CORRIGÉ: Charger les sélecteurs avec priorité cache
   Future<Map<String, dynamic>> loadSelectors({required String entity}) async {
     try {
       if (kDebugMode) {
@@ -117,22 +123,132 @@ class EquipmentProvider extends ChangeNotifier {
         );
       }
 
-      final selectors = HiveService.getCachedSelectors();
-      if (selectors != null && selectors.isNotEmpty) {
-        return selectors;
+      // ✅ 1. Vérifier d'abord si on a déjà les sélecteurs en mémoire
+      if (_cachedSelectors != null && _selectorsLoaded) {
+        if (kDebugMode) {
+          print('📋 EquipmentProvider - Utilisation des sélecteurs en mémoire');
+        }
+        return _cachedSelectors!;
       }
 
-      // Si le cache est vide, récupérer depuis l'API
-      final apiSelectors = await _apiService.getEquipmentSelectors(
-        entity: entity,
-      );
-      return apiSelectors;
+      // ✅ 2. Vérifier le cache Hive en priorité
+      if (await HiveService.areSelectorsCached()) {
+        final selectors = HiveService.getCachedSelectors();
+        if (selectors != null && selectors.isNotEmpty) {
+          _cachedSelectors = selectors;
+          _selectorsLoaded = true;
+          if (kDebugMode) {
+            print(
+              '📋 EquipmentProvider - Sélecteurs chargés depuis Hive (${selectors.keys.join(', ')})',
+            );
+          }
+          return selectors;
+        }
+      }
+
+      // ✅ 3. Si le cache est vide ou expiré, récupérer depuis l'API
+      if (!_isOffline) {
+        if (kDebugMode) {
+          print(
+            '🌐 EquipmentProvider - Chargement des sélecteurs depuis l\'API',
+          );
+        }
+
+        final apiSelectors = await _apiService.getEquipmentSelectors(
+          entity: entity,
+        );
+
+        if (apiSelectors.isNotEmpty) {
+          _cachedSelectors = _convertSelectorsToMap(apiSelectors);
+          _selectorsLoaded = true;
+
+          // Mettre en cache
+          await HiveService.cacheSelectors(_cachedSelectors!);
+
+          if (kDebugMode) {
+            print(
+              '✅ EquipmentProvider - Sélecteurs chargés depuis API et mis en cache',
+            );
+          }
+
+          return _cachedSelectors!;
+        }
+      }
+
+      // ✅ 4. Fallback: essayer de récupérer des sélecteurs expirés depuis le cache
+      final expiredSelectors = HiveService.getCachedSelectors();
+      if (expiredSelectors != null && expiredSelectors.isNotEmpty) {
+        _cachedSelectors = expiredSelectors;
+        _selectorsLoaded = true;
+        if (kDebugMode) {
+          print(
+            '⚠️ EquipmentProvider - Utilisation des sélecteurs expirés du cache',
+          );
+        }
+        return expiredSelectors;
+      }
     } catch (e) {
       if (kDebugMode) {
         print('❌ EquipmentProvider - Erreur chargement des sélecteurs: $e');
       }
+
+      // En cas d'erreur, essayer de récupérer depuis le cache
+      final fallbackSelectors = HiveService.getCachedSelectors();
+      if (fallbackSelectors != null && fallbackSelectors.isNotEmpty) {
+        _cachedSelectors = fallbackSelectors;
+        _selectorsLoaded = true;
+        if (kDebugMode) {
+          print('🔄 EquipmentProvider - Fallback vers cache après erreur');
+        }
+        return fallbackSelectors;
+      }
     }
+
     return {};
+  }
+
+  // ✅ NOUVEAU: Convertir les sélecteurs de l'API en Map<String, dynamic>
+  Map<String, dynamic> _convertSelectorsToMap(
+    Map<String, List<dynamic>> apiSelectors,
+  ) {
+    final Map<String, dynamic> result = {};
+
+    apiSelectors.forEach((key, value) {
+      result[key] =
+          value
+              .map((item) {
+                if (item.runtimeType.toString().contains('Entity') ||
+                    item.runtimeType.toString().contains('Zone') ||
+                    item.runtimeType.toString().contains('Famille') ||
+                    item.runtimeType.toString().contains('CentreCharge') ||
+                    item.runtimeType.toString().contains('Unite') ||
+                    item.runtimeType.toString().contains('Feeder')) {
+                  try {
+                    return (item as dynamic).toJson() as Map<String, dynamic>;
+                  } catch (e) {
+                    if (kDebugMode) {
+                      print('❌ Erreur conversion sélecteur: $e');
+                    }
+                    return <String, dynamic>{};
+                  }
+                }
+                return item;
+              })
+              .where((item) => item != null && (item as Map).isNotEmpty)
+              .toList();
+        });
+
+    return result;
+  }
+
+  // ✅ NOUVEAU: Forcer le rechargement des sélecteurs
+  Future<Map<String, dynamic>> forceReloadSelectors({
+    required String entity,
+  }) async {
+    _cachedSelectors = null;
+    _selectorsLoaded = false;
+    await HiveService.clearCache('selectors');
+    return await loadSelectors(entity: entity);
   }
 
   // Méthode de recherche

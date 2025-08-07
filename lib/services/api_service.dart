@@ -34,7 +34,7 @@ class ApiService {
   static const int defaultPort = 8000; // Changé pour votre backend FastAPI
 
   // Adresse IP de l'ordinateur pour les appareils iOS physiques
-  static const String _macIpAddress = '169.254.142.15';
+  static const String _macIpAddress = '169.254.123.127';
 
   ApiService({int? port, String? customBaseUrl}) {
     if (customBaseUrl != null) {
