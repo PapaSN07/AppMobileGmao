@@ -69,7 +69,7 @@ class ListItemCustom extends StatelessWidget {
         'Zone': zone,
         'Entité': entity,
         'Unité': unite,
-        'Centre': centre,
+        'Centre Charge': centre,
         'Code Parent': codeParent,
         'Feeder': feeder,
         'Feeder Description': feederDescription,
