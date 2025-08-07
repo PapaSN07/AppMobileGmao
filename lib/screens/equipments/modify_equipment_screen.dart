@@ -142,10 +142,13 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     if (data is List) {
       return data
           .map((item) {
+            // ✅ CORRECTION : Vérifier d'abord si c'est déjà une Map
             if (item is Map<String, dynamic>) {
               return item;
+            } else if (item is Map) {
+              return Map<String, dynamic>.from(item);
             } else {
-              // Si c'est un objet avec toJson()
+              // Si c'est un objet avec toJson() (cas très rare maintenant)
               try {
                 return (item as dynamic).toJson() as Map<String, dynamic>;
               } catch (e) {

@@ -61,7 +61,7 @@ class EquipmentApiService {
   }
 
   /// Récupération des valeurs des sélecteurs pour les équipements
-  Future<Map<String, List<dynamic>>> getEquipmentSelectors({
+  Future<Map<String, dynamic>> getEquipmentSelectors({
     required String entity,
   }) async {
     try {
@@ -76,41 +76,40 @@ class EquipmentApiService {
       if (kDebugMode) {
         print('📋 EquipmentApi - Données reçues: ${data['data']?.keys}');
       }
+      for (var entity in data['data']['entities']) {
+        if (kDebugMode) {
+          print('📋 EquipmentApi - Entité: $entity');
+        }
+      }
 
       // ✅ Traiter les listes correctement et retourner le bon type
       final entities =
-          (data['data']['entities'] as List<dynamic>)
-              .map((e) => Entity.fromJson(e))
-              .toList();
+          (data['data']['entities'])
+              .map((e) => Entity.fromJson(e));
       final unites =
-          (data['data']['unites'] as List<dynamic>)
-              .map((e) => Unite.fromJson(e))
-              .toList();
+          (data['data']['unites'])
+              .map((e) => Unite.fromJson(e));
       final zones =
-          (data['data']['zones'] as List<dynamic>)
-              .map((e) => Zone.fromJson(e))
-              .toList();
+          (data['data']['zones'])
+              .map((e) => Zone.fromJson(e));
       final familles =
-          (data['data']['familles'] as List<dynamic>)
-              .map((e) => Famille.fromJson(e))
-              .toList();
+          (data['data']['familles'])
+              .map((e) => Famille.fromJson(e));
       final centreCharges =
-          (data['data']['cost_charges'] as List<dynamic>)
-              .map((e) => CentreCharge.fromJson(e))
-              .toList();
+          (data['data']['cost_charges'])
+              .map((e) => CentreCharge.fromJson(e));
       final feeders =
-          (data['data']['feeders'] as List<dynamic>)
-              .map((e) => Feeder.fromJson(e))
-              .toList();
+          (data['data']['feeders'])
+              .map((e) => Feeder.fromJson(e));
 
       // ✅ Retourner directement les objets typés (pas de mise en cache ici)
       final selectors = {
-        'entities': entities.cast<dynamic>(),
-        'unites': unites.cast<dynamic>(),
-        'zones': zones.cast<dynamic>(),
-        'familles': familles.cast<dynamic>(),
-        'centreCharges': centreCharges.cast<dynamic>(),
-        'feeders': feeders.cast<dynamic>(),
+        'entities': entities,
+        'unites': unites,
+        'zones': zones,
+        'familles': familles,
+        'centreCharges': centreCharges,
+        'feeders': feeders,
       };
 
       if (kDebugMode) {

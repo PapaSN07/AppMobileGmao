@@ -209,37 +209,40 @@ class EquipmentProvider extends ChangeNotifier {
 
   // ✅ NOUVEAU: Convertir les sélecteurs de l'API en Map<String, dynamic>
   Map<String, dynamic> _convertSelectorsToMap(
-    Map<String, List<dynamic>> apiSelectors,
-  ) {
-    final Map<String, dynamic> result = {};
+  Map<String, dynamic> apiSelectors,
+) {
+  final Map<String, dynamic> result = {};
 
-    apiSelectors.forEach((key, value) {
-      result[key] =
-          value
-              .map((item) {
-                if (item.runtimeType.toString().contains('Entity') ||
-                    item.runtimeType.toString().contains('Zone') ||
-                    item.runtimeType.toString().contains('Famille') ||
-                    item.runtimeType.toString().contains('CentreCharge') ||
-                    item.runtimeType.toString().contains('Unite') ||
-                    item.runtimeType.toString().contains('Feeder')) {
-                  try {
-                    return (item as dynamic).toJson() as Map<String, dynamic>;
-                  } catch (e) {
-                    if (kDebugMode) {
-                      print('❌ Erreur conversion sélecteur: $e');
-                    }
-                    return <String, dynamic>{};
-                  }
+  apiSelectors.forEach((key, value) {
+    if (value is List) {
+      result[key] = value
+          .map((item) {
+            // ✅ CORRECTION : Vérifier d'abord si c'est déjà une Map
+            if (item is Map<String, dynamic>) {
+              return item;
+            } else if (item is Map) {
+              return Map<String, dynamic>.from(item);
+            } else {
+              // Si c'est un objet avec toJson() (objets typés depuis l'API)
+              try {
+                return (item as dynamic).toJson() as Map<String, dynamic>;
+              } catch (e) {
+                if (kDebugMode) {
+                  print('❌ Erreur conversion sélecteur: $e');
                 }
-                return item;
-              })
-              .where((item) => item != null && (item as Map).isNotEmpty)
-              .toList();
-        });
+                return <String, dynamic>{};
+              }
+            }
+          })
+          .where((item) => item.isNotEmpty)
+          .toList();
+    } else {
+      result[key] = value;
+    }
+  });
 
-    return result;
-  }
+  return result;
+}
 
   // ✅ NOUVEAU: Forcer le rechargement des sélecteurs
   Future<Map<String, dynamic>> forceReloadSelectors({

@@ -133,13 +133,21 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
   List<Map<String, dynamic>> _extractSelectorData(dynamic data) {
     if (data == null) return [];
 
+    if (kDebugMode) {
+      print('📋 EquipmentProvider - Sélecteurs chargés depuis Hive (${data.length})');
+      print('📋 EquipmentProvider - Sélecteurs chargés depuis Hive : ($data)');
+    }
+
     if (data is List) {
       return data
           .map((item) {
+            // ✅ CORRECTION : Vérifier d'abord si c'est déjà une Map
             if (item is Map<String, dynamic>) {
               return item;
+            } else if (item is Map) {
+              return Map<String, dynamic>.from(item);
             } else {
-              // Si c'est un objet avec toJson()
+              // Si c'est un objet avec toJson() (cas très rare maintenant)
               try {
                 return (item as dynamic).toJson() as Map<String, dynamic>;
               } catch (e) {
@@ -332,13 +340,9 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
           return Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color:
-                  isSelected ? AppTheme.secondaryColor10 : null,
+              color: isSelected ? AppTheme.secondaryColor10 : null,
               border: Border(
-                bottom: BorderSide(
-                  color: AppTheme.thirdColor30,
-                  width: 0.5,
-                ),
+                bottom: BorderSide(color: AppTheme.thirdColor30, width: 0.5),
               ),
             ),
             child: Row(
