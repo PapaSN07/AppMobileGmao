@@ -58,8 +58,8 @@ class ApiService {
         baseUrl = 'http://localhost:$port';
       } else {
         // Appareil physique iOS
-        // baseUrl = 'http://127.0.0.1:$port';
-        baseUrl = 'http://$_macIpAddress:$port';
+        baseUrl = 'http://127.0.0.1:$port';
+        // baseUrl = 'http://$_macIpAddress:$port';
       }
     } else {
       // Fallback pour autres plateformes

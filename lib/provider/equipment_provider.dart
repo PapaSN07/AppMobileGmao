@@ -118,131 +118,99 @@ class EquipmentProvider extends ChangeNotifier {
   Future<Map<String, dynamic>> loadSelectors({required String entity}) async {
     try {
       if (kDebugMode) {
-        print(
-          '🔧 EquipmentProvider - Chargement des sélecteurs pour l\'entité $entity',
-        );
+        print('🔧 EquipmentProvider - Chargement des sélecteurs pour l\'entité $entity');
       }
 
-      // ✅ 1. Vérifier d'abord si on a déjà les sélecteurs en mémoire
-      if (_cachedSelectors != null && _selectorsLoaded) {
+      // 1. Vérifier le cache d'abord
+      final cachedSelectors = HiveService.getCachedSelectors();
+      if (cachedSelectors != null && cachedSelectors.isNotEmpty) {
+        final convertedSelectors = _convertSelectorsToMap(cachedSelectors);
         if (kDebugMode) {
-          print('📋 EquipmentProvider - Utilisation des sélecteurs en mémoire');
+          print('📋 EquipmentProvider - Sélecteurs chargés depuis Hive (${convertedSelectors.keys.join(', ')})');
         }
-        return _cachedSelectors!;
-      }
-
-      // ✅ 2. Vérifier le cache Hive en priorité
-      if (await HiveService.areSelectorsCached()) {
-        final selectors = HiveService.getCachedSelectors();
-        if (selectors != null && selectors.isNotEmpty) {
-          _cachedSelectors = selectors;
-          _selectorsLoaded = true;
-          if (kDebugMode) {
-            print(
-              '📋 EquipmentProvider - Sélecteurs chargés depuis Hive (${selectors.keys.join(', ')})',
-            );
-          }
-          return selectors;
-        }
-      }
-
-      // ✅ 3. Si le cache est vide ou expiré, récupérer depuis l'API
-      if (!_isOffline) {
-        if (kDebugMode) {
-          print(
-            '🌐 EquipmentProvider - Chargement des sélecteurs depuis l\'API',
-          );
-        }
-
-        final apiSelectors = await _apiService.getEquipmentSelectors(
-          entity: entity,
-        );
-
-        if (apiSelectors.isNotEmpty) {
-          _cachedSelectors = _convertSelectorsToMap(apiSelectors);
-          _selectorsLoaded = true;
-
-          // Mettre en cache
-          await HiveService.cacheSelectors(_cachedSelectors!);
-
-          if (kDebugMode) {
-            print(
-              '✅ EquipmentProvider - Sélecteurs chargés depuis API et mis en cache',
-            );
-          }
-
-          return _cachedSelectors!;
-        }
-      }
-
-      // ✅ 4. Fallback: essayer de récupérer des sélecteurs expirés depuis le cache
-      final expiredSelectors = HiveService.getCachedSelectors();
-      if (expiredSelectors != null && expiredSelectors.isNotEmpty) {
-        _cachedSelectors = expiredSelectors;
+        _cachedSelectors = convertedSelectors;
         _selectorsLoaded = true;
-        if (kDebugMode) {
-          print(
-            '⚠️ EquipmentProvider - Utilisation des sélecteurs expirés du cache',
-          );
-        }
-        return expiredSelectors;
+        return convertedSelectors;
       }
+
+      // 2. Si pas de cache, charger depuis l'API
+      if (kDebugMode) {
+        print('🌐 EquipmentProvider - Chargement des sélecteurs depuis l\'API');
+      }
+
+      final apiSelectors = await _apiService.getEquipmentSelectors(entity: entity);
+      
+      // 3. Convertir pour l'utilisation dans l'app
+      final convertedSelectors = _convertSelectorsToMap(apiSelectors);
+      
+      // 4. ✅ Mettre en cache les données converties (pas les objets typés)
+      await HiveService.cacheSelectors(convertedSelectors);
+      
+      _cachedSelectors = convertedSelectors;
+      _selectorsLoaded = true;
+      
+      if (kDebugMode) {
+        print('✅ EquipmentProvider - Sélecteurs chargés et mis en cache (${convertedSelectors.keys.join(', ')})');
+      }
+
+      return convertedSelectors;
     } catch (e) {
       if (kDebugMode) {
         print('❌ EquipmentProvider - Erreur chargement des sélecteurs: $e');
       }
-
-      // En cas d'erreur, essayer de récupérer depuis le cache
-      final fallbackSelectors = HiveService.getCachedSelectors();
-      if (fallbackSelectors != null && fallbackSelectors.isNotEmpty) {
-        _cachedSelectors = fallbackSelectors;
-        _selectorsLoaded = true;
-        if (kDebugMode) {
-          print('🔄 EquipmentProvider - Fallback vers cache après erreur');
-        }
-        return fallbackSelectors;
-      }
+      rethrow;
     }
-
-    return {};
   }
 
   // ✅ NOUVEAU: Convertir les sélecteurs de l'API en Map<String, dynamic>
   Map<String, dynamic> _convertSelectorsToMap(
-  Map<String, dynamic> apiSelectors,
-) {
-  final Map<String, dynamic> result = {};
+    Map<String, dynamic> apiSelectors,
+  ) {
+    final Map<String, dynamic> result = {};
 
-  apiSelectors.forEach((key, value) {
-    if (value is List) {
-      result[key] = value
-          .map((item) {
-            // ✅ CORRECTION : Vérifier d'abord si c'est déjà une Map
-            if (item is Map<String, dynamic>) {
-              return item;
-            } else if (item is Map) {
-              return Map<String, dynamic>.from(item);
-            } else {
-              // Si c'est un objet avec toJson() (objets typés depuis l'API)
-              try {
-                return (item as dynamic).toJson() as Map<String, dynamic>;
-              } catch (e) {
-                if (kDebugMode) {
-                  print('❌ Erreur conversion sélecteur: $e');
-                }
+    apiSelectors.forEach((key, value) {
+      // Accepter List ou Iterable
+      final List<dynamic> list =
+          value is Iterable
+              ? value.toList()
+              : (value is List ? value : <dynamic>[]);
+
+      result[key] =
+          list
+              .map((item) {
+                // 1) Déjà une Map
+                if (item is Map<String, dynamic>) return item;
+                if (item is Map) return Map<String, dynamic>.from(item);
+
+                // 2) Objet typé avec propriétés code/description
+                try {
+                  final dyn = item as dynamic;
+                  final code = (dyn.code)?.toString();
+                  final desc = (dyn.description)?.toString();
+                  if ((code != null && code.isNotEmpty) ||
+                      (desc != null && desc.isNotEmpty)) {
+                    return <String, dynamic>{
+                      'code': code ?? '',
+                      'description': desc ?? (code ?? ''),
+                    };
+                  }
+                } catch (_) {}
+
+                // 3) Objet avec toJson() qui renvoie un Map
+                try {
+                  final m = (item as dynamic).toJson();
+                  if (m is Map) return Map<String, dynamic>.from(m);
+                } catch (_) {}
+
+                // 4) Fallback
                 return <String, dynamic>{};
-              }
-            }
-          })
-          .where((item) => item.isNotEmpty)
-          .toList();
-    } else {
-      result[key] = value;
-    }
-  });
+              })
+              .where((m) => m.isNotEmpty)
+              .toList();
+    });
 
-  return result;
-}
+    return result;
+  }
 
   // ✅ NOUVEAU: Forcer le rechargement des sélecteurs
   Future<Map<String, dynamic>> forceReloadSelectors({

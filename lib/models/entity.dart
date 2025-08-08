@@ -15,7 +15,7 @@ class Entity extends HiveObject {
   @HiveField(4)
   final String systemCategory;
   @HiveField(5)
-  final int level;
+  final String level;
   @HiveField(6)
   final String entity;
 

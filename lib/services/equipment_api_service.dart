@@ -83,24 +83,24 @@ class EquipmentApiService {
       }
 
       // ✅ Traiter les listes correctement et retourner le bon type
-      final entities =
-          (data['data']['entities'])
-              .map((e) => Entity.fromJson(e));
-      final unites =
-          (data['data']['unites'])
-              .map((e) => Unite.fromJson(e));
-      final zones =
-          (data['data']['zones'])
-              .map((e) => Zone.fromJson(e));
-      final familles =
-          (data['data']['familles'])
-              .map((e) => Famille.fromJson(e));
-      final centreCharges =
-          (data['data']['cost_charges'])
-              .map((e) => CentreCharge.fromJson(e));
-      final feeders =
-          (data['data']['feeders'])
-              .map((e) => Feeder.fromJson(e));
+      final entities = (data['data']['entities'] as List)
+          .map((e) => Entity.fromJson(e))
+          .toList();
+      final unites = (data['data']['unites'] as List)
+          .map((e) => Unite.fromJson(e))
+          .toList();
+      final zones = (data['data']['zones'] as List)
+          .map((e) => Zone.fromJson(e))
+          .toList();
+      final familles = (data['data']['familles'] as List)
+          .map((e) => Famille.fromJson(e))
+          .toList();
+      final centreCharges = (data['data']['cost_charges'] as List)
+          .map((e) => CentreCharge.fromJson(e))
+          .toList();
+      final feeders = (data['data']['feeders'] as List)
+          .map((e) => Feeder.fromJson(e))
+          .toList();
 
       // ✅ Retourner directement les objets typés (pas de mise en cache ici)
       final selectors = {

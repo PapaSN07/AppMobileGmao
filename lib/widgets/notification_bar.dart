@@ -261,7 +261,7 @@ class _NotificationBarContentState extends State<_NotificationBarContent>
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.1),
+                color: const Color.fromRGBO(0, 0, 0, 0.1),
                 blurRadius: 8,
                 offset: const Offset(0, 4),
               ),

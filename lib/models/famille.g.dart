@@ -22,7 +22,7 @@ class FamilleAdapter extends TypeAdapter<Famille> {
       description: fields[2] as String,
       parentCategory: fields[3] as String,
       systemCategory: fields[4] as String,
-      level: fields[5] as int,
+      level: fields[5] as String,
       entity: fields[6] as String,
     );
   }

@@ -17,8 +17,9 @@ void main() {
     });
 
     test('GET request should return data', () async {
-      // Simuler une réponse HTTP
-      // TODO: Ajouter la logique de test pour les requêtes HTTP
+      final response = await apiService.get('/test-endpoint');
+      expect(response, isNotNull);
+      expect(response, isA<Map<String, dynamic>>());
     });
   });
 }

@@ -139,31 +139,40 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
   List<Map<String, dynamic>> _extractSelectorData(dynamic data) {
     if (data == null) return [];
 
-    if (data is List) {
-      return data
-          .map((item) {
-            // ✅ CORRECTION : Vérifier d'abord si c'est déjà une Map
-            if (item is Map<String, dynamic>) {
-              return item;
-            } else if (item is Map) {
-              return Map<String, dynamic>.from(item);
-            } else {
-              // Si c'est un objet avec toJson() (cas très rare maintenant)
-              try {
-                return (item as dynamic).toJson() as Map<String, dynamic>;
-              } catch (e) {
-                if (kDebugMode) {
-                  print('❌ Erreur conversion objet: $e');
-                }
-                return <String, dynamic>{};
-              }
-            }
-          })
-          .where((item) => item.isNotEmpty)
-          .toList();
-    }
+    // Accepter List ou Iterable
+    final List<dynamic> list =
+        data is Iterable ? data.toList() : (data is List ? data : const []);
 
-    return [];
+    return list
+        .map((item) {
+          // ✅ CORRECTION : Gérer les Maps en priorité
+          if (item is Map<String, dynamic>) {
+            return item;
+          }
+          if (item is Map) {
+            return Map<String, dynamic>.from(item);
+          }
+
+          // ✅ FALLBACK : Si ce n'est pas une Map, c'est un objet typé de l'API
+          try {
+            // On suppose qu'il a une méthode toJson()
+            final jsonMap = (item as dynamic).toJson();
+            if (jsonMap is Map) {
+              return Map<String, dynamic>.from(jsonMap);
+            }
+          } catch (e) {
+            if (kDebugMode) {
+              print(
+                '❌ Erreur conversion objet en JSON: $e. Type: ${item.runtimeType}',
+              );
+            }
+          }
+
+          // Si tout échoue, retourner une map vide pour éviter les nulls
+          return <String, dynamic>{};
+        })
+        .where((m) => m.isNotEmpty)
+        .toList();
   }
 
   Future<void> _loadSelectorsFromAPI() async {

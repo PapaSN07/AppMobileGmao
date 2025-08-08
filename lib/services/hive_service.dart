@@ -276,38 +276,53 @@ class HiveService {
   // ========================================
 
   /// Cache des sélecteurs
-  static Future<void> cacheSelectors(Map<String, dynamic> selectors) async {
+  // ✅ Stocker directement la réponse API complète sous forme de Map
+  static Future<void> cacheSelectors(Map<String, dynamic> selectorsData) async {
     try {
-      await selectorsBox.clear();
+      // Stocker les données avec timestamp
+      await selectorsBox.put('data', {
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+        'selectors': selectorsData, // Structure complète de l'API
+      });
 
-      // ✅ Stocker chaque type de sélecteur individuellement
-      for (final entry in selectors.entries) {
-        await selectorsBox.put(entry.key, entry.value);
-      }
-
-      await _updateTimestamp('selectors');
       if (kDebugMode) {
         print(
-          '💾 GMAO: Sélecteurs mis en cache (${selectors.keys.join(', ')})',
+          '💾 GMAO: Sélecteurs mis en cache (${selectorsData.keys.join(', ')})',
         );
       }
     } catch (e) {
       if (kDebugMode) {
         print('❌ GMAO: Erreur cache sélecteurs: $e');
       }
-      rethrow;
     }
   }
 
   /// Récupération des sélecteurs
   static Map<String, dynamic>? getCachedSelectors() {
     try {
-      final Map<String, dynamic> selectors = {};
+      final cachedData = selectorsBox.get('data');
 
-      // ✅ Récupérer chaque type de sélecteur
-      for (final key in selectorsBox.keys) {
-        selectors[key] = selectorsBox.get(key);
+      if (cachedData == null) return null;
+
+      final timestamp = cachedData['timestamp'] as int;
+      final now = DateTime.now().millisecondsSinceEpoch;
+      const cacheValidityDuration = 24 * 60 * 60 * 1000; // 24h en ms
+
+      final isExpired = (now - timestamp) > cacheValidityDuration;
+
+      if (kDebugMode) {
+        final ageHours = ((now - timestamp) / (60 * 60 * 1000)).round();
+        print('⏰ GMAO: Cache selectors expiré: $isExpired (âge: ${ageHours}h)');
       }
+
+      if (isExpired) {
+        return null;
+      }
+
+      // ✅ Conversion explicite des données en Map<String, dynamic>
+      final selectors = (cachedData['selectors'] as Map).map(
+        (key, value) => MapEntry(key.toString(), value),
+      );
 
       if (selectors.isNotEmpty) {
         if (kDebugMode) {
@@ -315,20 +330,9 @@ class HiveService {
             '📋 GMAO: Sélecteurs récupérés du cache (${selectors.keys.join(', ')})',
           );
         }
-        // ✅ Validation des données
-        if (selectors.containsKey('entities') &&
-            selectors.containsKey('zones') &&
-            selectors.containsKey('familles') &&
-            selectors.containsKey('centreCharges') &&
-            selectors.containsKey('feeders')) {
-          return selectors; // ✅ Retourner selectors, pas selectors['selectors']
-        }
       }
 
-      if (kDebugMode) {
-        print('⚠️ GMAO: Cache sélecteurs vide ou incomplet');
-      }
-      return null; // ✅ Retourner null si pas de données valides
+      return selectors;
     } catch (e) {
       if (kDebugMode) {
         print('❌ GMAO: Erreur lecture cache sélecteurs: $e');

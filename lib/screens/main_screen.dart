@@ -5,7 +5,7 @@ import 'package:appmobilegmao/screens/home_screen.dart';
 import 'package:appmobilegmao/screens/ot/ot_screen.dart';
 import 'package:appmobilegmao/screens/di/di_screen.dart';
 import 'package:appmobilegmao/screens/equipments/equipment_screen.dart';
-import 'package:appmobilegmao/screens/equipments/add_equipment_screen.dart'; // ✅ AJOUTÉ: Import pour add equipment
+import 'package:appmobilegmao/screens/equipments/add_equipment_screen.dart';
 import 'package:appmobilegmao/screens/shared/profile_screen.dart';
 import 'package:appmobilegmao/screens/auth/login_screen.dart';
 import 'package:appmobilegmao/widgets/bottom_navigation_bar.dart';
@@ -148,8 +148,8 @@ class _MainScreenState extends State<MainScreen> {
           decoration: BoxDecoration(
             color:
                 isHome
-                    ? AppTheme.secondaryColor.withOpacity(0.1)
-                    : Colors.white.withOpacity(0.2),
+                    ? AppTheme.secondaryColor10
+                    : AppTheme.primaryColor20,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(Icons.add, color: textColor, size: 20),
@@ -171,7 +171,7 @@ class _MainScreenState extends State<MainScreen> {
                   decoration: BoxDecoration(
                     color:
                         isHome
-                            ? AppTheme.secondaryColor.withOpacity(0.1)
+                            ? AppTheme.secondaryColor10
                             : AppTheme.primaryColor20,
                     borderRadius: BorderRadius.circular(20),
                   ),
@@ -391,8 +391,8 @@ class _MainScreenState extends State<MainScreen> {
                       decoration: BoxDecoration(
                         color:
                             isHome
-                                ? AppTheme.secondaryColor.withOpacity(0.1)
-                                : Colors.white.withOpacity(0.2),
+                                ? AppTheme.secondaryColor10
+                                : AppTheme.primaryColor20,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(

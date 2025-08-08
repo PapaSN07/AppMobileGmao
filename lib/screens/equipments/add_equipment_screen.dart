@@ -110,7 +110,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
 
   void _populateSelectorsFromCache(Map<String, dynamic> selectorsBox) {
     try {
-      // ✅ Ne pas appeler setState ici - juste mettre à jour les variables
+      // ✅ Extraction directe et simple
       entities = _extractSelectorData(selectorsBox['entities']);
       unites = _extractSelectorData(selectorsBox['unites']);
       centreCharges = _extractSelectorData(selectorsBox['centreCharges']);
@@ -120,49 +120,44 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
 
       if (kDebugMode) {
         print('✅ Sélecteurs chargés depuis le cache');
+        print('📊 Entités: ${entities.length}, Zones: ${zones.length}, Familles: ${familles.length}');
       }
     } catch (e) {
       if (kDebugMode) {
         print('❌ Erreur extraction cache: $e');
       }
-      // ✅ Différer l'appel API avec Future.microtask
       Future.microtask(() => _loadSelectorsFromAPI());
     }
   }
 
+  // ✅ Méthode d'extraction robuste
   List<Map<String, dynamic>> _extractSelectorData(dynamic data) {
     if (data == null) return [];
 
-    if (kDebugMode) {
-      print('📋 EquipmentProvider - Sélecteurs chargés depuis Hive (${data.length})');
-      print('📋 EquipmentProvider - Sélecteurs chargés depuis Hive : ($data)');
-    }
+    final List<dynamic> list = data is Iterable 
+        ? data.toList() 
+        : (data is List ? data : const []);
 
-    if (data is List) {
-      return data
-          .map((item) {
-            // ✅ CORRECTION : Vérifier d'abord si c'est déjà une Map
-            if (item is Map<String, dynamic>) {
-              return item;
-            } else if (item is Map) {
-              return Map<String, dynamic>.from(item);
-            } else {
-              // Si c'est un objet avec toJson() (cas très rare maintenant)
-              try {
-                return (item as dynamic).toJson() as Map<String, dynamic>;
-              } catch (e) {
-                if (kDebugMode) {
-                  print('❌ Erreur conversion objet: $e');
-                }
-                return <String, dynamic>{};
-              }
+    return list
+        .map((item) {
+          if (item is Map<String, dynamic>) {
+            return item;
+          }
+          if (item is Map) {
+            return Map<String, dynamic>.from(item);
+          }
+          // Fallback pour objets typés
+          try {
+            final jsonMap = (item as dynamic).toJson();
+            if (jsonMap is Map) {
+              return Map<String, dynamic>.from(jsonMap);
             }
-          })
-          .where((item) => item.isNotEmpty)
-          .toList();
-    }
-
-    return [];
+          } catch (_) {}
+          
+          return <String, dynamic>{};
+        })
+        .where((m) => m.isNotEmpty)
+        .toList();
   }
 
   Future<void> _loadSelectorsFromAPI() async {
