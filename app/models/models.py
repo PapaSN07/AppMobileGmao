@@ -285,7 +285,7 @@ class FamilleModel(BaseModel):
     description: str = Field(..., description="Description de la famille")
     parent_category: Optional[str] = Field(None, description="Catégorie parent de la famille")
     system_category: Optional[str] = Field(None, description="Catégorie système de la famille")
-    level: Optional[int] = Field(None, description="Niveau de la famille dans la hiérarchie")
+    level: Optional[str] = Field(None, description="Niveau de la famille dans la hiérarchie")
     entity: Optional[str] = Field(None, description="Entité associée à la famille")
     
     @classmethod
@@ -297,7 +297,7 @@ class FamilleModel(BaseModel):
             description=str(row[2]) if row[2] is not None else "",
             parent_category=str(row[3]) if len(row) > 3 and row[3] is not None else None,
             system_category=str(row[4]) if len(row) > 4 and row[4] is not None else None,
-            level=int(row[5]) if len(row) > 5 and row[5] is not None else None,
+            level=str(row[5]) if len(row) > 5 and row[5] is not None else None,
             entity=str(row[6]) if len(row) > 6 and row[6] is not None else None
         )
     
@@ -344,7 +344,7 @@ class EntityModel(BaseModel):
     code: str = Field(..., description="Code de l'entité")
     description: str = Field(..., description="Description de l'entité")
     entity_type: str = Field(..., description="Type d'entité")
-    level: int = Field(..., description="Niveau de l'entité dans la hiérarchie")
+    level: str = Field(..., description="Niveau de l'entité dans la hiérarchie")
     parent_entity: Optional[str] = Field(None, description="Entité parent")
     system_entity: Optional[str] = Field(None, description="Entité système")
     
@@ -356,7 +356,7 @@ class EntityModel(BaseModel):
             code=str(row[1]) if row[1] is not None else "",
             description=str(row[2]) if row[2] is not None else "",
             entity_type=str(row[3]) if row[3] is not None else "",
-            level=int(row[4]) if row[4] is not None else 0,
+            level=str(row[4]) if row[4] is not None else 0,
             parent_entity=str(row[5]) if len(row) > 5 and row[5] is not None else None,
             system_entity=str(row[6]) if len(row) > 6 and row[6] is not None else None
         )

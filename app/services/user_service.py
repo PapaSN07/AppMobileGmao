@@ -36,6 +36,7 @@ def authenticate_user(username: str, password: str) -> UserModel:
             else:
                 logger.warning(f"Échec de l'authentification pour {username}.")
                 return create_simple_response(
+                    success=False,
                     message="Identifiants invalides",
                     data=None,
                 )

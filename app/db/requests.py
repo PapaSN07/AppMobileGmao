@@ -88,7 +88,7 @@ SELECT * FROM (
         ereq_zone, 
         ereq_entity, 
         ereq_function,
-        ereq_costcentre, 
+        (SELECT mdcc_description FROM coswin.costcentre t2 WHERE coswin.t_equipment.ereq_costcentre = t2.mdcc_code) as ereq_costcentre, 
         ereq_description, 
         ereq_longitude, 
         ereq_latitude,

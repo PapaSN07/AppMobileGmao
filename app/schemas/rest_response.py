@@ -26,7 +26,7 @@ def create_pagination_response(pagination_result: PaginationResult) -> Dict[str,
     }
 
 
-def create_simple_response(data: List[Any], message: str = "Success") -> Dict[str, Any]:
+def create_simple_response(data: List[Any], message: str = "Success", success: bool = True) -> Dict[str, Any]:
     """
     Créer une réponse simple pour les données non paginées
     
@@ -38,6 +38,7 @@ def create_simple_response(data: List[Any], message: str = "Success") -> Dict[st
         Réponse formatée
     """
     return {
+        "success": success,
         "data": data,
         "count": len(data),
         "message": message
