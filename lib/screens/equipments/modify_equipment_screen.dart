@@ -139,36 +139,32 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
   List<Map<String, dynamic>> _extractSelectorData(dynamic data) {
     if (data == null) return [];
 
-    // Accepter List ou Iterable
     final List<dynamic> list =
         data is Iterable ? data.toList() : (data is List ? data : const []);
 
     return list
         .map((item) {
-          // ✅ CORRECTION : Gérer les Maps en priorité
+          // ✅ Vérifie si l'élément est déjà une Map<String, dynamic>
           if (item is Map<String, dynamic>) {
             return item;
           }
+
+          // ✅ Si c'est une Map<dynamic, dynamic>, force la conversion
           if (item is Map) {
-            return Map<String, dynamic>.from(item);
+            return item.map((key, value) => MapEntry(key.toString(), value));
           }
 
-          // ✅ FALLBACK : Si ce n'est pas une Map, c'est un objet typé de l'API
+          // ✅ Si c'est un objet typé, tente d'appeler toJson()
           try {
-            // On suppose qu'il a une méthode toJson()
             final jsonMap = (item as dynamic).toJson();
             if (jsonMap is Map) {
-              return Map<String, dynamic>.from(jsonMap);
-            }
-          } catch (e) {
-            if (kDebugMode) {
-              print(
-                '❌ Erreur conversion objet en JSON: $e. Type: ${item.runtimeType}',
+              return jsonMap.map(
+                (key, value) => MapEntry(key.toString(), value),
               );
             }
-          }
+          } catch (_) {}
 
-          // Si tout échoue, retourner une map vide pour éviter les nulls
+          // Retourne une Map vide si tout échoue
           return <String, dynamic>{};
         })
         .where((m) => m.isNotEmpty)

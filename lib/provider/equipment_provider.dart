@@ -118,7 +118,9 @@ class EquipmentProvider extends ChangeNotifier {
   Future<Map<String, dynamic>> loadSelectors({required String entity}) async {
     try {
       if (kDebugMode) {
-        print('🔧 EquipmentProvider - Chargement des sélecteurs pour l\'entité $entity');
+        print(
+          '🔧 EquipmentProvider - Chargement des sélecteurs pour l\'entité $entity',
+        );
       }
 
       // 1. Vérifier le cache d'abord
@@ -126,7 +128,9 @@ class EquipmentProvider extends ChangeNotifier {
       if (cachedSelectors != null && cachedSelectors.isNotEmpty) {
         final convertedSelectors = _convertSelectorsToMap(cachedSelectors);
         if (kDebugMode) {
-          print('📋 EquipmentProvider - Sélecteurs chargés depuis Hive (${convertedSelectors.keys.join(', ')})');
+          print(
+            '📋 EquipmentProvider - Sélecteurs chargés depuis Hive (${convertedSelectors.keys.join(', ')})',
+          );
         }
         _cachedSelectors = convertedSelectors;
         _selectorsLoaded = true;
@@ -138,19 +142,23 @@ class EquipmentProvider extends ChangeNotifier {
         print('🌐 EquipmentProvider - Chargement des sélecteurs depuis l\'API');
       }
 
-      final apiSelectors = await _apiService.getEquipmentSelectors(entity: entity);
-      
+      final apiSelectors = await _apiService.getEquipmentSelectors(
+        entity: entity,
+      );
+
       // 3. Convertir pour l'utilisation dans l'app
       final convertedSelectors = _convertSelectorsToMap(apiSelectors);
-      
+
       // 4. ✅ Mettre en cache les données converties (pas les objets typés)
       await HiveService.cacheSelectors(convertedSelectors);
-      
+
       _cachedSelectors = convertedSelectors;
       _selectorsLoaded = true;
-      
+
       if (kDebugMode) {
-        print('✅ EquipmentProvider - Sélecteurs chargés et mis en cache (${convertedSelectors.keys.join(', ')})');
+        print(
+          '✅ EquipmentProvider - Sélecteurs chargés et mis en cache (${convertedSelectors.keys.join(', ')})',
+        );
       }
 
       return convertedSelectors;
@@ -169,44 +177,37 @@ class EquipmentProvider extends ChangeNotifier {
     final Map<String, dynamic> result = {};
 
     apiSelectors.forEach((key, value) {
-      // Accepter List ou Iterable
-      final List<dynamic> list =
-          value is Iterable
-              ? value.toList()
-              : (value is List ? value : <dynamic>[]);
+      if (value is List) {
+        result[key] =
+            value.map((item) {
+              // ✅ Vérifie si l'élément est déjà une Map<String, dynamic>
+              if (item is Map<String, dynamic>) {
+                return item;
+              }
 
-      result[key] =
-          list
-              .map((item) {
-                // 1) Déjà une Map
-                if (item is Map<String, dynamic>) return item;
-                if (item is Map) return Map<String, dynamic>.from(item);
+              // ✅ Si c'est une Map<dynamic, dynamic>, force la conversion
+              if (item is Map) {
+                return item.map(
+                  (key, value) => MapEntry(key.toString(), value),
+                );
+              }
 
-                // 2) Objet typé avec propriétés code/description
-                try {
-                  final dyn = item as dynamic;
-                  final code = (dyn.code)?.toString();
-                  final desc = (dyn.description)?.toString();
-                  if ((code != null && code.isNotEmpty) ||
-                      (desc != null && desc.isNotEmpty)) {
-                    return <String, dynamic>{
-                      'code': code ?? '',
-                      'description': desc ?? (code ?? ''),
-                    };
-                  }
-                } catch (_) {}
+              // ✅ Si c'est un objet typé, tente d'appeler toJson()
+              try {
+                final jsonMap = (item as dynamic).toJson();
+                if (jsonMap is Map) {
+                  return jsonMap.map(
+                    (key, value) => MapEntry(key.toString(), value),
+                  );
+                }
+              } catch (_) {}
 
-                // 3) Objet avec toJson() qui renvoie un Map
-                try {
-                  final m = (item as dynamic).toJson();
-                  if (m is Map) return Map<String, dynamic>.from(m);
-                } catch (_) {}
-
-                // 4) Fallback
-                return <String, dynamic>{};
-              })
-              .where((m) => m.isNotEmpty)
-              .toList();
+              // Retourne une Map vide si tout échoue
+              return <String, dynamic>{};
+            }).toList();
+      } else {
+        result[key] = value;
+      }
     });
 
     return result;

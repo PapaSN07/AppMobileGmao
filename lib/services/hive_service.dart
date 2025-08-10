@@ -279,15 +279,34 @@ class HiveService {
   // ✅ Stocker directement la réponse API complète sous forme de Map
   static Future<void> cacheSelectors(Map<String, dynamic> selectorsData) async {
     try {
-      // Stocker les données avec timestamp
+      // ✅ Force la conversion des données avant de les stocker
+      final sanitizedData = selectorsData.map(
+        (key, value) => MapEntry(
+          key.toString(),
+          value is List
+              ? value.map((item) {
+                if (item is Map<String, dynamic>) {
+                  return item;
+                }
+                if (item is Map) {
+                  return item.map(
+                    (key, value) => MapEntry(key.toString(), value),
+                  );
+                }
+                return item;
+              }).toList()
+              : value,
+        ),
+      );
+
       await selectorsBox.put('data', {
         'timestamp': DateTime.now().millisecondsSinceEpoch,
-        'selectors': selectorsData, // Structure complète de l'API
+        'selectors': sanitizedData,
       });
 
       if (kDebugMode) {
         print(
-          '💾 GMAO: Sélecteurs mis en cache (${selectorsData.keys.join(', ')})',
+          '💾 GMAO: Sélecteurs mis en cache (${sanitizedData.keys.join(', ')})',
         );
       }
     } catch (e) {

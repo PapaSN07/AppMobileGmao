@@ -120,7 +120,9 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
 
       if (kDebugMode) {
         print('✅ Sélecteurs chargés depuis le cache');
-        print('📊 Entités: ${entities.length}, Zones: ${zones.length}, Familles: ${familles.length}');
+        print(
+          '📊 Entités: ${entities.length}, Zones: ${zones.length}, Familles: ${familles.length}',
+        );
       }
     } catch (e) {
       if (kDebugMode) {
@@ -134,26 +136,32 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
   List<Map<String, dynamic>> _extractSelectorData(dynamic data) {
     if (data == null) return [];
 
-    final List<dynamic> list = data is Iterable 
-        ? data.toList() 
-        : (data is List ? data : const []);
+    final List<dynamic> list =
+        data is Iterable ? data.toList() : (data is List ? data : const []);
 
     return list
         .map((item) {
+          // ✅ Vérifie si l'élément est déjà une Map<String, dynamic>
           if (item is Map<String, dynamic>) {
             return item;
           }
+
+          // ✅ Si c'est une Map<dynamic, dynamic>, force la conversion
           if (item is Map) {
-            return Map<String, dynamic>.from(item);
+            return item.map((key, value) => MapEntry(key.toString(), value));
           }
-          // Fallback pour objets typés
+
+          // ✅ Si c'est un objet typé, tente d'appeler toJson()
           try {
             final jsonMap = (item as dynamic).toJson();
             if (jsonMap is Map) {
-              return Map<String, dynamic>.from(jsonMap);
+              return jsonMap.map(
+                (key, value) => MapEntry(key.toString(), value),
+              );
             }
           } catch (_) {}
-          
+
+          // Retourne une Map vide si tout échoue
           return <String, dynamic>{};
         })
         .where((m) => m.isNotEmpty)

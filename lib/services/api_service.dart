@@ -34,7 +34,7 @@ class ApiService {
   static const int defaultPort = 8000; // Changé pour votre backend FastAPI
 
   // Adresse IP de l'ordinateur pour les appareils iOS physiques
-  static const String _macIpAddress = '169.254.123.127';
+  static const String _macIpAddress = '172.16.8.19';
 
   ApiService({int? port, String? customBaseUrl}) {
     if (customBaseUrl != null) {
@@ -51,15 +51,19 @@ class ApiService {
       baseUrl = 'http://localhost:$port';
     } else if (Platform.isAndroid) {
       // Pour Android (émulateur) - utilise l'adresse de pont
-      baseUrl = 'http://10.0.2.2:$port';
+      if (_isRunningOnEmulator()) {
+        baseUrl = 'http://10.0.2.2:$port'; // Émulateur Android
+      } else {
+        baseUrl = 'http://$_macIpAddress:$port'; // Remplace par l'adresse IP de ton Mac
+      }
     } else if (Platform.isIOS) {
       // Détecter si on est sur simulateur ou appareil physique
       if (_isSimulator()) {
         baseUrl = 'http://localhost:$port';
       } else {
         // Appareil physique iOS
-        baseUrl = 'http://127.0.0.1:$port';
-        // baseUrl = 'http://$_macIpAddress:$port';
+        // baseUrl = 'http://127.0.0.1:$port';
+        baseUrl = 'http://$_macIpAddress:$port';
       }
     } else {
       // Fallback pour autres plateformes
@@ -75,62 +79,72 @@ class ApiService {
 
   /// Initialise Dio avec la configuration
   void _initializeDio() {
-    _dio = Dio(BaseOptions(
-      baseUrl: baseUrl,
-      connectTimeout: connectTimeout,
-      receiveTimeout: receiveTimeout,
-      sendTimeout: sendTimeout,
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'User-Agent': 'Flutter-${_getPlatformName()}',
-      },
-    ));
+    _dio = Dio(
+      BaseOptions(
+        baseUrl: baseUrl,
+        connectTimeout: connectTimeout,
+        receiveTimeout: receiveTimeout,
+        sendTimeout: sendTimeout,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'User-Agent': 'Flutter-${_getPlatformName()}',
+        },
+      ),
+    );
 
     _setupInterceptors();
 
     if (kDebugMode) {
-      print('🔧 ApiService - Dio configuré avec baseUrl: ${_dio.options.baseUrl}');
+      print(
+        '🔧 ApiService - Dio configuré avec baseUrl: ${_dio.options.baseUrl}',
+      );
     }
   }
 
   /// Configure les intercepteurs Dio
   void _setupInterceptors() {
     // Intercepteur de logging
-    _dio.interceptors.add(LogInterceptor(
-      requestBody: true,
-      responseBody: true,
-      // Message verbeux pour le logging
-      logPrint: (obj) { 
-        if (kDebugMode) {
-          print('🌐 ApiService: $obj');
-        }
-      },
-    ));
+    _dio.interceptors.add(
+      LogInterceptor(
+        requestBody: true,
+        responseBody: true,
+        // Message verbeux pour le logging
+        logPrint: (obj) {
+          if (kDebugMode) {
+            print('🌐 ApiService: $obj');
+          }
+        },
+      ),
+    );
 
     // Intercepteur d'erreurs
-    _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) {
-        if (kDebugMode) {
-          print('🔍 ApiService Request: ${options.method} ${options.uri}');
-        }
-        handler.next(options);
-      },
-      onResponse: (response, handler) {
-        if (kDebugMode) {
-          print('✅ ApiService Response: ${response.statusCode} ${response.requestOptions.uri}');
-        }
-        handler.next(response);
-      },
-      onError: (error, handler) {
-        if (kDebugMode) {
-          print('❌ ApiService Error: ${error.message}');
-          print('❌ Error Type: ${error.type}');
-          print('❌ Request URL: ${error.requestOptions.uri}');
-        }
-        handler.next(error);
-      },
-    ));
+    _dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          if (kDebugMode) {
+            print('🔍 ApiService Request: ${options.method} ${options.uri}');
+          }
+          handler.next(options);
+        },
+        onResponse: (response, handler) {
+          if (kDebugMode) {
+            print(
+              '✅ ApiService Response: ${response.statusCode} ${response.requestOptions.uri}',
+            );
+          }
+          handler.next(response);
+        },
+        onError: (error, handler) {
+          if (kDebugMode) {
+            print('❌ ApiService Error: ${error.message}');
+            print('❌ Error Type: ${error.type}');
+            print('❌ Request URL: ${error.requestOptions.uri}');
+          }
+          handler.next(error);
+        },
+      ),
+    );
   }
 
   // Méthode pour détecter si on est sur simulateur
@@ -147,6 +161,28 @@ class ApiService {
     if (Platform.isWindows) return 'Windows';
     if (Platform.isLinux) return 'Linux';
     return 'Inconnue';
+  }
+
+  /// Vérifie si l'app tourne sur un émulateur Android
+  bool _isRunningOnEmulator() {
+    final androidEmulatorIndicators = [
+      'generic',
+      'unknown',
+      'emulator',
+      'sdk_gphone',
+      'google_sdk',
+    ];
+
+    final fingerprint = Platform.environment['ro.build.fingerprint'] ?? '';
+    final model = Platform.environment['ro.product.model'] ?? '';
+    final manufacturer = Platform.environment['ro.product.manufacturer'] ?? '';
+
+    return androidEmulatorIndicators.any(
+      (indicator) =>
+          fingerprint.contains(indicator) ||
+          model.contains(indicator) ||
+          manufacturer.contains(indicator),
+    );
   }
 
   /// Permet de changer le port manuellement si nécessaire
@@ -190,9 +226,15 @@ class ApiService {
   }
 
   /// Méthode GET
-  Future<dynamic> get(String endpoint, {Map<String, dynamic>? queryParameters}) async {
+  Future<dynamic> get(
+    String endpoint, {
+    Map<String, dynamic>? queryParameters,
+  }) async {
     try {
-      final response = await _dio.get(endpoint, queryParameters: queryParameters);
+      final response = await _dio.get(
+        endpoint,
+        queryParameters: queryParameters,
+      );
       return response.data;
     } on DioException catch (e) {
       throw _handleDioError(e, endpoint);
@@ -202,9 +244,17 @@ class ApiService {
   }
 
   /// Méthode POST
-  Future<dynamic> post(String endpoint, {dynamic data, Map<String, dynamic>? queryParameters}) async {
+  Future<dynamic> post(
+    String endpoint, {
+    dynamic data,
+    Map<String, dynamic>? queryParameters,
+  }) async {
     try {
-      final response = await _dio.post(endpoint, data: data, queryParameters: queryParameters);
+      final response = await _dio.post(
+        endpoint,
+        data: data,
+        queryParameters: queryParameters,
+      );
       return response.data;
     } on DioException catch (e) {
       throw _handleDioError(e, endpoint);
@@ -214,9 +264,17 @@ class ApiService {
   }
 
   /// Méthode PUT
-  Future<dynamic> put(String endpoint, {dynamic data, Map<String, dynamic>? queryParameters}) async {
+  Future<dynamic> put(
+    String endpoint, {
+    dynamic data,
+    Map<String, dynamic>? queryParameters,
+  }) async {
     try {
-      final response = await _dio.put(endpoint, data: data, queryParameters: queryParameters);
+      final response = await _dio.put(
+        endpoint,
+        data: data,
+        queryParameters: queryParameters,
+      );
       return response.data;
     } on DioException catch (e) {
       throw _handleDioError(e, endpoint);
@@ -226,9 +284,17 @@ class ApiService {
   }
 
   /// Méthode PATCH
-  Future<dynamic> patch(String endpoint, {dynamic data, Map<String, dynamic>? queryParameters}) async {
+  Future<dynamic> patch(
+    String endpoint, {
+    dynamic data,
+    Map<String, dynamic>? queryParameters,
+  }) async {
     try {
-      final response = await _dio.patch(endpoint, data: data, queryParameters: queryParameters);
+      final response = await _dio.patch(
+        endpoint,
+        data: data,
+        queryParameters: queryParameters,
+      );
       return response.data;
     } on DioException catch (e) {
       throw _handleDioError(e, endpoint);
@@ -238,9 +304,15 @@ class ApiService {
   }
 
   /// Méthode DELETE
-  Future<dynamic> delete(String endpoint, {Map<String, dynamic>? queryParameters}) async {
+  Future<dynamic> delete(
+    String endpoint, {
+    Map<String, dynamic>? queryParameters,
+  }) async {
     try {
-      final response = await _dio.delete(endpoint, queryParameters: queryParameters);
+      final response = await _dio.delete(
+        endpoint,
+        queryParameters: queryParameters,
+      );
       return response.data;
     } on DioException catch (e) {
       throw _handleDioError(e, endpoint);
@@ -261,7 +333,8 @@ class ApiService {
         message = 'Réponse trop lente du serveur';
         break;
       case DioExceptionType.connectionError:
-        message = 'Erreur de connexion au serveur - Vérifiez que le serveur est démarré';
+        message =
+            'Erreur de connexion au serveur - Vérifiez que le serveur est démarré';
         break;
       case DioExceptionType.badResponse:
         final statusCode = e.response?.statusCode ?? 0;
@@ -303,7 +376,9 @@ class ApiService {
       print('   uvicorn main:app --host 0.0.0.0 --port $defaultPort --reload');
       print('');
       if (Platform.isAndroid) {
-        print('🤖 Pour Android: Utilisation de 10.0.2.2 (bridge réseau émulateur)');
+        print(
+          '🤖 Pour Android: Utilisation de 10.0.2.2 (bridge réseau émulateur)',
+        );
       } else if (Platform.isIOS) {
         print('🍎 Pour iOS: Utilisation de localhost (simulateur)');
       }
