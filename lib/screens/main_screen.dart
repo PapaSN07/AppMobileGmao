@@ -6,7 +6,7 @@ import 'package:appmobilegmao/screens/ot/ot_screen.dart';
 import 'package:appmobilegmao/screens/di/di_screen.dart';
 import 'package:appmobilegmao/screens/equipments/equipment_screen.dart';
 import 'package:appmobilegmao/screens/equipments/add_equipment_screen.dart';
-import 'package:appmobilegmao/screens/shared/profile_screen.dart';
+import 'package:appmobilegmao/screens/settings/menu_screen.dart';
 import 'package:appmobilegmao/screens/auth/login_screen.dart';
 import 'package:appmobilegmao/widgets/bottom_navigation_bar.dart';
 import 'package:appmobilegmao/provider/auth_provider.dart';
@@ -62,7 +62,7 @@ class _MainScreenState extends State<MainScreen> {
   Color _getAppBarBackgroundColor() {
     switch (_currentIndex) {
       case 0: // Home
-        return Colors.white; // ✅ Blanc pour l'accueil
+        return AppTheme.primaryColor; // ✅ Blanc pour l'accueil
       case 1: // Equipment
       case 2: // OT
       case 3: // DI
@@ -110,7 +110,7 @@ class _MainScreenState extends State<MainScreen> {
               child: child,
             );
           },
-          transitionDuration: const Duration(milliseconds: 300),
+          transitionDuration: const Duration(milliseconds: 400),
         ),
       );
     }

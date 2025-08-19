@@ -50,7 +50,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent, // ✅ Fond transparent pour l'accueil
+      backgroundColor: AppTheme.primaryColor, // ✅ Fond transparent pour l'accueil
       body: _buildBody(),
     );
   }

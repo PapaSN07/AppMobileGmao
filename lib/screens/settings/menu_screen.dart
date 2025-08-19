@@ -1,3 +1,4 @@
+import 'package:appmobilegmao/screens/settings/profile_screen.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 
@@ -56,10 +57,14 @@ class ProfilMenu extends StatelessWidget {
                   children: [
                     Container(
                       decoration: BoxDecoration(
-                        color: AppTheme.primaryColor30, // ✅ AMÉLIORÉ: Plus de contraste
+                        color:
+                            AppTheme
+                                .primaryColor30, // ✅ AMÉLIORÉ: Plus de contraste
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: AppTheme.primaryColor50, // ✅ AMÉLIORÉ: Plus de contraste
+                          color:
+                              AppTheme
+                                  .primaryColor50, // ✅ AMÉLIORÉ: Plus de contraste
                           width: 1,
                         ),
                       ),
@@ -87,7 +92,9 @@ class ProfilMenu extends StatelessWidget {
                     ),
                     Container(
                       decoration: BoxDecoration(
-                        color: AppTheme.primaryColor30, // ✅ AMÉLIORÉ: Plus de contraste
+                        color:
+                            AppTheme
+                                .primaryColor30, // ✅ AMÉLIORÉ: Plus de contraste
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: AppTheme.primaryColor50,
@@ -116,9 +123,7 @@ class ProfilMenu extends StatelessWidget {
                   ), // ✅ RÉDUIT: Marges plus petites
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: const BorderRadius.all(
-                      Radius.circular(20),
-                    ),
+                    borderRadius: const BorderRadius.all(Radius.circular(20)),
                     boxShadow: [
                       BoxShadow(
                         color: AppTheme.boxShadowColor,
@@ -130,7 +135,10 @@ class ProfilMenu extends StatelessWidget {
                   child: SingleChildScrollView(
                     // ✅ AJOUTÉ: Rendre scrollable
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20), // ✅ RÉDUIT: Padding plus petit
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 20,
+                      ), // ✅ RÉDUIT: Padding plus petit
                       child: Column(
                         children: [
                           // Photo de profil avec taille réduite
@@ -250,7 +258,13 @@ class ProfilMenu extends StatelessWidget {
                               _profilMenuItem(
                                 Icons.person_outline,
                                 "Modifier Profil",
-                                () {},
+                                () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => const ProfileScreen(),
+                                    ),
+                                  );
+                                },
                                 AppTheme.secondaryColor,
                               ),
                               _buildDivider(),

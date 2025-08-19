@@ -74,15 +74,15 @@ class Equipment extends HiveObject {
   factory Equipment.fromJson(Map<String, dynamic> json) {
     return Equipment(
       id: json['id'] ?? '',
-      codeParent: json['code_parent'] ?? '',
+      codeParent: json['codeParent'] ?? '',
       feeder: json['feeder'] ?? '',
-      feederDescription: json['feeder_description'] ?? '',
+      feederDescription: json['feederDescription'] ?? '',
       code: json['code'] ?? '',
       famille: json['famille'] ?? '',
       zone: json['zone'] ?? '',
       entity: json['entity'] ?? '',
       unite: json['unite'] ?? '',
-      centreCharge: json['centre_charge'] ?? '',
+      centreCharge: json['centreCharge'] ?? '',
       description: json['description'] ?? '',
       longitude: json['longitude'] ?? '',
       latitude: json['latitude'] ?? '',
