@@ -12,7 +12,7 @@ SELECT
     mdct_system_category,
     mdct_level,
     mdct_entity
-FROM coswin.category
+FROM coswin.t_category
 """
 
 # --- Feeder (Équipements de référence)
@@ -32,7 +32,7 @@ SELECT
     mdzo_code,
     mdzo_description,
     mdzo_entity 
-FROM coswin.zone
+FROM coswin.t_zone
 """
 
 # --- Entité
@@ -45,7 +45,7 @@ SELECT
     chen_level,
     chen_parent_entity,
     chen_system_entity
-FROM coswin.entity
+FROM coswin.t_entity
 """
 
 HIERARCHIC = """
@@ -60,7 +60,7 @@ SELECT
     mdcc_code,
     mdcc_description,
     mdcc_entity 
-FROM coswin.costcentre
+FROM coswin.t_costcentre
 """
 
 # --- Unité/Fonction (requête corrigée)
@@ -72,7 +72,7 @@ SELECT
     mdfn_entity,
     mdfn_parent_function,
     mdfn_system_function 
-FROM coswin.function_
+FROM coswin.t_function_
 """
 
 # === REQUÊTES POUR LES SERVICES BACKEND ===
@@ -88,7 +88,7 @@ SELECT * FROM (
         ereq_zone, 
         ereq_entity, 
         ereq_function,
-        (SELECT mdcc_description FROM coswin.costcentre t2 WHERE coswin.t_equipment.ereq_costcentre = t2.mdcc_code) as ereq_costcentre, 
+        (SELECT mdcc_description FROM coswin.t_costcentre t2 WHERE coswin.t_equipment.ereq_costcentre = t2.mdcc_code) as ereq_costcentre, 
         ereq_description, 
         ereq_longitude, 
         ereq_latitude,
