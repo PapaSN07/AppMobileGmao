@@ -1,11 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:appmobilegmao/services/equipment_api_service.dart';
+import 'package:appmobilegmao/services/equipment_service.dart';
 import 'package:appmobilegmao/services/hive_service.dart';
 import 'package:appmobilegmao/models/equipment.dart';
 
 class EquipmentProvider extends ChangeNotifier {
-  final EquipmentApiService _apiService = EquipmentApiService();
+  final EquipmentService _apiService = EquipmentService();
   final Connectivity _connectivity = Connectivity();
 
   // État de la liste d'équipements
@@ -293,22 +293,10 @@ class EquipmentProvider extends ChangeNotifier {
 
       if (!_isOffline) {
         // Envoyer à l'API
-        final equipment = Equipment(
-          code: equipmentData['code'] ?? '',
-          famille: equipmentData['famille'] ?? '',
-          zone: equipmentData['zone'] ?? '',
-          entity: equipmentData['entity'] ?? '',
-          unite: equipmentData['unite'] ?? '',
-          centreCharge: equipmentData['centreCharge'] ?? '',
-          description: equipmentData['description'] ?? '',
-          longitude: equipmentData['longitude'] ?? '',
-          latitude: equipmentData['latitude'] ?? '',
-          codeParent: equipmentData['codeParent'],
-          feeder: equipmentData['feeder'],
-          feederDescription: equipmentData['infoFeeder'],
-        );
+        final equipment = Equipment.fromJson(equipmentData);
 
         // Simuler l'ajout API (à remplacer par votre vraie API)
+        await _apiService.addEquipment(equipment);
         final newEquipmentMap = _convertEquipmentToMap(equipment);
         newEquipmentMap['id'] =
             DateTime.now().millisecondsSinceEpoch.toString();

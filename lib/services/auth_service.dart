@@ -23,9 +23,9 @@ class AuthService {
           print('Authentification réussie pour $username');
         }
         return {
-          'success': true,
+          'success': response['success'],
           'data': User.fromJson(response['data']),
-          'message': 'Connexion réussie',
+          'message': response['message'],
         };
       }
 

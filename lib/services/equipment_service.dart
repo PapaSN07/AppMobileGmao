@@ -9,15 +9,15 @@ import '../models/equipment.dart';
 import '../models/api_response.dart';
 import 'api_service.dart';
 
-class EquipmentApiService {
+class EquipmentService {
   late final ApiService _apiService;
 
-  EquipmentApiService({ApiService? apiService}) {
+  EquipmentService({ApiService? apiService}) {
     _apiService = apiService ?? ApiService(port: 8000);
 
     if (kDebugMode) {
       print(
-        '🔧 EquipmentApiService configuré avec: ${_apiService.currentBaseUrl}',
+        '🔧 EquipmentService configuré avec: ${_apiService.currentBaseUrl}',
       );
     }
   }

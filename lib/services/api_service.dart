@@ -25,16 +25,22 @@ class ApiService {
   late final Dio _dio;
   late String baseUrl;
 
-  // Configuration par défaut
-  static const Duration connectTimeout = Duration(seconds: 60);
-  static const Duration receiveTimeout = Duration(seconds: 60);
-  static const Duration sendTimeout = Duration(seconds: 60);
+  // Configuration par défaut - RÉDUIT pour Android physique
+  static const Duration connectTimeout = Duration(
+    seconds: 60,
+  );
+  static const Duration receiveTimeout = Duration(
+    seconds: 60,
+  );
+  static const Duration sendTimeout = Duration(
+    seconds: 60,
+  );
 
   // Port par défaut du serveur
-  static const int defaultPort = 8000; // Changé pour votre backend FastAPI
+  static const int defaultPort = 8000;
 
-  // Adresse IP de l'ordinateur pour les appareils iOS physiques
-  static const String _macIpAddress = '169.254.151.18';
+  // Adresse IP de l'ordinateur - MISE À JOUR
+  static const String _macIpAddress = '172.16.8.174';
 
   ApiService({int? port, String? customBaseUrl}) {
     if (customBaseUrl != null) {
@@ -50,19 +56,17 @@ class ApiService {
     if (kIsWeb) {
       baseUrl = 'http://localhost:$port';
     } else if (Platform.isAndroid) {
-      // Pour Android (émulateur) - utilise l'adresse de pont
-      if (_isRunningOnEmulator()) {
-        baseUrl = 'http://10.0.2.2:$port'; // Émulateur Android
-      } else {
-        baseUrl = 'http://$_macIpAddress:$port'; // Remplace par l'adresse IP de ton Mac
+      // CORRECTION: Toujours utiliser l'IP Mac pour Android physique
+      baseUrl = 'http://$_macIpAddress:$port';
+
+      if (kDebugMode) {
+        print('🤖 Android détecté - Utilisation IP Mac: $_macIpAddress');
       }
     } else if (Platform.isIOS) {
       // Détecter si on est sur simulateur ou appareil physique
       if (_isSimulator()) {
         baseUrl = 'http://localhost:$port';
       } else {
-        // Appareil physique iOS
-        // baseUrl = 'http://127.0.0.1:$port';
         baseUrl = 'http://$_macIpAddress:$port';
       }
     } else {
@@ -90,6 +94,10 @@ class ApiService {
           'Accept': 'application/json',
           'User-Agent': 'Flutter-${_getPlatformName()}',
         },
+        // AJOUT: Configuration spécifique pour Android
+        validateStatus: (status) {
+          return status != null && status < 500;
+        },
       ),
     );
 
@@ -98,6 +106,9 @@ class ApiService {
     if (kDebugMode) {
       print(
         '🔧 ApiService - Dio configuré avec baseUrl: ${_dio.options.baseUrl}',
+      );
+      print(
+        '⏱️  Timeouts: Connect=${connectTimeout.inSeconds}s, Receive=${receiveTimeout.inSeconds}s',
       );
     }
   }
@@ -124,6 +135,9 @@ class ApiService {
         onRequest: (options, handler) {
           if (kDebugMode) {
             print('🔍 ApiService Request: ${options.method} ${options.uri}');
+            print(
+              '📡 Tentative de connexion à: ${options.baseUrl}${options.path}',
+            );
           }
           handler.next(options);
         },
@@ -140,6 +154,11 @@ class ApiService {
             print('❌ ApiService Error: ${error.message}');
             print('❌ Error Type: ${error.type}');
             print('❌ Request URL: ${error.requestOptions.uri}');
+
+            // AJOUT: Diagnostic réseau spécifique
+            if (error.type == DioExceptionType.connectionTimeout) {
+              _printNetworkDiagnostic();
+            }
           }
           handler.next(error);
         },
@@ -163,26 +182,27 @@ class ApiService {
     return 'Inconnue';
   }
 
-  /// Vérifie si l'app tourne sur un émulateur Android
-  bool _isRunningOnEmulator() {
-    final androidEmulatorIndicators = [
-      'generic',
-      'unknown',
-      'emulator',
-      'sdk_gphone',
-      'google_sdk',
-    ];
-
-    final fingerprint = Platform.environment['ro.build.fingerprint'] ?? '';
-    final model = Platform.environment['ro.product.model'] ?? '';
-    final manufacturer = Platform.environment['ro.product.manufacturer'] ?? '';
-
-    return androidEmulatorIndicators.any(
-      (indicator) =>
-          fingerprint.contains(indicator) ||
-          model.contains(indicator) ||
-          manufacturer.contains(indicator),
-    );
+  /// NOUVEAU: Diagnostic réseau pour Android
+  void _printNetworkDiagnostic() {
+    if (kDebugMode) {
+      print('');
+      print('🔧 DIAGNOSTIC RÉSEAU ANDROID:');
+      print('📱 IP utilisée: $_macIpAddress:$defaultPort');
+      print('🌐 URL complète: $baseUrl');
+      print('');
+      print('✅ VÉRIFICATIONS:');
+      print('1. Mac et Android sur le même WiFi ?');
+      print('2. Pare-feu Mac désactivé ?');
+      print(
+        '3. Serveur FastAPI démarré avec: uvicorn main:app --host 0.0.0.0 --port $defaultPort',
+      );
+      print('4. Test curl réussi: curl http://$_macIpAddress:$defaultPort');
+      print('');
+      print('🛠️  COMMANDES DE TEST:');
+      print('   - Sur Mac: ifconfig | grep "inet "');
+      print('   - Test serveur: curl http://$_macIpAddress:$defaultPort');
+      print('');
+    }
   }
 
   /// Permet de changer le port manuellement si nécessaire
@@ -205,10 +225,22 @@ class ApiService {
     }
   }
 
-  /// Teste la connexion au serveur
+  /// Teste la connexion au serveur - AMÉLIORÉ
   Future<bool> testConnection({String endpoint = '/health'}) async {
     try {
-      final response = await _dio.get(endpoint);
+      if (kDebugMode) {
+        print('🔍 Test de connexion vers: $baseUrl$endpoint');
+      }
+
+      final response = await _dio.get(
+        endpoint,
+        options: Options(
+          sendTimeout: const Duration(
+            seconds: 10,
+          ), // Timeout réduit pour le test
+          receiveTimeout: const Duration(seconds: 10),
+        ),
+      );
 
       if (response.statusCode == 200) {
         if (kDebugMode) {
@@ -327,14 +359,15 @@ class ApiService {
 
     switch (e.type) {
       case DioExceptionType.connectionTimeout:
-        message = 'Connexion impossible au serveur - Timeout';
+        message =
+            'Connexion impossible au serveur - Vérifiez votre réseau WiFi';
         break;
       case DioExceptionType.receiveTimeout:
         message = 'Réponse trop lente du serveur';
         break;
       case DioExceptionType.connectionError:
         message =
-            'Erreur de connexion au serveur - Vérifiez que le serveur est démarré';
+            'Erreur de connexion - Vérifiez que le serveur est accessible';
         break;
       case DioExceptionType.badResponse:
         final statusCode = e.response?.statusCode ?? 0;
@@ -372,16 +405,14 @@ class ApiService {
       print('📱 Plateforme détectée: ${_getPlatformName()}');
       print('🌐 URL utilisée: $baseUrl');
       print('');
-      print('📋 Instructions pour démarrer le serveur:');
-      print('   uvicorn main:app --host 0.0.0.0 --port $defaultPort --reload');
-      print('');
-      if (Platform.isAndroid) {
-        print(
-          '🤖 Pour Android: Utilisation de 10.0.2.2 (bridge réseau émulateur)',
-        );
-      } else if (Platform.isIOS) {
-        print('🍎 Pour iOS: Utilisation de localhost (simulateur)');
-      }
+      print('📋 ÉTAPES DE DÉPANNAGE:');
+      print('1. Vérifiez que Mac et Android sont sur le même WiFi');
+      print(
+        '2. Démarrez le serveur: uvicorn main:app --host 0.0.0.0 --port $defaultPort --reload',
+      );
+      print('3. Testez depuis Mac: curl http://$_macIpAddress:$defaultPort');
+      print('4. Vérifiez le pare-feu Mac (Préférences Système > Sécurité)');
+      print('5. IP Mac actuelle: $_macIpAddress');
       print('');
     }
   }

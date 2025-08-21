@@ -284,7 +284,6 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
     return displayValue.trim();
   }
 
-  // ✅ NOUVEAU : Widget ComboBox personnalisé avec recherche
   Widget _buildComboBoxField({
     required String label,
     required String msgError,
@@ -292,6 +291,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
     required String? selectedValue,
     required Function(String?) onChanged,
     String hintText = 'Rechercher ou sélectionner...',
+    bool isRequired = true, // Ajout d'un paramètre pour la validation
   }) {
     final cleanItems = items.toSet().toList()..sort();
     if (cleanItems.isEmpty) {
@@ -302,8 +302,6 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
       items: cleanItems,
       selectedItem: selectedValue,
       onChanged: onChanged,
-
-      // ✅ Configuration du popup avec recherche
       popupProps: PopupProps.menu(
         showSearchBox: true,
         searchFieldProps: TextFieldProps(
@@ -378,8 +376,6 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
         },
         searchDelay: const Duration(milliseconds: 300),
       ),
-
-      // ✅ Configuration de l'apparence du champ
       dropdownDecoratorProps: DropDownDecoratorProps(
         dropdownSearchDecoration: InputDecoration(
           labelText: label,
@@ -409,9 +405,8 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
           contentPadding: const EdgeInsets.symmetric(vertical: 8),
         ),
       ),
-
-      // ✅ Validation
       validator: (value) {
+        if (!isRequired) return null; // Pas de validation si non obligatoire
         if (value == null ||
             value.isEmpty ||
             value == 'Aucun élément disponible') {
@@ -419,8 +414,6 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
         }
         return null;
       },
-
-      // ✅ Configuration du texte affiché
       itemAsString: (String item) {
         return item.length > 30 ? '${item.substring(0, 30)}...' : item;
       },
@@ -613,10 +606,10 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
       children: [
         _buildFieldset('Informations parents'),
         const SizedBox(height: 10),
-        // ✅ Utilisation du ComboBox pour Code Parent
+        // ✅ Code Parent NON obligatoire
         _buildComboBoxField(
           label: 'Code Parent',
-          msgError: 'Veuillez sélectionner un code parent',
+          msgError: '', // Champ non obligatoire, pas de message d'erreur
           items:
               feeders
                   .map((item) {
@@ -634,6 +627,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
             });
           },
           hintText: 'Rechercher ou sélectionner un code parent...',
+          isRequired: false
         ),
         const SizedBox(height: 20),
         _buildFeederRow(),
@@ -794,6 +788,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
               });
             },
             hintText: 'Rechercher un feeder...',
+            isRequired: false
           ),
         ),
         const SizedBox(width: 10),
