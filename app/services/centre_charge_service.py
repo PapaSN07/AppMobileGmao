@@ -8,7 +8,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def get_centre_charges(entity: str) -> Dict[str, Any]:
+def get_centre_charges(entity: str, limit: int = 260) -> Dict[str, Any]:
     """Récupère les centres de charge depuis la base de données."""
     # Import local pour éviter les imports circulaires
     from app.services.entity_service import get_hierarchy
@@ -49,7 +49,7 @@ def get_centre_charges(entity: str) -> Dict[str, Any]:
 
             query += f" ORDER BY mdcc_entity, mdcc_code"
             
-            results = db.execute_query(query, params=params)
+            results = db.execute_query(query, params=params, limit=limit)
             centre_charges = []
             
             for row in results:

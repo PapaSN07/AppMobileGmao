@@ -1,6 +1,5 @@
 from pydantic import BaseModel, Field, validator
 from typing import Optional, Dict, Any
-from datetime import datetime
 
 class EquipmentModel(BaseModel):
     """
@@ -356,7 +355,7 @@ class EntityModel(BaseModel):
             code=str(row[1]) if row[1] is not None else "",
             description=str(row[2]) if row[2] is not None else "",
             entity_type=str(row[3]) if row[3] is not None else "",
-            level=str(row[4]) if row[4] is not None else 0,
+            level=str(row[4]) if row[4] is not None else "0",
             parent_entity=str(row[5]) if len(row) > 5 and row[5] is not None else None,
             system_entity=str(row[6]) if len(row) > 6 and row[6] is not None else None
         )

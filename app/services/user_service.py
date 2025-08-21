@@ -9,7 +9,7 @@ import oracledb
 
 logger = logging.getLogger(__name__)
 
-def authenticate_user(username: str, password: str) -> UserModel:
+def authenticate_user(username: str, password: str) -> UserModel | None:
     """
     Authentifie un utilisateur avec son nom d'utilisateur et mot de passe.
     """
@@ -29,17 +29,10 @@ def authenticate_user(username: str, password: str) -> UserModel:
                 cache.set(cache_key, user, CACHE_TTL_SHORT)
                 
                 logger.info(f"Utilisateur {username} authentifié avec succès.")
-                return create_simple_response(
-                    message="Authentification réussie",
-                    data=user.to_mobile_dict(),
-                )
+                return user
             else:
                 logger.warning(f"Échec de l'authentification pour {username}.")
-                return create_simple_response(
-                    success=False,
-                    message="Identifiants invalides",
-                    data=None,
-                )
+                return None
     except oracledb.DatabaseError as e:
         logger.error(f"❌ Erreur base de données: {e}")
         raise
@@ -107,7 +100,7 @@ def update_user(user: UserModel) -> bool:
         logger.error(f"❌ Erreur inattendue lors de la mise à jour: {e}")
         return False
 
-def get_user_connect(username: str) -> UserModel:
+def get_user_connect(username: str) -> UserModel | None:
     """
     Récupère un utilisateur connecté à partir de son username ou email.
     

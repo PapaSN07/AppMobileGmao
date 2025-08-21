@@ -5,13 +5,15 @@ import logging
 from app.services.equipment_service import (
     get_equipments_infinite,
     get_equipment_by_id,
-    get_feeders
+    get_feeders,
+    add_equipment
 )
 from app.services.centre_charge_service import get_centre_charges
 from app.services.entity_service import get_entities
 from app.services.famille_service import get_familles
 from app.services.unite_service import get_unites
 from app.services.zone_service import get_zones
+from app.schemas.requests.equipment_request import AddEquipmentRequest
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +93,6 @@ async def get_feeders_mobile(entity: str) -> Dict[str, Any]:
 async def get_equipment_values(entity: str) -> Dict[str, Any]:
     """Récupération des valeurs des équipements"""
     try:
-        # ✅ Correction : Suppression des await (fonctions synchrones)
         cost_charges_result = get_centre_charges(entity)
         entities_result = get_entities(entity)
         familles_result = get_familles(entity)
@@ -119,4 +120,23 @@ async def get_equipment_values(entity: str) -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"❌ Erreur récupération valeurs: {e}")
         raise HTTPException(status_code=500, detail=f"Erreur récupération valeurs: {str(e)}")
+
+@equipment_router.post("",
+    summary="Ajouter un équipement",
+    description="Ajoute un nouvel équipement dans la base"
+)
+async def add_equipment_mobile(request: AddEquipmentRequest) -> Dict[str, Any]:
+    """Ajout d'un équipement"""
+    try:
+        success = add_equipment(request.dict())
+        if success:
+            return {
+                "status": "success",
+                "message": "Équipement ajouté avec succès"
+            }
+        else:
+            raise HTTPException(status_code=500, detail="Erreur lors de l'ajout de l'équipement")
+    except Exception as e:
+        logger.error(f"❌ Erreur ajout équipement: {e}")
+        raise HTTPException(status_code=500, detail=f"Erreur ajout équipement: {str(e)}")
 # === FIN ENDPOINTS CORE POUR MOBILE ===

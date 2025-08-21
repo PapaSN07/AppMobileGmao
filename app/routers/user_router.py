@@ -1,11 +1,13 @@
 from typing import Any, Dict
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, HTTPException
+from app.schemas.responses.auth_response import AuthResponse
 from app.schemas.rest_response import create_simple_response
 from app.services.user_service import (
     authenticate_user,
     logout_user
 )
 from app.schemas.requests.auth_request import (LoginRequest, LogoutRequest)
+from app.models.models import UserModel
 import logging
 import oracledb
 
@@ -21,11 +23,12 @@ authenticate_user_router = APIRouter(
 
 @authenticate_user_router.post("/login",
     summary="Authentification utilisateur",
-    description="Authentifie un utilisateur avec login et mot de passe"
+    description="Authentifie un utilisateur avec login et mot de passe",
+    response_model=AuthResponse
 )
 async def login_user(
     login_request: LoginRequest
-) -> Dict[str, Any]:
+) -> AuthResponse:
     """Authentification utilisateur"""
     try:
         # Extraction des données depuis le body
@@ -41,7 +44,12 @@ async def login_user(
             raise HTTPException(status_code=401, detail="Identifiants invalides")
         logger.info(f"Utilisateur {username} authentifié avec succès")
         
-        return user
+        return AuthResponse(
+            success=True,
+            data=user.to_mobile_dict(),
+            count=1,
+            message="Authentification réussie"
+        )
         
     except oracledb.DatabaseError as e:
         logger.error(f"❌ Erreur base de données: {e}")
