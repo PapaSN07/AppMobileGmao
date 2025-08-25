@@ -1,9 +1,12 @@
 from fastapi import FastAPI, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import time
 import logging
+import os
+
+from fastapi.staticfiles import StaticFiles
 
 from app.routers.equipment_router import equipment_router
 from app.routers.user_router import authenticate_user_router
@@ -70,6 +73,24 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Créer le dossier static s'il n'existe pas
+static_dir = "static"
+if not os.path.exists(static_dir):
+    os.makedirs(static_dir)
+
+# Monter les fichiers statiques
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Route pour favicon.ico
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    favicon_path = "static/favicon.ico"
+    if os.path.exists(favicon_path):
+        return FileResponse(favicon_path)
+    else:
+        # Retourner une réponse vide si pas de favicon
+        return FileResponse("static/favicon.ico", status_code=404)
+
 # Routes
 @app.get("/")
 async def root():
@@ -120,10 +141,6 @@ async def health():
             "cache": False,
             "error": str(e)
         }
-
-@app.get("/favicon.ico", include_in_schema=False)
-async def favicon():
-    return RedirectResponse(url="/static/favicon.ico")
 
 # Inclusion du routeur
 PREFIX = "/api/v1"

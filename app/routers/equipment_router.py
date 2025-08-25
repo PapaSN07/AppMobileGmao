@@ -2,7 +2,9 @@ from fastapi import APIRouter, Query, HTTPException
 from typing import Optional, Dict, Any
 import logging
 
+from app.schemas.responses.equipment_response import AttributeResponse
 from app.services.equipment_service import (
+    get_attributes_value,
     get_equipments_infinite,
     get_equipment_by_id,
     get_feeders,
@@ -128,7 +130,7 @@ async def get_equipment_values(entity: str) -> Dict[str, Any]:
 async def add_equipment_mobile(request: AddEquipmentRequest) -> Dict[str, Any]:
     """Ajout d'un équipement"""
     try:
-        success = add_equipment(request.dict())
+        success = add_equipment(request.model_dump())
         if success:
             return {
                 "status": "success",
@@ -139,4 +141,28 @@ async def add_equipment_mobile(request: AddEquipmentRequest) -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"❌ Erreur ajout équipement: {e}")
         raise HTTPException(status_code=500, detail=f"Erreur ajout équipement: {str(e)}")
+
+@equipment_router.get("/attributes/{code}",
+    summary="Récupérer les attributs d'un équipement",
+    description="Récupère la liste des attributs d'un équipement spécifique",
+    response_model=AttributeResponse
+)
+async def get_equipment_attributes(code: str) -> AttributeResponse:
+    """Récupération des attributs d'un équipement"""
+    try:
+        attributes = get_attributes_value(code)
+        if not attributes:
+            raise HTTPException(status_code=404, detail="Aucun attribut trouvé pour cet équipement")
+        
+        return AttributeResponse(
+            attr=attributes,
+            status="success",
+            message="Attributs récupérés avec succès"
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Erreur récupération attributs: {e}")
+        raise HTTPException(status_code=500, detail="Erreur récupération attributs")
+
 # === FIN ENDPOINTS CORE POUR MOBILE ===

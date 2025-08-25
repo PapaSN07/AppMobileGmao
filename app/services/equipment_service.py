@@ -105,7 +105,7 @@ def get_equipments_infinite(
         logger.error(f"❌ Erreur infinite scroll pour {entity}: {e}")
         raise
 
-def get_attributes_value(code: str) -> Optional[List[AttributeValuesModel]]:
+def get_attributes_value(code: str) -> Optional[List[Dict[str, Any]]]:
     """Récupère les valeurs des attributs pour un équipement donné."""
     cache_key = f"equipment_attributes_{code}"
     cached = cache.get_data_only(cache_key)
@@ -119,8 +119,9 @@ def get_attributes_value(code: str) -> Optional[List[AttributeValuesModel]]:
                 return None
 
             attributes = [AttributeValuesModel.from_db_row(r) for r in results]
-            cache.set(cache_key, attributes, CACHE_TTL_SHORT)
-            return attributes
+            attributes_api = [attr.to_api_response() for attr in attributes if attr is not None]
+            cache.set(cache_key, attributes_api, CACHE_TTL_SHORT)
+            return attributes_api
 
     except Exception as e:
         logger.error(f"❌ Erreur récupération attributs pour {code}: {e}")
