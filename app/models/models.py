@@ -19,30 +19,6 @@ class EquipmentModel(BaseModel):
     feeder: Optional[str] = Field(None, description="Identifiant du feeder")
     feederDescription: Optional[str] = Field(None, description="Description du feeder")
 
-    class Config:
-        """Configuration Pydantic"""
-        str_strip_whitespace = True  # Supprime les espaces en début/fin
-        validate_assignment = True   # Valide lors des assignations
-        use_enum_values = True      # Utilise les valeurs des enums
-        
-    @validator('id', 'code', 'famille', 'zone', 'entity', 'unite', 'centreCharge')
-    def validate_required_fields(cls, v):
-        """Valide que les champs obligatoires ne sont pas vides"""
-        if not v or v.strip() == "":
-            raise ValueError("Ce champ ne peut pas être vide")
-        return v.strip()
-
-    @validator('longitude', 'latitude')
-    def validate_coordinates(cls, v):
-        """Valide les coordonnées géographiques"""
-        if v is not None and v.strip():
-            try:
-                float_val = float(v)
-                return str(float_val)  # Normalise le format
-            except ValueError:
-                raise ValueError("Les coordonnées doivent être des nombres valides")
-        return None
-
     @classmethod
     def from_db_row(cls, row: tuple) -> 'EquipmentModel':
         """
@@ -85,7 +61,7 @@ class EquipmentModel(BaseModel):
         Returns:
             Dictionnaire représentant l'équipement
         """
-        return self.dict(exclude_none=False)
+        return self.model_dump(exclude_none=False)
 
     def to_api_response(self) -> Dict[str, Any]:
         """
@@ -102,34 +78,11 @@ class EquipmentModel(BaseModel):
 
     def __str__(self) -> str:
         """Représentation string de l'équipement"""
-        return f"Equipment({self.code} - {self.description})"
+        return f"Equipment({self.code} - {self.description} - {self.zone} - {self.entity} - {self.unite} - {self.centreCharge} - {self.longitude} - {self.latitude})"
 
     def __repr__(self) -> str:
         """Représentation détaillée de l'équipement"""
-        return f"EquipmentModel(id={self.id}, code={self.code}, zone={self.zone})"
-
-    def to_mobile_detail(self) -> Dict[str, Any]:
-        """Format détaillé pour mobile"""
-        return {
-            'id': self.id,
-            'code': self.code,
-            'famille': self.famille,
-            'zone': self.zone,
-            'entity': self.entity,
-            'unite': self.unite,
-            'centre_charge': self.centreCharge,
-            'description': self.description,
-            'coordinates': {
-                'latitude': float(self.latitude) if self.latitude else None,
-                'longitude': float(self.longitude) if self.longitude else None,
-                'has_location': bool(self.longitude and self.latitude)
-            },
-            'feeder': {
-                'id': self.feeder,
-                'description': self.feederDescription
-            } if self.feeder else None
-        }
-
+        return f"EquipmentModel(id={self.id}, code={self.code}, zone={self.zone}, entity={self.entity}, unite={self.unite}, centreCharge={self.centreCharge}, longitude={self.longitude}, latitude={self.latitude})"
 
 class UserModel(BaseModel):
     """
@@ -189,7 +142,7 @@ class UserModel(BaseModel):
         Returns:
             Dictionnaire représentant l'utilisateur
         """
-        return self.dict(exclude_none=False)
+        return self.model_dump(exclude_none=False)
     
     def to_api_response(self) -> Dict[str, Any]:
         """
@@ -220,18 +173,6 @@ class UserModel(BaseModel):
             'url_image': self.url_image,
             'is_absent': self.is_absent
         }
-    
-    def to_mobile_detail(self) -> Dict[str, Any]:
-        """Format détaillé pour mobile"""
-        return {
-            'id': self.id,
-            'username': self.username,
-            'email': self.email,
-            'entity': self.entity,
-            'group': self.group,
-            'url_image': self.url_image,
-            'is_absent': self.is_absent
-        }
 
 
 class ZoneModel(BaseModel):
@@ -255,7 +196,7 @@ class ZoneModel(BaseModel):
     
     def to_dict(self) -> Dict[str, Any]:
         """Convertit en dictionnaire"""
-        return self.dict(exclude_none=True)
+        return self.model_dump(exclude_none=True)
     
     def to_api_response(self) -> Dict[str, Any]:
         """Convertit en format de réponse API"""
@@ -302,7 +243,7 @@ class FamilleModel(BaseModel):
     
     def to_dict(self) -> Dict[str, Any]:
         """Convertit en dictionnaire"""
-        return self.dict(exclude_none=True)
+        return self.model_dump(exclude_none=True)
     
     def to_api_response(self) -> Dict[str, Any]:
         """Convertit en format de réponse API"""
@@ -362,7 +303,7 @@ class EntityModel(BaseModel):
     
     def to_dict(self) -> Dict[str, Any]:
         """Convertit en dictionnaire"""
-        return self.dict(exclude_none=True)
+        return self.model_dump(exclude_none=True)
     
     def to_api_response(self) -> Dict[str, Any]:
         """Convertit en format de réponse API"""
@@ -418,7 +359,7 @@ class CentreChargeModel(BaseModel):
     
     def to_dict(self) -> Dict[str, Any]:
         """Convertit en dictionnaire"""
-        return self.dict(exclude_none=True)
+        return self.model_dump(exclude_none=True)
     
     def to_api_response(self) -> Dict[str, Any]:
         """Convertit en format de réponse API"""
@@ -462,7 +403,7 @@ class UniteModel(BaseModel):
     
     def to_dict(self) -> Dict[str, Any]:
         """Convertit en dictionnaire"""
-        return self.dict(exclude_none=True)
+        return self.model_dump(exclude_none=True)
     
     def to_api_response(self) -> Dict[str, Any]:
         """Convertit en format de réponse API"""
@@ -505,7 +446,7 @@ class FeederModel(BaseModel):
     
     def to_dict(self) -> Dict[str, Any]:
         """Convertit en dictionnaire"""
-        return self.dict(exclude_none=True)
+        return self.model_dump(exclude_none=True)
     
     def to_api_response(self) -> Dict[str, Any]:
         """Convertit en format de réponse API"""
@@ -523,3 +464,40 @@ class FeederModel(BaseModel):
     def __repr__(self) -> str:
         """Représentation détaillée du feeder"""
         return f"FeederModel(id={self.id}, code={self.code}, entity={self.entity})"
+
+
+class AttributeValuesModel(BaseModel):
+    id: str = Field(..., description="Identifiant unique de la valeur d'attribut")
+    specification: Optional[str] = Field(None, description="Spécification de l'attribut")
+    index: Optional[str] = Field(None, description="Index de l'attribut")
+    name: str = Field(..., description="Nom de l'attribut")
+    value: str = Field(..., description="Valeur de l'attribut")
+    
+    @classmethod
+    def from_db_row(cls, row: tuple) -> 'AttributeValuesModel':
+        """Crée une instance AttributeValuesModel à partir d'une ligne de DB"""
+        return cls(
+            id=str(row[0]) if row[0] is not None else "",
+            specification=str(row[1]) if row[1] is not None else None,
+            index=str(row[2]) if row[2] is not None else None,
+            name=str(row[3]) if row[3] is not None else "",
+            value=str(row[4]) if row[4] is not None else ""
+        )
+    
+    def to_api_response(self) -> Dict[str, Any]:
+        """Format pour l'API mobile (compatible Flutter)"""
+        return {
+            'id': self.id,
+            'specification': self.specification,
+            'index': self.index,
+            'name': self.name,
+            'value': self.value
+        }
+
+    def __str__(self) -> str:
+        """Représentation string de la valeur d'attribut"""
+        return f"AttributeValue({self.id} - {self.specification} - {self.value} - {self.index} - {self.name})"
+
+    def __repr__(self) -> str:
+        """Représentation détaillée de la valeur d'attribut"""
+        return f"AttributeValuesModel(id={self.id}, specification={self.specification}, index={self.index}, name={self.name}, value={self.value})"

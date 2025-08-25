@@ -1,9 +1,9 @@
 from app.db.database import get_database_connection
 from app.core.config import CACHE_TTL_SHORT
-from app.models.models import (EquipmentModel, FeederModel)
-from app.db.requests import (EQUIPMENT_INFINITE_QUERY, EQUIPMENT_BY_ID_QUERY, FEEDER_QUERY)
+from app.models.models import (EquipmentModel, FeederModel, AttributeValuesModel)
+from app.db.requests import (EQUIPMENT_ATTRIBUTS_VALUES_QUERY, EQUIPMENT_INFINITE_QUERY, EQUIPMENT_BY_ID_QUERY, FEEDER_QUERY)
 from app.core.cache import cache
-from typing import Dict, Any, Optional
+from typing import Dict, Any, List, Optional
 import logging
 
 logger = logging.getLogger(__name__)
@@ -78,11 +78,15 @@ def get_equipments_infinite(
             for row in results:
                 try:
                     equipment = EquipmentModel.from_db_row(row)
-                    # Convertir en dictionnaire pour la sérialisation
+                    # Maintenant convertir en dictionnaire
                     equipments.append(equipment.to_api_response())
+                    
                 except Exception as e:
                     logger.error(f"❌ Erreur mapping: {e}")
                     continue
+            
+            # Plus besoin de cette boucle car les attributs sont déjà attachés
+            # for equipment in equipments: # SUPPRIMER CETTE BOUCLE
             
             response = {
                 'equipments': equipments,
@@ -94,9 +98,6 @@ def get_equipments_infinite(
                 }
             }
             
-            # Log pour debug
-            logger.info(f"✅ Hiérarchie appliquée: {len(hierarchy_entities)} entités")
-            
             cache.set(cache_key, response, CACHE_TTL_SHORT)
             return response
             
@@ -104,25 +105,45 @@ def get_equipments_infinite(
         logger.error(f"❌ Erreur infinite scroll pour {entity}: {e}")
         raise
 
+def get_attributes_value(code: str) -> Optional[List[AttributeValuesModel]]:
+    """Récupère les valeurs des attributs pour un équipement donné."""
+    cache_key = f"equipment_attributes_{code}"
+    cached = cache.get_data_only(cache_key)
+    if cached:
+        return cached
+
+    try:
+        with get_database_connection() as db:
+            results = db.execute_query(EQUIPMENT_ATTRIBUTS_VALUES_QUERY, params={'code': code})
+            if not results:
+                return None
+
+            attributes = [AttributeValuesModel.from_db_row(r) for r in results]
+            cache.set(cache_key, attributes, CACHE_TTL_SHORT)
+            return attributes
+
+    except Exception as e:
+        logger.error(f"❌ Erreur récupération attributs pour {code}: {e}")
+        raise
+
 def get_equipment_by_id(code: str) -> Optional[Dict[str, Any]]:
-    """Détail équipement pour mobile avec feeder corrigé"""
+    """Détail équipement pour mobile avec attributs réels"""
     cache_key = f"mobile_eq_detail_{code}"
     cached = cache.get_data_only(cache_key)
     if cached:
         return cached
     
-    query = EQUIPMENT_BY_ID_QUERY
-    
     try:
         with get_database_connection() as db:
-            results = db.execute_query(query, params={'code': code})
+            results = db.execute_query(EQUIPMENT_BY_ID_QUERY, params={'code': code})
             
             if not results:
                 return None
             
             equipment = EquipmentModel.from_db_row(results[0])
+
             
-            # Format adapté au Flutter
+            # Format adapté au Flutter avec les vrais attributs
             detail = {
                 'id': equipment.id,
                 'codeParent': equipment.codeParent,
@@ -137,10 +158,6 @@ def get_equipment_by_id(code: str) -> Optional[Dict[str, Any]]:
                 'latitude': equipment.latitude or '',
                 'feeder': equipment.feeder,
                 'feederDescription': equipment.feederDescription,
-                'attributs': [
-                    {'name': 'Tension', 'value': '225kV', 'type': 'string'},
-                    {'name': 'Puissance', 'value': '30MVA', 'type': 'string'}
-                ]  # À adapter selon vos besoins
             }
             
             cache.set(cache_key, detail, CACHE_TTL_SHORT)
