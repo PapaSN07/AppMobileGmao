@@ -6,7 +6,6 @@ from app.schemas.responses.equipment_response import AttributeResponse
 from app.services.equipment_service import (
     get_attributes_value,
     get_equipments_infinite,
-    get_equipment_by_id,
     get_feeders,
     add_equipment
 )
@@ -50,43 +49,6 @@ async def get_equipments_mobile(
     except Exception as e:
         logger.error(f"❌ Erreur: {e}")
         raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
-
-@equipment_router.get("/{code}",
-    summary="Récupérer un équipement par code",
-    description="Récupère les détails complets d'un équipement spécifique"
-)
-async def get_equipment_detail(code: str) -> Dict[str, Any]:
-    """Détails d'un équipement"""
-    try:
-        equipment = get_equipment_by_id(code)
-        if not equipment:
-            raise HTTPException(status_code=404, detail="Équipement non trouvé")
-        return {"equipment": equipment}
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"❌ Erreur détail: {e}")
-        raise HTTPException(status_code=500, detail="Erreur récupération équipement")
-
-@equipment_router.get("/feeders/{entity}",
-    summary="Récupérer les feeders",
-    description="Récupère la liste des équipements de type feeder"
-)
-async def get_feeders_mobile(entity: str) -> Dict[str, Any]:
-    """Liste des feeders"""
-    try:
-        result = get_feeders(entity)
-        return {
-            "status": "success",
-            "message": f"Feeders récupérés pour l'entité {entity}",
-            "data": result
-        }
-    
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"❌ Erreur récupération feeders: {e}")
-        raise HTTPException(status_code=500, detail=f"Erreur récupération feeders: {str(e)}")
 
 @equipment_router.get("/values/{entity}",
     summary="Récupérer les valeurs des équipements",

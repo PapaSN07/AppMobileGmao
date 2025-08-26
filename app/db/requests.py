@@ -87,28 +87,50 @@ FROM coswin.t_function_
 
 # --- Équipements
 EQUIPMENT_INFINITE_QUERY = """
-SELECT * FROM (
-    SELECT 
-        pk_equipment, 
-        ereq_parent_equipment, 
-        ereq_code, 
-        ereq_category, 
-        ereq_zone, 
-        ereq_entity, 
-        ereq_function,
-        (SELECT mdcc_description FROM coswin.t_costcentre t2 WHERE coswin.t_equipment.ereq_costcentre = t2.mdcc_code AND ROWNUM = 1) as ereq_costcentre, 
-        ereq_description, 
-        ereq_longitude, 
-        ereq_latitude,
-        (SELECT pk_equipment FROM coswin.t_equipment t2 WHERE coswin.t_equipment.ereq_string2 = t2.ereq_code AND ROWNUM = 1) as feeder,
-        (SELECT ereq_description FROM coswin.t_equipment t2 WHERE coswin.t_equipment.ereq_string2 = t2.ereq_code AND ROWNUM = 1) as feeder_description
-    FROM coswin.t_equipment
-    WHERE 1=1
+SELECT 
+    e.pk_equipment, 
+    e.ereq_parent_equipment, 
+    e.ereq_code, 
+    e.ereq_category, 
+    e.ereq_zone, 
+    e.ereq_entity, 
+    e.ereq_function,
+    COALESCE(cc.mdcc_description, '') as ereq_costcentre, 
+    e.ereq_description, 
+    e.ereq_longitude, 
+    e.ereq_latitude,
+    f.pk_equipment as feeder,
+    f.ereq_description as feeder_description,
+    -- Attributs (peuvent être NULL si pas d'attributs)
+    a.pk_attribute as attr_id,
+    a.cwat_specification as attr_specification,
+    a.cwat_index as attr_index,
+    a.cwat_name as attr_name,
+    ea.etat_value as attr_value
+FROM coswin.t_equipment e
+LEFT JOIN coswin.t_costcentre cc ON e.ereq_costcentre = cc.mdcc_code
+LEFT JOIN coswin.t_equipment f ON e.ereq_string2 = f.ereq_code
+LEFT JOIN coswin.equipment_specs es ON e.ereq_code = es.etes_equipment
+LEFT JOIN coswin.EQUIPMENT_ATTRIBUTE ea ON es.pk_equipment_specs = ea.commonkey
+LEFT JOIN coswin.t_specification s ON es.etes_specification = s.cwsp_code
+LEFT JOIN coswin.attribute a ON (s.pk_specification = a.cwat_specification AND ea.INDX = a.CWAT_INDEX)
+WHERE 1=1
 """
 EQUIPMENT_ATTRIBUTS_VALUES_QUERY = """
-SELECT a.pk_attribute, a.cwat_specification, a.cwat_index, a.cwat_name, ea.etat_value
-FROM coswin.equipment_specs e, coswin.EQUIPMENT_ATTRIBUTE ea, coswin.t_specification s, coswin.attribute a, coswin.t_equipment t
-WHERE t.ereq_code = e.etes_equipment 
+SELECT 
+    a.pk_attribute as id, 
+    a.cwat_specification as specification, 
+    a.cwat_index as index_val, 
+    a.cwat_name as name, 
+    ea.etat_value as value
+FROM 
+    coswin.equipment_specs e, 
+    coswin.EQUIPMENT_ATTRIBUTE ea, 
+    coswin.t_specification s, 
+    coswin.attribute a, 
+    coswin.t_equipment t
+WHERE 
+    t.ereq_code = e.etes_equipment 
     AND e.pk_equipment_specs = ea.commonkey
     AND e.etes_specification = s.cwsp_code
     AND s.pk_specification = a.cwat_specification
@@ -121,16 +143,6 @@ FROM coswin.attribute_values
 WHERE 
     cwav_specification = :specification
     AND cwav_attribute_index = :attribute_index;
-"""
-EQUIPMENT_BY_ID_QUERY = """
-SELECT 
-    pk_equipment, ereq_parent_equipment, ereq_code, ereq_category, ereq_zone, 
-    ereq_entity, ereq_function, ereq_costcentre, ereq_description, 
-    ereq_longitude, ereq_latitude,
-    (SELECT pk_equipment FROM coswin.t_equipment t2 WHERE coswin.t_equipment.ereq_string2 = t2.ereq_code) as feeder,
-    (SELECT ereq_description FROM coswin.t_equipment t2 WHERE coswin.t_equipment.ereq_string2 = t2.ereq_code) as feeder_description
-FROM coswin.t_equipment 
-WHERE ereq_code = :code
 """
 EQUIPMENT_ADD_QUERY = """
 INSERT INTO coswin.t_equipment (

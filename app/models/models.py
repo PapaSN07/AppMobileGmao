@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, validator
-from typing import Optional, Dict, Any
+from typing import List, Optional, Dict, Any
 
 class EquipmentModel(BaseModel):
     """
@@ -18,6 +18,7 @@ class EquipmentModel(BaseModel):
     latitude: Optional[str] = Field(None, description="Coordonnée latitude")
     feeder: Optional[str] = Field(None, description="Identifiant du feeder")
     feederDescription: Optional[str] = Field(None, description="Description du feeder")
+    attributes: List['EquipmentAttributeValueModel'] = Field(default_factory=list, description="Liste des attributs de l'équipement")
 
     @classmethod
     def from_db_row(cls, row: tuple) -> 'EquipmentModel':
@@ -72,6 +73,7 @@ class EquipmentModel(BaseModel):
         """
         data = self.to_dict()
         # Ajouter des métadonnées utiles
+        data['attributes'] = [attr.to_api_response() for attr in self.attributes]
         data['has_coordinates'] = bool(self.longitude and self.latitude)
         data['has_feeder'] = bool(self.feeder)
         return data
@@ -466,7 +468,7 @@ class FeederModel(BaseModel):
         return f"FeederModel(id={self.id}, code={self.code}, entity={self.entity})"
 
 
-class AttributeValuesModel(BaseModel):
+class EquipmentAttributeValueModel(BaseModel):
     id: str = Field(..., description="Identifiant unique de la valeur d'attribut")
     specification: Optional[str] = Field(None, description="Spécification de l'attribut")
     index: Optional[str] = Field(None, description="Index de l'attribut")
@@ -474,8 +476,8 @@ class AttributeValuesModel(BaseModel):
     value: str = Field(..., description="Valeur de l'attribut")
     
     @classmethod
-    def from_db_row(cls, row: tuple) -> 'AttributeValuesModel':
-        """Crée une instance AttributeValuesModel à partir d'une ligne de DB"""
+    def from_db_row(cls, row: tuple) -> 'EquipmentAttributeValueModel':
+        """Crée une instance EquipmentAttributeValueModel à partir d'une ligne de DB"""
         return cls(
             id=str(row[0]) if row[0] is not None else "",
             specification=str(row[1]) if row[1] is not None else None,
@@ -500,4 +502,7 @@ class AttributeValuesModel(BaseModel):
 
     def __repr__(self) -> str:
         """Représentation détaillée de la valeur d'attribut"""
-        return f"AttributeValuesModel(id={self.id}, specification={self.specification}, index={self.index}, name={self.name}, value={self.value})"
+        return f"EquipmentAttributeValueModel(id={self.id}, specification={self.specification}, index={self.index}, name={self.name}, value={self.value})"
+
+
+EquipmentModel.model_rebuild() 
