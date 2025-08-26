@@ -1,7 +1,7 @@
 from app.db.database import get_database_connection
 from app.core.config import CACHE_TTL_SHORT
-from app.models.models import (EquipmentModel, FeederModel, EquipmentAttributeValueModel)
-from app.db.requests import (EQUIPMENT_ATTRIBUTS_VALUES_QUERY, EQUIPMENT_INFINITE_QUERY, FEEDER_QUERY)
+from app.models.models import (EquipmentModel, FeederModel, EquipmentAttributeValueModel, AttributeValuesModel)
+from app.db.requests import (ATTRIBUTE_VALUES_QUERY, EQUIPMENT_INFINITE_QUERY, FEEDER_QUERY)
 from app.core.cache import cache
 from typing import Dict, Any, List, Optional
 import logging
@@ -124,26 +124,26 @@ def get_equipments_infinite(
         logger.error(f"❌ Erreur méthode optimisée pour {entity}: {e}")
         raise
 
-def get_attributes_value(code: str) -> List[EquipmentAttributeValueModel]:
+def get_attribute_values(specification: str, attribute_index: str) -> List[AttributeValuesModel]:
     """Récupère les valeurs des attributs pour un équipement donné."""
-    if not code:
+    if not specification or not attribute_index:
         return []
-        
-    cache_key = f"equipment_attributes_{code}"
+
+    cache_key = f"attribute_values_{specification}_{attribute_index}"
     cached = cache.get_data_only(cache_key)
     
     if cached:
         try:
-            # Reconstruire les objets EquipmentAttributeValueModel depuis le cache
-            return [EquipmentAttributeValueModel(**item) for item in cached]
+            # Reconstruire les objets AttributeValuesModel depuis le cache
+            return [AttributeValuesModel(**item) for item in cached]
         except Exception as e:
-            logger.debug(f"Erreur reconstruction cache pour {code}: {e}")
+            logger.debug(f"Erreur reconstruction cache pour {specification}_{attribute_index}: {e}")
             # Si erreur de reconstruction, continuer avec la DB
 
     try:
         with get_database_connection() as db:
-            results = db.execute_query(EQUIPMENT_ATTRIBUTS_VALUES_QUERY, params={'code': code})
-            
+            results = db.execute_query(ATTRIBUTE_VALUES_QUERY, params={'specification': specification, 'attribute_index': attribute_index})
+
             if not results:
                 # Mettre en cache une liste vide pour éviter les requêtes répétées
                 cache.set(cache_key, [], CACHE_TTL_SHORT)
@@ -153,7 +153,7 @@ def get_attributes_value(code: str) -> List[EquipmentAttributeValueModel]:
             attributes = []
             for r in results:
                 try:
-                    attr = EquipmentAttributeValueModel.from_db_row(r)
+                    attr = AttributeValuesModel.from_db_row(r)
                     attributes.append(attr)
                 except Exception as e:
                     logger.debug(f"Erreur création attribut depuis DB: {e}")
@@ -166,7 +166,7 @@ def get_attributes_value(code: str) -> List[EquipmentAttributeValueModel]:
             return attributes
 
     except Exception as e:
-        logger.error(f"❌ Erreur récupération attributs pour {code}: {e}")
+        logger.error(f"❌ Erreur récupération attributs pour {specification}_{attribute_index}: {e}")
         return []
 
 def get_feeders(entity: str) -> Dict[str, Any]:

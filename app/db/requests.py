@@ -116,33 +116,15 @@ LEFT JOIN coswin.t_specification s ON es.etes_specification = s.cwsp_code
 LEFT JOIN coswin.attribute a ON (s.pk_specification = a.cwat_specification AND ea.INDX = a.CWAT_INDEX)
 WHERE 1=1
 """
-EQUIPMENT_ATTRIBUTS_VALUES_QUERY = """
-SELECT 
-    a.pk_attribute as id, 
-    a.cwat_specification as specification, 
-    a.cwat_index as index_val, 
-    a.cwat_name as name, 
-    ea.etat_value as value
-FROM 
-    coswin.equipment_specs e, 
-    coswin.EQUIPMENT_ATTRIBUTE ea, 
-    coswin.t_specification s, 
-    coswin.attribute a, 
-    coswin.t_equipment t
-WHERE 
-    t.ereq_code = e.etes_equipment 
-    AND e.pk_equipment_specs = ea.commonkey
-    AND e.etes_specification = s.cwsp_code
-    AND s.pk_specification = a.cwat_specification
-    AND ea.INDX = a.CWAT_INDEX
-    AND t.ereq_code = :code
-"""
 ATTRIBUTE_VALUES_QUERY = """
-SELECT pk_attribute_values, cwav_value
-FROM coswin.attribute_values
-WHERE 
-    cwav_specification = :specification
-    AND cwav_attribute_index = :attribute_index;
+SELECT
+    pk_attribute_values, 
+    cwav_value
+FROM
+    coswin.attribute_values
+WHERE 1=1
+    AND cwav_specification = :specification
+    AND cwav_attribute_index = :attribute_index
 """
 EQUIPMENT_ADD_QUERY = """
 INSERT INTO coswin.t_equipment (

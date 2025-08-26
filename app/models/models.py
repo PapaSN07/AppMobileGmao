@@ -505,4 +505,36 @@ class EquipmentAttributeValueModel(BaseModel):
         return f"EquipmentAttributeValueModel(id={self.id}, specification={self.specification}, index={self.index}, name={self.name}, value={self.value})"
 
 
-EquipmentModel.model_rebuild() 
+class AttributeValuesModel(BaseModel):
+    """
+    Modèle pour les valeurs d'attributs d'équipement.
+    """
+    id: str = Field(..., description="Identifiant unique de la valeur d'attribut")
+    value: str = Field(..., description="Valeur de l'attribut")
+    
+    @classmethod
+    def from_db_row(cls, row: tuple) -> 'AttributeValuesModel':
+        """Crée une instance AttributeValueModel à partir d'une ligne de DB"""
+        return cls(
+            id=str(row[0]) if row[0] is not None else "",
+            value=str(row[1]) if row[1] is not None else ""
+        )
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convertit en dictionnaire"""
+        return self.model_dump(exclude_none=True)
+    
+    def to_api_response(self) -> Dict[str, Any]:
+        """Convertit en format de réponse API"""
+        return {
+            'id': self.id,
+            'value': self.value
+        }
+    
+    def __str__(self) -> str:
+        """Représentation string de la valeur d'attribut"""
+        return f"AttributeValues({self.id} - {self.value})"
+
+    def __repr__(self) -> str:
+        """Représentation détaillée de la valeur d'attribut"""
+        return f"AttributeValuesModel(id={self.id}, value={self.value})"

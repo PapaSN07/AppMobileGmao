@@ -4,7 +4,7 @@ import logging
 
 from app.schemas.responses.equipment_response import AttributeResponse
 from app.services.equipment_service import (
-    get_attributes_value,
+    get_attribute_values,
     get_equipments_infinite,
     get_feeders,
     add_equipment
@@ -104,15 +104,18 @@ async def add_equipment_mobile(request: AddEquipmentRequest) -> Dict[str, Any]:
         logger.error(f"❌ Erreur ajout équipement: {e}")
         raise HTTPException(status_code=500, detail=f"Erreur ajout équipement: {str(e)}")
 
-@equipment_router.get("/attributes/{code}",
+@equipment_router.get("/attributes",
     summary="Récupérer les attributs d'un équipement",
     description="Récupère la liste des attributs d'un équipement spécifique",
     response_model=AttributeResponse
 )
-async def get_equipment_attributes(code: str) -> AttributeResponse:
+async def get_equipment_attribute_values(
+    specification: str = Query(..., description="Code de la spécification"),
+    attribute_index: str = Query(..., description="Index de l'attribut")
+    ) -> AttributeResponse:
     """Récupération des attributs d'un équipement"""
     try:
-        attributes = get_attributes_value(code)
+        attributes = get_attribute_values(specification, attribute_index)
         if not attributes:
             raise HTTPException(status_code=404, detail="Aucun attribut trouvé pour cet équipement")
         
