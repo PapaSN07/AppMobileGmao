@@ -1,3 +1,11 @@
+import 'package:appmobilegmao/models/attribute_value.dart';
+import 'package:appmobilegmao/models/centre_charge.dart';
+import 'package:appmobilegmao/models/entity.dart';
+import 'package:appmobilegmao/models/equipment_attribute.dart';
+import 'package:appmobilegmao/models/famille.dart';
+import 'package:appmobilegmao/models/feeder.dart';
+import 'package:appmobilegmao/models/unite.dart';
+import 'package:appmobilegmao/models/zone.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/equipment.dart';
@@ -15,6 +23,9 @@ class HiveService {
   static late Box<Map<String, dynamic>> workOrderBox; // Ordres de travail
   static late Box<Map<String, dynamic>>
   interventionBox; // Demandes d'intervention
+  // ✅ NOUVEAU: Box pour les valeurs d'attributs des équipements
+  static late Box<Map<String, dynamic>>
+  attributeValuesBox; // Valeurs d'attributs par équipement
 
   /// Initialisation du service Hive
   static Future<void> init() async {
@@ -51,6 +62,27 @@ class HiveService {
     if (!Hive.isAdapterRegistered(2)) {
       Hive.registerAdapter(UserAdapter());
     }
+    if (!Hive.isAdapterRegistered(3)) {
+      Hive.registerAdapter(FamilleAdapter());
+    }
+    if (!Hive.isAdapterRegistered(4)) {
+      Hive.registerAdapter(EntityAdapter());
+    }
+    if (!Hive.isAdapterRegistered(5)) {
+      Hive.registerAdapter(CentreChargeAdapter());
+    }
+    if (!Hive.isAdapterRegistered(6)) {
+      Hive.registerAdapter(UniteAdapter());
+    }
+    if (!Hive.isAdapterRegistered(7)) {
+      Hive.registerAdapter(FeederAdapter());
+    }
+    if (!Hive.isAdapterRegistered(8)) {
+      Hive.registerAdapter(ZoneAdapter());
+    }
+    if (!Hive.isAdapterRegistered(9)) {
+      Hive.registerAdapter(EquipmentAttributeAdapter());
+    }
   }
 
   /// Ouverture des boxes
@@ -66,6 +98,10 @@ class HiveService {
     interventionBox = await Hive.openBox<Map<String, dynamic>>(
       'gmao_interventions',
     );
+    // ✅ NOUVEAU: Ouverture de la box pour les valeurs d'attributs
+    attributeValuesBox = await Hive.openBox<Map<String, dynamic>>(
+      'gmao_attribute_values',
+    );
   }
 
   /// Affichage des statistiques du cache
@@ -78,6 +114,8 @@ class HiveService {
       print('   - Actions en attente: ${pendingActionsBox.length}');
       print('   - Ordres de travail: ${workOrderBox.length}');
       print('   - Interventions: ${interventionBox.length}');
+      // ✅ NOUVEAU: Statistique pour les valeurs d'attributs
+      print('   - Valeurs d\'attributs: ${attributeValuesBox.length}');
     }
   }
 
@@ -540,6 +578,342 @@ class HiveService {
   }
 
   // ========================================
+  // GESTION DES VALEURS D'ATTRIBUTS
+  // ========================================
+
+  /// ✅ MODIFIÉ: Cache des valeurs d'attributs pour un équipement (utilise EquipmentAttribute)
+  static Future<void> cacheAttributeValues(
+    String equipmentCode,
+    List<EquipmentAttribute> attributeValues,
+  ) async {
+    try {
+      // Convertir les EquipmentAttribute en Map pour le stockage
+      final attributesData =
+          attributeValues.map((attr) => attr.toJson()).toList();
+
+      final cacheData = {
+        'equipmentCode': equipmentCode,
+        'attributes': attributesData,
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+        'cachedAt': DateTime.now().toIso8601String(),
+      };
+
+      await attributeValuesBox.put(equipmentCode, cacheData);
+      await _updateTimestamp('attribute_values_$equipmentCode');
+
+      if (kDebugMode) {
+        print(
+          '💾 GMAO: ${attributeValues.length} valeurs d\'attributs mises en cache pour équipement $equipmentCode',
+        );
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ GMAO: Erreur cache valeurs d\'attributs: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// ✅ MODIFIÉ: Récupération des valeurs d'attributs pour un équipement (retourne EquipmentAttribute)
+  static Future<List<EquipmentAttribute>?> getCachedAttributeValues(
+    String equipmentCode,
+  ) async {
+    try {
+      final cachedData = attributeValuesBox.get(equipmentCode);
+
+      if (cachedData == null) {
+        if (kDebugMode) {
+          print(
+            '📋 GMAO: Aucune valeur d\'attribut en cache pour équipement $equipmentCode',
+          );
+        }
+        return null;
+      }
+
+      // Vérifier l'expiration du cache (24h par défaut)
+      final isExpired = await isCacheExpired(
+        'attribute_values_$equipmentCode',
+        maxAge: const Duration(hours: 24),
+      );
+
+      if (isExpired) {
+        if (kDebugMode) {
+          print(
+            '⏰ GMAO: Cache des valeurs d\'attributs expiré pour équipement $equipmentCode',
+          );
+        }
+        await attributeValuesBox.delete(equipmentCode);
+        return null;
+      }
+
+      // Convertir les données en liste d'EquipmentAttribute
+      final attributesData = cachedData['attributes'] as List;
+      final attributeValues =
+          attributesData
+              .map(
+                (data) => EquipmentAttribute.fromJson(
+                  Map<String, dynamic>.from(data),
+                ),
+              )
+              .toList();
+
+      if (kDebugMode) {
+        print(
+          '📋 GMAO: ${attributeValues.length} valeurs d\'attributs récupérées du cache pour équipement $equipmentCode',
+        );
+      }
+
+      return attributeValues;
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ GMAO: Erreur lecture cache valeurs d\'attributs: $e');
+      }
+      return null;
+    }
+  }
+
+  /// ✅ NOUVEAU: Cache des spécifications d'attributs avec leurs valeurs possibles
+  static Future<void> cacheAttributeSpecifications(
+    String specification,
+    String attributeIndex,
+    List<EquipmentAttribute> attributeValues,
+  ) async {
+    try {
+      final specKey = '${specification}_$attributeIndex';
+
+      final attributesData =
+          attributeValues.map((attr) => attr.toJson()).toList();
+
+      final cacheData = {
+        'specification': specification,
+        'attributeIndex': attributeIndex,
+        'attributes': attributesData,
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+        'cachedAt': DateTime.now().toIso8601String(),
+      };
+
+      await attributeValuesBox.put(specKey, cacheData);
+      await _updateTimestamp('attribute_spec_$specKey');
+
+      if (kDebugMode) {
+        print(
+          '💾 GMAO: ${attributeValues.length} spécifications d\'attributs mises en cache pour $specKey',
+        );
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ GMAO: Erreur cache spécifications attributs: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// ✅ NOUVEAU: Récupération des spécifications d'attributs
+  static Future<List<EquipmentAttribute>?> getCachedAttributeSpecifications(
+    String specification,
+    String attributeIndex,
+  ) async {
+    try {
+      final specKey = '${specification}_$attributeIndex';
+      final cachedData = attributeValuesBox.get(specKey);
+
+      if (cachedData == null) {
+        if (kDebugMode) {
+          print('📋 GMAO: Aucune spécification en cache pour $specKey');
+        }
+        return null;
+      }
+
+      // Vérifier l'expiration du cache
+      final isExpired = await isCacheExpired(
+        'attribute_spec_$specKey',
+        maxAge: const Duration(hours: 24),
+      );
+
+      if (isExpired) {
+        if (kDebugMode) {
+          print('⏰ GMAO: Cache des spécifications expiré pour $specKey');
+        }
+        await attributeValuesBox.delete(specKey);
+        return null;
+      }
+
+      final attributesData = cachedData['attributes'] as List;
+      final attributeValues =
+          attributesData
+              .map(
+                (data) => EquipmentAttribute.fromJson(
+                  Map<String, dynamic>.from(data),
+                ),
+              )
+              .toList();
+
+      if (kDebugMode) {
+        print(
+          '📋 GMAO: ${attributeValues.length} spécifications récupérées pour $specKey',
+        );
+      }
+
+      return attributeValues;
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ GMAO: Erreur lecture spécifications attributs: $e');
+      }
+      return null;
+    }
+  }
+
+  /// ✅ MODIFIÉ: Mettre à jour une valeur d'attribut spécifique (compatible EquipmentAttribute)
+  static Future<void> updateAttributeValue(
+    String equipmentCode,
+    String attributeId,
+    String newValue,
+  ) async {
+    try {
+      final cachedData = attributeValuesBox.get(equipmentCode);
+      if (cachedData == null) {
+        throw Exception(
+          'Aucune valeur d\'attribut trouvée pour l\'équipement $equipmentCode',
+        );
+      }
+
+      final attributesData = List<Map<String, dynamic>>.from(
+        cachedData['attributes'],
+      );
+
+      // Trouver et mettre à jour l'attribut
+      bool updated = false;
+      for (int i = 0; i < attributesData.length; i++) {
+        if (attributesData[i]['id'] == attributeId) {
+          attributesData[i]['value'] = newValue;
+          updated = true;
+          break;
+        }
+      }
+
+      if (!updated) {
+        throw Exception(
+          'Attribut $attributeId non trouvé pour l\'équipement $equipmentCode',
+        );
+      }
+
+      // Sauvegarder les modifications
+      final updatedCacheData = Map<String, dynamic>.from(cachedData);
+      updatedCacheData['attributes'] = attributesData;
+      updatedCacheData['timestamp'] = DateTime.now().millisecondsSinceEpoch;
+      updatedCacheData['lastModified'] = DateTime.now().toIso8601String();
+
+      await attributeValuesBox.put(equipmentCode, updatedCacheData);
+      await _updateTimestamp('attribute_values_$equipmentCode');
+
+      if (kDebugMode) {
+        print(
+          '✅ GMAO: Valeur d\'attribut mise à jour pour équipement $equipmentCode',
+        );
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ GMAO: Erreur mise à jour valeur d\'attribut: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// ✅ NOUVEAU: Nettoyer le cache d'attributs pour un équipement spécifique
+  static Future<void> clearAttributeValues(String equipmentCode) async {
+    try {
+      final key = 'attribute_values_$equipmentCode';
+      await attributeValuesBox.delete(key);
+      await metadataBox.delete(key);
+
+      if (kDebugMode) {
+        print('🗑️ GMAO: Cache des attributs nettoyé pour $equipmentCode');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ GMAO: Erreur nettoyage cache attributs: $e');
+      }
+    }
+  }
+
+  /// ✅ NOUVEAU: Nettoyer tous les caches d'attributs
+  static Future<void> clearAllAttributeCaches() async {
+    try {
+      // Nettoyer toutes les clés qui commencent par 'attribute_values_' OU qui sont des spécifications
+      final keys =
+          attributeValuesBox.keys.where((key) {
+            final keyStr = key.toString();
+            return keyStr.startsWith('attribute_values_') ||
+                keyStr.contains('_') && !keyStr.startsWith('attribute_values_');
+          }).toList();
+
+      for (final key in keys) {
+        await attributeValuesBox.delete(key);
+        await metadataBox.delete('attribute_values_$key');
+
+        // Nettoyer aussi les métadonnées des spécifications
+        if (!key.toString().startsWith('attribute_values_')) {
+          await metadataBox.delete('attribute_spec_$key');
+        }
+      }
+
+      if (kDebugMode) {
+        print(
+          '🗑️ GMAO: Tous les caches d\'attributs nettoyés (${keys.length} entrées)',
+        );
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ GMAO: Erreur nettoyage complet cache attributs: $e');
+      }
+    }
+  }
+
+  /// ✅ NOUVEAU: Obtenir tous les équipements avec valeurs d'attributs en cache
+  static List<String> getEquipmentsWithCachedAttributes() {
+    try {
+      return attributeValuesBox.keys.map((key) => key.toString()).toList();
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ GMAO: Erreur liste équipements avec attributs: $e');
+      }
+      return [];
+    }
+  }
+
+  /// ✅ NOUVEAU: Statistiques des valeurs d'attributs
+  static Map<String, dynamic> getAttributeValuesStats() {
+    try {
+      final equipmentCodes = attributeValuesBox.keys.toList();
+      int totalAttributes = 0;
+
+      for (final code in equipmentCodes) {
+        final data = attributeValuesBox.get(code);
+        if (data != null && data['attributes'] is List) {
+          totalAttributes += (data['attributes'] as List).length;
+        }
+      }
+
+      return {
+        'equipments_with_attributes': equipmentCodes.length,
+        'total_attributes': totalAttributes,
+        'cache_size_mb':
+            (attributeValuesBox.toMap().toString().length / (1024 * 1024))
+                .round(),
+      };
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ GMAO: Erreur statistiques valeurs d\'attributs: $e');
+      }
+      return {
+        'equipments_with_attributes': 0,
+        'total_attributes': 0,
+        'cache_size_mb': 0,
+      };
+    }
+  }
+
+  // ========================================
   // MÉTHODES DE NETTOYAGE
   // ========================================
 
@@ -564,6 +938,9 @@ class HiveService {
       case 'pending_actions':
         await pendingActionsBox.clear();
         break;
+      case 'attribute_values':
+        await attributeValuesBox.clear();
+        break;
     }
 
     if (kDebugMode) {
@@ -580,6 +957,7 @@ class HiveService {
     await pendingActionsBox.clear();
     await workOrderBox.clear();
     await interventionBox.clear();
+    await attributeValuesBox.clear();
 
     if (kDebugMode) {
       print('🗑️ GMAO: Tout le cache vidé');
@@ -611,6 +989,9 @@ class HiveService {
           await interventionBox.clear();
         } else if (cacheKey.contains('pending_actions')) {
           await pendingActionsBox.clear();
+        } else if (cacheKey.contains('attribute_values')) {
+          final equipmentCode = cacheKey.replaceAll('attribute_values_', '');
+          await attributeValuesBox.delete(equipmentCode);
         }
         await metadataBox.delete(key);
         if (kDebugMode) {
@@ -644,18 +1025,7 @@ class HiveService {
       description: equipment.description,
       longitude: equipment.longitude,
       latitude: equipment.latitude,
-      attributs:
-          equipment.attributs
-              .map(
-                (attr) => AttributeValue(
-                  name: attr.name,
-                  value: attr.value,
-                  type: attr.type,
-                ),
-              )
-              .toList(),
       cachedAt: cachedAt,
-      isSync: true,
     );
   }
 
@@ -675,16 +1045,6 @@ class HiveService {
       description: hiveEquipment.description,
       longitude: hiveEquipment.longitude,
       latitude: hiveEquipment.latitude,
-      attributs:
-          hiveEquipment.attributs
-              .map(
-                (attr) => AttributeValue(
-                  name: attr.name,
-                  value: attr.value,
-                  type: attr.type,
-                ),
-              )
-              .toList(),
     );
   }
 
@@ -702,6 +1062,7 @@ class HiveService {
       'work_orders': workOrderBox.length,
       'interventions': interventionBox.length,
       'metadata': metadataBox.length,
+      'attribute_values': attributeValuesBox.length,
     };
   }
 
@@ -717,6 +1078,9 @@ class HiveService {
           (interventionBox.toMap().toString().length / (1024 * 1024)).round(),
       'selectors_mb':
           (selectorsBox.toMap().toString().length / (1024 * 1024)).round(),
+      'attribute_values_mb':
+          (attributeValuesBox.toMap().toString().length / (1024 * 1024))
+              .round(),
     };
   }
 }

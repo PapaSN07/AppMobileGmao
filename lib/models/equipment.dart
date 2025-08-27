@@ -1,3 +1,4 @@
+import 'package:appmobilegmao/models/equipment_attribute.dart';
 import 'package:hive/hive.dart';
 
 part 'equipment.g.dart';
@@ -43,14 +44,11 @@ class Equipment extends HiveObject {
   @HiveField(12)
   String latitude;
 
-  @HiveField(13)
-  List<AttributeValue> attributs;
-
   @HiveField(14)
   DateTime cachedAt;
 
   @HiveField(15)
-  bool isSync;
+  List<EquipmentAttribute>? attributes;
 
   Equipment({
     this.id,
@@ -66,9 +64,8 @@ class Equipment extends HiveObject {
     required this.description,
     required this.longitude,
     required this.latitude,
-    this.attributs = const [],
     DateTime? cachedAt,
-    this.isSync = false,
+    this.attributes,
   }) : cachedAt = cachedAt ?? DateTime.now();
 
   factory Equipment.fromJson(Map<String, dynamic> json) {
@@ -86,17 +83,15 @@ class Equipment extends HiveObject {
       description: json['description'] ?? '',
       longitude: json['longitude'] ?? '',
       latitude: json['latitude'] ?? '',
-      attributs:
-          (json['attributs'] != null && json['attributs'] is List<dynamic>)
-              ? (json['attributs'] as List<dynamic>)
-                  .map((e) => AttributeValue.fromJson(e))
-                  .toList()
-              : [], // Retourne une liste vide si `attributs` est null
+      attributes: json['attributes'] != null
+          ? (json['attributes'] as List)
+              .map((attr) => EquipmentAttribute.fromJson(attr))
+              .toList()
+          : null,
       cachedAt:
           json['cached_at'] != null
               ? DateTime.parse(json['cached_at'])
               : DateTime.now(),
-      isSync: json['is_sync'] as bool? ?? false,
     );
   }
 
@@ -115,45 +110,13 @@ class Equipment extends HiveObject {
       'description': description,
       'longitude': longitude,
       'latitude': latitude,
-      'attributs': attributs.map((e) => e.toJson()).toList(),
       'cached_at': cachedAt.toIso8601String(),
-      'is_sync': isSync,
+      'attributes': attributes?.map((attr) => attr.toJson()).toList(),
     };
   }
 
   @override
   String toString() {
-    return 'Equipment{id: $id, codeParent: $codeParent, feeder: $feeder, feederDescription: $feederDescription, code: $code, famille: $famille, zone: $zone, entity: $entity, unite: $unite, centreCharge: $centreCharge, description: $description, longitude: $longitude, latitude: $latitude, attributs: $attributs, cachedAt: $cachedAt, isSync: $isSync}';
-  }
-}
-
-@HiveType(typeId: 1)
-class AttributeValue extends HiveObject {
-  @HiveField(0)
-  String? name;
-
-  @HiveField(1)
-  String? value;
-
-  @HiveField(2)
-  String? type;
-
-  AttributeValue({this.name, this.value, this.type});
-
-  factory AttributeValue.fromJson(Map<String, dynamic> json) {
-    return AttributeValue(
-      name: json['name'] as String?,
-      value: json['value'] as String?,
-      type: json['type'] as String?,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {'name': name, 'value': value, 'type': type};
-  }
-
-  @override
-  String toString() {
-    return 'AttributeValue{name: $name, value: $value, type: $type}';
+    return 'Equipment{id: $id, codeParent: $codeParent, feeder: $feeder, feederDescription: $feederDescription, code: $code, famille: $famille, zone: $zone, entity: $entity, unite: $unite, centreCharge: $centreCharge, description: $description, longitude: $longitude, latitude: $latitude, cachedAt: $cachedAt, attributes: $attributes}';
   }
 }

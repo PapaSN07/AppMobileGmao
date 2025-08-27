@@ -1,5 +1,6 @@
 import 'package:appmobilegmao/models/centre_charge.dart';
 import 'package:appmobilegmao/models/entity.dart';
+import 'package:appmobilegmao/models/equipment_attribute.dart';
 import 'package:appmobilegmao/models/famille.dart';
 import 'package:appmobilegmao/models/feeder.dart';
 import 'package:appmobilegmao/models/unite.dart';
@@ -21,6 +22,9 @@ class EquipmentService {
       );
     }
   }
+
+  /// Accès à l'instance ApiService si nécessaire
+  ApiService get apiService => _apiService;
 
   /// Récupère la liste des équipements avec pagination et filtres
   Future<ApiResponse<Equipment>> getEquipments({
@@ -60,6 +64,82 @@ class EquipmentService {
     }
   }
 
+  /// ✅ CORRIGÉ: Récupération des valeurs d'attributs avec gestion des erreurs
+  Future<Map<String, dynamic>> getAttributeValuesEquipment({
+    required String specification,
+    required String attributeIndex,
+  }) async {
+    try {
+      if (kDebugMode) {
+        print(
+          '🔧 EquipmentApi - Récupération des valeurs pour un attribut: $specification, $attributeIndex',
+        );
+      }
+
+      final data = await _apiService.get(
+        '/api/v1/equipments/attributes?specification=$specification&attribute_index=$attributeIndex',
+      );
+
+      if (kDebugMode) {
+        print(
+          '📋 EquipmentApi - Données reçues: ${data['attr']?.length ?? 0} valeurs',
+        );
+      }
+
+      // ✅ CORRIGÉ: Vérifier si data['attr'] existe et n'est pas null
+      final attrData = data['attr'];
+
+      if (attrData == null || attrData is! List) {
+        if (kDebugMode) {
+          print(
+            '⚠️ EquipmentApi - Aucun attribut trouvé ou format invalide pour $specification/$attributeIndex',
+          );
+        }
+
+        // Retourner une liste vide au lieu d'une erreur
+        return {
+          'attributes': <EquipmentAttribute>[],
+          'message': data['detail'] ?? 'Aucun attribut trouvé',
+        };
+      }
+
+      // ✅ Traiter les attributs uniquement s'ils existent
+      final attributes =
+          (attrData).map((e) {
+            // Convertir les données API vers EquipmentAttribute
+            return EquipmentAttribute(
+              id: e['id']?.toString(),
+              specification: specification, // Ajouter la spécification
+              index: attributeIndex, // Ajouter l'index
+              name: 'Valeur ${e['id']}', // Nom générique pour les valeurs
+              value: e['value']?.toString(),
+            );
+          }).toList();
+
+      final result = {
+        'attributes': attributes,
+        'message': data['message'] ?? 'Attributs récupérés avec succès',
+      };
+
+      if (kDebugMode) {
+        print('✅ EquipmentApi - ${attributes.length} attributs traités');
+      }
+
+      return result;
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ EquipmentApi - Erreur getAttributeValuesEquipment: $e');
+      }
+
+      // ✅ Retourner une structure cohérente même en cas d'erreur
+      return {
+        'attributes': <EquipmentAttribute>[],
+        'message': 'Erreur lors de la récupération: $e',
+        'error': true,
+      };
+    }
+  }
+
   /// Récupération des valeurs des sélecteurs pour les équipements
   Future<Map<String, dynamic>> getEquipmentSelectors({
     required String entity,
@@ -83,24 +163,28 @@ class EquipmentService {
       }
 
       // ✅ Traiter les listes correctement et retourner le bon type
-      final entities = (data['data']['entities'] as List)
-          .map((e) => Entity.fromJson(e))
-          .toList();
-      final unites = (data['data']['unites'] as List)
-          .map((e) => Unite.fromJson(e))
-          .toList();
-      final zones = (data['data']['zones'] as List)
-          .map((e) => Zone.fromJson(e))
-          .toList();
-      final familles = (data['data']['familles'] as List)
-          .map((e) => Famille.fromJson(e))
-          .toList();
-      final centreCharges = (data['data']['cost_charges'] as List)
-          .map((e) => CentreCharge.fromJson(e))
-          .toList();
-      final feeders = (data['data']['feeders'] as List)
-          .map((e) => Feeder.fromJson(e))
-          .toList();
+      final entities =
+          (data['data']['entities'] as List)
+              .map((e) => Entity.fromJson(e))
+              .toList();
+      final unites =
+          (data['data']['unites'] as List)
+              .map((e) => Unite.fromJson(e))
+              .toList();
+      final zones =
+          (data['data']['zones'] as List).map((e) => Zone.fromJson(e)).toList();
+      final familles =
+          (data['data']['familles'] as List)
+              .map((e) => Famille.fromJson(e))
+              .toList();
+      final centreCharges =
+          (data['data']['cost_charges'] as List)
+              .map((e) => CentreCharge.fromJson(e))
+              .toList();
+      final feeders =
+          (data['data']['feeders'] as List)
+              .map((e) => Feeder.fromJson(e))
+              .toList();
 
       // ✅ Retourner directement les objets typés (pas de mise en cache ici)
       final selectors = {
@@ -179,7 +263,4 @@ class EquipmentService {
   void setPort(int port) {
     _apiService.setPort(port);
   }
-
-  /// Accès à l'instance ApiService si nécessaire
-  ApiService get apiService => _apiService;
 }

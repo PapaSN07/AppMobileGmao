@@ -26,7 +26,6 @@ void main() {
       expect(equipment.code, "EQ001");
       expect(equipment.famille, "Transformateur");
       expect(equipment.zone, "Dakar");
-      expect(equipment.attributs.length, 1);
     });
 
     test('Equipment should convert to JSON', () {
@@ -41,7 +40,6 @@ void main() {
         description: "Transformateur haute tension 225kV/30kV",
         longitude: "14.6937",
         latitude: "-17.4441",
-        attributs: [],
       );
 
       final json = equipment.toJson();

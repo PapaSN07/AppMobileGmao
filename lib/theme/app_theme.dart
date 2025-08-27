@@ -17,6 +17,7 @@ class AppTheme {
   static const Color thirdColor = Color.fromRGBO(144, 144, 144, 1);
   static const Color thirdColor20 = Color.fromRGBO(144, 144, 144, 0.2);
   static const Color thirdColor30 = Color.fromRGBO(144, 144, 144, 0.3);
+  static const Color thirdColor60 = Color.fromRGBO(144, 144, 144, 0.6);
   static const Color blurColor = Color.fromRGBO(196, 196, 196, 0.25);
   static const Color boxShadowColor = Color.fromRGBO(0, 0, 0, 0.25);
 

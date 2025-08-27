@@ -23,6 +23,10 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
   final TextEditingController _searchController = TextEditingController();
   Timer? _debounce;
 
+  // ✅ NOUVEAU: État pour le type de recherche
+  String _searchType = 'all'; // 'all', 'code', 'description', 'zone', 'famille'
+  bool _showSearchOptions = false;
+
   @override
   void initState() {
     super.initState();
@@ -214,67 +218,309 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     );
   }
 
+  // ✅ NOUVEAU: Méthode pour effectuer une recherche filtrée par type
+  void _performSearch(String value) {
+    final equipmentProvider = Provider.of<EquipmentProvider>(
+      context,
+      listen: false,
+    );
+
+    if (value.isEmpty) {
+      equipmentProvider.filterEquipments('');
+      return;
+    }
+
+    // Filtrer selon le type de recherche sélectionné
+    switch (_searchType) {
+      case 'code':
+        equipmentProvider.filterEquipmentsByField(value, 'code');
+        break;
+      case 'description':
+        equipmentProvider.filterEquipmentsByField(value, 'description');
+        break;
+      case 'zone':
+        equipmentProvider.filterEquipmentsByField(value, 'zone');
+        break;
+      case 'famille':
+        equipmentProvider.filterEquipmentsByField(value, 'famille');
+        break;
+      case 'all':
+      default:
+        equipmentProvider.filterEquipments(value);
+        break;
+    }
+  }
+
+  // ✅ NOUVEAU: Widget pour afficher les options de recherche
+  Widget _buildSearchTypeSelector() {
+    final searchTypes = [
+      {'key': 'all', 'label': 'Tous les champs', 'icon': Icons.search},
+      {'key': 'code', 'label': 'Code équipement', 'icon': Icons.qr_code},
+      {'key': 'description', 'label': 'Description', 'icon': Icons.description},
+      {'key': 'zone', 'label': 'Zone', 'icon': Icons.location_on},
+      {'key': 'famille', 'label': 'Famille', 'icon': Icons.category},
+    ];
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      height: _showSearchOptions ? 60 : 0,
+      child:
+          _showSearchOptions
+              ? Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppTheme.thirdColor30),
+                ),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Row(
+                    children:
+                        searchTypes.map((type) {
+                          final isSelected = _searchType == type['key'];
+                          return GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _searchType = type['key'] as String;
+                              });
+
+                              // Refaire la recherche avec le nouveau type
+                              if (_searchController.text.isNotEmpty) {
+                                _performSearch(_searchController.text);
+                              }
+                            },
+                            child: Container(
+                              margin: const EdgeInsets.only(right: 8),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color:
+                                    isSelected
+                                        ? AppTheme.secondaryColor
+                                        : Colors.white.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color:
+                                      isSelected
+                                          ? AppTheme.secondaryColor
+                                          : AppTheme.thirdColor,
+                                  width: 1,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    type['icon'] as IconData,
+                                    size: 16,
+                                    color:
+                                        isSelected
+                                            ? Colors.white
+                                            : AppTheme.thirdColor,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    type['label'] as String,
+                                    style: TextStyle(
+                                      fontFamily: AppTheme.fontMontserrat,
+                                      fontSize: 12,
+                                      fontWeight:
+                                          isSelected
+                                              ? FontWeight.w600
+                                              : FontWeight.normal,
+                                      color:
+                                          isSelected
+                                              ? Colors.white
+                                              : AppTheme.thirdColor,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                  ),
+                ),
+              )
+              : const SizedBox.shrink(),
+    );
+  }
+
+  // ✅ MODIFIÉ: Amélioration de la barre de recherche avec options
   Widget _searchBar(EquipmentProvider equipmentProvider) {
-    return Form(
-      key: _formKey,
-      child: TextFormField(
-        controller: _searchController,
-        style: const TextStyle(
-          color: AppTheme.thirdColor,
-        ), // ✅ CHANGÉ: Texte blanc pour contraste
-        decoration: InputDecoration(
-          labelText: 'Rechercher par...',
-          labelStyle: const TextStyle(
-            color: AppTheme.thirdColor, // ✅ CHANGÉ: Label blanc transparent
-            fontFamily: AppTheme.fontRoboto,
-            fontWeight: FontWeight.bold,
-            fontSize: 14,
-          ),
-          border: const UnderlineInputBorder(
-            borderSide: BorderSide(
+    return Column(
+      children: [
+        Form(
+          key: _formKey,
+          child: TextFormField(
+            controller: _searchController,
+            style: const TextStyle(
               color: AppTheme.thirdColor,
-            ), // ✅ CHANGÉ: Bordure blanche
-          ),
-          enabledBorder: const UnderlineInputBorder(
-            borderSide: BorderSide(
-              color: AppTheme.thirdColor,
-            ), // ✅ CHANGÉ: Bordure blanche
-          ),
-          focusedBorder: const UnderlineInputBorder(
-            borderSide: BorderSide(
-              color: AppTheme.thirdColor,
-              width: 2.0,
-            ), // ✅ CHANGÉ: Focus blanc
-          ),
-          suffixIcon: IconButton(
-            icon: const Icon(
-              Icons.search,
-              color: AppTheme.thirdColor,
-            ), // ✅ CHANGÉ: Icône blanche
-            onPressed: () {
-              equipmentProvider.filterEquipments(_searchController.text);
+              fontFamily: AppTheme.fontMontserrat,
+              fontSize: 14,
+            ),
+            decoration: InputDecoration(
+              labelText: _getSearchPlaceholder(),
+              labelStyle: const TextStyle(
+                color: AppTheme.thirdColor,
+                fontFamily: AppTheme.fontRoboto,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+              hintText: _getSearchHint(),
+              hintStyle: TextStyle(
+                color: AppTheme.thirdColor60,
+                fontFamily: AppTheme.fontRoboto,
+                fontSize: 12,
+              ),
+              border: const UnderlineInputBorder(
+                borderSide: BorderSide(color: AppTheme.thirdColor),
+              ),
+              enabledBorder: const UnderlineInputBorder(
+                borderSide: BorderSide(color: AppTheme.thirdColor),
+              ),
+              focusedBorder: const UnderlineInputBorder(
+                borderSide: BorderSide(color: AppTheme.thirdColor, width: 2.0),
+              ),
+              prefixIcon: IconButton(
+                icon: Icon(
+                  _showSearchOptions ? Icons.filter_list : Icons.tune,
+                  color:
+                      _showSearchOptions
+                          ? AppTheme.secondaryColor
+                          : AppTheme.thirdColor,
+                ),
+                onPressed: () {
+                  setState(() {
+                    _showSearchOptions = !_showSearchOptions;
+                  });
+                },
+                tooltip: 'Options de recherche',
+              ),
+              suffixIcon: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // ✅ NOUVEAU: Indicateur du type de recherche actuel
+                  if (_searchType != 'all')
+                    Container(
+                      margin: const EdgeInsets.only(right: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppTheme.secondaryColor,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        _getSearchTypeLabel(_searchType),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  // ✅ Bouton de recherche existant
+                  IconButton(
+                    icon: const Icon(Icons.search, color: AppTheme.thirdColor),
+                    onPressed: () {
+                      _performSearch(_searchController.text);
+                      FocusScope.of(context).unfocus();
+                    },
+                  ),
+                  // ✅ NOUVEAU: Bouton pour effacer la recherche
+                  if (_searchController.text.isNotEmpty)
+                    IconButton(
+                      icon: const Icon(Icons.clear, color: AppTheme.thirdColor),
+                      onPressed: () {
+                        _searchController.clear();
+                        _performSearch('');
+                        FocusScope.of(context).unfocus();
+                      },
+                    ),
+                ],
+              ),
+            ),
+            onChanged: (value) {
+              if (_debounce?.isActive ?? false) _debounce!.cancel();
+              _debounce = Timer(const Duration(milliseconds: 500), () {
+                _performSearch(value);
+              });
             },
+            onFieldSubmitted: (value) {
+              _performSearch(value);
+              FocusScope.of(context).unfocus();
+            },
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Veuillez entrer quelque chose';
+              }
+              return null;
+            },
+            textInputAction: TextInputAction.search,
           ),
         ),
-        onChanged: (value) {
-          if (_debounce?.isActive ?? false) _debounce!.cancel();
-          _debounce = Timer(const Duration(seconds: 1), () {
-            equipmentProvider.filterEquipments(value);
-          });
-        },
-        onFieldSubmitted: (value) {
-          equipmentProvider.filterEquipments(value);
-          FocusScope.of(context).unfocus();
-        },
-        validator: (value) {
-          if (value == null || value.isEmpty) {
-            return 'Veuillez entrer quelque chose';
-          }
-          return null;
-        },
-        textInputAction: TextInputAction.done,
-      ),
+
+        // ✅ NOUVEAU: Options de recherche
+        _buildSearchTypeSelector(),
+      ],
     );
+  }
+
+  // ✅ NOUVEAU: Obtenir le placeholder selon le type de recherche
+  String _getSearchPlaceholder() {
+    switch (_searchType) {
+      case 'code':
+        return 'Rechercher par code...';
+      case 'description':
+        return 'Rechercher par description...';
+      case 'zone':
+        return 'Rechercher par zone...';
+      case 'famille':
+        return 'Rechercher par famille...';
+      case 'all':
+      default:
+        return 'Rechercher par...';
+    }
+  }
+
+  // ✅ NOUVEAU: Obtenir le hint selon le type de recherche
+  String _getSearchHint() {
+    switch (_searchType) {
+      case 'code':
+        return 'Ex: EQ001, TRANSFO_001, LM0303...';
+      case 'description':
+        return 'Ex: Transformateur, Moteur, Cellule...';
+      case 'zone':
+        return 'Ex: Dakar, Thiès, Saint-Louis...';
+      case 'famille':
+        return 'Ex: TRANSFO_HTA/BT, CELLULE_DEPART...';
+      case 'all':
+      default:
+        return 'Code, description, zone, famille...';
+    }
+  }
+
+  // ✅ NOUVEAU: Obtenir le label court du type de recherche
+  String _getSearchTypeLabel(String type) {
+    switch (type) {
+      case 'code':
+        return 'CODE';
+      case 'description':
+        return 'DESC';
+      case 'zone':
+        return 'ZONE';
+      case 'famille':
+        return 'FAM';
+      default:
+        return 'ALL';
+    }
   }
 
   Widget _buildEquipmentList(EquipmentProvider equipmentProvider) {
@@ -302,28 +548,58 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
         );
   }
 
+  // ✅ MODIFIÉ: Amélioration de l'état vide avec suggestions selon le type de recherche
   Widget _buildEmptyState(EquipmentProvider equipmentProvider) {
     final bool isSearching = _searchController.text.isNotEmpty;
     final String searchTerm = _searchController.text.trim();
 
     if (isSearching) {
       String message;
+      String suggestions;
+
       if (searchTerm.length < 3) {
         message =
             'Tapez au moins 3 caractères pour une recherche plus précise.';
+        suggestions = '';
       } else {
-        message =
-            'Aucun équipement ne correspond à "$searchTerm".\nEssayez avec d\'autres mots-clés comme:\n• Code équipement (ex: EQ001)\n• Zone (ex: Dakar)\n• Famille (ex: Moteur)';
+        message = 'Aucun équipement ne correspond à "$searchTerm"';
+
+        // ✅ NOUVEAU: Suggestions spécifiques selon le type de recherche
+        switch (_searchType) {
+          case 'code':
+            suggestions =
+                'Suggestions pour les codes:\n• EQ001, TRANSFO_001\n• LM0303I2CADTRF1\n• Vérifiez l\'orthographe du code';
+            break;
+          case 'description':
+            suggestions =
+                'Suggestions pour les descriptions:\n• Transformateur, Moteur\n• Cellule, Câble\n• Essayez des termes plus généraux';
+            break;
+          case 'zone':
+            suggestions =
+                'Suggestions pour les zones:\n• DAKAR, THIES\n• SAINT-LOUIS, KAOLACK\n• Utilisez le nom complet de la zone';
+            break;
+          case 'famille':
+            suggestions =
+                'Suggestions pour les familles:\n• TRANSFO_HTA/BT\n• CELLULE_DEPART\n• CABLE_HTA, CABLE_BT';
+            break;
+          default:
+            suggestions =
+                'Essayez avec d\'autres mots-clés comme:\n• Code équipement (ex: EQ001)\n• Zone (ex: Dakar)\n• Famille (ex: Moteur)';
+        }
       }
 
       return EmptyState(
         title: '🔍 Aucun résultat trouvé',
-        message: message,
+        message: suggestions.isNotEmpty ? '$message.\n\n$suggestions' : message,
         icon: Icons.search_off,
         onRetry: () {
           _searchController.clear();
-          equipmentProvider.filterEquipments('');
+          _performSearch('');
           FocusScope.of(context).unfocus();
+          setState(() {
+            _showSearchOptions = false;
+            _searchType = 'all';
+          });
         },
         retryButtonText: 'Effacer la recherche',
       );

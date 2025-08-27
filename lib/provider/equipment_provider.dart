@@ -1,3 +1,4 @@
+import 'package:appmobilegmao/models/equipment_attribute.dart';
 import 'package:flutter/foundation.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:appmobilegmao/services/equipment_service.dart';
@@ -16,9 +17,15 @@ class EquipmentProvider extends ChangeNotifier {
   bool _isOffline = false;
   String? _error;
 
-  // ✅ État pour les sélecteurs
+  // État pour les sélecteurs
   Map<String, dynamic>? _cachedSelectors;
   bool _selectorsLoaded = false;
+
+  // État pour les valeurs d'attributs
+  // État pour les attributs d'équipements (EquipmentAttribute au lieu d'AttributeValue)
+  final Map<String, List<EquipmentAttribute>> _equipmentAttributes = {};
+  final Map<String, List<EquipmentAttribute>> _attributeSpecifications = {};
+  bool _attributesLoading = false;
 
   // Getters
   List<Map<String, dynamic>> get equipments => _equipments;
@@ -28,6 +35,14 @@ class EquipmentProvider extends ChangeNotifier {
   bool get isOffline => _isOffline;
   Map<String, dynamic>? get cachedSelectors => _cachedSelectors;
   bool get selectorsLoaded => _selectorsLoaded;
+
+  // Getters pour les valeurs d'attributs
+  // Getters pour les attributs
+  Map<String, List<EquipmentAttribute>> get equipmentAttributes =>
+      _equipmentAttributes;
+  Map<String, List<EquipmentAttribute>> get attributeSpecifications =>
+      _attributeSpecifications;
+  bool get attributesLoading => _attributesLoading;
 
   // Initialisation
   Future<void> initialize() async {
@@ -114,7 +129,7 @@ class EquipmentProvider extends ChangeNotifier {
     }
   }
 
-  // ✅ CORRIGÉ: Charger les sélecteurs avec priorité cache
+  // Charger les sélecteurs avec priorité cache
   Future<Map<String, dynamic>> loadSelectors({required String entity}) async {
     try {
       if (kDebugMode) {
@@ -170,7 +185,7 @@ class EquipmentProvider extends ChangeNotifier {
     }
   }
 
-  // ✅ NOUVEAU: Convertir les sélecteurs de l'API en Map<String, dynamic>
+  // Convertir les sélecteurs de l'API en Map<String, dynamic>
   Map<String, dynamic> _convertSelectorsToMap(
     Map<String, dynamic> apiSelectors,
   ) {
@@ -213,7 +228,7 @@ class EquipmentProvider extends ChangeNotifier {
     return result;
   }
 
-  // ✅ NOUVEAU: Forcer le rechargement des sélecteurs
+  // Forcer le rechargement des sélecteurs
   Future<Map<String, dynamic>> forceReloadSelectors({
     required String entity,
   }) async {
@@ -221,32 +236,6 @@ class EquipmentProvider extends ChangeNotifier {
     _selectorsLoaded = false;
     await HiveService.clearCache('selectors');
     return await loadSelectors(entity: entity);
-  }
-
-  // Méthode de recherche
-  void filterEquipments(String searchTerm) {
-    if (searchTerm.isEmpty) {
-      _equipments = List.from(_allEquipments);
-    } else {
-      final lowercaseSearch = searchTerm.toLowerCase();
-      _equipments =
-          _allEquipments.where((equipment) {
-            final code = equipment['code']?.toString().toLowerCase() ?? '';
-            final description =
-                equipment['description']?.toString().toLowerCase() ?? '';
-            final zone = equipment['zone']?.toString().toLowerCase() ?? '';
-            final famille =
-                equipment['famille']?.toString().toLowerCase() ?? '';
-            final entity = equipment['entity']?.toString().toLowerCase() ?? '';
-
-            return code.contains(lowercaseSearch) ||
-                description.contains(lowercaseSearch) ||
-                zone.contains(lowercaseSearch) ||
-                famille.contains(lowercaseSearch) ||
-                entity.contains(lowercaseSearch);
-          }).toList();
-    }
-    notifyListeners();
   }
 
   // Appliquer les filtres
@@ -390,6 +379,7 @@ class EquipmentProvider extends ChangeNotifier {
         .toList();
   }
 
+  // ✅ MODIFIÉ: Conversion helper pour inclure les attributs
   Map<String, dynamic> _convertEquipmentToMap(Equipment equipment) {
     return {
       'id': equipment.id,
@@ -405,16 +395,662 @@ class EquipmentProvider extends ChangeNotifier {
       'description': equipment.description,
       'longitude': equipment.longitude,
       'latitude': equipment.latitude,
-      'attributs':
-          equipment.attributs
-              .map(
-                (attr) => {
-                  'name': attr.name,
-                  'value': attr.value,
-                  'type': attr.type,
-                },
-              )
-              .toList(),
+      'attributes':
+          equipment.attributes?.map((attr) => attr.toJson()).toList() ??
+          [], // ✅ Inclure les attributs
     };
+  }
+
+  // ========================================
+  // GESTION DES VALEURS D'ATTRIBUTS
+  // ========================================
+
+  /// Charger les valeurs d'attributs pour une spécification d'attribut
+  Future<List<EquipmentAttribute>> loadAttributeSpecificationValues(
+    String specification,
+    String attributeIndex,
+  ) async {
+    if (_attributesLoading) {
+      return _attributeSpecifications['${specification}_$attributeIndex'] ?? [];
+    }
+
+    _attributesLoading = true;
+    notifyListeners();
+
+    try {
+      final specKey = '${specification}_$attributeIndex';
+
+      if (kDebugMode) {
+        print('🔧 EquipmentProvider - Chargement des valeurs pour: $specKey');
+      }
+
+      // 1. Vérifier le cache d'abord
+      final cachedAttributes =
+          await HiveService.getCachedAttributeSpecifications(
+            specification,
+            attributeIndex,
+          );
+
+      if (cachedAttributes != null && cachedAttributes.isNotEmpty) {
+        _attributeSpecifications[specKey] = cachedAttributes;
+        if (kDebugMode) {
+          print(
+            '📋 EquipmentProvider - ${cachedAttributes.length} attributs chargés depuis le cache',
+          );
+        }
+        return cachedAttributes;
+      }
+
+      // 2. Si pas de cache, charger depuis l'API
+      await _checkConnectivity();
+      if (_isOffline) {
+        throw Exception(
+          'Impossible de charger les attributs en mode hors ligne',
+        );
+      }
+
+      if (kDebugMode) {
+        print('🌐 EquipmentProvider - Chargement des attributs depuis l\'API');
+      }
+
+      final apiResponse = await _apiService.getAttributeValuesEquipment(
+        specification: specification,
+        attributeIndex: attributeIndex,
+      );
+
+      final attributeValues =
+          apiResponse['attributes'] as List<EquipmentAttribute>;
+
+      // 3. Mettre en cache
+      await HiveService.cacheAttributeSpecifications(
+        specification,
+        attributeIndex,
+        attributeValues,
+      );
+
+      // 4. Stocker en mémoire
+      _attributeSpecifications[specKey] = attributeValues;
+
+      if (kDebugMode) {
+        print(
+          '✅ EquipmentProvider - ${attributeValues.length} valeurs d\'attributs chargées et mises en cache',
+        );
+      }
+
+      return attributeValues;
+    } catch (e) {
+      if (kDebugMode) {
+        print(
+          '❌ EquipmentProvider - Erreur chargement valeurs d\'attributs: $e',
+        );
+      }
+      rethrow;
+    } finally {
+      _attributesLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// ✅ NOUVEAU: Charger les attributs d'un équipement spécifique depuis ses données
+  /// Cette méthode simule le chargement des attributs de l'équipement en utilisant ses spécifications
+  Future<List<EquipmentAttribute>> loadEquipmentAttributes(
+    String equipmentCode,
+  ) async {
+    if (_attributesLoading) return _equipmentAttributes[equipmentCode] ?? [];
+
+    _attributesLoading = true;
+    notifyListeners();
+
+    try {
+      if (kDebugMode) {
+        print(
+          '🔧 EquipmentProvider - Chargement des attributs pour équipement: $equipmentCode',
+        );
+      }
+
+      // 1. Vérifier le cache d'abord
+      final cachedAttributes = await HiveService.getCachedAttributeValues(
+        equipmentCode,
+      );
+
+      if (cachedAttributes != null && cachedAttributes.isNotEmpty) {
+        // ✅ Filtrer les doublons même dans le cache
+        final uniqueAttributes = _filterDuplicateAttributes(cachedAttributes);
+        _equipmentAttributes[equipmentCode] = uniqueAttributes;
+        if (kDebugMode) {
+          print(
+            '📋 EquipmentProvider - ${uniqueAttributes.length} attributs équipement uniques depuis le cache (${cachedAttributes.length} au total)',
+          );
+        }
+        return uniqueAttributes;
+      }
+
+      // 2. Si pas de cache, récupérer l'équipement et ses attributs réels
+      await _checkConnectivity();
+      if (_isOffline) {
+        throw Exception(
+          'Impossible de charger les attributs en mode hors ligne',
+        );
+      }
+
+      if (kDebugMode) {
+        print(
+          '🌐 EquipmentProvider - Chargement des attributs équipement depuis l\'API',
+        );
+      }
+
+      // ✅ Chercher l'équipement dans la liste avec ses attributs réels
+      final equipment = _allEquipments.firstWhere(
+        (eq) => eq['code'] == equipmentCode,
+        orElse: () => <String, dynamic>{},
+      );
+
+      if (equipment.isEmpty) {
+        throw Exception('Équipement $equipmentCode non trouvé');
+      }
+
+      // ✅ Utiliser UNIQUEMENT les vrais attributs de l'équipement
+      List<EquipmentAttribute> attributeValues = [];
+
+      if (equipment['attributes'] != null && equipment['attributes'] is List) {
+        attributeValues =
+            (equipment['attributes'] as List).map((attr) {
+              if (attr is Map<String, dynamic>) {
+                return EquipmentAttribute(
+                  id: attr['id']?.toString(),
+                  specification: attr['specification']?.toString(),
+                  index: attr['index']?.toString(),
+                  name: attr['name']?.toString(),
+                  value: attr['value']?.toString() ?? '',
+                );
+              } else {
+                return attr as EquipmentAttribute;
+              }
+            }).toList();
+      }
+
+      // ✅ NOUVEAU: Filtrer les doublons de spécification AVANT de mettre en cache
+      final uniqueAttributes = _filterDuplicateAttributes(attributeValues);
+
+      // ✅ Si aucun attribut, retourner une liste vide
+      if (uniqueAttributes.isEmpty) {
+        if (kDebugMode) {
+          print(
+            '📋 EquipmentProvider - Aucun attribut trouvé pour l\'équipement $equipmentCode',
+          );
+        }
+        return [];
+      }
+
+      // 3. Mettre en cache les attributs uniques (pas tous les doublons)
+      await HiveService.cacheAttributeValues(equipmentCode, uniqueAttributes);
+
+      // 4. Stocker en mémoire
+      _equipmentAttributes[equipmentCode] = uniqueAttributes;
+
+      if (kDebugMode) {
+        print(
+          '✅ EquipmentProvider - ${uniqueAttributes.length} attributs équipement uniques chargés (${attributeValues.length} au total)',
+        );
+      }
+
+      return uniqueAttributes;
+    } catch (e) {
+      if (kDebugMode) {
+        print(
+          '❌ EquipmentProvider - Erreur chargement attributs équipement: $e',
+        );
+      }
+      rethrow;
+    } finally {
+      _attributesLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// ✅ NOUVEAU: Filtrer les attributs dupliqués par spécification
+  List<EquipmentAttribute> _filterDuplicateAttributes(
+    List<EquipmentAttribute> attributes,
+  ) {
+    final Map<String, EquipmentAttribute> uniqueAttributesMap = {};
+
+    for (final attr in attributes) {
+      if (attr.specification != null &&
+          attr.index != null &&
+          attr.name != null) {
+        final specKey = '${attr.specification}_${attr.index}';
+
+        // ✅ Garder seulement le premier attribut de chaque spécification/index
+        if (!uniqueAttributesMap.containsKey(specKey)) {
+          uniqueAttributesMap[specKey] = attr;
+        } else {
+          // Si on a déjà cet attribut, garder celui qui a une valeur non vide
+          final existing = uniqueAttributesMap[specKey]!;
+          if ((existing.value == null || existing.value!.isEmpty) &&
+              (attr.value != null && attr.value!.isNotEmpty)) {
+            uniqueAttributesMap[specKey] = attr;
+          }
+        }
+      } else {
+        // Pour les attributs sans spécification valide, utiliser l'ID comme clé unique
+        final key =
+            attr.id ??
+            'no_id_${attr.name ?? 'unknown'}_${DateTime.now().millisecondsSinceEpoch}';
+        if (!uniqueAttributesMap.containsKey(key)) {
+          uniqueAttributesMap[key] = attr;
+        }
+      }
+    }
+
+    // Trier les résultats par nom pour un affichage cohérent
+    final uniqueList = uniqueAttributesMap.values.toList();
+    uniqueList.sort((a, b) {
+      final nameA = a.name ?? '';
+      final nameB = b.name ?? '';
+      return nameA.compareTo(nameB);
+    });
+
+    if (kDebugMode) {
+      print(
+        '🔍 Filtrage attributs: ${attributes.length} -> ${uniqueList.length} uniques',
+      );
+
+      // Afficher les attributs filtrés pour debug
+      for (final attr in uniqueList) {
+        print(
+          '  ✓ ${attr.name} (spec: ${attr.specification}, index: ${attr.index}, valeur: "${attr.value}")',
+        );
+      }
+    }
+
+    return uniqueList;
+  }
+
+  /// ✅ NOUVEAU: Charger les valeurs possibles pour un attribut spécifique UNIQUEMENT
+  Future<List<EquipmentAttribute>> loadPossibleValuesForAttribute(
+    String specification,
+    String attributeIndex,
+  ) async {
+    final specKey = '${specification}_$attributeIndex';
+
+    // Vérifier si déjà chargé en mémoire
+    if (_attributeSpecifications.containsKey(specKey)) {
+      return _attributeSpecifications[specKey]!;
+    }
+
+    if (_attributesLoading) {
+      return _attributeSpecifications[specKey] ?? [];
+    }
+
+    _attributesLoading = true;
+    notifyListeners();
+
+    try {
+      if (kDebugMode) {
+        print(
+          '🔧 EquipmentProvider - Chargement des valeurs possibles pour: $specKey',
+        );
+      }
+
+      // 1. Vérifier le cache d'abord
+      final cachedAttributes =
+          await HiveService.getCachedAttributeSpecifications(
+            specification,
+            attributeIndex,
+          );
+
+      if (cachedAttributes != null && cachedAttributes.isNotEmpty) {
+        _attributeSpecifications[specKey] = cachedAttributes;
+        if (kDebugMode) {
+          print(
+            '📋 EquipmentProvider - ${cachedAttributes.length} valeurs possibles depuis le cache',
+          );
+        }
+        return cachedAttributes;
+      }
+
+      // 2. Si pas de cache, charger depuis l'API
+      await _checkConnectivity();
+      if (_isOffline) {
+        throw Exception('Impossible de charger les valeurs en mode hors ligne');
+      }
+
+      if (kDebugMode) {
+        print('🌐 EquipmentProvider - Chargement des valeurs depuis l\'API');
+      }
+
+      final apiResponse = await _apiService.getAttributeValuesEquipment(
+        specification: specification,
+        attributeIndex: attributeIndex,
+      );
+
+      // ✅ CORRIGÉ: Gestion du cas où aucun attribut n'est trouvé
+      final attributeValues =
+          apiResponse['attributes'] as List<EquipmentAttribute>? ?? [];
+      final hasError = apiResponse['error'] == true;
+
+      if (hasError) {
+        if (kDebugMode) {
+          print('⚠️ EquipmentProvider - Erreur API: ${apiResponse['message']}');
+        }
+      }
+
+      // 3. Mettre en cache même si la liste est vide (pour éviter les appels répétés)
+      await HiveService.cacheAttributeSpecifications(
+        specification,
+        attributeIndex,
+        attributeValues,
+      );
+
+      // 4. Stocker en mémoire
+      _attributeSpecifications[specKey] = attributeValues;
+
+      if (kDebugMode) {
+        print(
+          '✅ EquipmentProvider - ${attributeValues.length} valeurs possibles chargées',
+        );
+      }
+
+      return attributeValues;
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ EquipmentProvider - Erreur chargement valeurs possibles: $e');
+      }
+
+      // ✅ Retourner une liste vide au lieu de relancer l'erreur
+      _attributeSpecifications[specKey] = [];
+      return [];
+    } finally {
+      _attributesLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Mettre à jour une valeur d'attribut
+  Future<void> updateAttributeValue(
+    String equipmentCode,
+    String attributeId,
+    String newValue,
+  ) async {
+    try {
+      // 1. Mettre à jour en mémoire
+      if (_equipmentAttributes.containsKey(equipmentCode)) {
+        final attributes = _equipmentAttributes[equipmentCode]!;
+        final attributeIndex = attributes.indexWhere(
+          (attr) => attr.id == attributeId,
+        );
+
+        if (attributeIndex != -1) {
+          attributes[attributeIndex].value = newValue;
+          _equipmentAttributes[equipmentCode] = attributes;
+        }
+      }
+
+      // 2. Mettre à jour dans le cache
+      await HiveService.updateAttributeValue(
+        equipmentCode,
+        attributeId,
+        newValue,
+      );
+
+      // 3. Envoyer à l'API (si en ligne)
+      if (!_isOffline) {
+        if (kDebugMode) {
+          print(
+            '🌐 EquipmentProvider - Mise à jour attribut via API (à implémenter)',
+          );
+        }
+        // TODO: Implémenter l'appel API pour mettre à jour la valeur
+      } else {
+        // Ajouter à la queue des actions en attente
+        await HiveService.addPendingAction({
+          'type': 'update_attribute_value',
+          'equipmentCode': equipmentCode,
+          'attributeId': attributeId,
+          'newValue': newValue,
+          'timestamp': DateTime.now().toIso8601String(),
+        });
+      }
+
+      notifyListeners();
+
+      if (kDebugMode) {
+        print('✅ EquipmentProvider - Valeur d\'attribut mise à jour');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ EquipmentProvider - Erreur mise à jour attribut: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// ✅ MODIFIÉ: Alias pour compatibilité (utilise la nouvelle méthode)
+  Future<List<EquipmentAttribute>> loadAttributeValues(
+    String specification,
+    String attributeIndex,
+  ) async {
+    return await loadPossibleValuesForAttribute(specification, attributeIndex);
+  }
+
+  /// ✅ NOUVEAU: Obtenir les spécifications d'attributs en mémoire
+  List<EquipmentAttribute>? getAttributeSpecificationsFromMemory(
+    String specification,
+    String attributeIndex,
+  ) {
+    final specKey = '${specification}_$attributeIndex';
+    return _attributeSpecifications[specKey];
+  }
+
+  /// ✅ MODIFIÉ: Obtenir les attributs en mémoire
+  List<EquipmentAttribute>? getAttributeValuesFromMemory(
+    String specification,
+    String attributeIndex,
+  ) {
+    return getAttributeSpecificationsFromMemory(specification, attributeIndex);
+  }
+
+  /// ✅ NOUVEAU: Obtenir les attributs d'un équipement en mémoire
+  List<EquipmentAttribute>? getEquipmentAttributesFromMemory(
+    String equipmentCode,
+  ) {
+    return _equipmentAttributes[equipmentCode];
+  }
+
+  /// ✅ MODIFIÉ: Nettoyer les attributs en mémoire
+  void clearAttributesFromMemory([String? equipmentCode]) {
+    if (equipmentCode != null) {
+      _equipmentAttributes.remove(equipmentCode);
+      // Nettoyer aussi les spécifications associées
+      _attributeSpecifications.removeWhere(
+        (key, value) => key.startsWith(equipmentCode),
+      );
+    } else {
+      _equipmentAttributes.clear();
+      _attributeSpecifications.clear();
+    }
+    notifyListeners();
+  }
+
+  /// ✅ NOUVEAU: Filtrer les équipements par un champ spécifique
+  void filterEquipmentsByField(String searchTerm, String field) {
+    if (searchTerm.isEmpty) {
+      _equipments = List.from(_allEquipments);
+    } else {
+      _equipments =
+          _allEquipments.where((equipment) {
+            String? fieldValue;
+
+            // Récupérer la valeur selon le champ demandé
+            switch (field.toLowerCase()) {
+              case 'code':
+                fieldValue =
+                    equipment['code']?.toString() ??
+                    equipment['Code']?.toString();
+                break;
+              case 'description':
+                fieldValue =
+                    equipment['description']?.toString() ??
+                    equipment['Description']?.toString();
+                break;
+              case 'zone':
+                fieldValue =
+                    equipment['zone']?.toString() ??
+                    equipment['Zone']?.toString();
+                break;
+              case 'famille':
+                fieldValue =
+                    equipment['famille']?.toString() ??
+                    equipment['Famille']?.toString();
+                break;
+              case 'entity':
+              case 'entité':
+                fieldValue =
+                    equipment['entity']?.toString() ??
+                    equipment['Entité']?.toString() ??
+                    equipment['Entity']?.toString();
+                break;
+              case 'unite':
+              case 'unité':
+                fieldValue =
+                    equipment['unite']?.toString() ??
+                    equipment['Unité']?.toString() ??
+                    equipment['Unite']?.toString();
+                break;
+              case 'feeder':
+                fieldValue =
+                    equipment['feeder']?.toString() ??
+                    equipment['Feeder']?.toString();
+                break;
+              default:
+                // Si le champ n'est pas reconnu, chercher dans tous les champs
+                fieldValue = [
+                  equipment['code']?.toString(),
+                  equipment['Code']?.toString(),
+                  equipment['description']?.toString(),
+                  equipment['Description']?.toString(),
+                ].where((v) => v != null && v.isNotEmpty).join(' ');
+            }
+
+            if (fieldValue == null || fieldValue.isEmpty) {
+              return false;
+            }
+
+            final searchLower = searchTerm.toLowerCase();
+            final fieldLower = fieldValue.toLowerCase();
+
+            return fieldLower.contains(searchLower);
+          }).toList();
+    }
+
+    notifyListeners();
+
+    if (kDebugMode) {
+      print(
+        '🔍 EquipmentProvider - Filtrage par $field: "$searchTerm" -> ${_equipments.length} résultats',
+      );
+    }
+  }
+
+  /// ✅ MODIFIÉ: Amélioration du filtrage général existant
+  void filterEquipments(String searchTerm) {
+    if (searchTerm.isEmpty) {
+      _equipments = List.from(_allEquipments);
+    } else {
+      _equipments =
+          _allEquipments.where((equipment) {
+            final searchableText =
+                [
+                      equipment['code']?.toString(),
+                      equipment['Code']?.toString(),
+                      equipment['description']?.toString(),
+                      equipment['Description']?.toString(),
+                      equipment['zone']?.toString(),
+                      equipment['Zone']?.toString(),
+                      equipment['famille']?.toString(),
+                      equipment['Famille']?.toString(),
+                      equipment['entity']?.toString(),
+                      equipment['Entité']?.toString(),
+                      equipment['Entity']?.toString(),
+                      equipment['unite']?.toString(),
+                      equipment['Unité']?.toString(),
+                      equipment['Unite']?.toString(),
+                      equipment['feeder']?.toString(),
+                      equipment['Feeder']?.toString(),
+                    ]
+                    .where((value) => value != null && value.isNotEmpty)
+                    .join(' ')
+                    .toLowerCase();
+
+            return searchableText.contains(searchTerm.toLowerCase());
+          }).toList();
+    }
+
+    notifyListeners();
+
+    if (kDebugMode) {
+      print(
+        '🔍 EquipmentProvider - Recherche générale: "$searchTerm" -> ${_equipments.length} résultats',
+      );
+    }
+  }
+
+  /// ✅ NOUVEAU: Nettoyer et reconstruire le cache des attributs d'équipement
+  Future<void> cleanAndRebuildAttributeCache(String equipmentCode) async {
+    try {
+      if (kDebugMode) {
+        print(
+          '🧹 EquipmentProvider - Nettoyage du cache pour équipement: $equipmentCode',
+        );
+      }
+
+      // 1. Supprimer le cache existant
+      await HiveService.clearAttributeValues(equipmentCode);
+
+      // 2. Supprimer de la mémoire
+      _equipmentAttributes.remove(equipmentCode);
+
+      // 3. Recharger depuis l'API
+      await loadEquipmentAttributes(equipmentCode);
+
+      if (kDebugMode) {
+        print(
+          '✅ EquipmentProvider - Cache des attributs nettoyé et reconstruit',
+        );
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ EquipmentProvider - Erreur nettoyage cache: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// ✅ NOUVEAU: Nettoyer tous les caches d'attributs corrompus
+  Future<void> cleanAllAttributeCaches() async {
+    try {
+      if (kDebugMode) {
+        print(
+          '🧹 EquipmentProvider - Nettoyage complet des caches d\'attributs',
+        );
+      }
+
+      // 1. Nettoyer tous les caches d'attributs
+      await HiveService.clearAllAttributeCaches();
+
+      // 2. Nettoyer la mémoire
+      _equipmentAttributes.clear();
+      _attributeSpecifications.clear();
+
+      notifyListeners();
+
+      if (kDebugMode) {
+        print('✅ EquipmentProvider - Tous les caches d\'attributs nettoyés');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ EquipmentProvider - Erreur nettoyage complet: $e');
+      }
+    }
   }
 }

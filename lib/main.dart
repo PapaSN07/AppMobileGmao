@@ -1,41 +1,18 @@
-import 'package:appmobilegmao/models/centre_charge.dart';
-import 'package:appmobilegmao/models/entity.dart';
-import 'package:appmobilegmao/models/famille.dart';
-import 'package:appmobilegmao/models/feeder.dart';
-import 'package:appmobilegmao/models/unite.dart';
-import 'package:appmobilegmao/models/zone.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import 'package:appmobilegmao/screens/splash_screen.dart';
 import 'package:appmobilegmao/provider/auth_provider.dart';
 import 'package:appmobilegmao/provider/equipment_provider.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:appmobilegmao/services/hive_service.dart';
-import 'package:appmobilegmao/models/equipment.dart';
-import 'package:appmobilegmao/models/user.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialiser Hive
-  await Hive.initFlutter();
-
-  // Enregistrer les adaptateurs Hive
-  Hive.registerAdapter(EquipmentAdapter());
-  Hive.registerAdapter(AttributeValueAdapter());
-  Hive.registerAdapter(UserAdapter());
-  Hive.registerAdapter(FamilleAdapter());
-  Hive.registerAdapter(EntityAdapter());
-  Hive.registerAdapter(CentreChargeAdapter());
-  Hive.registerAdapter(UniteAdapter());
-  Hive.registerAdapter(FeederAdapter());
-  Hive.registerAdapter(ZoneAdapter());
-
-  // Initialiser le service Hive
+  // Initialiser le service Hive (qui gère l'init et les adaptateurs)
   await HiveService.init();
-  
-  // HiveService.clearAllCache(); // Nettoyer le cache au démarrage
+
+  HiveService.clearAllCache(); // Nettoyer le cache au démarrage
 
   runApp(
     MultiProvider(

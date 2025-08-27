@@ -1,3 +1,4 @@
+import 'package:appmobilegmao/models/equipment_attribute.dart';
 import 'package:appmobilegmao/provider/auth_provider.dart';
 import 'package:appmobilegmao/provider/equipment_provider.dart';
 import 'package:appmobilegmao/services/hive_service.dart';
@@ -36,9 +37,6 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
   final FocusNode _descriptionFocusNode = FocusNode();
   final TextEditingController _descriptionController = TextEditingController();
 
-  // Attributs
-  List<String> selectedAttributeValues = List.filled(10, '1922309AHDNAJ');
-
   // Listes des sélecteurs (optimisées)
   List<Map<String, dynamic>> feeders = [];
   List<Map<String, dynamic>> familles = [];
@@ -51,12 +49,18 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
   bool _isLoading = true;
   bool _hasError = false;
 
+  // ✅ NOUVEAU: État pour les attributs
+  List<EquipmentAttribute> availableAttributes = [];
+  Map<String, List<EquipmentAttribute>> attributeValuesBySpec = {};
+  Map<String, String> selectedAttributeValues = {};
+  bool _loadingAttributes = false; // ✅ CORRIGÉ: Changé de final bool vers bool
+
   @override
   void initState() {
     super.initState();
-    // ✅ Utiliser WidgetsBinding pour différer l'exécution après la construction
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadValuesEquipmentsWithUserInfo();
+      _loadEquipmentAttributes(); // ✅ Charger les attributs de l'équipement
     });
   }
 
@@ -969,7 +973,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                   const Icon(Icons.add, color: AppTheme.secondaryColor),
                   const SizedBox(width: 8),
                   const Text(
-                    'Ajouter les attributs',
+                    'Modifier les attributs',
                     style: TextStyle(
                       fontFamily: AppTheme.fontMontserrat,
                       fontWeight: FontWeight.bold,
@@ -1098,161 +1102,644 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (BuildContext context) {
-        return Container(
-          height: MediaQuery.of(context).size.height * 0.7,
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(30),
-              topRight: Radius.circular(30),
-            ),
-          ),
-          child: Column(
-            children: [
-              Container(
-                margin: const EdgeInsets.symmetric(vertical: 12),
-                height: 4,
-                width: 40,
-                decoration: BoxDecoration(
-                  color: AppTheme.thirdColor,
-                  borderRadius: BorderRadius.circular(2),
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setModalState) {
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.8,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(30),
+                  topRight: Radius.circular(30),
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    SizedBox(
-                      width: 64,
-                      height: 34,
-                      child: ElevatedButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.secondaryColor,
-                          padding: EdgeInsets.zero,
-                        ),
-                        child: const Icon(
-                          Icons.arrow_back,
-                          size: 20,
-                          color: AppTheme.primaryColor,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 20),
-                    const Text(
-                      'Modifier Attribut', // ✅ Titre modifié
-                      style: TextStyle(
-                        fontFamily: AppTheme.fontMontserrat,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.secondaryColor,
-                        fontSize: 20,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 30),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Attribut',
-                      style: TextStyle(
-                        fontFamily: AppTheme.fontMontserrat,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.secondaryColor,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Container(
-                        height: 1,
-                        width: double.infinity,
-                        color: AppTheme.thirdColor,
-                        margin: const EdgeInsets.only(top: 10),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    const Text(
-                      'Valeur',
-                      style: TextStyle(
-                        fontFamily: AppTheme.fontMontserrat,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.secondaryColor,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 26,
-                      vertical: 20,
-                    ),
-                    child: Column(
-                      children: List.generate(
-                        8,
-                        (index) => _buildAttributeRow(index),
-                      ),
+              child: Column(
+                children: [
+                  // ✅ Handle bar
+                  Container(
+                    margin: const EdgeInsets.symmetric(vertical: 12),
+                    height: 4,
+                    width: 40,
+                    decoration: BoxDecoration(
+                      color: AppTheme.thirdColor,
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                ),
+
+                  // ✅ Header
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 64,
+                          height: 34,
+                          child: ElevatedButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.secondaryColor,
+                              padding: EdgeInsets.zero,
+                            ),
+                            child: const Icon(
+                              Icons.arrow_back,
+                              size: 20,
+                              color: AppTheme.primaryColor,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 20),
+                        const Expanded(
+                          child: Text(
+                            'Modifier les Attributs',
+                            style: TextStyle(
+                              fontFamily: AppTheme.fontMontserrat,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.secondaryColor,
+                              fontSize: 20,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // ✅ Loading ou contenu
+                  if (_loadingAttributes)
+                    const Expanded(
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                AppTheme.secondaryColor,
+                              ),
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              'Chargement des attributs...',
+                              style: TextStyle(
+                                fontFamily: AppTheme.fontMontserrat,
+                                color: AppTheme.secondaryColor,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else if (availableAttributes.isEmpty)
+                    const Expanded(
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.info_outline,
+                              size: 64,
+                              color: AppTheme.thirdColor,
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              'Aucun attribut disponible',
+                              style: TextStyle(
+                                fontFamily: AppTheme.fontMontserrat,
+                                color: AppTheme.thirdColor,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    Expanded(
+                      child: Column(
+                        children: [
+                          // ✅ Header des colonnes
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            child: Row(
+                              children: [
+                                const Expanded(
+                                  flex: 2,
+                                  child: Text(
+                                    'Attribut',
+                                    style: TextStyle(
+                                      fontFamily: AppTheme.fontMontserrat,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppTheme.secondaryColor,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  flex: 3,
+                                  child: Container(
+                                    height: 1,
+                                    color: AppTheme.thirdColor,
+                                    margin: const EdgeInsets.only(top: 8),
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                const Expanded(
+                                  flex: 2,
+                                  child: Text(
+                                    'Valeur',
+                                    style: TextStyle(
+                                      fontFamily: AppTheme.fontMontserrat,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppTheme.secondaryColor,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          const SizedBox(height: 20),
+
+                          // ✅ Liste des attributs
+                          Expanded(
+                            child: ListView.builder(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                              ),
+                              itemCount: availableAttributes.length,
+                              itemBuilder: (context, index) {
+                                final attribute = availableAttributes[index];
+                                return _buildAttributeRow(
+                                  attribute,
+                                  setModalState,
+                                );
+                              },
+                            ),
+                          ),
+
+                          // ✅ Boutons d'action
+                          Padding(
+                            padding: const EdgeInsets.all(20),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: SecondaryButton(
+                                    text: 'Annuler',
+                                    onPressed: () => Navigator.pop(context),
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: PrimaryButton(
+                                    text: 'Appliquer', // ✅ Changé pour la modal
+                                    icon: Icons.check,
+                                    onPressed: () async {
+                                      // ✅ Juste fermer la modal, les changements seront sauvegardés avec le bouton principal
+                                      Navigator.pop(context);
+
+                                      // ✅ Afficher une notification de confirmation temporaire
+                                      if (mounted) {
+                                        NotificationService.showSuccess(
+                                          context,
+                                          title: '✅ Attributs modifiés',
+                                          message:
+                                              'Les modifications seront appliquées lors de la sauvegarde',
+                                          showAction: false,
+                                          duration: const Duration(seconds: 2),
+                                        );
+                                      }
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
   }
 
-  Widget _buildAttributeRow(int index) {
-    const values = [
-      '1922309AHDNAJ',
-      '2033410BIEKBK',
-      '3144521CJFLCL',
-      '4255632DKGMDM',
-      '5366743ELHNEE',
-    ];
+  /// ✅ NOUVEAU: Charger les attributs de l'équipement
+  Future<void> _loadEquipmentAttributes() async {
+    if (widget.equipmentData == null) return;
+
+    setState(() {
+      _loadingAttributes = true;
+    });
+
+    try {
+      final equipmentCode =
+          widget.equipmentData!['Code'] ?? widget.equipmentData!['code'] ?? '';
+      if (equipmentCode.isEmpty) {
+        if (kDebugMode) {
+          print('❌ Code équipement manquant');
+        }
+        return;
+      }
+
+      final equipmentProvider = Provider.of<EquipmentProvider>(
+        context,
+        listen: false,
+      );
+
+      // ✅ NOUVEAU: Vérifier d'abord si l'équipement a des attributs dans les données
+      final equipmentData = widget.equipmentData!;
+
+      // Si on a les données directement, les utiliser
+      if (equipmentData.containsKey('attributes')) {
+        final attributesRaw = equipmentData['attributes'];
+        if (attributesRaw != null && attributesRaw.toString().isNotEmpty) {
+          // Traiter les attributs depuis les données directes
+          final attributes = <EquipmentAttribute>[];
+
+          // Si c'est une chaîne JSON, la parser
+          try {
+            // Essayer de parser le JSON si c'est une chaîne
+            // Pour l'instant, on crée des attributs par défaut
+            attributes.add(
+              EquipmentAttribute(
+                id: '1',
+                specification: '1',
+                index: '1',
+                name: 'Attribut par défaut',
+                value: attributesRaw,
+              ),
+            );
+          } catch (e) {
+            if (kDebugMode) {
+              print('⚠️ Impossible de parser les attributs: $e');
+            }
+          }
+        
+          if (mounted) {
+            setState(() {
+              availableAttributes = attributes;
+
+              // Initialiser les valeurs sélectionnées
+              for (final attr in attributes) {
+                if (attr.id != null && attr.value != null) {
+                  selectedAttributeValues[attr.id!] = attr.value!;
+                }
+              }
+            });
+          }
+        }
+      }
+
+      // ✅ MODIFIÉ: Essayer de charger depuis l'API aussi
+      try {
+        final attributes = await equipmentProvider.loadEquipmentAttributes(
+          equipmentCode,
+        );
+
+        if (mounted && attributes.isNotEmpty) {
+          setState(() {
+            // Fusionner avec les attributs existants sans doublons
+            final existingIds = availableAttributes.map((a) => a.id).toSet();
+            final newAttributes =
+                attributes.where((a) => !existingIds.contains(a.id)).toList();
+
+            availableAttributes.addAll(newAttributes);
+
+            // Initialiser les valeurs sélectionnées pour les nouveaux attributs
+            for (final attr in newAttributes) {
+              if (attr.id != null && attr.value != null) {
+                selectedAttributeValues[attr.id!] = attr.value!;
+              }
+            }
+          });
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print('⚠️ Impossible de charger les attributs depuis l\'API: $e');
+        }
+        // On continue même si l'API échoue
+      }
+
+      // ✅ MODIFIÉ: Créer des attributs par défaut si aucun n'est trouvé
+      if (availableAttributes.isEmpty) {
+        if (kDebugMode) {
+          print('📋 Aucun attribut trouvé, création d\'attributs par défaut');
+        }
+
+        // Créer quelques attributs basiques basés sur les données de l'équipement
+        final defaultAttributes = <EquipmentAttribute>[
+          EquipmentAttribute(
+            id: 'famille',
+            specification: '1',
+            index: '1',
+            name: 'Famille',
+            value: equipmentData['Famille'] ?? '',
+          ),
+          EquipmentAttribute(
+            id: 'zone',
+            specification: '1',
+            index: '2',
+            name: 'Zone',
+            value: equipmentData['Zone'] ?? '',
+          ),
+          EquipmentAttribute(
+            id: 'entity',
+            specification: '1',
+            index: '3',
+            name: 'Entité',
+            value: equipmentData['Entité'] ?? '',
+          ),
+        ];
+
+        if (mounted) {
+          setState(() {
+            availableAttributes = defaultAttributes;
+
+            // Initialiser les valeurs sélectionnées
+            for (final attr in defaultAttributes) {
+              if (attr.id != null && attr.value != null) {
+                selectedAttributeValues[attr.id!] = attr.value!;
+              }
+            }
+          });
+        }
+      }
+
+      // Charger les valeurs possibles pour chaque attribut
+      if (availableAttributes.isNotEmpty) {
+        await _loadAttributeSpecifications();
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Erreur chargement attributs équipement: $e');
+      }
+
+      // ✅ En cas d'erreur, au moins créer un attribut par défaut
+      if (mounted) {
+        setState(() {
+          availableAttributes = [
+            EquipmentAttribute(
+              id: 'default',
+              specification: '1',
+              index: '1',
+              name: 'Attribut par défaut',
+              value: 'Aucune valeur',
+            ),
+          ];
+          selectedAttributeValues['default'] = 'Aucune valeur';
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _loadingAttributes = false;
+        });
+      }
+    }
+  }
+
+  /// ✅ CORRIGÉ: Charger les spécifications avec gestion d'erreur améliorée
+  Future<void> _loadAttributeSpecifications() async {
+    final equipmentProvider = Provider.of<EquipmentProvider>(
+      context,
+      listen: false,
+    );
+
+    // ✅ Créer un Map pour éviter les doublons de spécifications
+    final Map<String, bool> processedSpecs = {};
+
+    for (final attr in availableAttributes) {
+      if (attr.specification != null && attr.index != null) {
+        final specKey = '${attr.specification}_${attr.index}';
+
+        // ✅ Éviter de charger plusieurs fois la même spécification
+        if (processedSpecs.containsKey(specKey)) {
+          continue;
+        }
+
+        processedSpecs[specKey] = true;
+
+        try {
+          // ✅ Utiliser la méthode pour charger les valeurs possibles
+          final values = await equipmentProvider.loadPossibleValuesForAttribute(
+            attr.specification!,
+            attr.index!,
+          );
+
+          if (mounted) {
+            setState(() {
+              attributeValuesBySpec[specKey] = values;
+            });
+          }
+        } catch (e) {
+          if (kDebugMode) {
+            print('❌ Erreur chargement valeurs attribut ${attr.name}: $e');
+          }
+          // ✅ En cas d'erreur, créer une liste avec au moins la valeur actuelle
+          if (mounted) {
+            setState(() {
+              attributeValuesBySpec[specKey] = [
+                EquipmentAttribute(
+                  id: '${attr.id}_current',
+                  specification: attr.specification,
+                  index: attr.index,
+                  name: attr.name,
+                  value: attr.value ?? 'Valeur actuelle',
+                ),
+              ];
+            });
+          }
+        }
+      }
+    }
+  }
+
+  /// ✅ CORRIGÉ: Widget pour afficher une ligne d'attribut avec gestion des erreurs
+  Widget _buildAttributeRow(
+    EquipmentAttribute attribute,
+    StateSetter setModalState,
+  ) {
+    final specKey = '${attribute.specification}_${attribute.index}';
+    final availableValues = attributeValuesBySpec[specKey] ?? [];
+
+    // ✅ Créer la liste des options UNIQUES à partir des valeurs possibles
+    final optionsSet = <String>{};
+
+    // Ajouter les valeurs disponibles depuis l'API des valeurs possibles
+    for (final attr in availableValues) {
+      if (attr.value != null && attr.value!.isNotEmpty) {
+        optionsSet.add(attr.value!);
+      }
+    }
+
+    // ✅ Toujours ajouter la valeur actuelle de l'attribut
+    if (attribute.value != null && attribute.value!.isNotEmpty) {
+      optionsSet.add(attribute.value!);
+    }
+
+    // ✅ Si aucune option, ajouter des valeurs par défaut selon le type d'attribut
+    if (optionsSet.isEmpty) {
+      switch (attribute.name?.toLowerCase()) {
+        case 'famille':
+          optionsSet.addAll([
+            'CELLULE_DEPART',
+            'TRANSFO_HTA/BT',
+            'CABLE_HTA',
+            'CABLE_BT',
+          ]);
+          break;
+        case 'zone':
+          optionsSet.addAll(['DAKAR', 'THIES', 'SAINT-LOUIS', 'KAOLACK']);
+          break;
+        case 'entité':
+        case 'entity':
+          optionsSet.addAll(['SDDV', 'SDT', 'SDSL', 'SDK']);
+          break;
+        default:
+          optionsSet.add('Aucune valeur disponible');
+      }
+    }
+
+    // Convertir en liste triée
+    final options = optionsSet.toList()..sort();
+
+    // Valeur actuelle sélectionnée
+    final currentValue =
+        selectedAttributeValues[attribute.id ?? ''] ?? attribute.value;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: 20),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ✅ Nom de l'attribut
           Expanded(
             flex: 2,
             child: Text(
-              'Test ${index + 1}',
+              attribute.name ?? 'Attribut ${attribute.index ?? ''}',
               style: const TextStyle(
                 fontFamily: AppTheme.fontMontserrat,
                 fontWeight: FontWeight.w600,
                 color: AppTheme.secondaryColor,
-                fontSize: 16,
+                fontSize: 14,
               ),
             ),
           ),
+
           const SizedBox(width: 16),
+
+          // ✅ Dropdown des valeurs
           Expanded(
             flex: 3,
-            // ✅ Utilisation du ComboBox pour les attributs aussi
-            child: _buildComboBoxField(
-              label: '',
-              msgError: 'Veuillez sélectionner une valeur',
-              items: values,
-              selectedValue: selectedAttributeValues[index],
+            child: DropdownSearch<String>(
+              items: options,
+              selectedItem: currentValue,
               onChanged: (value) {
-                setState(() {
-                  selectedAttributeValues[index] = value!;
+                setModalState(() {
+                  if (value != null && attribute.id != null) {
+                    selectedAttributeValues[attribute.id!] = value;
+                  }
                 });
               },
-              hintText: 'Sélectionner...',
+
+              // Configuration du popup
+              popupProps: PopupProps.menu(
+                showSearchBox: options.length > 5,
+                searchFieldProps: TextFieldProps(
+                  decoration: InputDecoration(
+                    hintText: 'Rechercher...',
+                    prefixIcon: const Icon(Icons.search, size: 20),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                  ),
+                  style: const TextStyle(fontSize: 14),
+                ),
+                menuProps: MenuProps(
+                  backgroundColor: Colors.white,
+                  elevation: 8,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                itemBuilder: (context, item, isSelected) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isSelected ? AppTheme.secondaryColor10 : null,
+                    ),
+                    child: Row(
+                      children: [
+                        if (isSelected)
+                          const Icon(
+                            Icons.check_circle,
+                            color: AppTheme.secondaryColor,
+                            size: 16,
+                          ),
+                        if (isSelected) const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            item,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color:
+                                  isSelected
+                                      ? AppTheme.secondaryColor
+                                      : Colors.black87,
+                              fontWeight:
+                                  isSelected
+                                      ? FontWeight.w600
+                                      : FontWeight.normal,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+
+              // Configuration du champ
+              dropdownDecoratorProps: DropDownDecoratorProps(
+                dropdownSearchDecoration: InputDecoration(
+                  hintText: 'Sélectionner...',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: AppTheme.thirdColor),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(
+                      color: AppTheme.secondaryColor,
+                      width: 2,
+                    ),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  suffixIcon: const Icon(
+                    Icons.arrow_drop_down,
+                    color: AppTheme.secondaryColor,
+                  ),
+                ),
+              ),
+
+              // Validation et affichage
+              itemAsString:
+                  (String item) =>
+                      item.length > 25 ? '${item.substring(0, 25)}...' : item,
             ),
           ),
         ],
@@ -1260,29 +1747,8 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     );
   }
 
-  Widget _buildActionButtons() {
-    return Row(
-      children: [
-        Expanded(
-          child: SecondaryButton(
-            text: 'Annuler',
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: PrimaryButton(
-            text: 'Modifier', // ✅ Texte modifié pour la modification
-            icon: Icons.edit, // ✅ Icône modifiée
-            onPressed: _handleModify,
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ✅ Méthode de sauvegarde adaptée pour la modification
-  Future<void> _handleModify() async {
+  /// ✅ NOUVEAU: Gérer la modification de l'équipement
+  Future<void> _handleUpdate() async {
     if (!_formKey.currentState!.validate()) {
       if (mounted) {
         NotificationService.showWarning(
@@ -1297,58 +1763,34 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     }
 
     try {
-      // Créer un map seulement avec les champs modifiés
-      final updatedFields = <String, dynamic>{};
+      // Préparer les données modifiées
+      final updatedData = {
+        'codeParent': selectedCodeParent,
+        'feeder': _getSelectedCode(selectedFeeder),
+        'infoFeeder': selectedFeeder,
+        'famille': _getSelectedCode(selectedFamille),
+        'zone': _getSelectedCode(selectedZone),
+        'entity': _getSelectedCode(selectedEntity),
+        'unite': _getSelectedCode(selectedUnite),
+        'centreCharge': _getSelectedCode(selectedCentreCharge),
+        'description': _descriptionController.text.trim(),
+        'longitude': valueLongitude ?? '12311231',
+        'latitude': valueLatitude ?? '12311231',
+      };
 
-      // Ajouter seulement les champs qui ont changé
-      if (selectedCodeParent != null && selectedCodeParent!.isNotEmpty) {
-        updatedFields['codeParent'] = _getSelectedCode(selectedCodeParent);
-      }
+      final equipmentCode =
+          widget.equipmentData!['Code'] ?? widget.equipmentData!['code'] ?? '';
 
-      if (selectedFeeder != null && selectedFeeder!.isNotEmpty) {
-        updatedFields['feeder'] = _getSelectedCode(selectedFeeder);
-        updatedFields['infoFeeder'] = selectedFeeder;
-      }
-
-      if (selectedFamille != null && selectedFamille!.isNotEmpty) {
-        updatedFields['famille'] = _getSelectedCode(selectedFamille);
-      }
-
-      if (selectedZone != null && selectedZone!.isNotEmpty) {
-        updatedFields['zone'] = _getSelectedCode(selectedZone);
-      }
-
-      if (selectedEntity != null && selectedEntity!.isNotEmpty) {
-        updatedFields['entity'] = _getSelectedCode(selectedEntity);
-      }
-
-      if (selectedUnite != null && selectedUnite!.isNotEmpty) {
-        updatedFields['unite'] = _getSelectedCode(selectedUnite);
-      }
-
-      if (selectedCentreCharge != null && selectedCentreCharge!.isNotEmpty) {
-        updatedFields['centreCharge'] = _getSelectedCode(selectedCentreCharge);
-      }
-
-      if (_descriptionController.text.isNotEmpty) {
-        updatedFields['description'] = _descriptionController.text.trim();
-      }
-
-      if (valueLongitude != null && valueLongitude!.isNotEmpty) {
-        updatedFields['longitude'] = valueLongitude;
-      }
-
-      if (valueLatitude != null && valueLatitude!.isNotEmpty) {
-        updatedFields['latitude'] = valueLatitude;
-      }
-
-      // Ajouter les attributs modifiés
-      updatedFields['attributes'] = selectedAttributeValues;
-
+      // Mettre à jour l'équipement
       await context.read<EquipmentProvider>().updateEquipment(
-        widget.equipmentData!['ID']!, // ID de l'équipement à modifier
-        updatedFields,
+        equipmentCode,
+        updatedData,
       );
+
+      // Mettre à jour les attributs si des modifications ont été faites
+      if (selectedAttributeValues.isNotEmpty) {
+        await _saveAttributeChanges();
+      }
 
       if (mounted && Navigator.canPop(context)) {
         NotificationService.showSuccess(
@@ -1377,10 +1819,64 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
           message: 'Impossible de modifier l\'équipement: $e',
           showAction: true,
           actionText: 'Réessayer',
-          onActionPressed: _handleModify,
+          onActionPressed: _handleUpdate,
           duration: const Duration(seconds: 4),
         );
       }
     }
+  }
+
+  /// ✅ NOUVEAU: Sauvegarder les modifications d'attributs
+  Future<void> _saveAttributeChanges() async {
+    try {
+      final equipmentProvider = Provider.of<EquipmentProvider>(
+        context,
+        listen: false,
+      );
+      final equipmentCode =
+          widget.equipmentData!['Code'] ?? widget.equipmentData!['code'] ?? '';
+
+      for (final attributeId in selectedAttributeValues.keys) {
+        final newValue = selectedAttributeValues[attributeId]!;
+        await equipmentProvider.updateAttributeValue(
+          equipmentCode,
+          attributeId,
+          newValue,
+        );
+      }
+
+      if (kDebugMode) {
+        print('✅ Attributs mis à jour avec succès');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Erreur sauvegarde attributs: $e');
+      }
+      rethrow; // Relancer l'erreur pour qu'elle soit gérée par _handleUpdate
+    }
+  }
+
+  Widget _buildActionButtons() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 20),
+      child: Row(
+        children: [
+          Expanded(
+            child: SecondaryButton(
+              text: 'Annuler',
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: PrimaryButton(
+              text: 'Modifier',
+              icon: Icons.save,
+              onPressed: _handleUpdate,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
