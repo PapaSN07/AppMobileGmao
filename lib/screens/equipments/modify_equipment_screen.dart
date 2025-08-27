@@ -1224,7 +1224,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                             child: Row(
                               children: [
                                 const Expanded(
-                                  flex: 2,
+                                  flex: 1,
                                   child: Text(
                                     'Attribut',
                                     style: TextStyle(
@@ -1246,7 +1246,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                                 ),
                                 const SizedBox(width: 16),
                                 const Expanded(
-                                  flex: 2,
+                                  flex: 1,
                                   child: Text(
                                     'Valeur',
                                     style: TextStyle(
@@ -1317,6 +1317,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                               ],
                             ),
                           ),
+                          const SizedBox(height: 20)
                         ],
                       ),
                     ),
@@ -1616,7 +1617,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           // ✅ Nom de l'attribut
           Expanded(
@@ -1627,7 +1628,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                 fontFamily: AppTheme.fontMontserrat,
                 fontWeight: FontWeight.w600,
                 color: AppTheme.secondaryColor,
-                fontSize: 14,
+                fontSize: 16,
               ),
             ),
           ),
@@ -1858,7 +1859,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
 
   Widget _buildActionButtons() {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 20),
+      padding: const EdgeInsets.symmetric(vertical: 0),
       child: Row(
         children: [
           Expanded(
