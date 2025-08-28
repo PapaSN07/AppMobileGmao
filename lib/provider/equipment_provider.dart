@@ -315,7 +315,40 @@ class EquipmentProvider extends ChangeNotifier {
     }
   }
 
-  // ✅ Méthode compatible avec modify_equipment_screen.dart + attributs
+  /// ✅ NOUVEAU: Forcer le rechargement des attributs depuis l'API après modification
+  Future<void> _forceReloadEquipmentAttributes(String equipmentCode) async {
+    try {
+      if (kDebugMode) {
+        print(
+          '🔄 EquipmentProvider - Rechargement forcé des attributs pour: $equipmentCode',
+        );
+      }
+
+      // Vider le cache existant pour cet équipement
+      await HiveService.clearAttributeValues(equipmentCode);
+
+      // Vider aussi la mémoire
+      _equipmentAttributes.remove(equipmentCode);
+
+      // Recharger depuis l'API
+      final freshAttributes = await loadEquipmentAttributes(equipmentCode);
+
+      if (kDebugMode) {
+        print(
+          '✅ EquipmentProvider - ${freshAttributes.length} attributs rechargés depuis l\'API',
+        );
+        for (final attr in freshAttributes) {
+          print('   - ${attr.name}: "${attr.value}" (nouvellement chargé)');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ EquipmentProvider - Erreur rechargement forcé attributs: $e');
+      }
+    }
+  }
+
+  // ✅ CORRIGÉ: Méthode compatible avec modify_equipment_screen.dart + attributs
   Future<void> updateEquipment(
     String equipmentId,
     Map<String, dynamic> updatedFields,
@@ -334,8 +367,12 @@ class EquipmentProvider extends ChangeNotifier {
 
       if (!_isOffline) {
         if (kDebugMode) {
-          print('🔄 EquipmentProvider - Début mise à jour équipement: $equipmentId');
-          print('📊 EquipmentProvider - Données: ${updatedFields.keys.join(', ')}');
+          print(
+            '🔄 EquipmentProvider - Début mise à jour équipement: $equipmentId',
+          );
+          print(
+            '📊 EquipmentProvider - Données: ${updatedFields.keys.join(', ')}',
+          );
         }
 
         // ✅ Appeler l'API pour la mise à jour réelle
@@ -345,82 +382,81 @@ class EquipmentProvider extends ChangeNotifier {
         );
 
         if (kDebugMode) {
-          print('✅ EquipmentProvider - Réponse API reçue pour: ${equipment.code}');
+          print(
+            '✅ EquipmentProvider - Réponse API reçue pour: ${equipment.code}',
+          );
         }
 
         // Trouver l'équipement à modifier dans les listes locales
         final index = _allEquipments.indexWhere(
           (eq) => eq['id'] == equipmentId || eq['code'] == equipmentId,
         );
-        
+
         if (index != -1) {
-          // Mettre à jour les champs modifiés localement
+          // ✅ MODIFIÉ: Préserver TOUTES les données existantes et ne mettre à jour que les champs modifiés
           final updatedEquipment = Map<String, dynamic>.from(
             _allEquipments[index],
           );
-          
-          // ✅ Mettre à jour tous les champs du formulaire
-          updatedFields.forEach((key, value) {
-            // Mapper les clés du formulaire vers les clés de stockage
-            switch (key) {
-              case 'code_parent':
-                updatedEquipment['codeParent'] = value;
-                updatedEquipment['Code Parent'] = value;
-                break;
-              case 'feeder':
-                updatedEquipment['feeder'] = value;
-                updatedEquipment['Feeder'] = value;
-                break;
-              case 'feeder_description':
-                updatedEquipment['feederDescription'] = value;
-                updatedEquipment['Info Feeder'] = value;
-                break;
-              case 'famille':
-                updatedEquipment['famille'] = value;
-                updatedEquipment['Famille'] = value;
-                break;
-              case 'zone':
-                updatedEquipment['zone'] = value;
-                updatedEquipment['Zone'] = value;
-                break;
-              case 'entity':
-                updatedEquipment['entity'] = value;
-                updatedEquipment['Entité'] = value;
-                break;
-              case 'unite':
-                updatedEquipment['unite'] = value;
-                updatedEquipment['Unité'] = value;
-                break;
-              case 'centre_charge':
-                updatedEquipment['centreCharge'] = value;
-                updatedEquipment['Centre'] = value;
-                break;
-              case 'description':
-                updatedEquipment['description'] = value;
-                updatedEquipment['Description'] = value;
-                break;
-              case 'longitude':
-                updatedEquipment['longitude'] = value;
-                updatedEquipment['Longitude'] = value;
-                break;
-              case 'latitude':
-                updatedEquipment['latitude'] = value;
-                updatedEquipment['Latitude'] = value;
-                break;
-              case 'attributs':
-                // ✅ Mettre à jour les attributs si fournis
-                updatedEquipment['attributes'] = value;
-                break;
-              // ✅ AJOUTÉ: Gestion du champ code (lecture seule mais peut être dans les données)
-              case 'code':
-                // Le code ne change pas normalement, mais on le met à jour si fourni
-                updatedEquipment['code'] = value;
-                updatedEquipment['Code'] = value;
-                break;
-              default:
-                updatedEquipment[key] = value;
-            }
-          });
+
+          // ✅ NOUVEAU: Mettre à jour UNIQUEMENT les champs qui ont réellement changé selon la réponse API
+          if (equipment.codeParent!.isNotEmpty) {
+            updatedEquipment['codeParent'] = equipment.codeParent;
+            updatedEquipment['Code Parent'] = equipment.codeParent;
+          }
+
+          if (equipment.feeder!.isNotEmpty) {
+            updatedEquipment['feeder'] = equipment.feeder;
+            updatedEquipment['Feeder'] = equipment.feeder;
+          }
+
+          if (equipment.feederDescription!.isNotEmpty) {
+            updatedEquipment['feederDescription'] = equipment.feederDescription;
+            updatedEquipment['Info Feeder'] = equipment.feederDescription;
+          }
+
+          if (equipment.famille.isNotEmpty) {
+            updatedEquipment['famille'] = equipment.famille;
+            updatedEquipment['Famille'] = equipment.famille;
+          }
+
+          if (equipment.zone.isNotEmpty) {
+            updatedEquipment['zone'] = equipment.zone;
+            updatedEquipment['Zone'] = equipment.zone;
+          }
+
+          if (equipment.entity.isNotEmpty) {
+            updatedEquipment['entity'] = equipment.entity;
+            updatedEquipment['Entité'] = equipment.entity;
+          }
+
+          if (equipment.unite.isNotEmpty) {
+            updatedEquipment['unite'] = equipment.unite;
+            updatedEquipment['Unité'] = equipment.unite;
+          }
+
+          if (equipment.centreCharge.isNotEmpty) {
+            updatedEquipment['centreCharge'] = equipment.centreCharge;
+            updatedEquipment['Centre'] = equipment.centreCharge;
+          }
+
+          if (equipment.description.isNotEmpty) {
+            updatedEquipment['description'] = equipment.description;
+            updatedEquipment['Description'] = equipment.description;
+          }
+
+          if (equipment.longitude.isNotEmpty) {
+            updatedEquipment['longitude'] = equipment.longitude;
+            updatedEquipment['Longitude'] = equipment.longitude;
+          }
+
+          if (equipment.latitude.isNotEmpty) {
+            updatedEquipment['latitude'] = equipment.latitude;
+            updatedEquipment['Latitude'] = equipment.latitude;
+          }
+
+          // ✅ IMPORTANT: Ne PAS toucher aux autres champs existants (ID, etc.)
+          // Conserver l'ID original
+          updatedEquipment['id'] = _allEquipments[index]['id'];
 
           // Mettre à jour dans les listes
           _allEquipments[index] = updatedEquipment;
@@ -431,12 +467,33 @@ class EquipmentProvider extends ChangeNotifier {
             _equipments[equipmentIndex] = updatedEquipment;
           }
 
-          // ✅ Mettre à jour le cache des attributs si modifiés
+          // ✅ IMPORTANT: Toujours forcer le rechargement des attributs après modification
           if (updatedFields.containsKey('attributs')) {
-            final equipmentCode =  updatedEquipment['code'] ?? 
-                                  updatedEquipment['Code'] ?? 
-                                  equipmentId;
-            await _updateEquipmentAttributesCache(equipmentCode, updatedFields['attributs']);
+            final equipmentCode = equipment.code;
+
+            if (equipment.attributes != null &&
+                equipment.attributes!.isNotEmpty) {
+              // Cas 1: L'API retourne les attributs mis à jour
+              await _updateEquipmentAttributesCache(
+                equipmentCode,
+                equipment.attributes!,
+              );
+
+              if (kDebugMode) {
+                print(
+                  '✅ EquipmentProvider - Attributs mis à jour depuis la réponse API',
+                );
+              }
+            } else {
+              // Cas 2: L'API ne retourne pas les attributs, forcer le rechargement
+              await _forceReloadEquipmentAttributes(equipmentCode);
+
+              if (kDebugMode) {
+                print(
+                  '✅ EquipmentProvider - Rechargement forcé des attributs depuis l\'API',
+                );
+              }
+            }
           }
 
           if (kDebugMode) {
@@ -444,10 +501,13 @@ class EquipmentProvider extends ChangeNotifier {
           }
         } else {
           if (kDebugMode) {
-            print('⚠️ EquipmentProvider - Équipement $equipmentId non trouvé dans les données locales');
+            print(
+              '⚠️ EquipmentProvider - Équipement $equipmentId non trouvé dans les données locales',
+            );
           }
         }
 
+        // ✅ IMPORTANT: NE PAS recacher tous les équipements, juste notifier les changements
         if (kDebugMode) {
           print('✅ GMAO: Équipement modifié avec succès via API');
         }
@@ -466,37 +526,34 @@ class EquipmentProvider extends ChangeNotifier {
     }
   }
 
-  /// ✅ Mettre à jour le cache des attributs après modification
+  /// ✅ CORRIGÉ: Mettre à jour le cache des attributs avec les nouvelles valeurs
   Future<void> _updateEquipmentAttributesCache(
-    String equipmentCode, 
-    List<dynamic> attributs,
+    String equipmentCode,
+    List<EquipmentAttribute> attributesFromAPI,
   ) async {
     try {
-      // Convertir les attributs du format API vers EquipmentAttribute
-      final attributes = attributs.map((attr) {
-        if (attr is Map<String, dynamic>) {
-          return EquipmentAttribute(
-            id: attr['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
-            name: attr['name']?.toString() ?? '',
-            value: attr['value']?.toString() ?? '',
-            specification: attr['type']?.toString() ?? '1', // Utiliser type comme specification
-            index: '1', // ✅ Ajouter un index par défaut
-          );
-        }
-        return null;
-      }).where((attr) => attr != null).cast<EquipmentAttribute>().toList();
+      // ✅ MODIFIÉ: Utiliser directement les attributs de la réponse API (qui contiennent les nouvelles valeurs)
+      final uniqueAttributes = _filterDuplicateAttributes(attributesFromAPI);
 
-      // ✅ AJOUTÉ: Filtrer les doublons avant la mise en cache
-      final uniqueAttributes = _filterDuplicateAttributes(attributes);
+      // ✅ IMPORTANT: Vider le cache existant avant de mettre les nouvelles valeurs
+      await HiveService.clearAttributeValues(equipmentCode);
 
-      // Mettre à jour le cache
+      // ✅ IMPORTANT: Mettre à jour le cache avec les nouvelles valeurs de l'API
       await HiveService.cacheAttributeValues(equipmentCode, uniqueAttributes);
-      
-      // Mettre à jour en mémoire
+
+      // ✅ IMPORTANT: Mettre à jour en mémoire avec les nouvelles valeurs
       _equipmentAttributes[equipmentCode] = uniqueAttributes;
 
       if (kDebugMode) {
-        print('✅ EquipmentProvider - Cache des attributs mis à jour pour $equipmentCode (${uniqueAttributes.length} attributs)');
+        print(
+          '✅ EquipmentProvider - Cache des attributs mis à jour pour $equipmentCode (${uniqueAttributes.length} attributs)',
+        );
+        // ✅ AJOUTÉ: Logs pour voir les nouvelles valeurs
+        for (final attr in uniqueAttributes) {
+          print(
+            '   - ${attr.name}: "${attr.value}" (spec: ${attr.specification}, index: ${attr.index})',
+          );
+        }
       }
     } catch (e) {
       if (kDebugMode) {
@@ -999,5 +1056,4 @@ class EquipmentProvider extends ChangeNotifier {
       );
     }
   }
-
 }

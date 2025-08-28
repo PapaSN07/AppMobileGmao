@@ -581,7 +581,7 @@ class HiveService {
   // GESTION DES VALEURS D'ATTRIBUTS
   // ========================================
 
-  /// ✅ MODIFIÉ: Cache des valeurs d'attributs pour un équipement (utilise EquipmentAttribute)
+  /// ✅ MODIFIÉ: Cache des valeurs d'attributs sans affecter les autres caches
   static Future<void> cacheAttributeValues(
     String equipmentCode,
     List<EquipmentAttribute> attributeValues,
@@ -598,12 +598,13 @@ class HiveService {
         'cachedAt': DateTime.now().toIso8601String(),
       };
 
+      // ✅ IMPORTANT: Mettre à jour UNIQUEMENT le cache de cet équipement
       await attributeValuesBox.put(equipmentCode, cacheData);
       await _updateTimestamp('attribute_values_$equipmentCode');
 
       if (kDebugMode) {
         print(
-          '💾 GMAO: ${attributeValues.length} valeurs d\'attributs mises en cache pour équipement $equipmentCode',
+          '💾 GMAO: ${attributeValues.length} valeurs d\'attributs mises en cache pour équipement $equipmentCode SEULEMENT',
         );
       }
     } catch (e) {
@@ -611,6 +612,91 @@ class HiveService {
         print('❌ GMAO: Erreur cache valeurs d\'attributs: $e');
       }
       rethrow;
+    }
+  }
+
+  /// ✅ NOUVEAU: Méthode pour préserver le cache des sélecteurs lors des mises à jour
+  static Future<void> preserveSelectorsCache() async {
+    try {
+      // Vérifier que le cache des sélecteurs existe toujours
+      final selectorsData = getCachedSelectors();
+      
+      if (selectorsData == null || selectorsData.isEmpty) {
+        if (kDebugMode) {
+          print('⚠️ GMAO: Cache des sélecteurs manquant, conservation des données existantes');
+        }
+        return;
+      }
+
+      // Remettre à jour le timestamp pour éviter l'expiration
+      await _updateTimestamp('selectors');
+
+      if (kDebugMode) {
+        print('✅ GMAO: Cache des sélecteurs préservé');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ GMAO: Erreur préservation cache sélecteurs: $e');
+      }
+    }
+  }
+
+  /// ✅ NOUVEAU: Nettoyage ciblé sans affecter les autres caches
+  static Future<void> cleanDuplicateAttributeCaches() async {
+    try {
+      final equipmentKeys = <String>[];
+      final specificationKeys = <String>[];
+      
+      // Séparer les clés par type
+      for (final key in attributeValuesBox.keys) {
+        final keyStr = key.toString();
+        if (keyStr.startsWith('attribute_values_')) {
+          // Clé d'équipement invalide (devrait être juste le code équipement)
+          continue;
+        } else if (keyStr.contains('_') && !keyStr.startsWith('attribute_values_')) {
+          // Clé de spécification (format: "specification_index")
+          specificationKeys.add(keyStr);
+        } else {
+          // Clé d'équipement (code équipement simple)
+          equipmentKeys.add(keyStr);
+        }
+      }
+      
+      if (kDebugMode) {
+        print('🔍 GMAO: Analyse cache attributs:');
+        print('   - Équipements: ${equipmentKeys.length}');
+        print('   - Spécifications: ${specificationKeys.length}');
+      }
+      
+      // Vérifier et nettoyer les doublons d'équipements
+      final duplicatedEquipments = <String>[];
+      for (final equipmentKey in equipmentKeys) {
+        final cachedData = attributeValuesBox.get(equipmentKey);
+        if (cachedData != null && cachedData['attributes'] is List) {
+          final attributes = cachedData['attributes'] as List;
+          if (attributes.length > 10) { // Seuil arbitraire pour détecter les doublons
+            duplicatedEquipments.add(equipmentKey);
+          }
+        }
+      }
+      
+      // Nettoyer les équipements avec trop d'attributs (probablement dupliqués)
+      for (final equipmentKey in duplicatedEquipments) {
+        await attributeValuesBox.delete(equipmentKey);
+        await metadataBox.delete('attribute_values_$equipmentKey');
+        
+        if (kDebugMode) {
+          print('🗑️ GMAO: Cache dupliqué nettoyé pour équipement: $equipmentKey');
+        }
+      }
+      
+      if (kDebugMode) {
+        print('✅ GMAO: ${duplicatedEquipments.length} caches dupliqués nettoyés');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ GMAO: Erreur nettoyage caches dupliqués: $e');
+      }
     }
   }
 
@@ -819,15 +905,27 @@ class HiveService {
     }
   }
 
-  /// ✅ NOUVEAU: Nettoyer le cache d'attributs pour un équipement spécifique
+  /// ✅ Amélioration de la méthode clearAttributeValues
   static Future<void> clearAttributeValues(String equipmentCode) async {
     try {
-      final key = 'attribute_values_$equipmentCode';
-      await attributeValuesBox.delete(key);
-      await metadataBox.delete(key);
+      // Nettoyer la clé principale (code équipement)
+      await attributeValuesBox.delete(equipmentCode);
+      await metadataBox.delete('attribute_values_$equipmentCode');
+      
+      // Nettoyer aussi toute clé qui commence par ce code (au cas où)
+      final keysToDelete = attributeValuesBox.keys.where((key) {
+        final keyStr = key.toString();
+        return keyStr.startsWith('${equipmentCode}_') ||
+            keyStr.startsWith('attribute_values_$equipmentCode');
+      }).toList();
+      
+      for (final key in keysToDelete) {
+        await attributeValuesBox.delete(key);
+        await metadataBox.delete('attribute_values_$key');
+      }
 
       if (kDebugMode) {
-        print('🗑️ GMAO: Cache des attributs nettoyé pour $equipmentCode');
+        print('🗑️ GMAO: Cache des attributs nettoyé pour $equipmentCode (${keysToDelete.length + 1} entrées)');
       }
     } catch (e) {
       if (kDebugMode) {

@@ -345,16 +345,19 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     if (selectedValue == null || selectedValue.isEmpty) return null;
 
     // ✅ NOUVEAU: Fonction helper pour trouver le code depuis la description
-    String? findCodeFromDescription(List<Map<String, dynamic>> items, String description) {
+    String? findCodeFromDescription(
+      List<Map<String, dynamic>> items,
+      String description,
+    ) {
       for (final item in items) {
         final itemDescription = item['description']?.toString() ?? '';
         final itemCode = item['code']?.toString() ?? '';
-        
+
         // Si la description correspond, retourner le CODE
         if (itemDescription == description) {
           return itemCode; // ✅ Retourner le code au lieu de la description
         }
-        
+
         // Aussi vérifier si c'est déjà un code
         if (itemCode == description) {
           return itemCode;
@@ -365,27 +368,27 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
 
     // ✅ Vérifier dans chaque liste et retourner le CODE correspondant
     String? code;
-    
+
     // Famille
     code = findCodeFromDescription(familles, selectedValue);
     if (code != null) return code;
-    
+
     // Zone
     code = findCodeFromDescription(zones, selectedValue);
     if (code != null) return code;
-    
+
     // Entity
     code = findCodeFromDescription(entities, selectedValue);
     if (code != null) return code;
-    
+
     // Unite
     code = findCodeFromDescription(unites, selectedValue);
     if (code != null) return code;
-    
+
     // Centre Charge
     code = findCodeFromDescription(centreCharges, selectedValue);
     if (code != null) return code;
-    
+
     // Feeder
     code = findCodeFromDescription(feeders, selectedValue);
     if (code != null) return code;
@@ -522,15 +525,17 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
       ),
 
       // ✅ MODIFIÉ: Validation conditionnelle selon isRequired
-      validator: isRequired ? (value) {
-        if (value == null ||
-            value.isEmpty ||
-            value == 'Aucun élément disponible') {
-          return msgError;
-        }
-        return null;
-      } : null, // ✅ Pas de validation si non requis
-
+      validator:
+          isRequired
+              ? (value) {
+                if (value == null ||
+                    value.isEmpty ||
+                    value == 'Aucun élément disponible') {
+                  return msgError;
+                }
+                return null;
+              }
+              : null, // ✅ Pas de validation si non requis
       // ✅ Configuration du texte affiché
       itemAsString: (String item) {
         return item.length > 30 ? '${item.substring(0, 30)}...' : item;
@@ -744,7 +749,6 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
             });
           },
           hintText: 'Rechercher ou sélectionner un code parent...',
-    
         ),
         const SizedBox(height: 20),
         _buildFeederRow(),
@@ -772,7 +776,10 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
         Expanded(
           child: _buildText(
             label: 'Code',
-            value: widget.equipmentData?['Code'] ?? widget.equipmentData?['code'] ?? '#12345',
+            value:
+                widget.equipmentData?['Code'] ??
+                widget.equipmentData?['code'] ??
+                '#12345',
           ),
         ),
         const SizedBox(width: 10),
@@ -789,7 +796,6 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
               });
             },
             hintText: 'Rechercher une famille...',
-      
           ),
         ),
       ],
@@ -812,7 +818,6 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
               });
             },
             hintText: 'Rechercher une zone...',
-      
           ),
         ),
         const SizedBox(width: 10),
@@ -829,7 +834,6 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
               });
             },
             hintText: 'Rechercher une entité...',
-      
           ),
         ),
       ],
@@ -852,7 +856,6 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
               });
             },
             hintText: 'Rechercher une unité...',
-      
           ),
         ),
         const SizedBox(width: 10),
@@ -869,7 +872,6 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
               });
             },
             hintText: 'Rechercher un centre...',
-      
           ),
         ),
       ],
@@ -882,7 +884,6 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
       msgError: 'Veuillez entrer la description',
       focusNode: _descriptionFocusNode,
       controller: _descriptionController,
-
     );
   }
 
@@ -911,7 +912,6 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
               });
             },
             hintText: 'Rechercher un feeder...',
-      
           ),
         ),
         const SizedBox(width: 10),
@@ -1026,22 +1026,26 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
               child: Row(
                 children: [
                   Icon(
-                    availableAttributes.isNotEmpty ? Icons.edit : Icons.info_outline,
-                    color: availableAttributes.isNotEmpty 
-                        ? AppTheme.secondaryColor 
-                        : AppTheme.thirdColor,
+                    availableAttributes.isNotEmpty
+                        ? Icons.edit
+                        : Icons.info_outline,
+                    color:
+                        availableAttributes.isNotEmpty
+                            ? AppTheme.secondaryColor
+                            : AppTheme.thirdColor,
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    availableAttributes.isNotEmpty 
+                    availableAttributes.isNotEmpty
                         ? 'Modifier les attributs'
                         : 'Aucun attribut disponible',
                     style: TextStyle(
                       fontFamily: AppTheme.fontMontserrat,
                       fontWeight: FontWeight.bold,
-                      color: availableAttributes.isNotEmpty 
-                          ? AppTheme.secondaryColor 
-                          : AppTheme.thirdColor,
+                      color:
+                          availableAttributes.isNotEmpty
+                              ? AppTheme.secondaryColor
+                              : AppTheme.thirdColor,
                       fontSize: 16,
                     ),
                   ),
@@ -1090,12 +1094,15 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
         ),
       ),
       // ✅ MODIFIÉ: Validation conditionnelle selon isRequired
-      validator: isRequired ? (value) {
-        if (value == null || value.isEmpty) {
-          return msgError;
-        }
-        return null;
-      } : null, // ✅ Pas de validation si non requis
+      validator:
+          isRequired
+              ? (value) {
+                if (value == null || value.isEmpty) {
+                  return msgError;
+                }
+                return null;
+              }
+              : null, // ✅ Pas de validation si non requis
     );
   }
 
@@ -1363,7 +1370,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                               ],
                             ),
                           ),
-                          const SizedBox(height: 20)
+                          const SizedBox(height: 20),
                         ],
                       ),
                     ),
@@ -1375,7 +1382,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
       },
     );
   }
-  
+
   /// ✅ Charger les attributs de l'équipement sans créer d'attributs par défaut
   Future<void> _loadEquipmentAttributes() async {
     if (widget.equipmentData == null) return;
@@ -1424,10 +1431,11 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
           if (kDebugMode) {
             print('📋 Aucun attribut trouvé pour cet équipement');
           }
-          
+
           if (mounted) {
             setState(() {
-              availableAttributes = []; // ✅ Laisser vide au lieu de créer des attributs par défaut
+              availableAttributes =
+                  []; // ✅ Laisser vide au lieu de créer des attributs par défaut
             });
           }
         }
@@ -1435,7 +1443,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
         if (kDebugMode) {
           print('⚠️ Impossible de charger les attributs depuis l\'API: $e');
         }
-        
+
         // ✅ MODIFIÉ: En cas d'erreur, laisser la liste vide
         if (mounted) {
           setState(() {
@@ -1706,7 +1714,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     );
   }
 
-  /// ✅ Gérer la modification avec l'ID correct de l'équipement
+  /// ✅ AMÉLIORÉ: Gérer la modification avec mise à jour immédiate des attributs
   Future<void> _handleUpdate() async {
     try {
       if (kDebugMode) {
@@ -1716,35 +1724,53 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
       // ✅ NOUVEAU: Préparer les attributs modifiés au format requis
       final attributs = _prepareAttributesForUpdate();
 
+      // ✅ LOGS: Voir quels attributs vont être envoyés
+      if (attributs.isNotEmpty) {
+        if (kDebugMode) {
+          print('📋 ModifyEquipmentScreen - Attributs qui vont être envoyés:');
+        }
+        for (final attr in attributs) {
+          if (kDebugMode) {
+            print(
+            '   - ${attr['name']}: "${attr['value']}" (type: ${attr['type']})',
+          );
+          }
+        }
+      }
+
       // ✅ NOUVEAU: Préparer les données selon le schéma requis avec gestion des valeurs nulles
       final updatedData = {
         'code_parent': selectedCodeParent ?? '',
         'feeder': _getSelectedCode(selectedFeeder) ?? '',
         'feeder_description': selectedFeeder ?? '',
-        'code': widget.equipmentData!['Code'] ?? widget.equipmentData!['code'] ?? '',
+        'code':
+            widget.equipmentData!['Code'] ??
+            widget.equipmentData!['code'] ??
+            '',
         'famille': _getSelectedCode(selectedFamille) ?? '',
         'zone': _getSelectedCode(selectedZone) ?? '',
         'entity': _getSelectedCode(selectedEntity) ?? '',
         'unite': _getSelectedCode(selectedUnite) ?? '',
         'centre_charge': _getSelectedCode(selectedCentreCharge) ?? '',
         'description': _descriptionController.text.trim(),
-        'longitude': valueLongitude ?? '12311231',
-        'latitude': valueLatitude ?? '12311231',
+        'longitude': valueLongitude ?? '',
+        'latitude': valueLatitude ?? '',
         'attributs': attributs, // ✅ Inclure les attributs modifiés
       };
 
       // ✅ MODIFIÉ: Utiliser l'ID correct passé depuis equipment_screen
-      final equipmentId = widget.equipmentData!['id'] ?? widget.equipmentData!['ID'] ?? '';
+      final equipmentId =
+          widget.equipmentData!['id'] ?? widget.equipmentData!['ID'] ?? '';
 
       if (kDebugMode) {
-        print('📊 ModifyEquipmentScreen - Données à envoyer:');
+        print('📊 ModifyEquipmentScreen - Données à envoyer (avec CODES):');
         print('   - ID équipement: $equipmentId');
         print('   - Code: ${updatedData['code']}');
-        print('   - Famille: ${updatedData['famille']}');
-        print('   - Zone: ${updatedData['zone']}');
-        print('   - Entity: ${updatedData['entity']}');
-        print('   - Unite: ${updatedData['unite']}');
-        print('   - Centre Charge: ${updatedData['centre_charge']}');
+        print('   - Famille (CODE): ${updatedData['famille']}');
+        print('   - Zone (CODE): ${updatedData['zone']}');
+        print('   - Entity (CODE): ${updatedData['entity']}');
+        print('   - Unite (CODE): ${updatedData['unite']}');
+        print('   - Centre Charge (CODE): ${updatedData['centre_charge']}');
         print('   - Description: ${updatedData['description']}');
         print('   - Attributs: ${attributs.length} éléments');
         for (final attr in attributs) {
@@ -1757,18 +1783,17 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
         throw Exception('ID de l\'équipement manquant pour la modification');
       }
 
-      // ✅ VALIDATION: Vérifier que l'ID n'est pas juste le code
-      if (equipmentId == updatedData['code']) {
-        if (kDebugMode) {
-          print('⚠️ ATTENTION: L\'ID semble être le code équipement au lieu de l\'ID unique');
-        }
-      }
-
       // ✅ MODIFIÉ: Envoyer tout en une seule fois via l'API avec l'ID correct
       await context.read<EquipmentProvider>().updateEquipment(
         equipmentId, // ✅ Utiliser l'ID réel
         updatedData,
       );
+
+      // ✅ NOUVEAU: Rafraîchir immédiatement les attributs en local après la modification
+      if (attributs.isNotEmpty) {
+        final equipmentCode = updatedData['code'] as String;
+        await _refreshAttributesAfterUpdate(equipmentCode);
+      }
 
       if (mounted && Navigator.canPop(context)) {
         NotificationService.showSuccess(
@@ -1782,6 +1807,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
         await Future.delayed(const Duration(milliseconds: 800));
 
         if (mounted && Navigator.canPop(context)) {
+          // ✅ NOUVEAU: Retourner true pour indiquer qu'une modification a eu lieu
           Navigator.of(context).pop(true);
         }
       }
@@ -1804,36 +1830,99 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     }
   }
 
-  /// ✅ Préparer les attributs pour la mise à jour (ne pas envoyer d'attributs vides)
+  /// ✅ NOUVEAU: Rafraîchir les attributs immédiatement après modification
+  Future<void> _refreshAttributesAfterUpdate(String equipmentCode) async {
+    try {
+      if (kDebugMode) {
+        print(
+          '🔄 ModifyEquipmentScreen - Rafraîchissement des attributs après modification',
+        );
+      }
+
+      final equipmentProvider = Provider.of<EquipmentProvider>(
+        context,
+        listen: false,
+      );
+
+      // Forcer le rechargement des attributs depuis l'API
+      final updatedAttributes = await equipmentProvider.loadEquipmentAttributes(
+        equipmentCode,
+      );
+
+      if (mounted) {
+        setState(() {
+          availableAttributes = updatedAttributes;
+
+          // ✅ IMPORTANT: Mettre à jour les valeurs sélectionnées avec les nouvelles valeurs de l'API
+          selectedAttributeValues.clear();
+          for (final attr in updatedAttributes) {
+            if (attr.id != null && attr.value != null) {
+              selectedAttributeValues[attr.id!] = attr.value!;
+            }
+          }
+        });
+
+        // Recharger aussi les spécifications si nécessaire
+        await _loadAttributeSpecifications();
+
+        if (kDebugMode) {
+          print(
+            '✅ ModifyEquipmentScreen - Attributs rafraîchis avec les nouvelles valeurs',
+          );
+          for (final attr in updatedAttributes) {
+            print('   - ${attr.name}: "${attr.value}" (valeur mise à jour)');
+          }
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print(
+          '❌ ModifyEquipmentScreen - Erreur rafraîchissement attributs: $e',
+        );
+      }
+    }
+  }
+
+  /// ✅ MODIFIÉ: Préparer les attributs en tenant compte des nouvelles valeurs sélectionnées
   List<Map<String, String>> _prepareAttributesForUpdate() {
     final attributs = <Map<String, String>>[];
 
-    // ✅ MODIFIÉ: Seulement si des attributs existent et ont été modifiés
+    // ✅ MODIFIÉ: Seulement si des attributs existent
     if (availableAttributes.isNotEmpty) {
       for (final attribute in availableAttributes) {
         if (attribute.id != null && attribute.name != null) {
-          // Récupérer la valeur sélectionnée ou la valeur par défaut
+          // ✅ IMPORTANT: Prioriser la valeur sélectionnée par l'utilisateur
           final selectedValue = selectedAttributeValues[attribute.id!];
           final finalValue = selectedValue ?? attribute.value ?? '';
 
-          // ✅ Ajouter l'attribut s'il a une valeur
-          if (finalValue.isNotEmpty) {
-            attributs.add({
-              'name': attribute.name!,
-              'value': finalValue,
-              'type': _determineAttributeType(attribute),
-            });
+          // ✅ AJOUTÉ: Debug pour voir quelle valeur est utilisée
+          if (kDebugMode) {
+            print('🔍 Attribut ${attribute.name}:');
+            print('   - Valeur originale: "${attribute.value}"');
+            print('   - Valeur sélectionnée: "$selectedValue"');
+            print('   - Valeur finale: "$finalValue"');
+          }
 
-            if (kDebugMode) {
-              print('✓ Attribut préparé: ${attribute.name} = $finalValue (${_determineAttributeType(attribute)})');
-            }
+          // ✅ Inclure l'attribut même s'il est vide (pour permettre la suppression)
+          attributs.add({
+            'name': attribute.name!,
+            'value': finalValue,
+            'type': _determineAttributeType(attribute),
+          });
+
+          if (kDebugMode) {
+            print(
+              '✓ Attribut préparé: ${attribute.name} = "$finalValue" (${_determineAttributeType(attribute)})',
+            );
           }
         }
       }
     }
 
     if (kDebugMode) {
-      print('📋 ModifyEquipmentScreen - ${attributs.length} attributs préparés pour l\'envoi');
+      print(
+        '📋 ModifyEquipmentScreen - ${attributs.length} attributs préparés pour l\'envoi',
+      );
     }
 
     return attributs;
@@ -1845,35 +1934,48 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     final value = attribute.value ?? '';
 
     // ✅ Déterminer le type selon le nom de l'attribut
-    if (name.contains('famille') || name.contains('zone') || name.contains('entité') || 
-        name.contains('entity') || name.contains('feeder') || name.contains('unite') ||
-        name.contains('centre') || name.contains('marque')) {
+    if (name.contains('famille') ||
+        name.contains('zone') ||
+        name.contains('entité') ||
+        name.contains('entity') ||
+        name.contains('feeder') ||
+        name.contains('unite') ||
+        name.contains('centre') ||
+        name.contains('marque')) {
       return 'select'; // Type sélection pour les dropdowns
     }
-    
-    if (name.contains('longitude') || name.contains('latitude') || 
-        name.contains('coordonn') || name.contains('position') ||
-        name.contains('calibre') || name.contains('tension')) {
+
+    if (name.contains('longitude') ||
+        name.contains('latitude') ||
+        name.contains('coordonn') ||
+        name.contains('position') ||
+        name.contains('calibre') ||
+        name.contains('tension')) {
       return 'number'; // Type numérique pour les coordonnées et valeurs techniques
     }
-    
-    if (name.contains('description') || name.contains('commentaire') || 
-        name.contains('note') || name.contains('remarque') || name.contains('observation')) {
+
+    if (name.contains('description') ||
+        name.contains('commentaire') ||
+        name.contains('note') ||
+        name.contains('remarque') ||
+        name.contains('observation')) {
       return 'text'; // Type texte pour les descriptions
     }
-    
+
     // ✅ Déterminer le type selon la valeur
     if (value.isNotEmpty) {
       // Tenter de parser comme nombre
       if (double.tryParse(value) != null) {
         return 'number';
       }
-      
+
       // Si c'est une valeur courte et standardisée, probablement une sélection
-      if (value.length < 50 && !value.contains(' ') && value.toUpperCase() == value) {
+      if (value.length < 50 &&
+          !value.contains(' ') &&
+          value.toUpperCase() == value) {
         return 'select';
       }
-      
+
       // Si c'est une longue chaîne, probablement du texte
       if (value.length > 100) {
         return 'text';
