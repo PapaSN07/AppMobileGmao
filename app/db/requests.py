@@ -111,7 +111,7 @@ FROM coswin.t_equipment e
 LEFT JOIN coswin.t_costcentre cc ON e.ereq_costcentre = cc.mdcc_code
 LEFT JOIN coswin.t_equipment f ON e.ereq_string2 = f.ereq_code
 LEFT JOIN coswin.equipment_specs es ON e.ereq_code = es.etes_equipment
-LEFT JOIN coswin.EQUIPMENT_ATTRIBUTE ea ON es.pk_equipment_specs = ea.commonkey
+LEFT JOIN coswin.equipment_attribute ea ON es.pk_equipment_specs = ea.commonkey
 LEFT JOIN coswin.t_specification s ON es.etes_specification = s.cwsp_code
 LEFT JOIN coswin.attribute a ON (s.pk_specification = a.cwat_specification AND ea.INDX = a.CWAT_INDEX)
 WHERE 1=1
@@ -151,6 +151,83 @@ INSERT INTO coswin.t_equipment (
     :feeder
 )
 """
+# Récupération d'un équipement par ID
+EQUIPMENT_BY_ID_QUERY = """
+SELECT 
+    e.pk_equipment, 
+    e.ereq_parent_equipment, 
+    e.ereq_code, 
+    e.ereq_category, 
+    e.ereq_zone, 
+    e.ereq_entity, 
+    e.ereq_function,
+    COALESCE(cc.mdcc_description, '') as ereq_costcentre, 
+    e.ereq_description, 
+    e.ereq_longitude, 
+    e.ereq_latitude,
+    f.pk_equipment as feeder,
+    f.ereq_description as feeder_description
+FROM coswin.t_equipment e
+LEFT JOIN coswin.t_costcentre cc ON e.ereq_costcentre = cc.mdcc_code
+LEFT JOIN coswin.t_equipment f ON e.ereq_string2 = f.ereq_code
+WHERE e.pk_equipment = :equipment_id
+"""
+# --- Modification d'équipement
+EQUIPMENT_UPDATE_QUERY = """
+UPDATE coswin.t_equipment 
+SET 
+    ereq_parent_equipment = :code_parent,
+    ereq_code = :code,
+    ereq_category = :famille,
+    ereq_zone = :zone,
+    ereq_entity = :entity,
+    ereq_function = :unite,
+    ereq_costcentre = :centre_charge,
+    ereq_description = :description,
+    ereq_longitude = :longitude,
+    ereq_latitude = :latitude,
+    ereq_string2 = :feeder
+WHERE pk_equipment = :equipment_id
+"""
+# Mise à jour d'un attribut spécifique
+UPDATE_EQUIPMENT_ATTRIBUTE_QUERY = """
+UPDATE coswin.equipment_attribute 
+SET etat_value = :value
+WHERE commonkey = (
+    SELECT es.pk_equipment_specs 
+    FROM coswin.equipment_specs es
+    JOIN coswin.t_specification s ON es.etes_specification = s.cwsp_code
+    JOIN coswin.attribute a ON s.pk_specification = a.cwat_specification
+    WHERE es.etes_equipment = :equipment_code
+    AND a.cwat_name = :attribute_name
+)
+AND indx = (
+    SELECT a.cwat_index
+    FROM coswin.equipment_specs es
+    JOIN coswin.t_specification s ON es.etes_specification = s.cwsp_code
+    JOIN coswin.attribute a ON s.pk_specification = a.cwat_specification
+    WHERE es.etes_equipment = :equipment_code
+    AND a.cwat_name = :attribute_name
+)
+"""
+# Récupération des attributs d'un équipement par code
+EQUIPMENT_ATTRIBUTS_VALUES_QUERY = """
+SELECT 
+    a.pk_attribute as id, 
+    a.cwat_specification as specification, 
+    a.cwat_index as index_val, 
+    a.cwat_name as name, 
+    ea.etat_value as value
+FROM 
+    coswin.t_equipment e
+    JOIN coswin.equipment_specs es ON e.ereq_code = es.etes_equipment
+    JOIN coswin.EQUIPMENT_ATTRIBUTE ea ON es.pk_equipment_specs = ea.commonkey
+    JOIN coswin.t_specification s ON es.etes_specification = s.cwsp_code
+    JOIN coswin.attribute a ON (s.pk_specification = a.cwat_specification AND ea.INDX = a.CWAT_INDEX)
+WHERE 
+    e.ereq_code = :code
+ORDER BY a.cwat_name
+"""
 # Récupère les spécifications de l'équipement à partir de la catégorie
 EQUIPMENT_T_SPECIFICATION_QUERY = """
 SELECT 
@@ -187,7 +264,7 @@ FROM
 WHERE 1=1
     AND cs.mdcs_specification = s.cwsp_code
     AND r.mdct_code = cs.mdcs_category
-    AND  s.pk_specification = a.cwat_specification
+    AND s.pk_specification = a.cwat_specification
     AND r.mdct_code LIKE :category -- ereq_category (t_equipment)
 """
 EQUIPMENT_CLASSE_ATTRIBUTS_ADD_QUERY = """

@@ -1,7 +1,7 @@
 from app.db.database import get_database_connection
 from app.core.config import CACHE_TTL_SHORT
 from app.models.models import (EquipmentModel, FeederModel, EquipmentAttributeValueModel, AttributeValuesModel)
-from app.db.requests import (ATTRIBUTE_VALUES_QUERY, EQUIPMENT_INFINITE_QUERY, FEEDER_QUERY)
+from app.db.requests import (ATTRIBUTE_VALUES_QUERY, EQUIPMENT_BY_ID_QUERY, EQUIPMENT_INFINITE_QUERY, FEEDER_QUERY, UPDATE_EQUIPMENT_ATTRIBUTE_QUERY)
 from app.core.cache import cache
 from typing import Dict, Any, List, Optional
 import logging
@@ -275,3 +275,198 @@ def add_equipment(equipment_data: dict) -> bool:
         logger.error(f"Erreur ajout équipement: {e}")
         return False
 
+def get_equipment_by_id(equipment_id: str) -> Optional[EquipmentModel]:
+    """Récupère un équipement par son ID"""
+    try:
+        with get_database_connection() as db:
+            results = db.execute_query(EQUIPMENT_BY_ID_QUERY, params={'equipment_id': equipment_id})
+            
+            if not results:
+                return None
+                
+            # Créer l'équipement depuis la première row
+            equipment = EquipmentModel.from_db_row(results[0])
+            
+            # Récupérer les attributs séparément
+            equipment.attributes = get_equipment_attributes_by_code(equipment.code)
+            
+            return equipment
+            
+    except Exception as e:
+        logger.error(f"❌ Erreur récupération équipement {equipment_id}: {e}")
+        return None
+
+def update_equipment_partial(equipment_id: str, updates: Dict[str, Any]) -> bool:
+    """
+    Met à jour partiellement un équipement et ses attributs
+    
+    Args:
+        equipment_id: ID de l'équipement à modifier
+        updates: Dictionnaire des champs à mettre à jour
+        
+    Returns:
+        True si succès, False sinon
+    """
+    try:
+        # Vérifier que l'équipement existe
+        existing_equipment = get_equipment_by_id(equipment_id)
+        if not existing_equipment:
+            logger.error(f"Équipement {equipment_id} non trouvé")
+            return False
+            
+        with get_database_connection() as db:
+            # 1. Mise à jour des champs de base de l'équipement
+            equipment_fields = {
+                'code_parent', 'code', 'famille', 'zone', 'entity', 
+                'unite', 'centre_charge', 'description', 'longitude', 
+                'latitude', 'feeder'
+            }
+            
+            # Filtrer les champs d'équipement à mettre à jour
+            equipment_updates = {k: v for k, v in updates.items() if k in equipment_fields and v is not None}
+            
+            if equipment_updates:
+                # Construire la requête de mise à jour dynamiquement
+                set_clauses = []
+                params = {'equipment_id': equipment_id}
+                
+                field_mapping = {
+                    'code_parent': 'ereq_parent_equipment',
+                    'code': 'ereq_code',
+                    'famille': 'ereq_category',
+                    'zone': 'ereq_zone',
+                    'entity': 'ereq_entity',
+                    'unite': 'ereq_function',
+                    'centre_charge': 'ereq_costcentre',
+                    'description': 'ereq_description',
+                    'longitude': 'ereq_longitude',
+                    'latitude': 'ereq_latitude',
+                    'feeder': 'ereq_string2'
+                }
+                
+                for field, value in equipment_updates.items():
+                    db_field = field_mapping.get(field, field)
+                    set_clauses.append(f"{db_field} = :{field}")
+                    params[field] = value
+                
+                if set_clauses:
+                    update_query = f"""
+                        UPDATE coswin.t_equipment 
+                        SET {', '.join(set_clauses)}
+                        WHERE pk_equipment = :equipment_id
+                    """
+                    
+                    db.execute_update(update_query, params=params)
+                    logger.info(f"✅ Équipement {equipment_id} mis à jour: {list(equipment_updates.keys())}")
+            
+            # 2. Mise à jour des attributs si fournis
+            if 'attributs' in updates and updates['attributs']:
+                success = update_equipment_attributes(existing_equipment.code, updates['attributs'])
+                if not success:
+                    logger.warning(f"Erreur partielle lors de la mise à jour des attributs pour {equipment_id}")
+            
+            # 3. Invalider le cache
+            cache_patterns = [
+                f"mobile_eq_*",
+                f"equipment_attributes_{existing_equipment.code}",
+                f"equipment_*_{equipment_id}"
+            ]
+            
+            for pattern in cache_patterns:
+                cache.clear_pattern(pattern)
+            
+            logger.info(f"✅ Mise à jour complète de l'équipement {equipment_id}")
+            return True
+            
+    except Exception as e:
+        logger.error(f"❌ Erreur mise à jour équipement {equipment_id}: {e}")
+        return False
+
+def update_equipment_attributes(equipment_code: str, attributes: List[Dict[str, Any]]) -> bool:
+    """
+    Met à jour les attributs d'un équipement
+    
+    Args:
+        equipment_code: Code de l'équipement
+        attributes: Liste des attributs à mettre à jour
+        
+    Returns:
+        True si succès, False sinon
+    """
+    try:
+        with get_database_connection() as db:
+            success_count = 0
+            
+            for attr in attributes:
+                attr_name = attr.get('name')
+                attr_value = str(attr.get('value', ''))
+                
+                if not attr_name:
+                    logger.warning(f"Attribut sans nom ignoré pour {equipment_code}")
+                    continue
+                
+                try:
+                    # Essayer de mettre à jour l'attribut existant
+                    update_params = {
+                        'equipment_code': equipment_code,
+                        'attribute_name': attr_name,
+                        'value': attr_value
+                    }
+                    
+                    db.execute_update(UPDATE_EQUIPMENT_ATTRIBUTE_QUERY, params=update_params)
+                    
+                    success_count += 1
+                    
+                except Exception as e:
+                    logger.error(f"Erreur mise à jour attribut {attr_name}: {e}")
+                    continue
+            
+            logger.info(f"✅ {success_count}/{len(attributes)} attributs mis à jour pour {equipment_code}")
+            return success_count > 0
+            
+    except Exception as e:
+        logger.error(f"❌ Erreur mise à jour attributs pour {equipment_code}: {e}")
+        return False
+
+def get_equipment_attributes_by_code(equipment_code: str) -> List[EquipmentAttributeValueModel]:
+    """Récupère les attributs d'un équipement par son code"""
+    if not equipment_code:
+        return []
+        
+    cache_key = f"equipment_attributes_{equipment_code}"
+    cached = cache.get_data_only(cache_key)
+    
+    if cached:
+        try:
+            return [EquipmentAttributeValueModel(**item) for item in cached]
+        except Exception as e:
+            logger.debug(f"Erreur reconstruction cache pour {equipment_code}: {e}")
+
+    try:
+        from app.db.requests import EQUIPMENT_ATTRIBUTS_VALUES_QUERY
+        
+        with get_database_connection() as db:
+            results = db.execute_query(EQUIPMENT_ATTRIBUTS_VALUES_QUERY, params={'code': equipment_code})
+
+            if not results:
+                cache.set(cache_key, [], CACHE_TTL_SHORT)
+                return []
+
+            attributes = []
+            for r in results:
+                try:
+                    if len(r) >= 5:
+                        attr = EquipmentAttributeValueModel.from_db_row(r)
+                        attributes.append(attr)
+                except Exception as e:
+                    logger.debug(f"Erreur création attribut: {e}")
+                    continue
+            
+            attributes_serialized = [attr.model_dump() for attr in attributes]
+            cache.set(cache_key, attributes_serialized, CACHE_TTL_SHORT)
+            
+            return attributes
+
+    except Exception as e:
+        logger.error(f"❌ Erreur récupération attributs pour équipement {equipment_code}: {e}")
+        return []

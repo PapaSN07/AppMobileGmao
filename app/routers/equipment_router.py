@@ -5,16 +5,18 @@ import logging
 from app.schemas.responses.equipment_response import AttributeResponse
 from app.services.equipment_service import (
     get_attribute_values,
+    get_equipment_by_id,
     get_equipments_infinite,
     get_feeders,
-    add_equipment
+    add_equipment,
+    update_equipment_partial
 )
 from app.services.centre_charge_service import get_centre_charges
 from app.services.entity_service import get_entities
 from app.services.famille_service import get_familles
 from app.services.unite_service import get_unites
 from app.services.zone_service import get_zones
-from app.schemas.requests.equipment_request import AddEquipmentRequest
+from app.schemas.requests.equipment_request import AddEquipmentRequest, UpdateEquipmentRequest
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +52,64 @@ async def get_equipments_mobile(
         logger.error(f"❌ Erreur: {e}")
         raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
 
+@equipment_router.post("",
+    summary="Ajouter un équipement",
+    description="Ajoute un nouvel équipement dans la base"
+)
+async def add_equipment_mobile(request: AddEquipmentRequest) -> Dict[str, Any]:
+    """Ajout d'un équipement"""
+    try:
+        success = add_equipment(request.model_dump())
+        if success:
+            return {
+                "status": "success",
+                "message": "Équipement ajouté avec succès"
+            }
+        else:
+            raise HTTPException(status_code=500, detail="Erreur lors de l'ajout de l'équipement")
+    except Exception as e:
+        logger.error(f"❌ Erreur ajout équipement: {e}")
+        raise HTTPException(status_code=500, detail=f"Erreur ajout équipement: {str(e)}")
+
+@equipment_router.patch("/{equipment_id}",
+    summary="Modifier partiellement un équipement", 
+    description="Modifie seulement les champs spécifiés d'un équipement et ses attributs"
+)
+async def update_equipment_partial_endpoint(
+    equipment_id: str, 
+    request: UpdateEquipmentRequest
+) -> Dict[str, Any]:
+    """Modification partielle d'un équipement avec ses attributs"""
+    try:
+        # Convertir la request en dictionnaire, en excluant les valeurs None
+        updates = request.model_dump(exclude_none=True)
+        
+        if not updates:
+            raise HTTPException(status_code=400, detail="Aucun champ à mettre à jour fourni")
+        
+        # Effectuer la mise à jour
+        success = update_equipment_partial(equipment_id, updates)
+        
+        if success:
+            # Récupérer l'équipement mis à jour pour la réponse
+            updated_equipment = get_equipment_by_id(equipment_id)
+            
+            return {
+                "status": "success", 
+                "message": f"Équipement modifié avec succès ({len(updates)} champs)",
+                "method": "PATCH",
+                "updated_fields": list(updates.keys()),
+                "equipment": updated_equipment.to_api_response() if updated_equipment else None
+            }
+        else:
+            raise HTTPException(status_code=500, detail="Erreur lors de la modification")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Erreur PATCH équipement: {e}")
+        raise HTTPException(status_code=500, detail=f"Erreur PATCH: {str(e)}")
+
 @equipment_router.get("/values/{entity}",
     summary="Récupérer les valeurs des équipements",
     description="Récupère les valeurs des équipements pour l'entité spécifiée"
@@ -84,25 +144,6 @@ async def get_equipment_values(entity: str) -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"❌ Erreur récupération valeurs: {e}")
         raise HTTPException(status_code=500, detail=f"Erreur récupération valeurs: {str(e)}")
-
-@equipment_router.post("",
-    summary="Ajouter un équipement",
-    description="Ajoute un nouvel équipement dans la base"
-)
-async def add_equipment_mobile(request: AddEquipmentRequest) -> Dict[str, Any]:
-    """Ajout d'un équipement"""
-    try:
-        success = add_equipment(request.model_dump())
-        if success:
-            return {
-                "status": "success",
-                "message": "Équipement ajouté avec succès"
-            }
-        else:
-            raise HTTPException(status_code=500, detail="Erreur lors de l'ajout de l'équipement")
-    except Exception as e:
-        logger.error(f"❌ Erreur ajout équipement: {e}")
-        raise HTTPException(status_code=500, detail=f"Erreur ajout équipement: {str(e)}")
 
 @equipment_router.get("/attributes",
     summary="Récupérer les attributs d'un équipement",
