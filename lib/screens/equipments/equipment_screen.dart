@@ -270,7 +270,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                 margin: const EdgeInsets.only(bottom: 10),
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
+                  color: AppTheme.primaryColor10,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: AppTheme.thirdColor30),
                 ),
@@ -302,7 +302,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                                 color:
                                     isSelected
                                         ? AppTheme.secondaryColor
-                                        : Colors.white.withOpacity(0.2),
+                                        : AppTheme.primaryColor20,
                                 borderRadius: BorderRadius.circular(20),
                                 border: Border.all(
                                   color:
@@ -622,6 +622,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
 
   Widget _itemBuilder(dynamic equipment) {
     return ListItemCustom.equipment(
+      id: equipment['id']?.toString() ?? '',
       codeParent: equipment['codeParent'] ?? '',
       feeder: equipment['feeder'] ?? '',
       feederDescription: equipment['feederDescription'] ?? '',

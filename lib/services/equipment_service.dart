@@ -231,20 +231,36 @@ class EquipmentService {
     }
   }
 
-  /// Met à jour un équipement existant
+  /// Met à jour un équipement existant avec ses attributs
   Future<Equipment> updateEquipment(
-    String code,
+    String equipmentId,
     Map<String, dynamic> updatedFields,
   ) async {
     try {
       if (kDebugMode) {
-        print('🔄 EquipmentApi - Mise à jour équipement: $code');
+        print('🔄 EquipmentApi - Mise à jour équipement: $equipmentId');
+        print('📊 EquipmentApi - Données envoyées: $updatedFields');
+      }
+
+      // ✅ Validation de l'ID équipement
+      if (equipmentId.isEmpty) {
+        throw Exception('ID équipement requis pour la mise à jour');
+      }
+
+      // ✅ Validation des données
+      if (updatedFields.isEmpty) {
+        throw Exception('Aucune donnée à mettre à jour');
       }
 
       final data = await _apiService.patch(
-        '/api/v1/equipments/$code',
+        '/api/v1/equipments/$equipmentId',
         data: updatedFields,
       );
+
+      if (kDebugMode) {
+        print('✅ EquipmentApi - Équipement mis à jour avec succès');
+      }
+
       return Equipment.fromJson(data);
     } catch (e) {
       if (kDebugMode) {

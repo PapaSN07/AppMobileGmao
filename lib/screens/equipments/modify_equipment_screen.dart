@@ -340,15 +340,61 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
         : cleanDesc;
   }
 
-  String? _getSelectedCode(String? displayValue) {
-    if (displayValue == null || displayValue.isEmpty) return null;
-    if (displayValue.contains(' - ')) {
-      return displayValue.split(' - ').first.trim();
+  /// ✅ MODIFIÉ: Récupérer le CODE au lieu de la description pour l'API
+  String? _getSelectedCode(String? selectedValue) {
+    if (selectedValue == null || selectedValue.isEmpty) return null;
+
+    // ✅ NOUVEAU: Fonction helper pour trouver le code depuis la description
+    String? findCodeFromDescription(List<Map<String, dynamic>> items, String description) {
+      for (final item in items) {
+        final itemDescription = item['description']?.toString() ?? '';
+        final itemCode = item['code']?.toString() ?? '';
+        
+        // Si la description correspond, retourner le CODE
+        if (itemDescription == description) {
+          return itemCode; // ✅ Retourner le code au lieu de la description
+        }
+        
+        // Aussi vérifier si c'est déjà un code
+        if (itemCode == description) {
+          return itemCode;
+        }
+      }
+      return null;
     }
-    return displayValue.trim();
+
+    // ✅ Vérifier dans chaque liste et retourner le CODE correspondant
+    String? code;
+    
+    // Famille
+    code = findCodeFromDescription(familles, selectedValue);
+    if (code != null) return code;
+    
+    // Zone
+    code = findCodeFromDescription(zones, selectedValue);
+    if (code != null) return code;
+    
+    // Entity
+    code = findCodeFromDescription(entities, selectedValue);
+    if (code != null) return code;
+    
+    // Unite
+    code = findCodeFromDescription(unites, selectedValue);
+    if (code != null) return code;
+    
+    // Centre Charge
+    code = findCodeFromDescription(centreCharges, selectedValue);
+    if (code != null) return code;
+    
+    // Feeder
+    code = findCodeFromDescription(feeders, selectedValue);
+    if (code != null) return code;
+
+    // Si aucun code trouvé, retourner la valeur telle quelle (peut-être que c'est déjà un code)
+    return selectedValue;
   }
 
-  // ✅ NOUVEAU : Widget ComboBox personnalisé avec recherche
+  // ✅ MODIFIÉ : Widget ComboBox personnalisé avec validation optionnelle
   Widget _buildComboBoxField({
     required String label,
     required String msgError,
@@ -356,6 +402,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     required String? selectedValue,
     required Function(String?) onChanged,
     String hintText = 'Rechercher ou sélectionner...',
+    bool isRequired = false, // ✅ NOUVEAU: Paramètre pour rendre optionnel
   }) {
     final cleanItems = items.toSet().toList()..sort();
     if (cleanItems.isEmpty) {
@@ -474,15 +521,15 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
         ),
       ),
 
-      // ✅ Validation
-      validator: (value) {
+      // ✅ MODIFIÉ: Validation conditionnelle selon isRequired
+      validator: isRequired ? (value) {
         if (value == null ||
             value.isEmpty ||
             value == 'Aucun élément disponible') {
           return msgError;
         }
         return null;
-      },
+      } : null, // ✅ Pas de validation si non requis
 
       // ✅ Configuration du texte affiché
       itemAsString: (String item) {
@@ -697,6 +744,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
             });
           },
           hintText: 'Rechercher ou sélectionner un code parent...',
+    
         ),
         const SizedBox(height: 20),
         _buildFeederRow(),
@@ -724,12 +772,12 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
         Expanded(
           child: _buildText(
             label: 'Code',
-            value: selectedCodeParent ?? '#12345',
+            value: widget.equipmentData?['Code'] ?? widget.equipmentData?['code'] ?? '#12345',
           ),
         ),
         const SizedBox(width: 10),
         Expanded(
-          // ✅ Utilisation du ComboBox pour Famille
+          // ✅ MODIFIÉ: Famille optionnelle
           child: _buildComboBoxField(
             label: 'Famille',
             msgError: 'Veuillez sélectionner une famille',
@@ -741,6 +789,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
               });
             },
             hintText: 'Rechercher une famille...',
+      
           ),
         ),
       ],
@@ -751,7 +800,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     return Row(
       children: [
         Expanded(
-          // ✅ Utilisation du ComboBox pour Zone
+          // ✅ MODIFIÉ: Zone optionnelle
           child: _buildComboBoxField(
             label: 'Zone',
             msgError: 'Veuillez sélectionner une zone',
@@ -763,11 +812,12 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
               });
             },
             hintText: 'Rechercher une zone...',
+      
           ),
         ),
         const SizedBox(width: 10),
         Expanded(
-          // ✅ Utilisation du ComboBox pour Entité
+          // ✅ MODIFIÉ: Entité optionnelle
           child: _buildComboBoxField(
             label: 'Entité',
             msgError: 'Veuillez sélectionner une entité',
@@ -779,6 +829,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
               });
             },
             hintText: 'Rechercher une entité...',
+      
           ),
         ),
       ],
@@ -789,7 +840,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     return Row(
       children: [
         Expanded(
-          // ✅ Utilisation du ComboBox pour Unité
+          // ✅ MODIFIÉ: Unité optionnelle
           child: _buildComboBoxField(
             label: 'Unité',
             msgError: 'Veuillez sélectionner une unité',
@@ -801,11 +852,12 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
               });
             },
             hintText: 'Rechercher une unité...',
+      
           ),
         ),
         const SizedBox(width: 10),
         Expanded(
-          // ✅ Utilisation du ComboBox pour Centre de Charge
+          // ✅ MODIFIÉ: Centre de Charge optionnel
           child: _buildComboBoxField(
             label: 'Centre de Charge',
             msgError: 'Veuillez sélectionner un centre de charge',
@@ -817,6 +869,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
               });
             },
             hintText: 'Rechercher un centre...',
+      
           ),
         ),
       ],
@@ -829,6 +882,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
       msgError: 'Veuillez entrer la description',
       focusNode: _descriptionFocusNode,
       controller: _descriptionController,
+
     );
   }
 
@@ -836,7 +890,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     return Row(
       children: [
         Expanded(
-          // ✅ Utilisation du ComboBox pour Feeder
+          // ✅ MODIFIÉ: Feeder optionnel
           child: _buildComboBoxField(
             label: 'Feeder',
             msgError: 'Veuillez sélectionner un feeder',
@@ -857,6 +911,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
               });
             },
             hintText: 'Rechercher un feeder...',
+      
           ),
         ),
         const SizedBox(width: 10),
@@ -965,19 +1020,28 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
       children: [
         Expanded(
           child: GestureDetector(
-            onTap: _showAttributesModal,
+            onTap: availableAttributes.isNotEmpty ? _showAttributesModal : null,
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 12),
               child: Row(
                 children: [
-                  const Icon(Icons.add, color: AppTheme.secondaryColor),
+                  Icon(
+                    availableAttributes.isNotEmpty ? Icons.edit : Icons.info_outline,
+                    color: availableAttributes.isNotEmpty 
+                        ? AppTheme.secondaryColor 
+                        : AppTheme.thirdColor,
+                  ),
                   const SizedBox(width: 8),
-                  const Text(
-                    'Modifier les attributs',
+                  Text(
+                    availableAttributes.isNotEmpty 
+                        ? 'Modifier les attributs'
+                        : 'Aucun attribut disponible',
                     style: TextStyle(
                       fontFamily: AppTheme.fontMontserrat,
                       fontWeight: FontWeight.bold,
-                      color: AppTheme.secondaryColor,
+                      color: availableAttributes.isNotEmpty 
+                          ? AppTheme.secondaryColor 
+                          : AppTheme.thirdColor,
                       fontSize: 16,
                     ),
                   ),
@@ -1005,6 +1069,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     required String msgError,
     FocusNode? focusNode,
     TextEditingController? controller,
+    bool isRequired = false, // ✅ NOUVEAU: Paramètre pour rendre optionnel
   }) {
     return TextFormField(
       focusNode: focusNode,
@@ -1024,12 +1089,13 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
           borderSide: BorderSide(color: AppTheme.secondaryColor, width: 2.0),
         ),
       ),
-      validator: (value) {
+      // ✅ MODIFIÉ: Validation conditionnelle selon isRequired
+      validator: isRequired ? (value) {
         if (value == null || value.isEmpty) {
           return msgError;
         }
         return null;
-      },
+      } : null, // ✅ Pas de validation si non requis
     );
   }
 
@@ -1095,8 +1161,14 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
       ],
     );
   }
+  // Fin
 
   void _showAttributesModal() {
+    // ✅ Vérifier s'il y a des attributs disponibles
+    if (availableAttributes.isEmpty) {
+      return; // Ne pas ouvrir la modal si aucun attribut
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1190,30 +1262,6 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                         ),
                       ),
                     )
-                  else if (availableAttributes.isEmpty)
-                    const Expanded(
-                      child: Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.info_outline,
-                              size: 64,
-                              color: AppTheme.thirdColor,
-                            ),
-                            SizedBox(height: 16),
-                            Text(
-                              'Aucun attribut disponible',
-                              style: TextStyle(
-                                fontFamily: AppTheme.fontMontserrat,
-                                color: AppTheme.thirdColor,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
                   else
                     Expanded(
                       child: Column(
@@ -1294,13 +1342,11 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                                 const SizedBox(width: 16),
                                 Expanded(
                                   child: PrimaryButton(
-                                    text: 'Appliquer', // ✅ Changé pour la modal
+                                    text: 'Appliquer',
                                     icon: Icons.check,
                                     onPressed: () async {
-                                      // ✅ Juste fermer la modal, les changements seront sauvegardés avec le bouton principal
                                       Navigator.pop(context);
 
-                                      // ✅ Afficher une notification de confirmation temporaire
                                       if (mounted) {
                                         NotificationService.showSuccess(
                                           context,
@@ -1329,8 +1375,8 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
       },
     );
   }
-
-  /// ✅ NOUVEAU: Charger les attributs de l'équipement
+  
+  /// ✅ Charger les attributs de l'équipement sans créer d'attributs par défaut
   Future<void> _loadEquipmentAttributes() async {
     if (widget.equipmentData == null) return;
 
@@ -1353,51 +1399,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
         listen: false,
       );
 
-      // ✅ NOUVEAU: Vérifier d'abord si l'équipement a des attributs dans les données
-      final equipmentData = widget.equipmentData!;
-
-      // Si on a les données directement, les utiliser
-      if (equipmentData.containsKey('attributes')) {
-        final attributesRaw = equipmentData['attributes'];
-        if (attributesRaw != null && attributesRaw.toString().isNotEmpty) {
-          // Traiter les attributs depuis les données directes
-          final attributes = <EquipmentAttribute>[];
-
-          // Si c'est une chaîne JSON, la parser
-          try {
-            // Essayer de parser le JSON si c'est une chaîne
-            // Pour l'instant, on crée des attributs par défaut
-            attributes.add(
-              EquipmentAttribute(
-                id: '1',
-                specification: '1',
-                index: '1',
-                name: 'Attribut par défaut',
-                value: attributesRaw,
-              ),
-            );
-          } catch (e) {
-            if (kDebugMode) {
-              print('⚠️ Impossible de parser les attributs: $e');
-            }
-          }
-        
-          if (mounted) {
-            setState(() {
-              availableAttributes = attributes;
-
-              // Initialiser les valeurs sélectionnées
-              for (final attr in attributes) {
-                if (attr.id != null && attr.value != null) {
-                  selectedAttributeValues[attr.id!] = attr.value!;
-                }
-              }
-            });
-          }
-        }
-      }
-
-      // ✅ MODIFIÉ: Essayer de charger depuis l'API aussi
+      // ✅ Essayer de charger depuis l'API
       try {
         final attributes = await equipmentProvider.loadEquipmentAttributes(
           equipmentCode,
@@ -1405,95 +1407,51 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
 
         if (mounted && attributes.isNotEmpty) {
           setState(() {
-            // Fusionner avec les attributs existants sans doublons
-            final existingIds = availableAttributes.map((a) => a.id).toSet();
-            final newAttributes =
-                attributes.where((a) => !existingIds.contains(a.id)).toList();
+            availableAttributes = attributes;
 
-            availableAttributes.addAll(newAttributes);
-
-            // Initialiser les valeurs sélectionnées pour les nouveaux attributs
-            for (final attr in newAttributes) {
+            // Initialiser les valeurs sélectionnées
+            for (final attr in attributes) {
               if (attr.id != null && attr.value != null) {
                 selectedAttributeValues[attr.id!] = attr.value!;
               }
             }
           });
+
+          // Charger les valeurs possibles pour chaque attribut
+          await _loadAttributeSpecifications();
+        } else {
+          // ✅ MODIFIÉ: Si aucun attribut trouvé, ne pas en créer
+          if (kDebugMode) {
+            print('📋 Aucun attribut trouvé pour cet équipement');
+          }
+          
+          if (mounted) {
+            setState(() {
+              availableAttributes = []; // ✅ Laisser vide au lieu de créer des attributs par défaut
+            });
+          }
         }
       } catch (e) {
         if (kDebugMode) {
           print('⚠️ Impossible de charger les attributs depuis l\'API: $e');
         }
-        // On continue même si l'API échoue
-      }
-
-      // ✅ MODIFIÉ: Créer des attributs par défaut si aucun n'est trouvé
-      if (availableAttributes.isEmpty) {
-        if (kDebugMode) {
-          print('📋 Aucun attribut trouvé, création d\'attributs par défaut');
-        }
-
-        // Créer quelques attributs basiques basés sur les données de l'équipement
-        final defaultAttributes = <EquipmentAttribute>[
-          EquipmentAttribute(
-            id: 'famille',
-            specification: '1',
-            index: '1',
-            name: 'Famille',
-            value: equipmentData['Famille'] ?? '',
-          ),
-          EquipmentAttribute(
-            id: 'zone',
-            specification: '1',
-            index: '2',
-            name: 'Zone',
-            value: equipmentData['Zone'] ?? '',
-          ),
-          EquipmentAttribute(
-            id: 'entity',
-            specification: '1',
-            index: '3',
-            name: 'Entité',
-            value: equipmentData['Entité'] ?? '',
-          ),
-        ];
-
+        
+        // ✅ MODIFIÉ: En cas d'erreur, laisser la liste vide
         if (mounted) {
           setState(() {
-            availableAttributes = defaultAttributes;
-
-            // Initialiser les valeurs sélectionnées
-            for (final attr in defaultAttributes) {
-              if (attr.id != null && attr.value != null) {
-                selectedAttributeValues[attr.id!] = attr.value!;
-              }
-            }
+            availableAttributes = []; // ✅ Pas d'attributs par défaut
           });
         }
-      }
-
-      // Charger les valeurs possibles pour chaque attribut
-      if (availableAttributes.isNotEmpty) {
-        await _loadAttributeSpecifications();
       }
     } catch (e) {
       if (kDebugMode) {
         print('❌ Erreur chargement attributs équipement: $e');
       }
 
-      // ✅ En cas d'erreur, au moins créer un attribut par défaut
+      // ✅ MODIFIÉ: En cas d'erreur, laisser la liste vide
       if (mounted) {
         setState(() {
-          availableAttributes = [
-            EquipmentAttribute(
-              id: 'default',
-              specification: '1',
-              index: '1',
-              name: 'Attribut par défaut',
-              value: 'Aucune valeur',
-            ),
-          ];
-          selectedAttributeValues['default'] = 'Aucune valeur';
+          availableAttributes = []; // ✅ Pas d'attributs par défaut
         });
       }
     } finally {
@@ -1505,7 +1463,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     }
   }
 
-  /// ✅ CORRIGÉ: Charger les spécifications avec gestion d'erreur améliorée
+  /// ✅ Charger les spécifications avec gestion d'erreur améliorée
   Future<void> _loadAttributeSpecifications() async {
     final equipmentProvider = Provider.of<EquipmentProvider>(
       context,
@@ -1561,7 +1519,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     }
   }
 
-  /// ✅ CORRIGÉ: Widget pour afficher une ligne d'attribut avec gestion des erreurs
+  /// ✅ Widget pour afficher une ligne d'attribut avec gestion des erreurs
   Widget _buildAttributeRow(
     EquipmentAttribute attribute,
     StateSetter setModalState,
@@ -1748,56 +1706,75 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     );
   }
 
-  /// ✅ NOUVEAU: Gérer la modification de l'équipement
+  /// ✅ Gérer la modification avec l'ID correct de l'équipement
   Future<void> _handleUpdate() async {
-    if (!_formKey.currentState!.validate()) {
-      if (mounted) {
-        NotificationService.showWarning(
-          context,
-          title: '⚠️ Formulaire incomplet',
-          message: 'Veuillez remplir tous les champs obligatoires',
-          duration: const Duration(seconds: 3),
-          showProgressBar: false,
-        );
-      }
-      return;
-    }
-
     try {
-      // Préparer les données modifiées
+      if (kDebugMode) {
+        print('🔄 ModifyEquipmentScreen - Début de la mise à jour');
+      }
+
+      // ✅ NOUVEAU: Préparer les attributs modifiés au format requis
+      final attributs = _prepareAttributesForUpdate();
+
+      // ✅ NOUVEAU: Préparer les données selon le schéma requis avec gestion des valeurs nulles
       final updatedData = {
-        'codeParent': selectedCodeParent,
-        'feeder': _getSelectedCode(selectedFeeder),
-        'infoFeeder': selectedFeeder,
-        'famille': _getSelectedCode(selectedFamille),
-        'zone': _getSelectedCode(selectedZone),
-        'entity': _getSelectedCode(selectedEntity),
-        'unite': _getSelectedCode(selectedUnite),
-        'centreCharge': _getSelectedCode(selectedCentreCharge),
+        'code_parent': selectedCodeParent ?? '',
+        'feeder': _getSelectedCode(selectedFeeder) ?? '',
+        'feeder_description': selectedFeeder ?? '',
+        'code': widget.equipmentData!['Code'] ?? widget.equipmentData!['code'] ?? '',
+        'famille': _getSelectedCode(selectedFamille) ?? '',
+        'zone': _getSelectedCode(selectedZone) ?? '',
+        'entity': _getSelectedCode(selectedEntity) ?? '',
+        'unite': _getSelectedCode(selectedUnite) ?? '',
+        'centre_charge': _getSelectedCode(selectedCentreCharge) ?? '',
         'description': _descriptionController.text.trim(),
         'longitude': valueLongitude ?? '12311231',
         'latitude': valueLatitude ?? '12311231',
+        'attributs': attributs, // ✅ Inclure les attributs modifiés
       };
 
-      final equipmentCode =
-          widget.equipmentData!['Code'] ?? widget.equipmentData!['code'] ?? '';
+      // ✅ MODIFIÉ: Utiliser l'ID correct passé depuis equipment_screen
+      final equipmentId = widget.equipmentData!['id'] ?? widget.equipmentData!['ID'] ?? '';
 
-      // Mettre à jour l'équipement
+      if (kDebugMode) {
+        print('📊 ModifyEquipmentScreen - Données à envoyer:');
+        print('   - ID équipement: $equipmentId');
+        print('   - Code: ${updatedData['code']}');
+        print('   - Famille: ${updatedData['famille']}');
+        print('   - Zone: ${updatedData['zone']}');
+        print('   - Entity: ${updatedData['entity']}');
+        print('   - Unite: ${updatedData['unite']}');
+        print('   - Centre Charge: ${updatedData['centre_charge']}');
+        print('   - Description: ${updatedData['description']}');
+        print('   - Attributs: ${attributs.length} éléments');
+        for (final attr in attributs) {
+          print('     • ${attr['name']}: ${attr['value']} (${attr['type']})');
+        }
+      }
+
+      // ✅ VALIDATION: Vérifier que l'ID est présent
+      if (equipmentId.isEmpty) {
+        throw Exception('ID de l\'équipement manquant pour la modification');
+      }
+
+      // ✅ VALIDATION: Vérifier que l'ID n'est pas juste le code
+      if (equipmentId == updatedData['code']) {
+        if (kDebugMode) {
+          print('⚠️ ATTENTION: L\'ID semble être le code équipement au lieu de l\'ID unique');
+        }
+      }
+
+      // ✅ MODIFIÉ: Envoyer tout en une seule fois via l'API avec l'ID correct
       await context.read<EquipmentProvider>().updateEquipment(
-        equipmentCode,
+        equipmentId, // ✅ Utiliser l'ID réel
         updatedData,
       );
-
-      // Mettre à jour les attributs si des modifications ont été faites
-      if (selectedAttributeValues.isNotEmpty) {
-        await _saveAttributeChanges();
-      }
 
       if (mounted && Navigator.canPop(context)) {
         NotificationService.showSuccess(
           context,
           title: '🎉 Succès',
-          message: 'Équipement modifié avec succès !',
+          message: 'Équipement et attributs modifiés avec succès !',
           showAction: false,
           duration: const Duration(seconds: 2),
         );
@@ -1827,34 +1804,84 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     }
   }
 
-  /// ✅ NOUVEAU: Sauvegarder les modifications d'attributs
-  Future<void> _saveAttributeChanges() async {
-    try {
-      final equipmentProvider = Provider.of<EquipmentProvider>(
-        context,
-        listen: false,
-      );
-      final equipmentCode =
-          widget.equipmentData!['Code'] ?? widget.equipmentData!['code'] ?? '';
+  /// ✅ Préparer les attributs pour la mise à jour (ne pas envoyer d'attributs vides)
+  List<Map<String, String>> _prepareAttributesForUpdate() {
+    final attributs = <Map<String, String>>[];
 
-      for (final attributeId in selectedAttributeValues.keys) {
-        final newValue = selectedAttributeValues[attributeId]!;
-        await equipmentProvider.updateAttributeValue(
-          equipmentCode,
-          attributeId,
-          newValue,
-        );
-      }
+    // ✅ MODIFIÉ: Seulement si des attributs existent et ont été modifiés
+    if (availableAttributes.isNotEmpty) {
+      for (final attribute in availableAttributes) {
+        if (attribute.id != null && attribute.name != null) {
+          // Récupérer la valeur sélectionnée ou la valeur par défaut
+          final selectedValue = selectedAttributeValues[attribute.id!];
+          final finalValue = selectedValue ?? attribute.value ?? '';
 
-      if (kDebugMode) {
-        print('✅ Attributs mis à jour avec succès');
+          // ✅ Ajouter l'attribut s'il a une valeur
+          if (finalValue.isNotEmpty) {
+            attributs.add({
+              'name': attribute.name!,
+              'value': finalValue,
+              'type': _determineAttributeType(attribute),
+            });
+
+            if (kDebugMode) {
+              print('✓ Attribut préparé: ${attribute.name} = $finalValue (${_determineAttributeType(attribute)})');
+            }
+          }
+        }
       }
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ Erreur sauvegarde attributs: $e');
-      }
-      rethrow; // Relancer l'erreur pour qu'elle soit gérée par _handleUpdate
     }
+
+    if (kDebugMode) {
+      print('📋 ModifyEquipmentScreen - ${attributs.length} attributs préparés pour l\'envoi');
+    }
+
+    return attributs;
+  }
+
+  /// ✅ AMÉLIORÉ: Déterminer le type d'un attribut automatiquement
+  String _determineAttributeType(EquipmentAttribute attribute) {
+    final name = attribute.name?.toLowerCase() ?? '';
+    final value = attribute.value ?? '';
+
+    // ✅ Déterminer le type selon le nom de l'attribut
+    if (name.contains('famille') || name.contains('zone') || name.contains('entité') || 
+        name.contains('entity') || name.contains('feeder') || name.contains('unite') ||
+        name.contains('centre') || name.contains('marque')) {
+      return 'select'; // Type sélection pour les dropdowns
+    }
+    
+    if (name.contains('longitude') || name.contains('latitude') || 
+        name.contains('coordonn') || name.contains('position') ||
+        name.contains('calibre') || name.contains('tension')) {
+      return 'number'; // Type numérique pour les coordonnées et valeurs techniques
+    }
+    
+    if (name.contains('description') || name.contains('commentaire') || 
+        name.contains('note') || name.contains('remarque') || name.contains('observation')) {
+      return 'text'; // Type texte pour les descriptions
+    }
+    
+    // ✅ Déterminer le type selon la valeur
+    if (value.isNotEmpty) {
+      // Tenter de parser comme nombre
+      if (double.tryParse(value) != null) {
+        return 'number';
+      }
+      
+      // Si c'est une valeur courte et standardisée, probablement une sélection
+      if (value.length < 50 && !value.contains(' ') && value.toUpperCase() == value) {
+        return 'select';
+      }
+      
+      // Si c'est une longue chaîne, probablement du texte
+      if (value.length > 100) {
+        return 'text';
+      }
+    }
+
+    // Par défaut, type string
+    return 'string';
   }
 
   Widget _buildActionButtons() {

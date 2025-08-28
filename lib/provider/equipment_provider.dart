@@ -315,42 +315,141 @@ class EquipmentProvider extends ChangeNotifier {
     }
   }
 
-  // ✅ Méthode compatible avec modify_equipment_screen.dart
+  // ✅ Méthode compatible avec modify_equipment_screen.dart + attributs
   Future<void> updateEquipment(
     String equipmentId,
     Map<String, dynamic> updatedFields,
   ) async {
     try {
+      // ✅ AJOUTÉ: Validation des paramètres d'entrée
+      if (equipmentId.isEmpty) {
+        throw Exception('ID équipement requis');
+      }
+
+      if (updatedFields.isEmpty) {
+        throw Exception('Aucune donnée à mettre à jour');
+      }
+
       await _checkConnectivity();
 
       if (!_isOffline) {
-        // Trouver l'équipement à modifier
-        final index = _allEquipments.indexWhere(
-          (eq) => eq['id'] == equipmentId,
-        );
-        if (index == -1) {
-          throw Exception('Équipement non trouvé');
+        if (kDebugMode) {
+          print('🔄 EquipmentProvider - Début mise à jour équipement: $equipmentId');
+          print('📊 EquipmentProvider - Données: ${updatedFields.keys.join(', ')}');
         }
 
-        // Mettre à jour les champs modifiés
-        final updatedEquipment = Map<String, dynamic>.from(
-          _allEquipments[index],
+        // ✅ Appeler l'API pour la mise à jour réelle
+        final equipment = await _apiService.updateEquipment(
+          equipmentId,
+          updatedFields,
         );
-        updatedFields.forEach((key, value) {
-          updatedEquipment[key] = value;
-        });
 
-        // Mettre à jour dans les listes
-        _allEquipments[index] = updatedEquipment;
-        final equipmentIndex = _equipments.indexWhere(
-          (eq) => eq['id'] == equipmentId,
+        if (kDebugMode) {
+          print('✅ EquipmentProvider - Réponse API reçue pour: ${equipment.code}');
+        }
+
+        // Trouver l'équipement à modifier dans les listes locales
+        final index = _allEquipments.indexWhere(
+          (eq) => eq['id'] == equipmentId || eq['code'] == equipmentId,
         );
-        if (equipmentIndex != -1) {
-          _equipments[equipmentIndex] = updatedEquipment;
+        
+        if (index != -1) {
+          // Mettre à jour les champs modifiés localement
+          final updatedEquipment = Map<String, dynamic>.from(
+            _allEquipments[index],
+          );
+          
+          // ✅ Mettre à jour tous les champs du formulaire
+          updatedFields.forEach((key, value) {
+            // Mapper les clés du formulaire vers les clés de stockage
+            switch (key) {
+              case 'code_parent':
+                updatedEquipment['codeParent'] = value;
+                updatedEquipment['Code Parent'] = value;
+                break;
+              case 'feeder':
+                updatedEquipment['feeder'] = value;
+                updatedEquipment['Feeder'] = value;
+                break;
+              case 'feeder_description':
+                updatedEquipment['feederDescription'] = value;
+                updatedEquipment['Info Feeder'] = value;
+                break;
+              case 'famille':
+                updatedEquipment['famille'] = value;
+                updatedEquipment['Famille'] = value;
+                break;
+              case 'zone':
+                updatedEquipment['zone'] = value;
+                updatedEquipment['Zone'] = value;
+                break;
+              case 'entity':
+                updatedEquipment['entity'] = value;
+                updatedEquipment['Entité'] = value;
+                break;
+              case 'unite':
+                updatedEquipment['unite'] = value;
+                updatedEquipment['Unité'] = value;
+                break;
+              case 'centre_charge':
+                updatedEquipment['centreCharge'] = value;
+                updatedEquipment['Centre'] = value;
+                break;
+              case 'description':
+                updatedEquipment['description'] = value;
+                updatedEquipment['Description'] = value;
+                break;
+              case 'longitude':
+                updatedEquipment['longitude'] = value;
+                updatedEquipment['Longitude'] = value;
+                break;
+              case 'latitude':
+                updatedEquipment['latitude'] = value;
+                updatedEquipment['Latitude'] = value;
+                break;
+              case 'attributs':
+                // ✅ Mettre à jour les attributs si fournis
+                updatedEquipment['attributes'] = value;
+                break;
+              // ✅ AJOUTÉ: Gestion du champ code (lecture seule mais peut être dans les données)
+              case 'code':
+                // Le code ne change pas normalement, mais on le met à jour si fourni
+                updatedEquipment['code'] = value;
+                updatedEquipment['Code'] = value;
+                break;
+              default:
+                updatedEquipment[key] = value;
+            }
+          });
+
+          // Mettre à jour dans les listes
+          _allEquipments[index] = updatedEquipment;
+          final equipmentIndex = _equipments.indexWhere(
+            (eq) => eq['id'] == equipmentId || eq['code'] == equipmentId,
+          );
+          if (equipmentIndex != -1) {
+            _equipments[equipmentIndex] = updatedEquipment;
+          }
+
+          // ✅ Mettre à jour le cache des attributs si modifiés
+          if (updatedFields.containsKey('attributs')) {
+            final equipmentCode =  updatedEquipment['code'] ?? 
+                                  updatedEquipment['Code'] ?? 
+                                  equipmentId;
+            await _updateEquipmentAttributesCache(equipmentCode, updatedFields['attributs']);
+          }
+
+          if (kDebugMode) {
+            print('✅ EquipmentProvider - Données locales mises à jour');
+          }
+        } else {
+          if (kDebugMode) {
+            print('⚠️ EquipmentProvider - Équipement $equipmentId non trouvé dans les données locales');
+          }
         }
 
         if (kDebugMode) {
-          print('✅ GMAO: Équipement modifié avec succès');
+          print('✅ GMAO: Équipement modifié avec succès via API');
         }
       } else {
         throw Exception(
@@ -364,6 +463,45 @@ class EquipmentProvider extends ChangeNotifier {
         print('❌ GMAO: Erreur modification équipement: $e');
       }
       rethrow;
+    }
+  }
+
+  /// ✅ Mettre à jour le cache des attributs après modification
+  Future<void> _updateEquipmentAttributesCache(
+    String equipmentCode, 
+    List<dynamic> attributs,
+  ) async {
+    try {
+      // Convertir les attributs du format API vers EquipmentAttribute
+      final attributes = attributs.map((attr) {
+        if (attr is Map<String, dynamic>) {
+          return EquipmentAttribute(
+            id: attr['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
+            name: attr['name']?.toString() ?? '',
+            value: attr['value']?.toString() ?? '',
+            specification: attr['type']?.toString() ?? '1', // Utiliser type comme specification
+            index: '1', // ✅ Ajouter un index par défaut
+          );
+        }
+        return null;
+      }).where((attr) => attr != null).cast<EquipmentAttribute>().toList();
+
+      // ✅ AJOUTÉ: Filtrer les doublons avant la mise en cache
+      final uniqueAttributes = _filterDuplicateAttributes(attributes);
+
+      // Mettre à jour le cache
+      await HiveService.cacheAttributeValues(equipmentCode, uniqueAttributes);
+      
+      // Mettre à jour en mémoire
+      _equipmentAttributes[equipmentCode] = uniqueAttributes;
+
+      if (kDebugMode) {
+        print('✅ EquipmentProvider - Cache des attributs mis à jour pour $equipmentCode (${uniqueAttributes.length} attributs)');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ EquipmentProvider - Erreur mise à jour cache attributs: $e');
+      }
     }
   }
 
@@ -404,92 +542,6 @@ class EquipmentProvider extends ChangeNotifier {
   // ========================================
   // GESTION DES VALEURS D'ATTRIBUTS
   // ========================================
-
-  /// Charger les valeurs d'attributs pour une spécification d'attribut
-  Future<List<EquipmentAttribute>> loadAttributeSpecificationValues(
-    String specification,
-    String attributeIndex,
-  ) async {
-    if (_attributesLoading) {
-      return _attributeSpecifications['${specification}_$attributeIndex'] ?? [];
-    }
-
-    _attributesLoading = true;
-    notifyListeners();
-
-    try {
-      final specKey = '${specification}_$attributeIndex';
-
-      if (kDebugMode) {
-        print('🔧 EquipmentProvider - Chargement des valeurs pour: $specKey');
-      }
-
-      // 1. Vérifier le cache d'abord
-      final cachedAttributes =
-          await HiveService.getCachedAttributeSpecifications(
-            specification,
-            attributeIndex,
-          );
-
-      if (cachedAttributes != null && cachedAttributes.isNotEmpty) {
-        _attributeSpecifications[specKey] = cachedAttributes;
-        if (kDebugMode) {
-          print(
-            '📋 EquipmentProvider - ${cachedAttributes.length} attributs chargés depuis le cache',
-          );
-        }
-        return cachedAttributes;
-      }
-
-      // 2. Si pas de cache, charger depuis l'API
-      await _checkConnectivity();
-      if (_isOffline) {
-        throw Exception(
-          'Impossible de charger les attributs en mode hors ligne',
-        );
-      }
-
-      if (kDebugMode) {
-        print('🌐 EquipmentProvider - Chargement des attributs depuis l\'API');
-      }
-
-      final apiResponse = await _apiService.getAttributeValuesEquipment(
-        specification: specification,
-        attributeIndex: attributeIndex,
-      );
-
-      final attributeValues =
-          apiResponse['attributes'] as List<EquipmentAttribute>;
-
-      // 3. Mettre en cache
-      await HiveService.cacheAttributeSpecifications(
-        specification,
-        attributeIndex,
-        attributeValues,
-      );
-
-      // 4. Stocker en mémoire
-      _attributeSpecifications[specKey] = attributeValues;
-
-      if (kDebugMode) {
-        print(
-          '✅ EquipmentProvider - ${attributeValues.length} valeurs d\'attributs chargées et mises en cache',
-        );
-      }
-
-      return attributeValues;
-    } catch (e) {
-      if (kDebugMode) {
-        print(
-          '❌ EquipmentProvider - Erreur chargement valeurs d\'attributs: $e',
-        );
-      }
-      rethrow;
-    } finally {
-      _attributesLoading = false;
-      notifyListeners();
-    }
-  }
 
   /// ✅ NOUVEAU: Charger les attributs d'un équipement spécifique depuis ses données
   /// Cette méthode simule le chargement des attributs de l'équipement en utilisant ses spécifications
@@ -825,53 +877,6 @@ class EquipmentProvider extends ChangeNotifier {
     }
   }
 
-  /// ✅ MODIFIÉ: Alias pour compatibilité (utilise la nouvelle méthode)
-  Future<List<EquipmentAttribute>> loadAttributeValues(
-    String specification,
-    String attributeIndex,
-  ) async {
-    return await loadPossibleValuesForAttribute(specification, attributeIndex);
-  }
-
-  /// ✅ NOUVEAU: Obtenir les spécifications d'attributs en mémoire
-  List<EquipmentAttribute>? getAttributeSpecificationsFromMemory(
-    String specification,
-    String attributeIndex,
-  ) {
-    final specKey = '${specification}_$attributeIndex';
-    return _attributeSpecifications[specKey];
-  }
-
-  /// ✅ MODIFIÉ: Obtenir les attributs en mémoire
-  List<EquipmentAttribute>? getAttributeValuesFromMemory(
-    String specification,
-    String attributeIndex,
-  ) {
-    return getAttributeSpecificationsFromMemory(specification, attributeIndex);
-  }
-
-  /// ✅ NOUVEAU: Obtenir les attributs d'un équipement en mémoire
-  List<EquipmentAttribute>? getEquipmentAttributesFromMemory(
-    String equipmentCode,
-  ) {
-    return _equipmentAttributes[equipmentCode];
-  }
-
-  /// ✅ MODIFIÉ: Nettoyer les attributs en mémoire
-  void clearAttributesFromMemory([String? equipmentCode]) {
-    if (equipmentCode != null) {
-      _equipmentAttributes.remove(equipmentCode);
-      // Nettoyer aussi les spécifications associées
-      _attributeSpecifications.removeWhere(
-        (key, value) => key.startsWith(equipmentCode),
-      );
-    } else {
-      _equipmentAttributes.clear();
-      _attributeSpecifications.clear();
-    }
-    notifyListeners();
-  }
-
   /// ✅ NOUVEAU: Filtrer les équipements par un champ spécifique
   void filterEquipmentsByField(String searchTerm, String field) {
     if (searchTerm.isEmpty) {
@@ -995,62 +1000,4 @@ class EquipmentProvider extends ChangeNotifier {
     }
   }
 
-  /// ✅ NOUVEAU: Nettoyer et reconstruire le cache des attributs d'équipement
-  Future<void> cleanAndRebuildAttributeCache(String equipmentCode) async {
-    try {
-      if (kDebugMode) {
-        print(
-          '🧹 EquipmentProvider - Nettoyage du cache pour équipement: $equipmentCode',
-        );
-      }
-
-      // 1. Supprimer le cache existant
-      await HiveService.clearAttributeValues(equipmentCode);
-
-      // 2. Supprimer de la mémoire
-      _equipmentAttributes.remove(equipmentCode);
-
-      // 3. Recharger depuis l'API
-      await loadEquipmentAttributes(equipmentCode);
-
-      if (kDebugMode) {
-        print(
-          '✅ EquipmentProvider - Cache des attributs nettoyé et reconstruit',
-        );
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ EquipmentProvider - Erreur nettoyage cache: $e');
-      }
-      rethrow;
-    }
-  }
-
-  /// ✅ NOUVEAU: Nettoyer tous les caches d'attributs corrompus
-  Future<void> cleanAllAttributeCaches() async {
-    try {
-      if (kDebugMode) {
-        print(
-          '🧹 EquipmentProvider - Nettoyage complet des caches d\'attributs',
-        );
-      }
-
-      // 1. Nettoyer tous les caches d'attributs
-      await HiveService.clearAllAttributeCaches();
-
-      // 2. Nettoyer la mémoire
-      _equipmentAttributes.clear();
-      _attributeSpecifications.clear();
-
-      notifyListeners();
-
-      if (kDebugMode) {
-        print('✅ EquipmentProvider - Tous les caches d\'attributs nettoyés');
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ EquipmentProvider - Erreur nettoyage complet: $e');
-      }
-    }
-  }
 }

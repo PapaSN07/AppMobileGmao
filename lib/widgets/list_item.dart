@@ -64,6 +64,7 @@ class ListItemCustom extends StatelessWidget {
         ItemField(label: 'Unité', value: unite),
       ],
       overlayDetails: {
+        'ID': id ?? '',
         'Code': code,
         'Famille': famille,
         'Zone': zone,

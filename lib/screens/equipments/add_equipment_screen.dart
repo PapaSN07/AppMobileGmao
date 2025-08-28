@@ -1278,4 +1278,5 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
       }
     }
   }
+
 }

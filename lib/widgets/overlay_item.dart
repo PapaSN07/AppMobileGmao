@@ -80,8 +80,10 @@ class OverlayContent extends StatelessWidget {
 
   Widget _buildContent() {
     return Column(
-      children:
-          details.entries.map((entry) => _buildDetailItem(entry)).toList(),
+      children: details.entries
+          .where((entry) => entry.key.toLowerCase() != 'id')
+          .map((entry) => _buildDetailItem(entry))
+          .toList(),
     );
   }
 
