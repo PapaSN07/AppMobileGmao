@@ -581,21 +581,37 @@ class HiveService {
   // GESTION DES VALEURS D'ATTRIBUTS
   // ========================================
 
-  /// ✅ MODIFIÉ: Cache des valeurs d'attributs sans affecter les autres caches
+  /// ✅ PRIORITÉ: Cache des valeurs d'attributs avec vérification immédiate
   static Future<void> cacheAttributeValues(
     String equipmentCode,
     List<EquipmentAttribute> attributeValues,
   ) async {
     try {
+      // ✅ AJOUTÉ: Validation du code équipement
+      if (equipmentCode.isEmpty) {
+        if (kDebugMode) {
+          print('⚠️ GMAO: Code équipement vide, abandon mise en cache');
+        }
+        return;
+      }
+
+      if (kDebugMode) {
+        print('🔄 GMAO: Début mise en cache pour équipement: $equipmentCode');
+        print('📊 GMAO: Attributs à mettre en cache:');
+        for (final attr in attributeValues) {
+          print('   - ${attr.name}: "${attr.value}" (ID: ${attr.id})');
+        }
+      }
+
       // Convertir les EquipmentAttribute en Map pour le stockage
-      final attributesData =
-          attributeValues.map((attr) => attr.toJson()).toList();
+      final attributesData = attributeValues.map((attr) => attr.toJson()).toList();
 
       final cacheData = {
         'equipmentCode': equipmentCode,
         'attributes': attributesData,
         'timestamp': DateTime.now().millisecondsSinceEpoch,
         'cachedAt': DateTime.now().toIso8601String(),
+        'version': 2, // ✅ AJOUTÉ: Version pour le debug
       };
 
       // ✅ IMPORTANT: Mettre à jour UNIQUEMENT le cache de cet équipement
@@ -604,8 +620,20 @@ class HiveService {
 
       if (kDebugMode) {
         print(
-          '💾 GMAO: ${attributeValues.length} valeurs d\'attributs mises en cache pour équipement $equipmentCode SEULEMENT',
+          '💾 GMAO: ${attributeValues.length} valeurs d\'attributs mises en cache pour équipement $equipmentCode',
         );
+        
+        // ✅ NOUVEAU: Vérification immédiate de la mise en cache
+        final verification = attributeValuesBox.get(equipmentCode);
+        if (verification != null && verification['attributes'] is List) {
+          final cachedAttributes = verification['attributes'] as List;
+          print('🔍 GMAO: Vérification immédiate du cache:');
+          for (final attr in cachedAttributes) {
+            print('   ✓ Mis en cache: ${attr['name']}: "${attr['value']}"');
+          }
+        } else {
+          print('❌ GMAO: ERREUR - Les données n\'ont pas été mises en cache correctement!');
+        }
       }
     } catch (e) {
       if (kDebugMode) {
@@ -700,11 +728,19 @@ class HiveService {
     }
   }
 
-  /// ✅ MODIFIÉ: Récupération des valeurs d'attributs pour un équipement (retourne EquipmentAttribute)
+  /// ✅ IMPROVED: Récupération des valeurs d'attributs avec logs détaillés
   static Future<List<EquipmentAttribute>?> getCachedAttributeValues(
     String equipmentCode,
   ) async {
     try {
+      // ✅ AJOUTÉ: Validation du code équipement
+      if (equipmentCode.isEmpty) {
+        if (kDebugMode) {
+          print('⚠️ GMAO: Code équipement vide, abandon récupération cache');
+        }
+        return null;
+      }
+
       final cachedData = attributeValuesBox.get(equipmentCode);
 
       if (cachedData == null) {
@@ -734,19 +770,22 @@ class HiveService {
 
       // Convertir les données en liste d'EquipmentAttribute
       final attributesData = cachedData['attributes'] as List;
-      final attributeValues =
-          attributesData
-              .map(
-                (data) => EquipmentAttribute.fromJson(
-                  Map<String, dynamic>.from(data),
-                ),
-              )
-              .toList();
+      final attributeValues = attributesData
+          .map(
+            (data) => EquipmentAttribute.fromJson(
+              Map<String, dynamic>.from(data),
+            ),
+          )
+          .toList();
 
       if (kDebugMode) {
         print(
           '📋 GMAO: ${attributeValues.length} valeurs d\'attributs récupérées du cache pour équipement $equipmentCode',
         );
+        // ✅ NOUVEAU: Logs détaillés des valeurs récupérées
+        for (final attr in attributeValues) {
+          print('   - RÉCUPÉRÉ: ${attr.name}: "${attr.value}"');
+        }
       }
 
       return attributeValues;
@@ -905,9 +944,31 @@ class HiveService {
     }
   }
 
-  /// ✅ Amélioration de la méthode clearAttributeValues
+  /// ✅ IMPROVED: Nettoyage avec logs détaillés
   static Future<void> clearAttributeValues(String equipmentCode) async {
     try {
+      // ✅ AJOUTÉ: Validation du code équipement
+      if (equipmentCode.isEmpty) {
+        if (kDebugMode) {
+          print('⚠️ GMAO: Code équipement vide, abandon nettoyage cache');
+        }
+        return;
+      }
+
+      if (kDebugMode) {
+        print('🗑️ GMAO: Début nettoyage cache pour équipement: $equipmentCode');
+        
+        // Vérifier ce qui va être supprimé
+        final existingData = attributeValuesBox.get(equipmentCode);
+        if (existingData != null && existingData['attributes'] is List) {
+          final attributes = existingData['attributes'] as List;
+          print('🔍 GMAO: Données à supprimer:');
+          for (final attr in attributes) {
+            print('   - À supprimer: ${attr['name']}: "${attr['value']}"');
+          }
+        }
+      }
+
       // Nettoyer la clé principale (code équipement)
       await attributeValuesBox.delete(equipmentCode);
       await metadataBox.delete('attribute_values_$equipmentCode');
@@ -926,6 +987,14 @@ class HiveService {
 
       if (kDebugMode) {
         print('🗑️ GMAO: Cache des attributs nettoyé pour $equipmentCode (${keysToDelete.length + 1} entrées)');
+        
+        // ✅ NOUVEAU: Vérification que le nettoyage a fonctionné
+        final verificationData = attributeValuesBox.get(equipmentCode);
+        if (verificationData == null) {
+          print('✅ GMAO: Nettoyage confirmé - cache vidé pour $equipmentCode');
+        } else {
+          print('❌ GMAO: ERREUR - Cache non vidé pour $equipmentCode');
+        }
       }
     } catch (e) {
       if (kDebugMode) {

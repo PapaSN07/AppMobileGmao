@@ -315,9 +315,17 @@ class EquipmentProvider extends ChangeNotifier {
     }
   }
 
-  /// ✅ NOUVEAU: Forcer le rechargement des attributs depuis l'API après modification
+  /// ✅ CORRIGÉ: Forcer le rechargement des attributs depuis l'API après modification
   Future<void> _forceReloadEquipmentAttributes(String equipmentCode) async {
     try {
+      // ✅ AJOUTÉ: Validation du code équipement
+      if (equipmentCode.isEmpty) {
+        if (kDebugMode) {
+          print('❌ EquipmentProvider - Code équipement vide, abandon rechargement');
+        }
+        return;
+      }
+
       if (kDebugMode) {
         print(
           '🔄 EquipmentProvider - Rechargement forcé des attributs pour: $equipmentCode',
@@ -375,6 +383,9 @@ class EquipmentProvider extends ChangeNotifier {
           );
         }
 
+        // ✅ IMPORTANT: Sauvegarder le code équipement AVANT l'appel API
+        final equipmentCode = updatedFields['code'] as String? ?? '';
+
         // ✅ Appeler l'API pour la mise à jour réelle
         final equipment = await _apiService.updateEquipment(
           equipmentId,
@@ -383,7 +394,7 @@ class EquipmentProvider extends ChangeNotifier {
 
         if (kDebugMode) {
           print(
-            '✅ EquipmentProvider - Réponse API reçue pour: ${equipment.code}',
+            '✅ EquipmentProvider - Réponse API reçue pour: ${equipment.code.isNotEmpty ? equipment.code : equipmentCode}',
           );
         }
 
@@ -399,17 +410,17 @@ class EquipmentProvider extends ChangeNotifier {
           );
 
           // ✅ NOUVEAU: Mettre à jour UNIQUEMENT les champs qui ont réellement changé selon la réponse API
-          if (equipment.codeParent!.isNotEmpty) {
+          if (equipment.codeParent != null && equipment.codeParent!.isNotEmpty) {
             updatedEquipment['codeParent'] = equipment.codeParent;
             updatedEquipment['Code Parent'] = equipment.codeParent;
           }
 
-          if (equipment.feeder!.isNotEmpty) {
+          if (equipment.feeder != null && equipment.feeder!.isNotEmpty) {
             updatedEquipment['feeder'] = equipment.feeder;
             updatedEquipment['Feeder'] = equipment.feeder;
           }
 
-          if (equipment.feederDescription!.isNotEmpty) {
+          if (equipment.feederDescription != null && equipment.feederDescription!.isNotEmpty) {
             updatedEquipment['feederDescription'] = equipment.feederDescription;
             updatedEquipment['Info Feeder'] = equipment.feederDescription;
           }
@@ -467,30 +478,38 @@ class EquipmentProvider extends ChangeNotifier {
             _equipments[equipmentIndex] = updatedEquipment;
           }
 
-          // ✅ IMPORTANT: Toujours forcer le rechargement des attributs après modification
+          // ✅ CRITICAL: TOUJOURS mettre à jour les attributs si l'API retourne les nouvelles valeurs
           if (updatedFields.containsKey('attributs')) {
-            final equipmentCode = equipment.code;
+            // ✅ CORRIGÉ: Utiliser le code sauvegardé avant l'appel API
+            final finalEquipmentCode = equipment.code.isNotEmpty ? equipment.code : equipmentCode;
 
-            if (equipment.attributes != null &&
-                equipment.attributes!.isNotEmpty) {
-              // Cas 1: L'API retourne les attributs mis à jour
+            if (equipment.attributes != null && equipment.attributes!.isNotEmpty) {
+              // ✅ PRIORITY: Cas 1 - L'API retourne les attributs mis à jour (UTILISER CES VALEURS)
+              if (kDebugMode) {
+                print('🎯 EquipmentProvider - L\'API retourne ${equipment.attributes!.length} attributs mis à jour');
+              }
+              
               await _updateEquipmentAttributesCache(
-                equipmentCode,
+                finalEquipmentCode,
                 equipment.attributes!,
               );
 
               if (kDebugMode) {
                 print(
-                  '✅ EquipmentProvider - Attributs mis à jour depuis la réponse API',
+                  '✅ EquipmentProvider - Attributs mis à jour depuis la réponse API pour: $finalEquipmentCode',
                 );
               }
             } else {
-              // Cas 2: L'API ne retourne pas les attributs, forcer le rechargement
-              await _forceReloadEquipmentAttributes(equipmentCode);
+              // ✅ FALLBACK: Cas 2 - L'API ne retourne pas les attributs, forcer le rechargement
+              if (kDebugMode) {
+                print('⚠️ EquipmentProvider - L\'API ne retourne pas les attributs, rechargement forcé');
+              }
+              
+              await _forceReloadEquipmentAttributes(finalEquipmentCode);
 
               if (kDebugMode) {
                 print(
-                  '✅ EquipmentProvider - Rechargement forcé des attributs depuis l\'API',
+                  '✅ EquipmentProvider - Rechargement forcé des attributs depuis l\'API pour: $finalEquipmentCode',
                 );
               }
             }
@@ -526,12 +545,28 @@ class EquipmentProvider extends ChangeNotifier {
     }
   }
 
-  /// ✅ CORRIGÉ: Mettre à jour le cache des attributs avec les nouvelles valeurs
+  /// ✅ CORRIGÉ: Mettre à jour le cache des attributs avec les nouvelles valeurs de l'API
   Future<void> _updateEquipmentAttributesCache(
     String equipmentCode,
     List<EquipmentAttribute> attributesFromAPI,
   ) async {
     try {
+      // ✅ AJOUTÉ: Validation du code équipement
+      if (equipmentCode.isEmpty) {
+        if (kDebugMode) {
+          print('❌ EquipmentProvider - Code équipement vide, abandon mise à jour cache');
+        }
+        return;
+      }
+
+      if (kDebugMode) {
+        print('🔄 EquipmentProvider - Mise à jour cache attributs avec nouvelles valeurs API pour: $equipmentCode');
+        print('📊 EquipmentProvider - Attributs reçus de l\'API:');
+        for (final attr in attributesFromAPI) {
+          print('   - ${attr.name}: "${attr.value}" (ID: ${attr.id}, spec: ${attr.specification})');
+        }
+      }
+
       // ✅ MODIFIÉ: Utiliser directement les attributs de la réponse API (qui contiennent les nouvelles valeurs)
       final uniqueAttributes = _filterDuplicateAttributes(attributesFromAPI);
 
@@ -548,11 +583,24 @@ class EquipmentProvider extends ChangeNotifier {
         print(
           '✅ EquipmentProvider - Cache des attributs mis à jour pour $equipmentCode (${uniqueAttributes.length} attributs)',
         );
-        // ✅ AJOUTÉ: Logs pour voir les nouvelles valeurs
+        // ✅ AJOUTÉ: Logs pour voir les nouvelles valeurs mises en cache
         for (final attr in uniqueAttributes) {
           print(
-            '   - ${attr.name}: "${attr.value}" (spec: ${attr.specification}, index: ${attr.index})',
+            '   ✓ MISE EN CACHE: ${attr.name}: "${attr.value}" (spec: ${attr.specification}, index: ${attr.index})',
           );
+        }
+      }
+
+      // ✅ NOUVEAU: Vérifier immédiatement que le cache a été mis à jour
+      final verificationCache = await HiveService.getCachedAttributeValues(equipmentCode);
+      if (verificationCache != null) {
+        if (kDebugMode) {
+          print('🔍 EquipmentProvider - Vérification cache après mise à jour:');
+        }
+        for (final attr in verificationCache) {
+          if (kDebugMode) {
+            print('   ✓ VÉRIFIÉ: ${attr.name}: "${attr.value}"');
+          }
         }
       }
     } catch (e) {
