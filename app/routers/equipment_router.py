@@ -80,6 +80,7 @@ async def update_equipment_partial_endpoint(
     request: UpdateEquipmentRequest
 ) -> Dict[str, Any]:
     """Modification partielle d'un équipement avec ses attributs"""
+    
     try:
         # Convertir la request en dictionnaire, en excluant les valeurs None
         updates = request.model_dump(exclude_none=True)

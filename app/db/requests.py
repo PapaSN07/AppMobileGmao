@@ -2,7 +2,9 @@
 Requêtes SQL corrigées pour le projet SENELEC GMAO
 """
 
-# --- Famille/Catégories (correspond à ereq_category dans t_equipment)
+#   ================================================================================
+#   REQUÊTES DE Famille/Catégories
+#   ================================================================================
 CATEGORY_QUERY = """
 SELECT
     pk_category,
@@ -24,7 +26,9 @@ WHERE mdct_code IS NOT NULL
 ORDER BY mdct_entity, mdct_description
 """
 
-# --- Feeder (Équipements de référence)
+#   ================================================================================
+#   REQUÊTES DE Feeder (Équipements de référence)
+#   ================================================================================
 FEEDER_QUERY = """
 SELECT
     pk_equipment,
@@ -34,7 +38,9 @@ SELECT
 FROM coswin.t_equipment
 """
 
-# --- Zone
+#   ================================================================================
+#   REQUÊTES DE Zone
+#   ================================================================================
 ZONE_QUERY = """
 SELECT 
     pk_zone,
@@ -44,7 +50,9 @@ SELECT
 FROM coswin.t_zone
 """
 
-# --- Entité
+#   ================================================================================
+#   REQUÊTES DE Entité
+#   ================================================================================
 ENTITY_QUERY = """
 SELECT
     pk_entity,
@@ -57,13 +65,17 @@ SELECT
 FROM coswin.t_entity
 """
 
-# --- Fonction Hiérarchie
+#   ================================================================================
+#   REQUÊTES DE Fonction Hiérarchie
+#   ================================================================================
 HIERARCHIC = """
 SELECT COLUMN_VALUE as entity_code 
 FROM TABLE(coswin.sn_hierarchie(:entity))
 """
 
-# --- Centre de charges
+#   ================================================================================
+#   REQUÊTES DE Centre de charges
+#   ================================================================================
 COSTCENTRE_QUERY = """
 SELECT 
     pk_costcentre,
@@ -73,7 +85,9 @@ SELECT
 FROM coswin.t_costcentre
 """
 
-# --- Unité (Fonction)
+#   ================================================================================
+#   REQUÊTES DE Unité (Fonction)
+#   ================================================================================
 FUNCTION_QUERY = """
 SELECT 
     pk_function_,
@@ -85,7 +99,9 @@ SELECT
 FROM coswin.t_function_
 """
 
-# --- Équipements
+#   ================================================================================
+#   REQUÊTES DE Équipements
+#   ================================================================================
 EQUIPMENT_INFINITE_QUERY = """
 SELECT 
     e.pk_equipment, 
@@ -277,7 +293,9 @@ INSERT INTO coswin.equipment_attribute (
 )
 """
 
-# --- Utilisateurs
+#   ================================================================================
+#   REQUÊTES DE Utilisateurs
+#   ================================================================================
 GET_USER_AUTHENTICATION_QUERY = """
 SELECT 
     pk_coswin_user, 
@@ -321,7 +339,9 @@ WHERE (cwcu_signature = :username OR cwcu_email = :username)
 AND ROWNUM <= 1
 """
 
-# === REQUÊTES DE STATISTIQUES ===
+#   ================================================================================
+#   REQUÊTES DE STATISTIQUES
+#   ================================================================================
 
 # Statistiques par entité
 STATS_BY_ENTITY_QUERY = """
