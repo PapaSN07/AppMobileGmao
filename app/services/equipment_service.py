@@ -615,6 +615,11 @@ def insert_equipment(equipment: EquipmentModel) -> bool:
                             continue
                 logger.info(f"{created}/{len(attr_rows) if attr_rows else 0} attributs créés pour {equipment.code}")
 
+                # 5) Ajout des attributs éventuels
+                attributes = equipment.attributes
+                if attributes:
+                    update_equipment_attributes(equipment.code, [attr.model_dump() for attr in attributes])
+                
                 # commit de la transaction
                 if hasattr(db, "commit_transaction"):
                     db.commit_transaction()

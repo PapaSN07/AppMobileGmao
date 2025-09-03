@@ -16,22 +16,19 @@ class EquipmentAttribute(BaseModel):
         }
 
 class AddEquipmentRequest(BaseModel):
-    id: str
-    code_parent: Optional[str] = None
-    feeder: Optional[str] = None
-    feeder_description: Optional[str] = None
-    code: str
-    famille: str
-    zone: str
-    entity: str
-    unite: str
-    centre_charge: str
-    description: str
-    longitude: Optional[str] = None
-    latitude: Optional[str] = None
-    attributs: List[EquipmentAttribute]
-    cached_at: str
-    is_sync: bool
+    code: str = Field(..., description="Code unique de l'équipement")
+    description: Optional[str] = Field(None, description="Description")
+    famille: str = Field(..., description="Famille / catégorie (ereq_category)")
+    zone: str = Field(..., description="Zone")
+    entity: str = Field(..., description="Entité")
+    unite: Optional[str] = Field(None, description="Unité / fonction")
+    centre_charge: Optional[str] = Field(None, description="Centre de charge (snake_case); sera mappé vers centreCharge côté service")
+    longitude: Optional[str] = Field(None, description="Longitude")
+    latitude: Optional[str] = Field(None, description="Latitude")
+    feeder: Optional[str] = Field(None, description="Feeder code")
+    feeder_description: Optional[str] = Field(None, description="Description du feeder")
+    code_parent: Optional[str] = Field(None, description="Code de l'équipement parent")
+    attributs: Optional[List[EquipmentAttribute]] = Field(None, description="Valeurs d'attributs optionnelles")
 
 class UpdateEquipmentRequest(BaseModel):
     """Schéma pour la modification d'un équipement"""

@@ -2,6 +2,7 @@ from fastapi import APIRouter, Query, HTTPException
 from typing import Optional, Dict, Any
 import logging
 
+from app.models.models import EquipmentModel
 from app.schemas.responses.equipment_response import AttributeResponse
 from app.services.equipment_service import (
     get_attribute_values,
@@ -9,6 +10,7 @@ from app.services.equipment_service import (
     get_equipments_infinite,
     get_feeders,
     add_equipment,
+    insert_equipment,
     update_equipment_partial
 )
 from app.services.centre_charge_service import get_centre_charges
@@ -57,13 +59,37 @@ async def get_equipments_mobile(
     description="Ajoute un nouvel équipement dans la base"
 )
 async def add_equipment_mobile(request: AddEquipmentRequest) -> Dict[str, Any]:
-    """Ajout d'un équipement"""
+    """Ajout d'un équipement via insert_equipment"""
     try:
-        success = add_equipment(request.model_dump())
+        data = request.model_dump(exclude_none=True)
+
+        # Mapper les champs du DTO vers les attributs attendus par EquipmentModel
+        equipment = EquipmentModel(
+            id = "", 
+            code = data.get('code', ''),
+            description = data.get('description', ''),
+            codeParent = data.get('code_parent', ''),
+            famille = data.get('famille', ''),
+            zone = data.get('zone', ''),
+            entity = data.get('entity', ''),
+            unite = data.get('unite', ''),
+            # service insert_equipment attend centreCharge (camelCase) — on mappe depuis centre_charge
+            centreCharge = data.get('centre_charge', ''),
+            longitude = data.get('longitude', ''),
+            latitude = data.get('latitude', ''),
+            feeder = data.get('feeder', ''),
+            feederDescription = data.get('feeder', ''),
+            # conserver les attributs fournis (optionnel) — insert_equipment crée les lignes attribute templates,
+            # si tu veux des valeurs réelles, tu devras enrichir insert_equipment pour accepter 'attributs'
+            attributes = data.get('attributs', [])
+        )
+
+        success = insert_equipment(equipment)
         if success:
             return {
                 "status": "success",
-                "message": "Équipement ajouté avec succès"
+                "message": "Équipement ajouté avec succès",
+                "equipment_id": getattr(equipment, "id", None)
             }
         else:
             raise HTTPException(status_code=500, detail="Erreur lors de l'ajout de l'équipement")
