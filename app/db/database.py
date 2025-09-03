@@ -218,42 +218,57 @@ class OracleDatabase:
             if cursor:
                 cursor.close()
     
-    def execute_update(self, query: str, params: Optional[Dict[str, Any]] = None) -> int:
+    def execute_update(self, query: str, params: Optional[Dict[str, Any]] = None, commit: bool = True) -> int:
         """
         Exécute une requête UPDATE/INSERT/DELETE.
-        
+
         Args:
             query: Requête SQL à exécuter
             params: Paramètres nommés pour la requête
-            
+            commit: Si True (par défaut) effectue un commit après exécution.
+                    Si False, laisse le commit/rollback à l'appelant (utile pour transactions).
+
         Returns:
             Nombre de lignes affectées
-            
+
         Raises:
             ConnectionError: Si pas de connexion à la DB
             oracledb.DatabaseError: Pour les erreurs SQL
         """
         if not self.connection:
             raise ConnectionError("Pas de connexion à la base de données")
-        
+
         cursor = None
         try:
             cursor = self.connection.cursor()
             cursor.execute(query, params or {})
             affected_rows = cursor.rowcount
-            self.connection.commit()  # Important pour Oracle
-            
-            print(f"📝 Mise à jour exécutée: {affected_rows} ligne(s) affectée(s)")
+
+            if commit:
+                # comportement rétrocompatible : commit automatique
+                self.connection.commit()
+                print(f"📝 Mise à jour exécutée: {affected_rows} ligne(s) affectée(s) (commit effectué)")
+            else:
+                # pas de commit — caller doit appeler commit_transaction() ou rollback_transaction()
+                print(f"📝 Mise à jour exécutée: {affected_rows} ligne(s) affectée(s) (commit différé)")
+
             return affected_rows
-            
+
         except oracledb.DatabaseError as e:
-            if self.connection:
-                self.connection.rollback()
+            # rollback seulement si on gérait le commit ici
+            if commit and self.connection:
+                try:
+                    self.connection.rollback()
+                except Exception:
+                    pass
             print(f"❌ Erreur SQL update: {e}")
             raise
         except Exception as e:
-            if self.connection:
-                self.connection.rollback()
+            if commit and self.connection:
+                try:
+                    self.connection.rollback()
+                except Exception:
+                    pass
             print(f"❌ Erreur inattendue lors de la mise à jour: {e}")
             raise
         finally:
@@ -311,58 +326,6 @@ class OracleDatabase:
         except oracledb.DatabaseError as e:
             print(f"❌ Erreur rollback: {e}")
             raise
-    
-    def execute_insert(self, query: str, params: Optional[Dict[str, Any]] = None) -> Optional[int]:
-        """
-        Exécute une requête INSERT et retourne l'ID généré.
-        
-        Args:
-            query: Requête SQL INSERT
-            params: Paramètres nommés pour la requête
-            
-        Returns:
-            ID généré (si applicable) ou None
-        """
-        if not self.connection:
-            raise ConnectionError("Pas de connexion à la base de données")
-        
-        cursor = None
-        try:
-            cursor = self.connection.cursor()
-            
-            # Pour Oracle, on peut utiliser RETURNING INTO
-            if "RETURNING" not in query.upper():
-                # Exécuter l'INSERT normal
-                cursor.execute(query, params or {})
-                affected_rows = cursor.rowcount
-                
-                if affected_rows > 0:
-                    # Essayer de récupérer l'ID avec CURRVAL si on a une séquence
-                    try:
-                        # Cette approche fonctionne si on utilise une séquence
-                        cursor.execute("SELECT LASTVAL FROM DUAL")  # Remplacer par votre méthode
-                        result = cursor.fetchone()
-                        return result[0] if result else affected_rows
-                    except:
-                        # Si pas de séquence, retourner le nombre de lignes
-                        return affected_rows
-                else:
-                    return None
-            else:
-                # Requête avec RETURNING
-                cursor.execute(query, params or {})
-                result = cursor.fetchone()
-                return result[0] if result else None
-                
-        except oracledb.DatabaseError as e:
-            print(f"❌ Erreur SQL insert: {e}")
-            raise
-        except Exception as e:
-            print(f"❌ Erreur inattendue lors de l'insertion: {e}")
-            raise
-        finally:
-            if cursor:
-                cursor.close()
 
 # Fonction utilitaire pour créer une connexion
 def get_database_connection() -> OracleDatabase:

@@ -511,22 +511,29 @@ def validate_equipment_for_insertion(equipment: EquipmentModel) -> tuple[bool, s
 
 def insert_equipment(equipment: EquipmentModel) -> bool:
     """
-    Insère un nouvel équipement dans la base de données avec gestion transactionnelle.
-
-    Args:
-        equipment: L'équipement à insérer.
-
-    Returns:
-        True si l'insertion a réussi, False sinon.
+    Insère un nouvel équipement en utilisant les méthodes existantes de la couche DB.
+    Utilise désormais la gestion transactionnelle de la couche DB :
+    - execute_update(..., commit=False) pour les opérations intermédiaires
+    - commit_transaction() / rollback_transaction() à la fin selon le résultat
     """
     try:
+        # validation préalable
+        is_valid, msg = validate_equipment_for_insertion(equipment)
+        if not is_valid:
+            logger.error(f"Validation échouée: {msg}")
+            return False
+
         with get_database_connection() as db:
-            # Démarrer une transaction
-            db.begin_transaction()
-            
             try:
-                # 1. Insertion de l'équipement principal
-                params_equipment = {
+                # démarrer transaction si disponible
+                if hasattr(db, "begin_transaction"):
+                    try:
+                        db.begin_transaction()
+                    except Exception:
+                        logger.debug("begin_transaction non opérationnel, continuation sans appel explicite")
+
+                # 1) Insert équipement (commit différé)
+                db.execute_update(EQUIPMENT_ADD_QUERY, params={
                     'code': equipment.code,
                     'description': equipment.description,
                     'category': equipment.famille,
@@ -536,102 +543,103 @@ def insert_equipment(equipment: EquipmentModel) -> bool:
                     'costcentre': equipment.centreCharge,
                     'longitude': equipment.longitude,
                     'latitude': equipment.latitude,
-                    'feeder': getattr(equipment, 'feeder', None),  # Ajouter le feeder s'il existe
+                    'feeder': getattr(equipment, 'feeder', None),
                     'creation_date': datetime.now().strftime("%d/%m/%Y")
-                }
-                
-                equipment_id = db.execute_insert(EQUIPMENT_ADD_QUERY, params=params_equipment)
-                logger.info(f"✅ Équipement {equipment.code} créé avec ID: {equipment_id}")
-                
-                if not equipment_id:
-                    raise Exception("Échec de l'insertion de l'équipement")
-                
-                equipment.id = str(equipment_id)
-                
-                # 2. Récupérer le code de spécification pour cette catégorie
-                spec_results = db.execute_query(EQUIPMENT_T_SPECIFICATION_CODE_QUERY, params={'category': equipment.famille})
-                
-                if not spec_results:
-                    logger.warning(f"Aucune spécification trouvée pour la catégorie {equipment.famille}")
-                    db.commit_transaction()  # Commit sans spécifications
+                }, commit=False)
+
+                # 1b) Récupérer pk_equipment fraîchement créé (même session)
+                pk_rows = db.execute_query(
+                    "SELECT pk_equipment FROM coswin.t_equipment WHERE ereq_code = :code AND ROWNUM = 1",
+                    params={'code': equipment.code}
+                )
+                if not pk_rows:
+                    logger.error("Impossible de récupérer pk_equipment après INSERT")
+                    # rollback si possible
+                    if hasattr(db, "rollback_transaction"):
+                        db.rollback_transaction()
+                    return False
+                equipment_pk = pk_rows[0][0]
+                equipment.id = str(equipment_pk)
+
+                # 2) Récupérer cwsp_code (spec) pour la catégorie
+                spec_rows = db.execute_query(EQUIPMENT_T_SPECIFICATION_CODE_QUERY, params={'category': equipment.famille})
+                if not spec_rows:
+                    logger.info(f"Aucune specification trouvée pour la catégorie {equipment.famille} -> insertion terminée sans specs")
+                    # commit partiel et invalider cache
+                    if hasattr(db, "commit_transaction"):
+                        db.commit_transaction()
+                    else:
+                        logger.debug("commit_transaction non disponible, la couche DB peut avoir commit automatique")
+                    for pattern in (f"mobile_eq_*", f"equipment_*", f"feeders_list_*"):
+                        cache.clear_pattern(pattern)
                     return True
-                
-                code_specification = spec_results[0][0] if spec_results[0] else None
-                
-                if not code_specification:
-                    logger.warning(f"Code spécification vide pour {equipment.famille}")
-                    db.commit_transaction()
-                    return True
-                
-                # 3. Insertion dans equipment_specs
-                params_specs = {
-                    'specification': code_specification,
+                cwsp_code = spec_rows[0][0]
+
+                # 3) INSERT equipment_specs (commit différé)
+                db.execute_update(EQUIPMENT_SPEC_ADD_QUERY, params={
+                    'specification': cwsp_code,
                     'equipment': equipment.code,
                     'release_date': datetime.now().strftime("%d/%m/%Y"),
                     'release_number': 1
-                }
-                
-                equipment_spec_id = db.execute_insert(EQUIPMENT_SPEC_ADD_QUERY, params=params_specs)
-                logger.info(f"✅ Spécification créée avec ID: {equipment_spec_id}")
-                
-                if not equipment_spec_id:
-                    logger.warning(f"Échec création spécification pour {equipment.code}")
-                    db.commit_transaction()
+                }, commit=False)
+
+                # 3b) Récupérer pk_equipment_specs
+                es_rows = db.execute_query(
+                    "SELECT pk_equipment_specs FROM coswin.equipment_specs WHERE etes_equipment = :equipment AND etes_specification = :specification AND ROWNUM = 1",
+                    params={'equipment': equipment.code, 'specification': cwsp_code}
+                )
+                if not es_rows:
+                    logger.warning("Impossible de récupérer pk_equipment_specs après INSERT -> commit et fin sans création d'attributs")
+                    if hasattr(db, "commit_transaction"):
+                        db.commit_transaction()
+                    for pattern in (f"mobile_eq_*", f"equipment_*", f"feeders_list_*"):
+                        cache.clear_pattern(pattern)
                     return True
-                
-                # 4. Récupérer la liste des index d'attributs à créer
-                attr_results = db.execute_query(EQUIPMENT_LENGTH_ATTRIBUTS_QUERY, params={'category': equipment.famille})
-                
-                if attr_results:
-                    success_count = 0
-                    for attr_row in attr_results:
+                equipment_specs_pk = es_rows[0][0]
+
+                # 4) Récupérer les index d'attributs pour la famille et créer les equipment_attribute (commit différé)
+                attr_rows = db.execute_query(EQUIPMENT_LENGTH_ATTRIBUTS_QUERY, params={'category': equipment.famille})
+                created = 0
+                index_val = None
+                if attr_rows:
+                    for r in attr_rows:
                         try:
-                            attr_index = attr_row[0]  # Premier élément = index
-                            
-                            params_attr = {
-                                'specification': equipment_spec_id,
-                                'index': attr_index
-                            }
-                            
-                            attr_id = db.execute_insert(EQUIPMENT_ATTRIBUTE_ADD_QUERY, params=params_attr)
-                            if attr_id:
-                                success_count += 1
-                                logger.debug(f"Attribut créé: index={attr_index}, id={attr_id}")
-                            else:
-                                logger.warning(f"Échec création attribut index={attr_index}")
-                                
+                            index_val = r[0]
+                            db.execute_update(EQUIPMENT_ATTRIBUTE_ADD_QUERY, params={
+                                'specification': equipment_specs_pk,  # commonkey = pk_equipment_specs
+                                'index': index_val
+                            }, commit=False)
+                            created += 1
                         except Exception as e:
-                            logger.error(f"Erreur création attribut {attr_row}: {e}")
+                            logger.debug(f"Impossible de créer attribute index={index_val} : {e}")
                             continue
-                    
-                    logger.info(f"✅ {success_count}/{len(attr_results)} attributs créés pour {equipment.code}")
+                logger.info(f"{created}/{len(attr_rows) if attr_rows else 0} attributs créés pour {equipment.code}")
+
+                # commit de la transaction
+                if hasattr(db, "commit_transaction"):
+                    db.commit_transaction()
                 else:
-                    logger.info(f"Aucun attribut à créer pour la catégorie {equipment.famille}")
-                
-                # 5. Commit de la transaction
-                db.commit_transaction()
-                
-                # 6. Invalider les caches
-                cache_patterns = [
-                    f"mobile_eq_*",
-                    f"equipment_*",
-                    f"feeders_list_*"
-                ]
-                
-                for pattern in cache_patterns:
+                    logger.debug("commit_transaction non disponible, verifier comportement de commit de la couche DB")
+
+                # invalider caches
+                for pattern in (f"mobile_eq_*", f"equipment_*", f"feeders_list_*"):
                     cache.clear_pattern(pattern)
-                
-                logger.info(f"✅ Insertion complète réussie pour l'équipement {equipment.code}")
+
+                logger.info(f"Équipement {equipment.code} inséré avec succès")
                 return True
-                
+
             except Exception as e:
-                # Rollback en cas d'erreur
-                db.rollback_transaction()
-                logger.error(f"❌ Erreur lors de l'insertion, rollback effectué: {e}")
-                raise
-                
+                logger.error(f"Erreur lors de l'insertion équipement: {e}")
+                # rollback si possible
+                try:
+                    if hasattr(db, "rollback_transaction"):
+                        db.rollback_transaction()
+                except Exception:
+                    logger.debug("Rollback non disponible ou a échoué")
+                return False
+
     except Exception as e:
-        logger.error(f"❌ Erreur insertion équipement {equipment.code}: {e}")
+        logger.error(f"insert_equipment fatal error: {e}")
         return False
 
 
