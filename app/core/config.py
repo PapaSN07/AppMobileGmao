@@ -10,6 +10,7 @@ DB_USERNAME = os.getenv("DB_USERNAME")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_HOST = os.getenv("DB_HOST")
 DB_SERVICE_NAME = os.getenv("DB_SERVICE_NAME")
+DB_PORT = os.getenv("DB_PORT", "1521")
 
 # Configuration des limites
 DEFAULT_LIMIT = int(os.getenv("DEFAULT_LIMIT", 10))

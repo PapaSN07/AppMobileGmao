@@ -153,7 +153,8 @@ INSERT INTO coswin.t_equipment (
     ereq_costcentre,
     ereq_longitude,
     ereq_latitude,
-    ereq_string2
+    ereq_string2,
+    ereq_creation_date
 ) VALUES (
     :code,
     :description,
@@ -164,7 +165,8 @@ INSERT INTO coswin.t_equipment (
     :costcentre,
     :longitude,
     :latitude,
-    :feeder
+    :feeder,
+    :creation_date --format(31/12/2023)
 )
 """
 # Récupération d'un équipement par ID
@@ -262,16 +264,19 @@ EQUIPMENT_SPEC_ADD_QUERY = """
 INSERT INTO coswin.equipment_specs (
     etes_specification,
     etes_equipment,
-    etes_release_date
+    etes_release_date,
+    etes_release_number
 ) VALUES (
     :specification, -- cwsp_code (t_specification)
     :equipment, -- ereq_code (t_equipment)
-    :release_date
+    :release_date,
+    :release_number
 )
 """
-EQUIPMENT_CLASSE_ATTRIBUTS_QUERY = """
+# Pour voir le nombre d'attribut qu'il faut créer dans la table equipment_attribute en lui passant la famille (ereq_category) de la table t_equipment
+EQUIPMENT_LENGTH_ATTRIBUTS_QUERY = """
 SELECT
-    a.*
+    a.cwat_index as len
 FROM
     coswin.t_specification s
     , coswin.category_specification cs
@@ -281,16 +286,27 @@ WHERE 1=1
     AND cs.mdcs_specification = s.cwsp_code
     AND r.mdct_code = cs.mdcs_category
     AND s.pk_specification = a.cwat_specification
-    AND r.mdct_code LIKE :category -- ereq_category (t_equipment)
+    AND r.mdct_code LIKE :category -- ereq_category
+ORDER BY a.cwat_index
 """
-EQUIPMENT_CLASSE_ATTRIBUTS_ADD_QUERY = """
+EQUIPMENT_ATTRIBUTE_ADD_QUERY = """
 INSERT INTO coswin.equipment_attribute (
     commonkey,
-    indx,
+    indx
 ) VALUES (
     :specification, -- pk_equipment (equipment_specs)
     :index -- CWAT_INDEX (attribute)
 )
+"""
+# Pour récupérer le cwsp_code(t_specification) d'un équipement pour la création d'une ligne dans equipment_specs
+EQUIPMENT_T_SPECIFICATION_CODE_QUERY = """
+SELECT s.cwsp_code
+FROM coswin.t_equipment e
+    JOIN coswin.category_specification cs ON e.ereq_category = cs.mdcs_category
+    JOIN coswin.t_specification s ON cs.mdcs_specification = s.cwsp_code
+WHERE 
+    e.ereq_category LIKE :category 
+    AND ROWNUM <= 1
 """
 
 #   ================================================================================

@@ -1,10 +1,11 @@
 from app.db.database import get_database_connection
 from app.core.config import CACHE_TTL_SHORT
 from app.models.models import (EquipmentModel, FeederModel, EquipmentAttributeValueModel, AttributeValuesModel)
-from app.db.requests import (ATTRIBUTE_VALUES_QUERY, EQUIPMENT_BY_ID_QUERY, EQUIPMENT_INFINITE_QUERY, FEEDER_QUERY, UPDATE_EQUIPMENT_ATTRIBUTE_QUERY)
+from app.db.requests import (ATTRIBUTE_VALUES_QUERY, EQUIPMENT_ADD_QUERY, EQUIPMENT_ATTRIBUTE_ADD_QUERY, EQUIPMENT_BY_ID_QUERY, EQUIPMENT_INFINITE_QUERY, EQUIPMENT_LENGTH_ATTRIBUTS_QUERY, EQUIPMENT_SPEC_ADD_QUERY, EQUIPMENT_T_SPECIFICATION_CODE_QUERY, FEEDER_QUERY, UPDATE_EQUIPMENT_ATTRIBUTE_QUERY)
 from app.core.cache import cache
 from typing import Dict, Any, List, Optional
 import logging
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -470,3 +471,167 @@ def get_equipment_attributes_by_code(equipment_code: str) -> List[EquipmentAttri
     except Exception as e:
         logger.error(f"❌ Erreur récupération attributs pour équipement {equipment_code}: {e}")
         return []
+
+def validate_equipment_for_insertion(equipment: EquipmentModel) -> tuple[bool, str]:
+    """
+    Valide un équipement avant insertion
+    
+    Returns:
+        Tuple (is_valid, error_message)
+    """
+    try:
+        # Vérifications obligatoires
+        if not equipment.code or len(equipment.code.strip()) == 0:
+            return False, "Code équipement obligatoire"
+        
+        if not equipment.famille:
+            return False, "Famille équipement obligatoire"
+            
+        if not equipment.entity:
+            return False, "Entité obligatoire"
+            
+        if not equipment.zone:
+            return False, "Zone obligatoire"
+        
+        # Vérifier que l'équipement n'existe pas déjà
+        with get_database_connection() as db:
+            existing_check = db.execute_query(
+                "SELECT COUNT(*) FROM coswin.t_equipment WHERE ereq_code = :code", 
+                params={'code': equipment.code}
+            )
+            
+            if existing_check and existing_check[0][0] > 0:
+                return False, f"Un équipement avec le code {equipment.code} existe déjà"
+        
+        return True, "Validation réussie"
+        
+    except Exception as e:
+        logger.error(f"Erreur validation équipement: {e}")
+        return False, f"Erreur validation: {str(e)}"
+
+def insert_equipment(equipment: EquipmentModel) -> bool:
+    """
+    Insère un nouvel équipement dans la base de données avec gestion transactionnelle.
+
+    Args:
+        equipment: L'équipement à insérer.
+
+    Returns:
+        True si l'insertion a réussi, False sinon.
+    """
+    try:
+        with get_database_connection() as db:
+            # Démarrer une transaction
+            db.begin_transaction()
+            
+            try:
+                # 1. Insertion de l'équipement principal
+                params_equipment = {
+                    'code': equipment.code,
+                    'description': equipment.description,
+                    'category': equipment.famille,
+                    'zone': equipment.zone,
+                    'entity': equipment.entity,
+                    'function': equipment.unite,
+                    'costcentre': equipment.centreCharge,
+                    'longitude': equipment.longitude,
+                    'latitude': equipment.latitude,
+                    'feeder': getattr(equipment, 'feeder', None),  # Ajouter le feeder s'il existe
+                    'creation_date': datetime.now().strftime("%d/%m/%Y")
+                }
+                
+                equipment_id = db.execute_insert(EQUIPMENT_ADD_QUERY, params=params_equipment)
+                logger.info(f"✅ Équipement {equipment.code} créé avec ID: {equipment_id}")
+                
+                if not equipment_id:
+                    raise Exception("Échec de l'insertion de l'équipement")
+                
+                equipment.id = str(equipment_id)
+                
+                # 2. Récupérer le code de spécification pour cette catégorie
+                spec_results = db.execute_query(EQUIPMENT_T_SPECIFICATION_CODE_QUERY, params={'category': equipment.famille})
+                
+                if not spec_results:
+                    logger.warning(f"Aucune spécification trouvée pour la catégorie {equipment.famille}")
+                    db.commit_transaction()  # Commit sans spécifications
+                    return True
+                
+                code_specification = spec_results[0][0] if spec_results[0] else None
+                
+                if not code_specification:
+                    logger.warning(f"Code spécification vide pour {equipment.famille}")
+                    db.commit_transaction()
+                    return True
+                
+                # 3. Insertion dans equipment_specs
+                params_specs = {
+                    'specification': code_specification,
+                    'equipment': equipment.code,
+                    'release_date': datetime.now().strftime("%d/%m/%Y"),
+                    'release_number': 1
+                }
+                
+                equipment_spec_id = db.execute_insert(EQUIPMENT_SPEC_ADD_QUERY, params=params_specs)
+                logger.info(f"✅ Spécification créée avec ID: {equipment_spec_id}")
+                
+                if not equipment_spec_id:
+                    logger.warning(f"Échec création spécification pour {equipment.code}")
+                    db.commit_transaction()
+                    return True
+                
+                # 4. Récupérer la liste des index d'attributs à créer
+                attr_results = db.execute_query(EQUIPMENT_LENGTH_ATTRIBUTS_QUERY, params={'category': equipment.famille})
+                
+                if attr_results:
+                    success_count = 0
+                    for attr_row in attr_results:
+                        try:
+                            attr_index = attr_row[0]  # Premier élément = index
+                            
+                            params_attr = {
+                                'specification': equipment_spec_id,
+                                'index': attr_index
+                            }
+                            
+                            attr_id = db.execute_insert(EQUIPMENT_ATTRIBUTE_ADD_QUERY, params=params_attr)
+                            if attr_id:
+                                success_count += 1
+                                logger.debug(f"Attribut créé: index={attr_index}, id={attr_id}")
+                            else:
+                                logger.warning(f"Échec création attribut index={attr_index}")
+                                
+                        except Exception as e:
+                            logger.error(f"Erreur création attribut {attr_row}: {e}")
+                            continue
+                    
+                    logger.info(f"✅ {success_count}/{len(attr_results)} attributs créés pour {equipment.code}")
+                else:
+                    logger.info(f"Aucun attribut à créer pour la catégorie {equipment.famille}")
+                
+                # 5. Commit de la transaction
+                db.commit_transaction()
+                
+                # 6. Invalider les caches
+                cache_patterns = [
+                    f"mobile_eq_*",
+                    f"equipment_*",
+                    f"feeders_list_*"
+                ]
+                
+                for pattern in cache_patterns:
+                    cache.clear_pattern(pattern)
+                
+                logger.info(f"✅ Insertion complète réussie pour l'équipement {equipment.code}")
+                return True
+                
+            except Exception as e:
+                # Rollback en cas d'erreur
+                db.rollback_transaction()
+                logger.error(f"❌ Erreur lors de l'insertion, rollback effectué: {e}")
+                raise
+                
+    except Exception as e:
+        logger.error(f"❌ Erreur insertion équipement {equipment.code}: {e}")
+        return False
+
+

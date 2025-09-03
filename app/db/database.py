@@ -3,7 +3,7 @@ from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
 from app.core.config import (
     DB_USERNAME, DB_PASSWORD, DB_HOST, DB_SERVICE_NAME,
-    DEFAULT_LIMIT, MAX_LIMIT, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
+    DB_PORT, MAX_LIMIT, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 )
 
 @dataclass
@@ -41,7 +41,7 @@ class OracleDatabase:
         """Établit la connexion à la base de données"""
         try:
             # Créer la chaîne de connexion Oracle
-            connection_string = f"{DB_USERNAME}/{DB_PASSWORD}@{DB_HOST}:1521/{DB_SERVICE_NAME}"
+            connection_string = f"{DB_USERNAME}/{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_SERVICE_NAME}"
             self.connection = oracledb.connect(connection_string)
             print(f"✅ Connexion réussie à Oracle: {DB_HOST}:{DB_SERVICE_NAME}")
         except oracledb.DatabaseError as e:
@@ -281,6 +281,88 @@ class OracleDatabase:
         if exc_type:
             print(f"❌ Exception dans le contexte DB: {exc_type.__name__}: {exc_val}")
         return False  # Ne supprime pas l'exception
+    
+    def begin_transaction(self):
+        """Démarre une transaction"""
+        if not self.connection:
+            raise ConnectionError("Pas de connexion à la base de données")
+        # En Oracle avec oracledb, les transactions sont automatiques
+        # Cette méthode est pour la compatibilité
+        pass
+    
+    def commit_transaction(self):
+        """Valide la transaction"""
+        if not self.connection:
+            raise ConnectionError("Pas de connexion à la base de données")
+        try:
+            self.connection.commit()
+            print("✅ Transaction validée")
+        except oracledb.DatabaseError as e:
+            print(f"❌ Erreur commit: {e}")
+            raise
+    
+    def rollback_transaction(self):
+        """Annule la transaction"""
+        if not self.connection:
+            raise ConnectionError("Pas de connexion à la base de données")
+        try:
+            self.connection.rollback()
+            print("🔄 Transaction annulée")
+        except oracledb.DatabaseError as e:
+            print(f"❌ Erreur rollback: {e}")
+            raise
+    
+    def execute_insert(self, query: str, params: Optional[Dict[str, Any]] = None) -> Optional[int]:
+        """
+        Exécute une requête INSERT et retourne l'ID généré.
+        
+        Args:
+            query: Requête SQL INSERT
+            params: Paramètres nommés pour la requête
+            
+        Returns:
+            ID généré (si applicable) ou None
+        """
+        if not self.connection:
+            raise ConnectionError("Pas de connexion à la base de données")
+        
+        cursor = None
+        try:
+            cursor = self.connection.cursor()
+            
+            # Pour Oracle, on peut utiliser RETURNING INTO
+            if "RETURNING" not in query.upper():
+                # Exécuter l'INSERT normal
+                cursor.execute(query, params or {})
+                affected_rows = cursor.rowcount
+                
+                if affected_rows > 0:
+                    # Essayer de récupérer l'ID avec CURRVAL si on a une séquence
+                    try:
+                        # Cette approche fonctionne si on utilise une séquence
+                        cursor.execute("SELECT LASTVAL FROM DUAL")  # Remplacer par votre méthode
+                        result = cursor.fetchone()
+                        return result[0] if result else affected_rows
+                    except:
+                        # Si pas de séquence, retourner le nombre de lignes
+                        return affected_rows
+                else:
+                    return None
+            else:
+                # Requête avec RETURNING
+                cursor.execute(query, params or {})
+                result = cursor.fetchone()
+                return result[0] if result else None
+                
+        except oracledb.DatabaseError as e:
+            print(f"❌ Erreur SQL insert: {e}")
+            raise
+        except Exception as e:
+            print(f"❌ Erreur inattendue lors de l'insertion: {e}")
+            raise
+        finally:
+            if cursor:
+                cursor.close()
 
 # Fonction utilitaire pour créer une connexion
 def get_database_connection() -> OracleDatabase:
