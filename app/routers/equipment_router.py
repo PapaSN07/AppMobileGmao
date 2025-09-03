@@ -9,7 +9,6 @@ from app.services.equipment_service import (
     get_equipment_by_id,
     get_equipments_infinite,
     get_feeders,
-    add_equipment,
     insert_equipment,
     update_equipment_partial
 )

@@ -231,51 +231,6 @@ def get_feeders(entity: str) -> Dict[str, Any]:
         logger.error(f"❌ Erreur récupération feeders: {e}")
         raise
 
-def add_equipment(equipment_data: dict) -> bool:
-    """
-    Ajoute un nouvel équipement dans la base de données.
-    Args:
-        equipment_data: dict validé par AddEquipmentRequest
-    Returns:
-        True si succès, False sinon
-    """
-    try:
-        with get_database_connection() as db:
-            # Exemple d'insertion, à adapter selon ta table et tes champs
-            query = """
-                INSERT INTO equipment (
-                    ereq_parent_equipment, feeder, feeder_description, ereq_code,
-                    ereq_category, ereq_zone, ereq_entity, ereq_unite, ereq_centre_charge,
-                    ereq_description, longitude, latitude
-                ) VALUES (
-                    :code_parent, :feeder, :feeder_description, :code,
-                    :famille, :zone, :entity, :unite, :centre_charge,
-                    :description, :longitude, :latitude
-                )
-            """
-            params = {
-                'code_parent': equipment_data.get('code_parent'),
-                'feeder': equipment_data.get('feeder'),
-                'feeder_description': equipment_data.get('feeder_description'),
-                'code': equipment_data['code'],
-                'famille': equipment_data['famille'],
-                'zone': equipment_data['zone'],
-                'entity': equipment_data['entity'],
-                'unite': equipment_data['unite'],
-                'centre_charge': equipment_data['centre_charge'],
-                'description': equipment_data['description'],
-                'longitude': equipment_data.get('longitude'),
-                'latitude': equipment_data.get('latitude'),
-                'cached_at': equipment_data['cached_at'],
-                'is_sync': 1 if equipment_data['is_sync'] else 0
-            }
-            db.execute_update(query, params=params)
-            # Pour les attributs, tu peux ajouter une boucle d'insertion si besoin
-            return True
-    except Exception as e:
-        logger.error(f"Erreur ajout équipement: {e}")
-        return False
-
 def get_equipment_by_id(equipment_id: str) -> Optional[EquipmentModel]:
     """Récupère un équipement par son ID"""
     try:
