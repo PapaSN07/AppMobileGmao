@@ -427,6 +427,50 @@ def get_equipment_attributes_by_code(equipment_code: str) -> List[EquipmentAttri
         logger.error(f"❌ Erreur récupération attributs pour équipement {equipment_code}: {e}")
         return []
 
+def get_equipment_attributes_by_code_without_value(equipment_code: str) -> List[EquipmentAttributeValueModel]:
+    """Récupère les attributs d'un équipement par son code"""
+    if not equipment_code:
+        return []
+        
+    cache_key = f"equipment_attributes_{equipment_code}"
+    cached = cache.get_data_only(cache_key)
+
+
+    if cached:
+        try:
+            return [EquipmentAttributeValueModel(**item) for item in cached]
+        except Exception as e:
+            logger.debug(f"Erreur reconstruction cache pour {equipment_code}: {e}")
+
+    try:
+        from app.db.requests import EQUIPMENT_CLASSE_ATTRIBUTS_QUERY
+        
+        with get_database_connection() as db:
+            results = db.execute_query(EQUIPMENT_CLASSE_ATTRIBUTS_QUERY, params={'code': equipment_code})
+                        
+            if not results:
+                cache.set(cache_key, [], CACHE_TTL_SHORT)
+                return []
+
+            attributes = []
+            for r in results:
+                try:
+                    if len(r) >= 5:
+                        attr = EquipmentAttributeValueModel.from_db_row(r)
+                        attributes.append(attr)
+                except Exception as e:
+                    logger.debug(f"Erreur création attribut: {e}")
+                    continue
+            
+            attributes_serialized = [attr.model_dump() for attr in attributes]
+            cache.set(cache_key, attributes_serialized, CACHE_TTL_SHORT)
+            
+            return attributes
+
+    except Exception as e:
+        logger.error(f"❌ Erreur récupération attributs pour équipement {equipment_code}: {e}")
+        return []
+
 def validate_equipment_for_insertion(equipment: EquipmentModel) -> tuple[bool, str]:
     """
     Valide un équipement avant insertion

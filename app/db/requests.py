@@ -273,6 +273,25 @@ INSERT INTO coswin.equipment_specs (
     :release_number
 )
 """
+EQUIPMENT_CLASSE_ATTRIBUTS_QUERY = """
+SELECT
+    a.pk_attribute as id, 
+    a.cwat_specification as specification, 
+    a.cwat_index as index_val, 
+    a.cwat_name as name,
+    NULL as value
+FROM
+    coswin.t_specification s, 
+    coswin.category_specification cs, 
+    coswin.t_category r, 
+    coswin.attribute a
+WHERE 1=1
+    AND cs.mdcs_specification = s.cwsp_code
+    AND r.mdct_code like cs.mdcs_category
+    AND  s.pk_specification = a.cwat_specification
+    AND r.mdct_code = :code
+ORDER BY a.cwat_index
+"""
 # Pour voir le nombre d'attribut qu'il faut créer dans la table equipment_attribute en lui passant la famille (ereq_category) de la table t_equipment
 EQUIPMENT_LENGTH_ATTRIBUTS_QUERY = """
 SELECT

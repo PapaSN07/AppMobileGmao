@@ -469,11 +469,14 @@ class FeederModel(BaseModel):
 
 
 class EquipmentAttributeValueModel(BaseModel):
+    """
+    Modèle pour les valeurs d'attributs d'équipement.
+    """
     id: str = Field(..., description="Identifiant unique de la valeur d'attribut")
     specification: Optional[str] = Field(None, description="Spécification de l'attribut")
     index: Optional[str] = Field(None, description="Index de l'attribut")
     name: str = Field(..., description="Nom de l'attribut")
-    value: str = Field(..., description="Valeur de l'attribut")
+    value: Optional[str] = Field(None, description="Valeur de l'attribut")
     
     @classmethod
     def from_db_row(cls, row: tuple) -> 'EquipmentAttributeValueModel':

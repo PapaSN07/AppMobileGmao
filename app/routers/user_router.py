@@ -1,13 +1,11 @@
 from typing import Any, Dict
 from fastapi import APIRouter, HTTPException
 from app.schemas.responses.auth_response import AuthResponse
-from app.schemas.rest_response import create_simple_response
 from app.services.user_service import (
     authenticate_user,
     logout_user
 )
 from app.schemas.requests.auth_request import (LoginRequest, LogoutRequest)
-from app.models.models import UserModel
 import logging
 import oracledb
 

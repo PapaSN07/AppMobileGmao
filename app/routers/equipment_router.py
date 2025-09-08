@@ -3,9 +3,10 @@ from typing import Optional, Dict, Any
 import logging
 
 from app.models.models import EquipmentModel
-from app.schemas.responses.equipment_response import AttributeResponse
+from app.schemas.responses.equipment_response import AttributeResponse, AttributeValueResponse
 from app.services.equipment_service import (
     get_attribute_values,
+    get_equipment_attributes_by_code_without_value,
     get_equipment_by_id,
     get_equipments_infinite,
     get_feeders,
@@ -179,10 +180,35 @@ async def get_equipment_values(entity: str) -> Dict[str, Any]:
 async def get_equipment_attribute_values(
     specification: str = Query(..., description="Code de la spécification"),
     attribute_index: str = Query(..., description="Index de l'attribut")
-    ) -> AttributeResponse:
+    ) -> AttributeValueResponse:
     """Récupération des attributs d'un équipement"""
     try:
         attributes = get_attribute_values(specification, attribute_index)
+        if not attributes:
+            raise HTTPException(status_code=404, detail="Aucun attribut trouvé pour cet équipement")
+        
+        return AttributeValueResponse(
+            attr=attributes,
+            status="success",
+            message="Attributs + Valeurs récupérés avec succès"
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Erreur récupération attributs: {e}")
+        raise HTTPException(status_code=500, detail="Erreur récupération attributs")
+
+@equipment_router.get("/attributes/by-code",
+    summary="Récupérer les attributs d'un équipement par son code de la famille",
+    description="Récupère la liste des attributs d'un équipement spécifique par son code équipement qui est donnée par le code dans famille",
+    response_model=AttributeResponse
+)
+async def get_equipment_attribute_values_by_code(
+    codeFamille: str = Query(..., description="Code de l'équipement")
+    ) -> AttributeResponse:
+    """Récupération des attributs d'un équipement"""
+    try:
+        attributes = get_equipment_attributes_by_code_without_value(codeFamille)
         if not attributes:
             raise HTTPException(status_code=404, detail="Aucun attribut trouvé pour cet équipement")
         
@@ -196,5 +222,4 @@ async def get_equipment_attribute_values(
     except Exception as e:
         logger.error(f"❌ Erreur récupération attributs: {e}")
         raise HTTPException(status_code=500, detail="Erreur récupération attributs")
-
 # === FIN ENDPOINTS CORE POUR MOBILE ===
