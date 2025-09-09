@@ -2,6 +2,8 @@ from fastapi import APIRouter, Query, HTTPException
 from typing import Optional, Dict, Any
 import logging
 
+from pydantic import ValidationError
+
 from app.models.models import EquipmentModel
 from app.schemas.responses.equipment_response import AttributeResponse, AttributeValueResponse
 from app.services.equipment_service import (
@@ -62,6 +64,21 @@ async def add_equipment_mobile(request: AddEquipmentRequest) -> Dict[str, Any]:
     """Ajout d'un équipement via insert_equipment"""
     try:
         data = request.model_dump(exclude_none=True)
+        
+        # Simplifier la conversion des attributs
+        attributes_converted = []
+        if data.get('attributs'):
+            for attr in data['attributs']:
+                # Garder seulement les champs essentiels pour l'insertion
+                attr_dict = {
+                    'id': attr.get('id', ''),
+                    'specification': attr.get('specification', ''),
+                    'index': attr.get('index', ''),
+                    'name': attr.get('name'),
+                    'value': str(attr.get('value', '')) if attr.get('value') is not None else '',
+                    'type': attr.get('type', 'string')
+                }
+                attributes_converted.append(attr_dict)
 
         # Mapper les champs du DTO vers les attributs attendus par EquipmentModel
         equipment = EquipmentModel(
@@ -81,7 +98,7 @@ async def add_equipment_mobile(request: AddEquipmentRequest) -> Dict[str, Any]:
             feederDescription = data.get('feeder', ''),
             # conserver les attributs fournis (optionnel) — insert_equipment crée les lignes attribute templates,
             # si tu veux des valeurs réelles, tu devras enrichir insert_equipment pour accepter 'attributs'
-            attributes = data.get('attributs', [])
+            attributes = attributes_converted
         )
 
         success = insert_equipment(equipment)
@@ -89,10 +106,14 @@ async def add_equipment_mobile(request: AddEquipmentRequest) -> Dict[str, Any]:
             return {
                 "status": "success",
                 "message": "Équipement ajouté avec succès",
-                "equipment_id": getattr(equipment, "id", None)
+                "equipment_id": getattr(equipment, "id", None),
+                "attributes_count": len(attributes_converted)
             }
         else:
             raise HTTPException(status_code=500, detail="Erreur lors de l'ajout de l'équipement")
+    except ValidationError as e:
+        logger.error(f"❌ Erreur validation Pydantic: {e}")
+        raise HTTPException(status_code=422, detail=f"Données invalides: {e}")
     except Exception as e:
         logger.error(f"❌ Erreur ajout équipement: {e}")
         raise HTTPException(status_code=500, detail=f"Erreur ajout équipement: {str(e)}")
@@ -184,6 +205,7 @@ async def get_equipment_attribute_values(
     """Récupération des attributs d'un équipement"""
     try:
         attributes = get_attribute_values(specification, attribute_index)
+
         if not attributes:
             raise HTTPException(status_code=404, detail="Aucun attribut trouvé pour cet équipement")
         

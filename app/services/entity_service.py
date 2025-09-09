@@ -55,9 +55,9 @@ def get_entities(entity: str) -> Dict[str, Any]:
             
             for row in results:
                 try:
-                    entity = EntityModel.from_db_row(row)
+                    entity_model = EntityModel.from_db_row(row)
                     # Convertir en dictionnaire pour la sérialisation
-                    entities.append(entity.to_api_response())
+                    entities.append(entity_model.to_api_response())
                 except Exception as e:
                     logger.error(f"❌ Erreur mapping entité: {e}")
                     continue

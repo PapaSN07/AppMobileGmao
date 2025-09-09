@@ -2,13 +2,19 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Any
 
 class EquipmentAttribute(BaseModel):
+    id: str
+    specification: str
+    index: str
     name: str
     value: Any
     type: str
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
+                'id': "attr_001",
+                "specification": "4",
+                "index": "1",
                 "name": "Tension",
                 "value": "230V",
                 "type": "string"
@@ -47,7 +53,7 @@ class UpdateEquipmentRequest(BaseModel):
     attributs: Optional[List[EquipmentAttribute]] = None
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "description": "Nouvelle description de l'équipement",
                 "zone": "Z2",

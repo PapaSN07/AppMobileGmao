@@ -514,13 +514,15 @@ class AttributeValuesModel(BaseModel):
     """
     id: str = Field(..., description="Identifiant unique de la valeur d'attribut")
     value: str = Field(..., description="Valeur de l'attribut")
+    name: str = Field(..., description="Nom de l'attribut")
     
     @classmethod
     def from_db_row(cls, row: tuple) -> 'AttributeValuesModel':
         """Crée une instance AttributeValueModel à partir d'une ligne de DB"""
         return cls(
             id=str(row[0]) if row[0] is not None else "",
-            value=str(row[1]) if row[1] is not None else ""
+            value=str(row[1]) if row[1] is not None else "",
+            name=str(row[2]) if len(row) > 2 and row[2] is not None else ""
         )
     
     def to_dict(self) -> Dict[str, Any]:
@@ -531,13 +533,14 @@ class AttributeValuesModel(BaseModel):
         """Convertit en format de réponse API"""
         return {
             'id': self.id,
-            'value': self.value
+            'value': self.value,
+            'name': self.name
         }
     
     def __str__(self) -> str:
         """Représentation string de la valeur d'attribut"""
-        return f"AttributeValues({self.id} - {self.value})"
+        return f"AttributeValues({self.id} - {self.value} - {self.name})"
 
     def __repr__(self) -> str:
         """Représentation détaillée de la valeur d'attribut"""
-        return f"AttributeValuesModel(id={self.id}, value={self.value})"
+        return f"AttributeValuesModel(id={self.id}, value={self.value}, name={self.name})"
