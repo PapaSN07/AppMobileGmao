@@ -19,12 +19,17 @@ class EquipmentAttribute extends HiveObject {
   @HiveField(4)
   String? value;
 
+  // ✅ NOUVEAU: Champ type pour le backend
+  @HiveField(5)
+  String? type;
+
   EquipmentAttribute({
     this.id,
     this.specification,
     this.index,
     this.name,
     this.value,
+    this.type,
   });
 
   factory EquipmentAttribute.fromJson(Map<String, dynamic> json) {
@@ -34,16 +39,22 @@ class EquipmentAttribute extends HiveObject {
       index: json['index']?.toString(),
       name: json['name']?.toString(),
       value: json['value']?.toString(),
+      type: json['type']?.toString(),
     );
   }
 
   Map<String, dynamic> toJson() {
+    return {'name': name ?? '', 'value': value ?? '', 'type': type ?? 'string'};
+  }
+
+  Map<String, dynamic> toJsonComplete() {
     return {
       'id': id,
       'specification': specification,
       'index': index,
       'name': name,
       'value': value,
+      'type': type,
     };
   }
 
@@ -59,6 +70,6 @@ class EquipmentAttribute extends HiveObject {
 
   @override
   String toString() {
-    return 'EquipmentAttribute{id: $id, name: $name, value: $value, index: $index}';
+    return 'EquipmentAttribute{id: $id, name: $name, value: $value, type: $type, index: $index}';
   }
 }

@@ -7,6 +7,7 @@ import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:appmobilegmao/widgets/list_item.dart';
 import 'package:appmobilegmao/widgets/loading_indicator.dart';
 import 'package:appmobilegmao/widgets/empty_state.dart';
+import 'package:appmobilegmao/widgets/tools.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -23,7 +24,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
   final TextEditingController _searchController = TextEditingController();
   Timer? _debounce;
 
-  // ✅ NOUVEAU: État pour le type de recherche
+  // État pour le type de recherche
   String _searchType = 'all'; // 'all', 'code', 'description', 'zone', 'famille'
   bool _showSearchOptions = false;
 
@@ -48,7 +49,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     super.deactivate();
   }
 
-  // ✅ Optimisation du chargement initial
+  // Optimisation du chargement initial
   void _loadEquipmentsWithUserInfo() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final equipmentProvider = Provider.of<EquipmentProvider>(
@@ -80,7 +81,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     }
   }
 
-  // ✅ NOUVEAU: Chargement en arrière-plan des sélecteurs
+  // Chargement en arrière-plan des sélecteurs
   Future<void> _loadSelectorsInBackground(
     EquipmentProvider equipmentProvider,
     String entity,
@@ -166,14 +167,12 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _buildStatCard(
+                Tools.buildStatCard(
                   equipmentProvider.equipments.length.toString(),
                   equipmentProvider.equipments.isEmpty
                       ? 'Équipements'
                       : 'Équipement',
                 ),
-                _buildVerticalDivider(),
-                _buildStatCard('222', 'OT'),
               ],
             ),
           ),
@@ -182,43 +181,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     );
   }
 
-  Widget _buildStatCard(String value, String label) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(
-          value,
-          style: TextStyle(
-            fontFamily: AppTheme.fontMontserrat,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.secondaryColor,
-            fontSize: 16,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            fontFamily: AppTheme.fontRoboto,
-            fontWeight: FontWeight.normal,
-            color: AppTheme.secondaryColor,
-            fontSize: 14,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildVerticalDivider() {
-    return Container(
-      height: 40,
-      width: 1,
-      color: const Color.fromRGBO(144, 144, 144, 0.3),
-      margin: const EdgeInsets.symmetric(horizontal: 8),
-    );
-  }
-
-  // ✅ NOUVEAU: Méthode pour effectuer une recherche filtrée par type
+  // Méthode pour effectuer une recherche filtrée par type
   void _performSearch(String value) {
     final equipmentProvider = Provider.of<EquipmentProvider>(
       context,
@@ -251,7 +214,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     }
   }
 
-  // ✅ NOUVEAU: Widget pour afficher les options de recherche
+  // Widget pour afficher les options de recherche
   Widget _buildSearchTypeSelector() {
     final searchTypes = [
       {'key': 'all', 'label': 'Tous les champs', 'icon': Icons.search},
@@ -351,7 +314,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     );
   }
 
-  // ✅ MODIFIÉ: Amélioration de la barre de recherche avec options
+  // Amélioration de la barre de recherche avec options
   Widget _searchBar(EquipmentProvider equipmentProvider) {
     return Column(
       children: [
@@ -473,7 +436,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     );
   }
 
-  // ✅ NOUVEAU: Obtenir le placeholder selon le type de recherche
+  // Obtenir le placeholder selon le type de recherche
   String _getSearchPlaceholder() {
     switch (_searchType) {
       case 'code':
@@ -490,7 +453,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     }
   }
 
-  // ✅ NOUVEAU: Obtenir le hint selon le type de recherche
+  // Obtenir le hint selon le type de recherche
   String _getSearchHint() {
     switch (_searchType) {
       case 'code':
@@ -507,7 +470,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     }
   }
 
-  // ✅ NOUVEAU: Obtenir le label court du type de recherche
+  // Obtenir le label court du type de recherche
   String _getSearchTypeLabel(String type) {
     switch (type) {
       case 'code':
@@ -548,7 +511,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
         );
   }
 
-  // ✅ MODIFIÉ: Amélioration de l'état vide avec suggestions selon le type de recherche
+  // Amélioration de l'état vide avec suggestions selon le type de recherche
   Widget _buildEmptyState(EquipmentProvider equipmentProvider) {
     final bool isSearching = _searchController.text.isNotEmpty;
     final String searchTerm = _searchController.text.trim();

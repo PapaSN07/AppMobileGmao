@@ -83,11 +83,12 @@ class Equipment extends HiveObject {
       description: json['description'] ?? '',
       longitude: json['longitude'] ?? '',
       latitude: json['latitude'] ?? '',
-      attributes: json['attributes'] != null
-          ? (json['attributes'] as List)
-              .map((attr) => EquipmentAttribute.fromJson(attr))
-              .toList()
-          : null,
+      attributes:
+          json['attributes'] != null
+              ? (json['attributes'] as List)
+                  .map((attr) => EquipmentAttribute.fromJson(attr))
+                  .toList()
+              : null,
       cachedAt:
           json['cached_at'] != null
               ? DateTime.parse(json['cached_at'])
@@ -95,23 +96,51 @@ class Equipment extends HiveObject {
     );
   }
 
+  // toJson pour correspondre exactement aux spécifications du backend
   Map<String, dynamic> toJson() {
     return {
+      'code': code,
+      'description': description.isNotEmpty ? description : null,
+      'famille': famille,
+      'zone': zone,
+      'entity': entity,
+      'unite': unite.isNotEmpty ? unite : null,
+      'centre_charge':
+          centreCharge.isNotEmpty
+              ? centreCharge
+              : null, // ✅ snake_case comme demandé
+      'longitude': longitude.isNotEmpty ? longitude : null,
+      'latitude': latitude.isNotEmpty ? latitude : null,
+      'feeder': feeder?.isNotEmpty == true ? feeder : null,
+      'feeder_description':
+          feederDescription?.isNotEmpty == true
+              ? feederDescription
+              : null,
+      'code_parent':
+          codeParent?.isNotEmpty == true ? codeParent : null,
+      'attributs':
+          attributes?.map((attr) => attr.toJson()).toList(), // ✅ Seulement les attributs avec valeur
+    };
+  }
+
+  // ✅ NOUVEAU: toJson pour le cache local (garde tous les champs)
+  Map<String, dynamic> toJsonCache() {
+    return {
       'id': id,
-      'code_parent': codeParent,
+      'codeParent': codeParent,
       'feeder': feeder,
-      'feeder_description': feederDescription,
+      'feederDescription': feederDescription,
       'code': code,
       'famille': famille,
       'zone': zone,
       'entity': entity,
       'unite': unite,
-      'centre_charge': centreCharge,
+      'centreCharge': centreCharge,
       'description': description,
       'longitude': longitude,
       'latitude': latitude,
       'cached_at': cachedAt.toIso8601String(),
-      'attributes': attributes?.map((attr) => attr.toJson()).toList(),
+      'attributes': attributes?.map((attr) => attr.toJsonComplete()).toList(),
     };
   }
 

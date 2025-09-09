@@ -64,7 +64,7 @@ class EquipmentService {
     }
   }
 
-  /// ✅ CORRIGÉ: Récupération des valeurs d'attributs avec gestion des erreurs
+  /// ✅ Récupération des valeurs d'attributs avec gestion des erreurs
   Future<Map<String, dynamic>> getAttributeValuesEquipment({
     required String specification,
     required String attributeIndex,
@@ -111,7 +111,82 @@ class EquipmentService {
               id: e['id']?.toString(),
               specification: specification, // Ajouter la spécification
               index: attributeIndex, // Ajouter l'index
-              name: 'Valeur ${e['id']}', // Nom générique pour les valeurs
+              name: e['name']?.toString(), // Nom générique pour les valeurs
+              value: e['value']?.toString(),
+            );
+          }).toList();
+
+      final result = {
+        'attributes': attributes,
+        'message': data['message'] ?? 'Attributs récupérés avec succès',
+      };
+
+      if (kDebugMode) {
+        print('✅ EquipmentApi - ${attributes.length} attributs traités');
+      }
+
+      return result;
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ EquipmentApi - Erreur getAttributeValuesEquipment: $e');
+      }
+
+      // ✅ Retourner une structure cohérente même en cas d'erreur
+      return {
+        'attributes': <EquipmentAttribute>[],
+        'message': 'Erreur lors de la récupération: $e',
+        'error': true,
+      };
+    }
+  }
+
+  Future<Map<String, dynamic>> getEquipmentAttributeValueByCode({
+    required String codeFamille,
+  }) async {
+    try {
+      if (kDebugMode) {
+        print(
+          '🔧 EquipmentApi - Récupération des valeurs pour un attribut: $codeFamille',
+        );
+      }
+
+      final data = await _apiService.get(
+        '/api/v1/equipments/attributes/by-code?codeFamille=$codeFamille',
+      );
+
+      if (kDebugMode) {
+        print(
+          '📋 EquipmentApi - Données reçues: ${data['attr']?.length ?? 0} valeurs',
+        );
+      }
+
+      // ✅ CORRIGÉ: Vérifier si data['attr'] existe et n'est pas null
+      final attrData = data['attr'];
+
+      if (attrData == null || attrData is! List) {
+        if (kDebugMode) {
+          print(
+            '⚠️ EquipmentApi - Aucun attribut trouvé ou format invalide pour $codeFamille',
+          );
+        }
+
+        // Retourner une liste vide au lieu d'une erreur
+        return {
+          'attributes': <EquipmentAttribute>[],
+          'message': data['detail'] ?? 'Aucun attribut trouvé',
+        };
+      }
+
+      // ✅ Traiter les attributs uniquement s'ils existent
+      final attributes =
+          (attrData).map((e) {
+            // Convertir les données API vers EquipmentAttribute
+            return EquipmentAttribute(
+              id: e['id']?.toString(),
+              specification:
+                  e['specification']?.toString(), // Ajouter la spécification
+              index: e['index']?.toString(), // Ajouter l'index
+              name: e['name']?.toString(), // Nom générique pour les valeurs
               value: e['value']?.toString(),
             );
           }).toList();
@@ -211,18 +286,141 @@ class EquipmentService {
     }
   }
 
-  /// Ajoute un nouvel équipement
+  /// ✅ CORRIGÉ: Ajoute un nouvel équipement avec gestion de la redirection 307
   Future<Equipment> addEquipment(Equipment equipment) async {
     try {
       if (kDebugMode) {
         print('➕ EquipmentApi - Ajout équipement: ${equipment.code}');
       }
 
+      // ✅ VALIDATION: Vérifier les champs obligatoires
+      if (equipment.famille.isEmpty) {
+        throw Exception('Famille équipement requise');
+      }
+
+      // ✅ IMPORTANT: Utiliser toJson() qui respecte les spécifications backend
+      final equipmentData = equipment.toJson();
+
+      if (kDebugMode) {
+        print('📊 EquipmentApi - Données envoyées au backend:');
+        print('   - Code: ${equipmentData['code']}');
+        print('   - Famille: ${equipmentData['famille']}');
+        print('   - Zone: ${equipmentData['zone']}');
+        print('   - Entity: ${equipmentData['entity']}');
+        print('   - Description: ${equipmentData['description']}');
+        print('   - Unite: ${equipmentData['unite']}');
+        print('   - Centre charge: ${equipmentData['centre_charge']}');
+        print('   - Code parent: ${equipmentData['code_parent']}');
+        print('   - Feeder: ${equipmentData['feeder']}');
+        print(
+          '   - Feeder description: ${equipmentData['feeder_description']}',
+        );
+        print('   - Longitude: ${equipmentData['longitude']}');
+        print('   - Latitude: ${equipmentData['latitude']}');
+        if (equipmentData['attributs'] != null) {
+          final attributs = equipmentData['attributs'] as List;
+          print('   - Attributs: ${attributs.length} éléments');
+          for (final attr in attributs) {
+            print(
+              '     • ${attr['name']}: "${attr['value']}" (${attr['type']})',
+            );
+          }
+        }
+      }
+
+      // ✅ CORRIGÉ: Utiliser l'URL sans slash final pour éviter la redirection 307
       final data = await _apiService.post(
-        '/api/v1/equipments/',
-        data: equipment.toJson(),
+        '/api/v1/equipments', // ✅ SANS le slash final
+        data: equipmentData,
       );
-      return Equipment.fromJson(data);
+
+      if (kDebugMode) {
+        print('✅ EquipmentApi - Réponse API: $data');
+        print('✅ EquipmentApi - Type de réponse: ${data.runtimeType}');
+      }
+
+      // ✅ NOUVEAU: Gestion des différents types de réponse de l'API
+      if (data is String) {
+        // ✅ Cas 1: L'API renvoie juste un ID ou un message de succès
+        if (kDebugMode) {
+          print('📋 EquipmentApi - API a renvoyé une chaîne: "$data"');
+        }
+
+        // Créer un équipement minimal avec les données envoyées + ID de l'API
+        return Equipment(
+          id: data, // Utiliser la réponse comme ID
+          code: equipment.code,
+          description: equipment.description,
+          famille: equipment.famille,
+          zone: equipment.zone,
+          entity: equipment.entity,
+          unite: equipment.unite,
+          centreCharge: equipment.centreCharge,
+          codeParent: equipment.codeParent,
+          feeder: equipment.feeder,
+          feederDescription: equipment.feederDescription,
+          longitude: equipment.longitude,
+          latitude: equipment.latitude,
+          attributes: equipment.attributes,
+          cachedAt: DateTime.now(),
+        );
+      } else if (data is Map<String, dynamic>) {
+        // ✅ Cas 2: L'API renvoie un objet JSON complet
+        if (kDebugMode) {
+          print('📋 EquipmentApi - API a renvoyé un objet JSON');
+        }
+        return Equipment.fromJson(data);
+      } else if (data is int) {
+        // ✅ Cas 3: L'API renvoie juste un ID numérique
+        if (kDebugMode) {
+          print('📋 EquipmentApi - API a renvoyé un ID numérique: $data');
+        }
+
+        return Equipment(
+          id: data.toString(),
+          code: equipment.code,
+          description: equipment.description,
+          famille: equipment.famille,
+          zone: equipment.zone,
+          entity: equipment.entity,
+          unite: equipment.unite,
+          centreCharge: equipment.centreCharge,
+          codeParent: equipment.codeParent,
+          feeder: equipment.feeder,
+          feederDescription: equipment.feederDescription,
+          longitude: equipment.longitude,
+          latitude: equipment.latitude,
+          attributes: equipment.attributes,
+          cachedAt: DateTime.now(),
+        );
+      } else {
+        // ✅ Cas 4: Type de réponse inattendu
+        if (kDebugMode) {
+          print(
+            '⚠️ EquipmentApi - Type de réponse inattendu: ${data.runtimeType}',
+          );
+          print('⚠️ EquipmentApi - Contenu: $data');
+        }
+
+        // Créer un équipement avec un ID généré
+        return Equipment(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          code: equipment.code,
+          description: equipment.description,
+          famille: equipment.famille,
+          zone: equipment.zone,
+          entity: equipment.entity,
+          unite: equipment.unite,
+          centreCharge: equipment.centreCharge,
+          codeParent: equipment.codeParent,
+          feeder: equipment.feeder,
+          feederDescription: equipment.feederDescription,
+          longitude: equipment.longitude,
+          latitude: equipment.latitude,
+          attributes: equipment.attributes,
+          cachedAt: DateTime.now(),
+        );
+      }
     } catch (e) {
       if (kDebugMode) {
         print('❌ EquipmentApi - Erreur addEquipment: $e');

@@ -1,10 +1,13 @@
+import 'package:appmobilegmao/models/equipment_attribute.dart'; // ✅ AJOUTÉ: Import pour les attributs
 import 'package:appmobilegmao/provider/auth_provider.dart';
 import 'package:appmobilegmao/provider/equipment_provider.dart';
+import 'package:appmobilegmao/services/equipment_service.dart';
 import 'package:appmobilegmao/services/hive_service.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:appmobilegmao/widgets/custom_buttons.dart';
 import 'package:appmobilegmao/widgets/notification_bar.dart';
-import 'package:dropdown_search/dropdown_search.dart'; // ✅ Import de dropdown_search
+import 'package:appmobilegmao/widgets/tools.dart';
+import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -25,14 +28,26 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
   String? selectedEntity;
   String? selectedUnite;
   String? selectedCentreCharge;
+  String? valueLongitude;
+  String? valueLatitude;
 
   // Contrôleurs et form
   final _formKey = GlobalKey<FormState>();
   final FocusNode _descriptionFocusNode = FocusNode();
   final TextEditingController _descriptionController = TextEditingController();
+  final generatedCode = DateTime.now().millisecondsSinceEpoch
+      .toString()
+      .padRight(15, '0')
+      .substring(0, 15);
 
-  // Attributs
-  List<String> selectedAttributeValues = List.filled(10, '1922309AHDNAJ');
+  // Attributs dynamiques
+  List<EquipmentAttribute> availableAttributes = [];
+  Map<String, List<EquipmentAttribute>> attributeValuesBySpec = {};
+  Map<String, String> selectedAttributeValues = {};
+  bool _loadingAttributes = false;
+
+  // Variable d'état pour le bouton
+  bool _isUpdating = false;
 
   // Listes des sélecteurs (optimisées)
   List<Map<String, dynamic>> feeders = [];
@@ -49,7 +64,6 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
   @override
   void initState() {
     super.initState();
-    // ✅ Utiliser WidgetsBinding pour différer l'exécution après la construction
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadValuesEquipmentsWithUserInfo();
     });
@@ -132,7 +146,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
     }
   }
 
-  // ✅ Méthode d'extraction robuste
+  // Méthode d'extraction robuste
   List<Map<String, dynamic>> _extractSelectorData(dynamic data) {
     if (data == null) return [];
 
@@ -224,7 +238,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
     feeders = _extractSelectorData(selectors['feeders']);
   }
 
-  // ✅ Helper pour extraire les options avec format intelligent
+  // Helper pour extraire les options avec format intelligent
   List<String> _getSelectorsOptions(
     List<Map<String, dynamic>> data, {
     String codeKey = 'description',
@@ -242,7 +256,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
       ..sort();
   }
 
-  // ✅ Formatage intelligent des descriptions
+  // Formatage intelligent des descriptions
   String _formatDescription(String description) {
     final cleanDesc =
         description
@@ -276,14 +290,226 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
         : cleanDesc;
   }
 
-  String? _getSelectedCode(String? displayValue) {
-    if (displayValue == null || displayValue.isEmpty) return null;
-    if (displayValue.contains(' - ')) {
-      return displayValue.split(' - ').first.trim();
+  // Méthode pour récupérer le CODE de la famille sélectionnée
+  String? _getSelectedFamilleCode(String? selectedValue) {
+    if (selectedValue == null || selectedValue.isEmpty) return null;
+
+    // Chercher dans la liste des familles
+    for (final famille in familles) {
+      final description = famille['description']?.toString() ?? '';
+      final code = famille['code']?.toString() ?? '';
+
+      if (description == selectedValue) {
+        return code; // Retourner le CODE
+      }
     }
-    return displayValue.trim();
+
+    return null;
   }
 
+  // Charger les attributs en fonction de la famille sélectionnée avec accès correct à l'API
+  Future<void> _loadAttributesForFamily(String familleCode) async {
+    if (familleCode.isEmpty) {
+      if (kDebugMode) {
+        print('❌ AddEquipmentScreen - Code famille vide');
+      }
+      return;
+    }
+
+    setState(() {
+      _loadingAttributes = true;
+      availableAttributes = [];
+      selectedAttributeValues.clear();
+    });
+
+    try {
+      if (kDebugMode) {
+        print(
+          '🔄 AddEquipmentScreen - Chargement attributs pour famille: $familleCode',
+        );
+      }
+
+      Provider.of<EquipmentProvider>(context, listen: false);
+
+      // ✅ CORRIGÉ: Utiliser EquipmentService directement via une nouvelle instance
+      final equipmentService = EquipmentService();
+      final result = await equipmentService.getEquipmentAttributeValueByCode(
+        codeFamille: familleCode,
+      );
+
+      final attributes =
+          result['attributes'] as List<EquipmentAttribute>? ?? [];
+
+      if (mounted && attributes.isNotEmpty) {
+        setState(() {
+          availableAttributes = attributes;
+
+          // Initialiser les valeurs sélectionnées avec les valeurs par défaut
+          selectedAttributeValues.clear();
+          for (final attr in attributes) {
+            if (attr.id != null && attr.value != null) {
+              selectedAttributeValues[attr.id!] = attr.value!;
+            }
+          }
+        });
+
+        // Charger les valeurs possibles pour chaque attribut
+        await _loadAttributeSpecifications();
+
+        if (kDebugMode) {
+          print(
+            '✅ AddEquipmentScreen - ${attributes.length} attributs chargés pour famille $familleCode',
+          );
+        }
+      } else {
+        if (kDebugMode) {
+          print(
+            '📋 AddEquipmentScreen - Aucun attribut trouvé pour famille $familleCode',
+          );
+        }
+
+        if (mounted) {
+          setState(() {
+            availableAttributes = [];
+          });
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ AddEquipmentScreen - Erreur chargement attributs famille: $e');
+      }
+
+      if (mounted) {
+        setState(() {
+          availableAttributes = [];
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _loadingAttributes = false;
+        });
+      }
+    }
+  }
+
+  // Charger les spécifications d'attributs avec accès correct à l'API
+  Future<void> _loadAttributeSpecifications() async {
+    Provider.of<EquipmentProvider>(context, listen: false);
+
+    final Map<String, bool> processedSpecs = {};
+
+    for (final attr in availableAttributes) {
+      if (attr.specification != null && attr.index != null) {
+        final specKey = '${attr.specification}_${attr.index}';
+
+        if (processedSpecs.containsKey(specKey)) {
+          continue;
+        }
+
+        processedSpecs[specKey] = true;
+
+        try {
+          // ✅ CORRIGÉ: Utiliser EquipmentService directement
+          final equipmentService = EquipmentService();
+          final result = await equipmentService.getAttributeValuesEquipment(
+            specification: attr.specification!,
+            attributeIndex: attr.index!,
+          );
+
+          final values =
+              result['attributes'] as List<EquipmentAttribute>? ?? [];
+
+          if (mounted) {
+            setState(() {
+              attributeValuesBySpec[specKey] = values;
+            });
+          }
+
+          if (kDebugMode) {
+            print(
+              '✅ AddEquipmentScreen - ${values.length} valeurs chargées pour attribut ${attr.name}',
+            );
+          }
+        } catch (e) {
+          if (kDebugMode) {
+            print(
+              '❌ AddEquipmentScreen - Erreur chargement valeurs attribut ${attr.name}: $e',
+            );
+          }
+
+          // En cas d'erreur, créer une liste avec au moins la valeur actuelle
+          if (mounted) {
+            setState(() {
+              attributeValuesBySpec[specKey] = [
+                EquipmentAttribute(
+                  id: '${attr.id}_current',
+                  specification: attr.specification,
+                  index: attr.index,
+                  name: attr.name,
+                  value: attr.value ?? 'Valeur actuelle',
+                ),
+              ];
+            });
+          }
+        }
+      }
+    }
+  }
+
+  // Gestion intelligente du type d'attribut
+  String _determineAttributeType(EquipmentAttribute attribute) {
+    final name = attribute.name?.toLowerCase() ?? '';
+    final value = attribute.value ?? '';
+
+    if (name.contains('famille') ||
+        name.contains('zone') ||
+        name.contains('entité') ||
+        name.contains('entity') ||
+        name.contains('feeder') ||
+        name.contains('unite') ||
+        name.contains('centre') ||
+        name.contains('marque')) {
+      return 'select';
+    }
+
+    if (name.contains('longitude') ||
+        name.contains('latitude') ||
+        name.contains('coordonn') ||
+        name.contains('position') ||
+        name.contains('calibre') ||
+        name.contains('tension')) {
+      return 'number';
+    }
+
+    if (name.contains('description') ||
+        name.contains('commentaire') ||
+        name.contains('note') ||
+        name.contains('remarque') ||
+        name.contains('observation')) {
+      return 'text';
+    }
+
+    if (value.isNotEmpty) {
+      if (double.tryParse(value) != null) {
+        return 'number';
+      }
+
+      if (value.length < 50 &&
+          !value.contains(' ') &&
+          value.toUpperCase() == value) {
+        return 'select';
+      }
+
+      if (value.length > 100) {
+        return 'text';
+      }
+    }
+
+    return 'string';
+  }
+
+  // ComboBox avec gestion du changement de famille
   Widget _buildComboBoxField({
     required String label,
     required String msgError,
@@ -291,7 +517,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
     required String? selectedValue,
     required Function(String?) onChanged,
     String hintText = 'Rechercher ou sélectionner...',
-    bool isRequired = true, // Ajout d'un paramètre pour la validation
+    bool isRequired = true,
   }) {
     final cleanItems = items.toSet().toList()..sort();
     if (cleanItems.isEmpty) {
@@ -301,7 +527,18 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
     return DropdownSearch<String>(
       items: cleanItems,
       selectedItem: selectedValue,
-      onChanged: onChanged,
+      onChanged: (value) {
+        onChanged(value);
+
+        // ✅ NOUVEAU: Déclencher le chargement des attributs si c'est la famille
+        if (label == 'Famille' && value != null) {
+          final familleCode = _getSelectedFamilleCode(value);
+          if (familleCode != null) {
+            _loadAttributesForFamily(familleCode);
+          }
+        }
+      },
+
       popupProps: PopupProps.menu(
         showSearchBox: true,
         searchFieldProps: TextFieldProps(
@@ -406,7 +643,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
         ),
       ),
       validator: (value) {
-        if (!isRequired) return null; // Pas de validation si non obligatoire
+        if (!isRequired) return null;
         if (value == null ||
             value.isEmpty ||
             value == 'Aucun élément disponible') {
@@ -588,7 +825,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
   Widget _buildInformationsSection() {
     return Column(
       children: [
-        _buildFieldset('Informations'),
+        Tools.buildFieldset('Informations'),
         const SizedBox(height: 10),
         _buildCodeAndFamilleRow(),
         const SizedBox(height: 20),
@@ -601,10 +838,20 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
     );
   }
 
+  Widget _buildDescriptionRow() {
+    return Tools.buildTextField(
+      label: 'Description',
+      msgError: 'Veuillez entrer la description',
+      focusNode: _descriptionFocusNode,
+      controller: _descriptionController,
+      isRequired: false,
+    );
+  }
+
   Widget _buildParentInfoSection() {
     return Column(
       children: [
-        _buildFieldset('Informations parents'),
+        Tools.buildFieldset('Informations parents'),
         const SizedBox(height: 10),
         // ✅ Code Parent NON obligatoire
         _buildComboBoxField(
@@ -627,7 +874,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
             });
           },
           hintText: 'Rechercher ou sélectionner un code parent...',
-          isRequired: false
+          isRequired: false,
         ),
         const SizedBox(height: 20),
         _buildFeederRow(),
@@ -638,7 +885,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
   Widget _buildPositioningSection() {
     return Column(
       children: [
-        _buildFieldset('Informations de positionnement'),
+        Tools.buildFieldset('Informations de positionnement'),
         const SizedBox(height: 10),
         _buildCoordinatesRow(),
         const SizedBox(height: 20),
@@ -649,125 +896,11 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
     );
   }
 
-  Widget _buildCodeAndFamilleRow() {
-    return Row(
-      children: [
-        Expanded(
-          child: _buildText(
-            label: 'Code',
-            value: selectedCodeParent ?? '#12345',
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          // ✅ Utilisation du ComboBox pour Famille
-          child: _buildComboBoxField(
-            label: 'Famille',
-            msgError: 'Veuillez sélectionner une famille',
-            items: _getSelectorsOptions(familles),
-            selectedValue: selectedFamille,
-            onChanged: (value) {
-              setState(() {
-                selectedFamille = value;
-              });
-            },
-            hintText: 'Rechercher une famille...',
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildZoneAndEntityRow() {
-    return Row(
-      children: [
-        Expanded(
-          // ✅ Utilisation du ComboBox pour Zone
-          child: _buildComboBoxField(
-            label: 'Zone',
-            msgError: 'Veuillez sélectionner une zone',
-            items: _getSelectorsOptions(zones),
-            selectedValue: selectedZone,
-            onChanged: (value) {
-              setState(() {
-                selectedZone = value;
-              });
-            },
-            hintText: 'Rechercher une zone...',
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          // ✅ Utilisation du ComboBox pour Entité
-          child: _buildComboBoxField(
-            label: 'Entité',
-            msgError: 'Veuillez sélectionner une entité',
-            items: _getSelectorsOptions(entities),
-            selectedValue: selectedEntity,
-            onChanged: (value) {
-              setState(() {
-                selectedEntity = value;
-              });
-            },
-            hintText: 'Rechercher une entité...',
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildUniteAndChargeRow() {
-    return Row(
-      children: [
-        Expanded(
-          // ✅ Utilisation du ComboBox pour Unité
-          child: _buildComboBoxField(
-            label: 'Unité',
-            msgError: 'Veuillez sélectionner une unité',
-            items: _getSelectorsOptions(unites),
-            selectedValue: selectedUnite,
-            onChanged: (value) {
-              setState(() {
-                selectedUnite = value;
-              });
-            },
-            hintText: 'Rechercher une unité...',
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          // ✅ Utilisation du ComboBox pour Centre de Charge
-          child: _buildComboBoxField(
-            label: 'Centre de Charge',
-            msgError: 'Veuillez sélectionner un centre de charge',
-            items: _getSelectorsOptions(centreCharges),
-            selectedValue: selectedCentreCharge,
-            onChanged: (value) {
-              setState(() {
-                selectedCentreCharge = value;
-              });
-            },
-            hintText: 'Rechercher un centre...',
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDescriptionRow() {
-    return _buildTextField(
-      label: 'Description',
-      msgError: 'Veuillez entrer la description',
-      focusNode: _descriptionFocusNode,
-      controller: _descriptionController,
-    );
-  }
-
   Widget _buildFeederRow() {
     return Row(
       children: [
         Expanded(
-          // ✅ Utilisation du ComboBox pour Feeder
+          // ✅ MODIFIÉ: Feeder optionnel
           child: _buildComboBoxField(
             label: 'Feeder',
             msgError: 'Veuillez sélectionner un feeder',
@@ -788,12 +921,12 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
               });
             },
             hintText: 'Rechercher un feeder...',
-            isRequired: false
+            isRequired: false,
           ),
         ),
         const SizedBox(width: 10),
         Expanded(
-          child: _buildText(
+          child: Tools.buildText(
             label: 'Info Feeder',
             value: _formatDescription(selectedFeeder ?? ''),
           ),
@@ -805,9 +938,19 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
   Widget _buildCoordinatesRow() {
     return Row(
       children: [
-        Expanded(child: _buildText(label: 'Longitude', value: '12311231')),
+        Expanded(
+          child: Tools.buildText(
+            label: 'Longitude',
+            value: valueLongitude ?? '12311231',
+          ),
+        ),
         const SizedBox(width: 10),
-        Expanded(child: _buildText(label: 'Latitude', value: '12311231')),
+        Expanded(
+          child: Tools.buildText(
+            label: 'Latitude',
+            value: valueLatitude ?? '12311231',
+          ),
+        ),
       ],
     );
   }
@@ -882,24 +1025,51 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
     );
   }
 
+  // ✅ MODIFIÉ: Section attributs avec état conditionnel
   Widget _buildAttributesSection() {
+    // ✅ Vérifier si une famille est sélectionnée
+    final bool isFamilleSelected =
+        selectedFamille != null && selectedFamille!.isNotEmpty;
+    final bool hasAttributes = availableAttributes.isNotEmpty;
+
     return Row(
       children: [
         Expanded(
           child: GestureDetector(
-            onTap: _showAttributesModal,
+            // ✅ Seulement actif si famille sélectionnée ET attributs disponibles
+            onTap:
+                (isFamilleSelected && hasAttributes)
+                    ? _showAttributesModal
+                    : null,
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 12),
               child: Row(
                 children: [
-                  const Icon(Icons.add, color: AppTheme.secondaryColor),
+                  Icon(
+                    isFamilleSelected
+                        ? (hasAttributes ? Icons.add : Icons.info_outline)
+                        : Icons.block,
+                    color:
+                        (isFamilleSelected && hasAttributes)
+                            ? AppTheme.secondaryColor
+                            : AppTheme.thirdColor,
+                  ),
                   const SizedBox(width: 8),
-                  const Text(
-                    'Ajouter les attributs',
+                  Text(
+                    isFamilleSelected
+                        ? (hasAttributes
+                            ? 'Ajouter les attributs'
+                            : (_loadingAttributes
+                                ? 'Chargement des attributs...'
+                                : 'Aucun attribut pour cette famille'))
+                        : 'Sélectionnez d\'abord une famille',
                     style: TextStyle(
                       fontFamily: AppTheme.fontMontserrat,
                       fontWeight: FontWeight.bold,
-                      color: AppTheme.secondaryColor,
+                      color:
+                          (isFamilleSelected && hasAttributes)
+                              ? AppTheme.secondaryColor
+                              : AppTheme.thirdColor,
                       fontSize: 16,
                     ),
                   ),
@@ -921,246 +1091,270 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
     );
   }
 
-  // Widgets utilitaires (gardés identiques)
-  Widget _buildTextField({
-    required String label,
-    required String msgError,
-    FocusNode? focusNode,
-    TextEditingController? controller,
-  }) {
-    return TextFormField(
-      focusNode: focusNode,
-      controller: controller,
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(
-          color: AppTheme.secondaryColor,
-          fontFamily: AppTheme.fontMontserrat,
-          fontWeight: FontWeight.w600,
-        ),
-        border: const UnderlineInputBorder(),
-        enabledBorder: const UnderlineInputBorder(
-          borderSide: BorderSide(color: AppTheme.thirdColor),
-        ),
-        focusedBorder: const UnderlineInputBorder(
-          borderSide: BorderSide(color: AppTheme.secondaryColor, width: 2.0),
-        ),
-      ),
-      validator: (value) {
-        if (value == null || value.isEmpty) {
-          return msgError;
-        }
-        return null;
-      },
-    );
-  }
-
-  Widget _buildText({required String label, required String value}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 10),
-        Text(
-          label,
-          style: const TextStyle(
-            color: AppTheme.secondaryColor,
-            fontFamily: AppTheme.fontMontserrat,
-            fontWeight: FontWeight.w600,
-            fontSize: 12,
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          value.isNotEmpty ? value : '------',
-          style: TextStyle(
-            color: AppTheme.thirdColor,
-            fontFamily: AppTheme.fontMontserrat,
-            fontWeight: FontWeight.normal,
-            fontSize: 18,
-          ),
-        ),
-        const SizedBox(height: 20),
-        Container(
-          height: 1,
-          width: double.infinity,
-          color: AppTheme.thirdColor,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFieldset(String title) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontFamily: AppTheme.fontMontserrat,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.secondaryColor,
-            fontSize: 18,
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Container(
-            height: 1,
-            width: double.infinity,
-            color: AppTheme.thirdColor,
-            margin: const EdgeInsets.only(top: 10),
-          ),
-        ),
-      ],
-    );
-  }
-
+  // ✅ NOUVEAU: Modal des attributs (adapté de modify_equipment_screen.dart)
   void _showAttributesModal() {
+    if (availableAttributes.isEmpty) {
+      return;
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (BuildContext context) {
-        return Container(
-          height: MediaQuery.of(context).size.height * 0.7,
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(30),
-              topRight: Radius.circular(30),
-            ),
-          ),
-          child: Column(
-            children: [
-              // Handle bar
-              Container(
-                margin: const EdgeInsets.symmetric(vertical: 12),
-                height: 4,
-                width: 40,
-                decoration: BoxDecoration(
-                  color: AppTheme.thirdColor,
-                  borderRadius: BorderRadius.circular(2),
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setModalState) {
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.8,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(30),
+                  topRight: Radius.circular(30),
                 ),
               ),
-
-              // En-tête
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    SizedBox(
-                      width: 64,
-                      height: 34,
-                      child: ElevatedButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.secondaryColor,
-                          padding: EdgeInsets.zero,
-                        ),
-                        child: const Icon(
-                          Icons.arrow_back,
-                          size: 20,
-                          color: AppTheme.primaryColor,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 20),
-                    const Text(
-                      'Ajout Attribut',
-                      style: TextStyle(
-                        fontFamily: AppTheme.fontMontserrat,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.secondaryColor,
-                        fontSize: 20,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 30),
-
-              // En-tête colonnes
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Attribut',
-                      style: TextStyle(
-                        fontFamily: AppTheme.fontMontserrat,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.secondaryColor,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Container(
-                        height: 1,
-                        width: double.infinity,
-                        color: AppTheme.thirdColor,
-                        margin: const EdgeInsets.only(top: 10),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    const Text(
-                      'Valeur',
-                      style: TextStyle(
-                        fontFamily: AppTheme.fontMontserrat,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.secondaryColor,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Liste des attributs
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 26,
-                      vertical: 20,
-                    ),
-                    child: Column(
-                      children: List.generate(
-                        8,
-                        (index) => _buildAttributeRow(index),
-                      ),
+              child: Column(
+                children: [
+                  // Handle bar
+                  Container(
+                    margin: const EdgeInsets.symmetric(vertical: 12),
+                    height: 4,
+                    width: 40,
+                    decoration: BoxDecoration(
+                      color: AppTheme.thirdColor,
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                ),
+
+                  // Header
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 64,
+                          height: 34,
+                          child: ElevatedButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.secondaryColor,
+                              padding: EdgeInsets.zero,
+                            ),
+                            child: const Icon(
+                              Icons.arrow_back,
+                              size: 20,
+                              color: AppTheme.primaryColor,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 20),
+                        const Expanded(
+                          child: Text(
+                            'Ajouter les Attributs',
+                            style: TextStyle(
+                              fontFamily: AppTheme.fontMontserrat,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.secondaryColor,
+                              fontSize: 20,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // Loading ou contenu
+                  if (_loadingAttributes)
+                    const Expanded(
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                AppTheme.secondaryColor,
+                              ),
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              'Chargement des attributs...',
+                              style: TextStyle(
+                                fontFamily: AppTheme.fontMontserrat,
+                                color: AppTheme.secondaryColor,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    Expanded(
+                      child: Column(
+                        children: [
+                          // Header des colonnes
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            child: Row(
+                              children: [
+                                const Expanded(
+                                  flex: 1,
+                                  child: Text(
+                                    'Attribut',
+                                    style: TextStyle(
+                                      fontFamily: AppTheme.fontMontserrat,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppTheme.secondaryColor,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  flex: 3,
+                                  child: Container(
+                                    height: 1,
+                                    color: AppTheme.thirdColor,
+                                    margin: const EdgeInsets.only(top: 8),
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                const Expanded(
+                                  flex: 1,
+                                  child: Text(
+                                    'Valeur',
+                                    style: TextStyle(
+                                      fontFamily: AppTheme.fontMontserrat,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppTheme.secondaryColor,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          const SizedBox(height: 20),
+
+                          // Liste des attributs
+                          Expanded(
+                            child: ListView.builder(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                              ),
+                              itemCount: availableAttributes.length,
+                              itemBuilder: (context, index) {
+                                final attribute = availableAttributes[index];
+                                return _buildAttributeRow(
+                                  attribute,
+                                  setModalState,
+                                );
+                              },
+                            ),
+                          ),
+
+                          // Boutons d'action
+                          Padding(
+                            padding: const EdgeInsets.all(20),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: SecondaryButton(
+                                    text: 'Annuler',
+                                    onPressed: () => Navigator.pop(context),
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: PrimaryButton(
+                                    text: 'Appliquer',
+                                    icon: Icons.check,
+                                    onPressed: () async {
+                                      Navigator.pop(context);
+
+                                      if (mounted) {
+                                        NotificationService.showSuccess(
+                                          context,
+                                          title: '✅ Attributs sélectionnés',
+                                          message:
+                                              'Les attributs seront inclus lors de la sauvegarde',
+                                          showAction: false,
+                                          duration: const Duration(seconds: 2),
+                                        );
+                                      }
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                        ],
+                      ),
+                    ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
   }
 
-  Widget _buildAttributeRow(int index) {
-    const values = [
-      '1922309AHDNAJ',
-      '2033410BIEKBK',
-      '3144521CJFLCL',
-      '4255632DKGMDM',
-      '5366743ELHNEE',
-    ];
+  // ✅ NOUVEAU: Widget pour ligne d'attribut (depuis modify_equipment_screen.dart)
+  Widget _buildAttributeRow(
+    EquipmentAttribute attribute,
+    StateSetter setModalState,
+  ) {
+    final specKey = '${attribute.specification}_${attribute.index}';
+    final availableValues = attributeValuesBySpec[specKey] ?? [];
+
+    // Créer la liste des options UNIQUES
+    final optionsSet = <String>{};
+
+    // Ajouter les valeurs disponibles depuis l'API
+    for (final attr in availableValues) {
+      if (attr.value != null && attr.value!.isNotEmpty) {
+        optionsSet.add(attr.value!);
+      }
+    }
+
+    // Toujours ajouter la valeur actuelle de l'attribut
+    if (attribute.value != null && attribute.value!.isNotEmpty) {
+      optionsSet.add(attribute.value!);
+    }
+
+    // Si aucune option, ajouter des valeurs par défaut
+    if (optionsSet.isEmpty) {
+      switch (attribute.name?.toLowerCase()) {
+        case 'nature':
+          optionsSet.addAll(['Cu', 'Alu', 'Acier']);
+          break;
+        case 'section':
+          optionsSet.addAll(['1x3x240', '1x3x150', '1x3x95']);
+          break;
+        default:
+          optionsSet.add('Aucune valeur disponible');
+      }
+    }
+
+    final options = optionsSet.toList()..sort();
+    final currentValue =
+        selectedAttributeValues[attribute.id ?? ''] ?? attribute.value;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: 20),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          // Nom de l'attribut
           Expanded(
             flex: 2,
             child: Text(
-              'Test ${index + 1}',
+              attribute.name ?? 'Attribut ${attribute.index ?? ''}',
               style: const TextStyle(
                 fontFamily: AppTheme.fontMontserrat,
                 fontWeight: FontWeight.w600,
@@ -1169,21 +1363,112 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
               ),
             ),
           ),
+
           const SizedBox(width: 16),
+
+          // Dropdown des valeurs
           Expanded(
             flex: 3,
-            // ✅ Utilisation du ComboBox pour les attributs aussi
-            child: _buildComboBoxField(
-              label: '',
-              msgError: 'Veuillez sélectionner une valeur',
-              items: values,
-              selectedValue: selectedAttributeValues[index],
+            child: DropdownSearch<String>(
+              items: options,
+              selectedItem: currentValue,
               onChanged: (value) {
-                setState(() {
-                  selectedAttributeValues[index] = value!;
+                setModalState(() {
+                  if (value != null && attribute.id != null) {
+                    selectedAttributeValues[attribute.id!] = value;
+                  }
                 });
               },
-              hintText: 'Sélectionner...',
+
+              popupProps: PopupProps.menu(
+                showSearchBox: options.length > 5,
+                searchFieldProps: TextFieldProps(
+                  decoration: InputDecoration(
+                    hintText: 'Rechercher...',
+                    prefixIcon: const Icon(Icons.search, size: 20),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                  ),
+                  style: const TextStyle(fontSize: 14),
+                ),
+                menuProps: MenuProps(
+                  backgroundColor: Colors.white,
+                  elevation: 8,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                itemBuilder: (context, item, isSelected) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isSelected ? AppTheme.secondaryColor10 : null,
+                    ),
+                    child: Row(
+                      children: [
+                        if (isSelected)
+                          const Icon(
+                            Icons.check_circle,
+                            color: AppTheme.secondaryColor,
+                            size: 16,
+                          ),
+                        if (isSelected) const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            item,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color:
+                                  isSelected
+                                      ? AppTheme.secondaryColor
+                                      : Colors.black87,
+                              fontWeight:
+                                  isSelected
+                                      ? FontWeight.w600
+                                      : FontWeight.normal,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+
+              dropdownDecoratorProps: DropDownDecoratorProps(
+                dropdownSearchDecoration: InputDecoration(
+                  hintText: 'Sélectionner...',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: AppTheme.thirdColor),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(
+                      color: AppTheme.secondaryColor,
+                      width: 2,
+                    ),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  suffixIcon: const Icon(
+                    Icons.arrow_drop_down,
+                    color: AppTheme.secondaryColor,
+                  ),
+                ),
+              ),
+
+              itemAsString:
+                  (String item) =>
+                      item.length > 25 ? '${item.substring(0, 25)}...' : item,
             ),
           ),
         ],
@@ -1191,28 +1476,367 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
     );
   }
 
-  Widget _buildActionButtons() {
+  Widget _buildCodeAndFamilleRow() {
     return Row(
       children: [
-        Expanded(
-          child: SecondaryButton(
-            text: 'Annuler',
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-        ),
+        Expanded(child: Tools.buildText(label: 'Code', value: generatedCode)),
         const SizedBox(width: 10),
         Expanded(
-          child: PrimaryButton(
-            text: 'Enregistrer',
-            icon: Icons.save,
-            onPressed: _handleSave,
+          // ✅ Utilisation du ComboBox pour Famille
+          child: _buildComboBoxField(
+            label: 'Famille',
+            msgError: 'Veuillez sélectionner une famille',
+            items: _getSelectorsOptions(familles),
+            selectedValue: selectedFamille,
+            onChanged: (value) {
+              setState(() {
+                selectedFamille = value;
+              });
+            },
+            hintText: 'Rechercher une famille...',
           ),
         ),
       ],
     );
   }
 
+  Widget _buildZoneAndEntityRow() {
+    return Row(
+      children: [
+        Expanded(
+          // ✅ Utilisation du ComboBox pour Zone
+          child: _buildComboBoxField(
+            label: 'Zone',
+            msgError: 'Veuillez sélectionner une zone',
+            items: _getSelectorsOptions(zones),
+            selectedValue: selectedZone,
+            onChanged: (value) {
+              setState(() {
+                selectedZone = value;
+              });
+            },
+            hintText: 'Rechercher une zone...',
+            isRequired: false,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          // ✅ Utilisation du ComboBox pour Entité
+          child: _buildComboBoxField(
+            label: 'Entité',
+            msgError: 'Veuillez sélectionner une entité',
+            items: _getSelectorsOptions(entities),
+            selectedValue: selectedEntity,
+            onChanged: (value) {
+              setState(() {
+                selectedEntity = value;
+              });
+            },
+            hintText: 'Rechercher une entité...',
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildUniteAndChargeRow() {
+    return Row(
+      children: [
+        Expanded(
+          // ✅ Utilisation du ComboBox pour Unité
+          child: _buildComboBoxField(
+            label: 'Unité',
+            msgError: 'Veuillez sélectionner une unité',
+            items: _getSelectorsOptions(unites),
+            selectedValue: selectedUnite,
+            onChanged: (value) {
+              setState(() {
+                selectedUnite = value;
+              });
+            },
+            hintText: 'Rechercher une unité...',
+            isRequired: false,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          // ✅ Utilisation du ComboBox pour Centre de Charge
+          child: _buildComboBoxField(
+            label: 'Centre de Charge',
+            msgError: 'Veuillez sélectionner un centre de charge',
+            items: _getSelectorsOptions(centreCharges),
+            selectedValue: selectedCentreCharge,
+            onChanged: (value) {
+              setState(() {
+                selectedCentreCharge = value;
+              });
+            },
+            hintText: 'Rechercher un centre...',
+            isRequired: false,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ✅ NOUVEAU: Vérifier s'il y a des changements (pour add_equipment_screen c'est différent)
+  bool _hasChanges() {
+    // Pour un ajout d'équipement, on considère qu'il y a des changements si :
+    // 1. Au moins une famille est sélectionnée (obligatoire)
+    // 2. Au moins une description est saisie
+
+    final hasFamille = selectedFamille != null && selectedFamille!.isNotEmpty;
+    // final hasDescription = _descriptionController.text.trim().isNotEmpty;
+
+    // Pour l'ajout, on considère qu'il y a des changements dès qu'on a les champs obligatoires
+    // return hasFamille && hasDescription;
+    return hasFamille;
+  }
+
+  // ✅ CORRIGÉ: Boutons d'action adaptés pour l'ajout d'équipement
+  Widget _buildActionButtons() {
+    // ✅ Vérifier s'il y a suffisamment de données pour permettre l'ajout
+    final canSave = _hasChanges();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 0),
+      child: Row(
+        children: [
+          Expanded(
+            child: SecondaryButton(
+              text: 'Annuler',
+              // ✅ Désactiver le bouton Annuler pendant l'ajout
+              onPressed: _isUpdating ? null : () => Navigator.pop(context),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child:
+                _isUpdating
+                    ? // ✅ Bouton avec loader pendant l'ajout
+                    Container(
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: AppTheme.secondaryColor70,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              'Ajout en cours...',
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontFamily: AppTheme.fontMontserrat,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                    : // ✅ Bouton d'ajout avec état conditionnel
+                    Container(
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color:
+                            canSave
+                                ? AppTheme.secondaryColor
+                                : AppTheme.thirdColor50,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(8),
+                          onTap: canSave ? _handleSave : null,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.add,
+                                  color:
+                                      canSave
+                                          ? Colors.white
+                                          : AppTheme.thirdColor,
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 6),
+                                Flexible(
+                                  child: Text(
+                                    canSave
+                                        ? 'Ajouter'
+                                        : 'Remplissez les champs',
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
+                                    style: TextStyle(
+                                      fontFamily: AppTheme.fontMontserrat,
+                                      fontWeight: FontWeight.w600,
+                                      color:
+                                          canSave
+                                              ? Colors.white
+                                              : AppTheme.thirdColor,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ✅ CORRIGÉ: Préparer les attributs pour l'envoi selon les spécifications backend
+  List<Map<String, String>> _prepareAttributesForSave() {
+    final attributs = <Map<String, String>>[];
+
+    // ✅ IMPORTANT: Toujours inclure TOUS les attributs de la famille, même sans valeur
+    if (availableAttributes.isNotEmpty) {
+      for (final attribute in availableAttributes) {
+        if (attribute.name != null) {
+          // ✅ Récupérer la valeur sélectionnée ou utiliser la valeur par défaut ou chaîne vide
+          final selectedValue = selectedAttributeValues[attribute.id!];
+          final finalValue = selectedValue ?? attribute.value ?? '';
+
+          // ✅ Déterminer le type intelligent de l'attribut
+          final attributeType = _determineAttributeType(attribute);
+
+          // ✅ NOUVEAU: Inclure TOUS les attributs, même ceux sans valeur
+          attributs.add({
+            'id': attribute.id!,
+            'name': attribute.name!,
+            'specification': attribute.specification!,
+            'index': attribute.index!,
+            'value': finalValue,
+            'type': attributeType,
+          });
+
+          if (kDebugMode) {
+            print(
+              '✓ Attribut préparé: ${attribute.name} = "$finalValue" ($attributeType)',
+            );
+          }
+        }
+      }
+    }
+
+    if (kDebugMode) {
+      print(
+        '📋 AddEquipmentScreen - ${attributs.length} attributs préparés pour l\'envoi',
+      );
+    }
+
+    return attributs;
+  }
+
+  // ✅ NOUVEAU: Méthode pour obtenir le code court depuis une description
+  String? _getShortCodeFromDescription(String? description, String type) {
+    if (description == null || description.isEmpty) return null;
+
+    // ✅ Pour les entities, appliquer une logique spéciale
+    if (type == 'entity') {
+      // Cas spéciaux connus
+      final knownEntityCodes = {
+        'SERVICE DE DISTRIB DAKAR VILLE': 'SDDV',
+        'SERVICE DE DISTRIBUTION DAKAR VILLE': 'SDDV',
+        'DIRECTION TECHNIQUE': 'DT',
+        'DIRECTION GENERALE': 'DG',
+        'SERVICE MAINTENANCE': 'SM',
+        'AGENCE DE BOURGUIBA': 'ABG',
+        // Ajouter d'autres mappings selon les besoins
+      };
+
+      // Chercher d'abord dans les mappings connus
+      if (knownEntityCodes.containsKey(description)) {
+        return knownEntityCodes[description];
+      }
+
+      // Générer un code automatiquement
+      return _generateEntityCode(description);
+    }
+
+    // Pour les autres types, utiliser la description telle quelle (sera tronquée si nécessaire)
+    return description;
+  }
+
+  // ✅ NOUVEAU: Générer un code entity automatiquement
+  String _generateEntityCode(String description) {
+    if (description.isEmpty) return '';
+
+    // Stratégie 1: Extraire les acronymes
+    final words = description.split(' ');
+    if (words.length > 1) {
+      final acronym = words
+          .where((word) => word.isNotEmpty && word.length > 1)
+          .map((word) => word[0].toUpperCase())
+          .join('');
+
+      if (acronym.length <= 20 && acronym.length >= 2) {
+        if (kDebugMode) {
+          print(
+            '📝 Code entity généré (acronyme): "$description" -> "$acronym"',
+          );
+        }
+        return acronym;
+      }
+    }
+
+    // Stratégie 2: Nettoyer et tronquer
+    String code = description
+        .toUpperCase()
+        .replaceAll('SERVICE DE ', 'S')
+        .replaceAll('DIRECTION ', 'D')
+        .replaceAll('AGENCE DE ', 'A')
+        .replaceAll(' DE ', '')
+        .replaceAll(' DU ', '')
+        .replaceAll(' ', '')
+        .replaceAll(RegExp(r'[^A-Z0-9]'), '');
+
+    // Limiter à 20 caractères maximum
+    if (code.length > 20) {
+      code = code.substring(0, 20);
+    }
+
+    if (kDebugMode) {
+      print('📝 Code entity généré (nettoyé): "$description" -> "$code"');
+    }
+
+    return code;
+  }
+
+  // ✅ CORRIGÉ: Gestion de la sauvegarde avec codes corrects
   Future<void> _handleSave() async {
+    // ✅ Vérifier si un ajout est déjà en cours
+    if (_isUpdating) {
+      if (kDebugMode) {
+        print('⚠️ AddEquipmentScreen - Ajout déjà en cours, abandon');
+      }
+      return;
+    }
+
     if (!_formKey.currentState!.validate()) {
       if (mounted) {
         NotificationService.showWarning(
@@ -1227,22 +1851,64 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
     }
 
     try {
+      // ✅ Activer le loader
+      setState(() {
+        _isUpdating = true;
+      });
+
+      if (kDebugMode) {
+        print('🔄 AddEquipmentScreen - Début de l\'ajout');
+      }
+
+      // ✅ IMPORTANT: Préparer les attributs AVANT de créer les données
+      final attributs = _prepareAttributesForSave();
+
+      // ✅ NOUVEAU: Traitement spécial pour l'entity (génération de code court)
+      final entityCode = _getShortCodeFromDescription(selectedEntity, 'entity');
+
+      // ✅ IMPORTANT: Utiliser les codes courts pour éviter les erreurs de longueur
       final equipmentData = {
-        'codeParent': selectedCodeParent,
-        'code': _getSelectedCode(selectedCodeParent),
-        'feeder': _getSelectedCode(selectedFeeder),
-        'infoFeeder': selectedFeeder,
-        'famille': _getSelectedCode(selectedFamille),
-        'zone': _getSelectedCode(selectedZone),
-        'entity': _getSelectedCode(selectedEntity),
-        'unite': _getSelectedCode(selectedUnite),
-        'centreCharge': _getSelectedCode(selectedCentreCharge),
-        'description': _descriptionController.text.trim(),
-        'longitude': '12311231',
-        'latitude': '12311231',
-        'attributes': selectedAttributeValues,
+        'codeParent': selectedCodeParent, // ✅ Peut être null
+        'code': generatedCode, // ✅ Code généré automatiquement
+        'feeder': selectedFeeder, // ✅ Peut être null
+        'infoFeeder': selectedFeeder, // ✅ Description du feeder
+        'famille':
+            selectedFamille, // ✅ OBLIGATOIRE - Description (sera convertie en code)
+        'zone':
+            selectedZone, // ✅ OBLIGATOIRE - Description (sera convertie en code)
+        'entity':
+            entityCode ??
+            selectedEntity, // ✅ CORRIGÉ: Utiliser le code court généré
+        'unite':
+            selectedUnite, // ✅ Peut être null - Description (sera convertie en code)
+        'centreCharge':
+            selectedCentreCharge, // ✅ Peut être null - Description (sera convertie en code)
+        'description': _descriptionController.text.trim(), // ✅ OBLIGATOIRE
+        'longitude': valueLongitude ?? '12311231', // ✅ Valeur par défaut
+        'latitude': valueLatitude ?? '12311231', // ✅ Valeur par défaut
+        'attributs': attributs, // ✅ TOUS les attributs de la famille
       };
 
+      if (kDebugMode) {
+        print('📊 AddEquipmentScreen - Données à envoyer:');
+        print('   - Code Parent: ${equipmentData['codeParent']}');
+        print('   - Code: ${equipmentData['code']}');
+        print('   - Feeder: ${equipmentData['feeder']}');
+        print('   - Famille: ${equipmentData['famille']}');
+        print('   - Zone: ${equipmentData['zone']}');
+        print(
+          '   - Entity (CODE COURT): ${equipmentData['entity']} (original: $selectedEntity)',
+        );
+        print('   - Unite: ${equipmentData['unite']}');
+        print('   - Centre Charge: ${equipmentData['centreCharge']}');
+        print('   - Description: ${equipmentData['description']}');
+        print('   - Attributs: ${attributs.length} éléments');
+        for (final attr in attributs) {
+          print('     • ${attr['name']}: "${attr['value']}" (${attr['type']})');
+        }
+      }
+
+      // ✅ Envoyer au provider qui se chargera de la conversion des codes
       await context.read<EquipmentProvider>().addEquipment(equipmentData);
 
       if (mounted && Navigator.canPop(context)) {
@@ -1276,7 +1942,13 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
           duration: const Duration(seconds: 4),
         );
       }
+    } finally {
+      // ✅ Désactiver le loader dans tous les cas
+      if (mounted) {
+        setState(() {
+          _isUpdating = false;
+        });
+      }
     }
   }
-
 }

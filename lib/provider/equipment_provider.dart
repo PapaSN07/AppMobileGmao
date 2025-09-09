@@ -275,30 +275,96 @@ class EquipmentProvider extends ChangeNotifier {
     }
   }
 
-  // ✅ Méthode compatible avec add_equipment_screen.dart
+  // ✅ CORRIGÉ: Méthode compatible avec add_equipment_screen.dart avec attributs automatiques
   Future<void> addEquipment(Map<String, dynamic> equipmentData) async {
     try {
       await _checkConnectivity();
 
       if (!_isOffline) {
-        // Envoyer à l'API
-        final equipment = Equipment.fromJson(equipmentData);
+        if (kDebugMode) {
+          print('🔄 EquipmentProvider - Début ajout équipement');
+          print('📊 EquipmentProvider - Données reçues: ${equipmentData.keys.join(', ')}');
+        }
 
-        // Simuler l'ajout API (à remplacer par votre vraie API)
-        await _apiService.addEquipment(equipment);
-        final newEquipmentMap = _convertEquipmentToMap(equipment);
-        newEquipmentMap['id'] =
-            DateTime.now().millisecondsSinceEpoch.toString();
+        // ✅ NOUVEAU: Traitement spécial des codes (extraire codes depuis descriptions)
+        final processedData = <String, dynamic>{};
+        
+        // ✅ Traitement des sélecteurs: extraire les CODES des descriptions
+        processedData['code'] = equipmentData['code'] ?? '';
+        processedData['description'] = equipmentData['description'] ?? '';
+        
+        // ✅ Pour les sélecteurs, utiliser les codes extraits
+        processedData['famille'] = _extractCodeFromSelector(equipmentData['famille'], familles: true) ?? '';
+        processedData['zone'] = _extractCodeFromSelector(equipmentData['zone'], zones: true) ?? '';
+        processedData['entity'] = _extractCodeFromSelector(equipmentData['entity'], entities: true) ?? '';
+        processedData['unite'] = _extractCodeFromSelector(equipmentData['unite'], unites: true) ?? '';
+        processedData['centre_charge'] = _extractCodeFromSelector(equipmentData['centreCharge'], centreCharges: true) ?? '';
+        processedData['code_parent'] = equipmentData['codeParent'] ?? '';
+        processedData['feeder'] = _extractCodeFromSelector(equipmentData['feeder'], feeders: true) ?? '';
+        processedData['feeder_description'] = equipmentData['infoFeeder'] ?? '';
+        processedData['longitude'] = equipmentData['longitude'] ?? '';
+        processedData['latitude'] = equipmentData['latitude'] ?? '';
 
-        // Ajouter à la liste locale
+        // ✅ CRITICAL: Traitement des attributs
+        List<EquipmentAttribute> finalAttributes = [];
+        
+        if (equipmentData['attributs'] != null) {
+          final attributsData = equipmentData['attributs'] as List<Map<String, String>>;
+          
+          for (final attrData in attributsData) {
+            final attribute = EquipmentAttribute(
+              name: attrData['name'],
+              value: attrData['value'] ?? '', // ✅ Même si vide, inclure l'attribut
+              type: attrData['type'] ?? 'string',
+            );
+            finalAttributes.add(attribute);
+          }
+        }
+
+        if (kDebugMode) {
+          print('📊 EquipmentProvider - Données traitées pour l\'API:');
+          print('   - Famille (CODE): ${processedData['famille']}');
+          print('   - Zone (CODE): ${processedData['zone']}');
+          print('   - Entity (CODE): ${processedData['entity']}');
+          print('   - Unite (CODE): ${processedData['unite']}');
+          print('   - Centre Charge (CODE): ${processedData['centre_charge']}');
+          print('   - Attributs: ${finalAttributes.length} éléments');
+          for (final attr in finalAttributes) {
+            print('     • ${attr.name}: "${attr.value}" (${attr.type})');
+          }
+        }
+
+        // ✅ Créer l'équipement avec les données traitées
+        final equipment = Equipment(
+          code: processedData['code'],
+          description: processedData['description'],
+          famille: processedData['famille'],
+          zone: processedData['zone'],
+          entity: processedData['entity'],
+          unite: processedData['unite'],
+          centreCharge: processedData['centre_charge'],
+          codeParent: processedData['code_parent'],
+          feeder: processedData['feeder'],
+          feederDescription: processedData['feeder_description'],
+          longitude: processedData['longitude'],
+          latitude: processedData['latitude'],
+          attributes: finalAttributes, // ✅ Inclure tous les attributs
+          cachedAt: DateTime.now(),
+        );
+
+        // ✅ Envoyer à l'API
+        final addedEquipment = await _apiService.addEquipment(equipment);
+        
+        // ✅ Ajouter à la liste locale avec l'ID retourné par l'API
+        final newEquipmentMap = _convertEquipmentToMap(addedEquipment);
         _allEquipments.insert(0, newEquipmentMap);
         _equipments.insert(0, newEquipmentMap);
 
-        // Mettre en cache
-        await HiveService.cacheEquipments([equipment]);
+        // ✅ Mettre en cache avec les données complètes
+        await HiveService.cacheEquipments([addedEquipment]);
 
         if (kDebugMode) {
-          print('✅ GMAO: Équipement ajouté avec succès');
+          print('✅ EquipmentProvider - Équipement ajouté avec succès via API');
         }
       } else {
         throw Exception(
@@ -309,10 +375,172 @@ class EquipmentProvider extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       if (kDebugMode) {
-        print('❌ GMAO: Erreur ajout équipement: $e');
+        print('❌ EquipmentProvider - Erreur ajout équipement: $e');
       }
       rethrow;
     }
+  }
+
+// ✅ CORRIGÉ: Extraire le code depuis une description de sélecteur avec gestion des erreurs
+  String? _extractCodeFromSelector(
+    String? displayValue, {
+    bool familles = false,
+    bool zones = false,
+    bool entities = false,
+    bool unites = false,
+    bool centreCharges = false,
+    bool feeders = false,
+  }) {
+    if (displayValue == null || displayValue.isEmpty) return null;
+
+    // ✅ Chercher dans la liste appropriée selon le type
+    List<Map<String, dynamic>> searchList = [];
+    String selectorType = '';
+    
+    if (familles && _cachedSelectors != null) {
+      searchList = _cachedSelectors!['familles'] as List<Map<String, dynamic>>? ?? [];
+      selectorType = 'familles';
+    } else if (zones && _cachedSelectors != null) {
+      searchList = _cachedSelectors!['zones'] as List<Map<String, dynamic>>? ?? [];
+      selectorType = 'zones';
+    } else if (entities && _cachedSelectors != null) {
+      searchList = _cachedSelectors!['entities'] as List<Map<String, dynamic>>? ?? [];
+      selectorType = 'entities';
+    } else if (unites && _cachedSelectors != null) {
+      searchList = _cachedSelectors!['unites'] as List<Map<String, dynamic>>? ?? [];
+      selectorType = 'unites';
+    } else if (centreCharges && _cachedSelectors != null) {
+      searchList = _cachedSelectors!['centreCharges'] as List<Map<String, dynamic>>? ?? [];
+      selectorType = 'centreCharges';
+    } else if (feeders && _cachedSelectors != null) {
+      searchList = _cachedSelectors!['feeders'] as List<Map<String, dynamic>>? ?? [];
+      selectorType = 'feeders';
+    }
+
+    if (kDebugMode) {
+      print('🔍 Recherche code pour "$displayValue" dans $selectorType (${searchList.length} éléments)');
+    }
+
+    // ✅ Chercher la correspondance description -> code
+    for (final item in searchList) {
+      final description = item['description']?.toString() ?? '';
+      final code = item['code']?.toString() ?? '';
+      
+      if (description == displayValue) {
+        if (kDebugMode) {
+          print('   ✓ Trouvé: "$displayValue" -> CODE: "$code"');
+        }
+        return code;
+      }
+    }
+
+    // Recherche alternative par similarité si pas de correspondance exacte
+    for (final item in searchList) {
+      final description = item['description']?.toString() ?? '';
+      final code = item['code']?.toString() ?? '';
+      
+      // Recherche si la description contient la valeur cherchée ou vice versa
+      if (description.toLowerCase().contains(displayValue.toLowerCase()) ||
+          displayValue.toLowerCase().contains(description.toLowerCase())) {
+        if (kDebugMode) {
+          print('   ✓ Trouvé par similarité: "$displayValue" ≈ "$description" -> CODE: "$code"');
+        }
+        return code;
+      }
+    }
+
+    // ✅ CRITICAL: Stratégies de fallback pour éviter les valeurs trop longues
+    if (entities) {
+      // ✅ SPÉCIAL ENTITY: Essayer de créer un code court depuis la description
+      final shortCode = _generateShortEntityCode(displayValue);
+      if (kDebugMode) {
+        print('   ⚠️ Aucun code entity trouvé pour: "$displayValue"');
+        print('   🔧 Code généré: "$shortCode" (longueur: ${shortCode.length})');
+      }
+      return shortCode;
+    }
+
+    // ✅ Fallback général: Tronquer la valeur si trop longue
+    String fallbackValue = displayValue;
+    
+    // Limites par type de champ (selon les contraintes Oracle)
+    int maxLength = 50; // Par défaut
+    if (entities) {
+      maxLength = 20; // EREQ_ENTITY max 20 caractères
+    } else if (zones) {
+      maxLength = 20; // EREQ_ZONE généralement limité
+    } else if (familles) {
+      maxLength = 30; // EREQ_FAMILLE 
+    }
+
+    if (fallbackValue.length > maxLength) {
+      fallbackValue = fallbackValue.substring(0, maxLength);
+      if (kDebugMode) {
+        print('   ⚠️ Valeur tronquée: "$displayValue" -> "$fallbackValue" (max $maxLength chars)');
+      }
+    }
+
+    if (kDebugMode) {
+      print('   ⚠️ Code non trouvé pour: "$displayValue", utilisation: "$fallbackValue"');
+    }
+    return fallbackValue;
+  }
+
+  // ✅ NOUVEAU: Générer un code court pour les entities
+  String _generateShortEntityCode(String entityDescription) {
+    if (entityDescription.isEmpty) return '';
+
+    // ✅ Stratégies pour créer un code court depuis la description
+    String code = entityDescription;
+
+    // 1. Essayer d'extraire les acronymes
+    final words = entityDescription.split(' ');
+    if (words.length > 1) {
+      // Prendre les premières lettres de chaque mot
+      final acronym = words
+          .where((word) => word.isNotEmpty)
+          .map((word) => word[0].toUpperCase())
+          .join('');
+      
+      if (acronym.length <= 20 && acronym.length >= 3) {
+        if (kDebugMode) {
+          print('   🎯 Acronyme généré: "$entityDescription" -> "$acronym"');
+        }
+        return acronym;
+      }
+    }
+
+    // 2. Essayer de prendre les mots-clés importants
+    final keywords = <String>[];
+    for (final word in words) {
+      final cleanWord = word.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
+      if (cleanWord.length >= 2 && !['DE', 'DU', 'LE', 'LA', 'LES', 'ET', 'OU'].contains(cleanWord)) {
+        keywords.add(cleanWord);
+        if (keywords.join('').length >= 15) break; // Limiter la longueur
+      }
+    }
+    
+    if (keywords.isNotEmpty) {
+      final keywordCode = keywords.join('').substring(0, keywords.join('').length > 20 ? 20 : keywords.join('').length);
+      if (keywordCode.length >= 3) {
+        if (kDebugMode) {
+          print('   🎯 Code mots-clés: "$entityDescription" -> "$keywordCode"');
+        }
+        return keywordCode;
+      }
+    }
+
+    // 3. Fallback: Prendre les premiers caractères en nettoyant
+    code = entityDescription
+        .toUpperCase()
+        .replaceAll(RegExp(r'[^A-Z0-9]'), '') // Supprimer caractères spéciaux
+        .substring(0, entityDescription.length > 20 ? 20 : entityDescription.length);
+
+    if (kDebugMode) {
+      print('   🎯 Code nettoyé: "$entityDescription" -> "$code"');
+    }
+
+    return code;
   }
 
   /// ✅ CORRIGÉ: Forcer le rechargement des attributs depuis l'API après modification
