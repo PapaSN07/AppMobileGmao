@@ -459,7 +459,7 @@ class EquipmentService {
         print('✅ EquipmentApi - Équipement mis à jour avec succès');
       }
 
-      return Equipment.fromJson(data);
+      return Equipment.fromJson(data['equipment']);
     } catch (e) {
       if (kDebugMode) {
         print('❌ EquipmentApi - Erreur updateEquipment: $e');

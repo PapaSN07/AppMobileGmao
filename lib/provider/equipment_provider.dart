@@ -283,38 +283,59 @@ class EquipmentProvider extends ChangeNotifier {
       if (!_isOffline) {
         if (kDebugMode) {
           print('🔄 EquipmentProvider - Début ajout équipement');
-          print('📊 EquipmentProvider - Données reçues: ${equipmentData.keys.join(', ')}');
+          print(
+            '📊 EquipmentProvider - Données reçues: ${equipmentData.keys.join(', ')}',
+          );
         }
 
         // ✅ NOUVEAU: Traitement spécial des codes (extraire codes depuis descriptions)
         final processedData = <String, dynamic>{};
-        
+
         // ✅ Traitement des sélecteurs: extraire les CODES des descriptions
         processedData['code'] = equipmentData['code'] ?? '';
         processedData['description'] = equipmentData['description'] ?? '';
-        
+
         // ✅ Pour les sélecteurs, utiliser les codes extraits
-        processedData['famille'] = _extractCodeFromSelector(equipmentData['famille'], familles: true) ?? '';
-        processedData['zone'] = _extractCodeFromSelector(equipmentData['zone'], zones: true) ?? '';
-        processedData['entity'] = _extractCodeFromSelector(equipmentData['entity'], entities: true) ?? '';
-        processedData['unite'] = _extractCodeFromSelector(equipmentData['unite'], unites: true) ?? '';
-        processedData['centre_charge'] = _extractCodeFromSelector(equipmentData['centreCharge'], centreCharges: true) ?? '';
+        processedData['famille'] =
+            _extractCodeFromSelector(
+              equipmentData['famille'],
+              familles: true,
+            ) ??
+            '';
+        processedData['zone'] =
+            _extractCodeFromSelector(equipmentData['zone'], zones: true) ?? '';
+        processedData['entity'] =
+            _extractCodeFromSelector(equipmentData['entity'], entities: true) ??
+            '';
+        processedData['unite'] =
+            _extractCodeFromSelector(equipmentData['unite'], unites: true) ??
+            '';
+        processedData['centre_charge'] =
+            _extractCodeFromSelector(
+              equipmentData['centreCharge'],
+              centreCharges: true,
+            ) ??
+            '';
         processedData['code_parent'] = equipmentData['codeParent'] ?? '';
-        processedData['feeder'] = _extractCodeFromSelector(equipmentData['feeder'], feeders: true) ?? '';
+        processedData['feeder'] =
+            _extractCodeFromSelector(equipmentData['feeder'], feeders: true) ??
+            '';
         processedData['feeder_description'] = equipmentData['infoFeeder'] ?? '';
         processedData['longitude'] = equipmentData['longitude'] ?? '';
         processedData['latitude'] = equipmentData['latitude'] ?? '';
 
         // ✅ CRITICAL: Traitement des attributs
         List<EquipmentAttribute> finalAttributes = [];
-        
+
         if (equipmentData['attributs'] != null) {
-          final attributsData = equipmentData['attributs'] as List<Map<String, String>>;
-          
+          final attributsData =
+              equipmentData['attributs'] as List<Map<String, String>>;
+
           for (final attrData in attributsData) {
             final attribute = EquipmentAttribute(
               name: attrData['name'],
-              value: attrData['value'] ?? '', // ✅ Même si vide, inclure l'attribut
+              value:
+                  attrData['value'] ?? '', // ✅ Même si vide, inclure l'attribut
               type: attrData['type'] ?? 'string',
             );
             finalAttributes.add(attribute);
@@ -354,7 +375,7 @@ class EquipmentProvider extends ChangeNotifier {
 
         // ✅ Envoyer à l'API
         final addedEquipment = await _apiService.addEquipment(equipment);
-        
+
         // ✅ Ajouter à la liste locale avec l'ID retourné par l'API
         final newEquipmentMap = _convertEquipmentToMap(addedEquipment);
         _allEquipments.insert(0, newEquipmentMap);
@@ -381,7 +402,7 @@ class EquipmentProvider extends ChangeNotifier {
     }
   }
 
-// ✅ CORRIGÉ: Extraire le code depuis une description de sélecteur avec gestion des erreurs
+  // ✅ CORRIGÉ: Extraire le code depuis une description de sélecteur avec gestion des erreurs
   String? _extractCodeFromSelector(
     String? displayValue, {
     bool familles = false,
@@ -396,36 +417,45 @@ class EquipmentProvider extends ChangeNotifier {
     // ✅ Chercher dans la liste appropriée selon le type
     List<Map<String, dynamic>> searchList = [];
     String selectorType = '';
-    
+
     if (familles && _cachedSelectors != null) {
-      searchList = _cachedSelectors!['familles'] as List<Map<String, dynamic>>? ?? [];
+      searchList =
+          _cachedSelectors!['familles'] as List<Map<String, dynamic>>? ?? [];
       selectorType = 'familles';
     } else if (zones && _cachedSelectors != null) {
-      searchList = _cachedSelectors!['zones'] as List<Map<String, dynamic>>? ?? [];
+      searchList =
+          _cachedSelectors!['zones'] as List<Map<String, dynamic>>? ?? [];
       selectorType = 'zones';
     } else if (entities && _cachedSelectors != null) {
-      searchList = _cachedSelectors!['entities'] as List<Map<String, dynamic>>? ?? [];
+      searchList =
+          _cachedSelectors!['entities'] as List<Map<String, dynamic>>? ?? [];
       selectorType = 'entities';
     } else if (unites && _cachedSelectors != null) {
-      searchList = _cachedSelectors!['unites'] as List<Map<String, dynamic>>? ?? [];
+      searchList =
+          _cachedSelectors!['unites'] as List<Map<String, dynamic>>? ?? [];
       selectorType = 'unites';
     } else if (centreCharges && _cachedSelectors != null) {
-      searchList = _cachedSelectors!['centreCharges'] as List<Map<String, dynamic>>? ?? [];
+      searchList =
+          _cachedSelectors!['centreCharges'] as List<Map<String, dynamic>>? ??
+          [];
       selectorType = 'centreCharges';
     } else if (feeders && _cachedSelectors != null) {
-      searchList = _cachedSelectors!['feeders'] as List<Map<String, dynamic>>? ?? [];
+      searchList =
+          _cachedSelectors!['feeders'] as List<Map<String, dynamic>>? ?? [];
       selectorType = 'feeders';
     }
 
     if (kDebugMode) {
-      print('🔍 Recherche code pour "$displayValue" dans $selectorType (${searchList.length} éléments)');
+      print(
+        '🔍 Recherche code pour "$displayValue" dans $selectorType (${searchList.length} éléments)',
+      );
     }
 
     // ✅ Chercher la correspondance description -> code
     for (final item in searchList) {
       final description = item['description']?.toString() ?? '';
       final code = item['code']?.toString() ?? '';
-      
+
       if (description == displayValue) {
         if (kDebugMode) {
           print('   ✓ Trouvé: "$displayValue" -> CODE: "$code"');
@@ -438,12 +468,14 @@ class EquipmentProvider extends ChangeNotifier {
     for (final item in searchList) {
       final description = item['description']?.toString() ?? '';
       final code = item['code']?.toString() ?? '';
-      
+
       // Recherche si la description contient la valeur cherchée ou vice versa
       if (description.toLowerCase().contains(displayValue.toLowerCase()) ||
           displayValue.toLowerCase().contains(description.toLowerCase())) {
         if (kDebugMode) {
-          print('   ✓ Trouvé par similarité: "$displayValue" ≈ "$description" -> CODE: "$code"');
+          print(
+            '   ✓ Trouvé par similarité: "$displayValue" ≈ "$description" -> CODE: "$code"',
+          );
         }
         return code;
       }
@@ -455,14 +487,16 @@ class EquipmentProvider extends ChangeNotifier {
       final shortCode = _generateShortEntityCode(displayValue);
       if (kDebugMode) {
         print('   ⚠️ Aucun code entity trouvé pour: "$displayValue"');
-        print('   🔧 Code généré: "$shortCode" (longueur: ${shortCode.length})');
+        print(
+          '   🔧 Code généré: "$shortCode" (longueur: ${shortCode.length})',
+        );
       }
       return shortCode;
     }
 
     // ✅ Fallback général: Tronquer la valeur si trop longue
     String fallbackValue = displayValue;
-    
+
     // Limites par type de champ (selon les contraintes Oracle)
     int maxLength = 50; // Par défaut
     if (entities) {
@@ -470,18 +504,22 @@ class EquipmentProvider extends ChangeNotifier {
     } else if (zones) {
       maxLength = 20; // EREQ_ZONE généralement limité
     } else if (familles) {
-      maxLength = 30; // EREQ_FAMILLE 
+      maxLength = 30; // EREQ_FAMILLE
     }
 
     if (fallbackValue.length > maxLength) {
       fallbackValue = fallbackValue.substring(0, maxLength);
       if (kDebugMode) {
-        print('   ⚠️ Valeur tronquée: "$displayValue" -> "$fallbackValue" (max $maxLength chars)');
+        print(
+          '   ⚠️ Valeur tronquée: "$displayValue" -> "$fallbackValue" (max $maxLength chars)',
+        );
       }
     }
 
     if (kDebugMode) {
-      print('   ⚠️ Code non trouvé pour: "$displayValue", utilisation: "$fallbackValue"');
+      print(
+        '   ⚠️ Code non trouvé pour: "$displayValue", utilisation: "$fallbackValue"',
+      );
     }
     return fallbackValue;
   }
@@ -501,7 +539,7 @@ class EquipmentProvider extends ChangeNotifier {
           .where((word) => word.isNotEmpty)
           .map((word) => word[0].toUpperCase())
           .join('');
-      
+
       if (acronym.length <= 20 && acronym.length >= 3) {
         if (kDebugMode) {
           print('   🎯 Acronyme généré: "$entityDescription" -> "$acronym"');
@@ -514,14 +552,20 @@ class EquipmentProvider extends ChangeNotifier {
     final keywords = <String>[];
     for (final word in words) {
       final cleanWord = word.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
-      if (cleanWord.length >= 2 && !['DE', 'DU', 'LE', 'LA', 'LES', 'ET', 'OU'].contains(cleanWord)) {
+      if (cleanWord.length >= 2 &&
+          !['DE', 'DU', 'LE', 'LA', 'LES', 'ET', 'OU'].contains(cleanWord)) {
         keywords.add(cleanWord);
         if (keywords.join('').length >= 15) break; // Limiter la longueur
       }
     }
-    
+
     if (keywords.isNotEmpty) {
-      final keywordCode = keywords.join('').substring(0, keywords.join('').length > 20 ? 20 : keywords.join('').length);
+      final keywordCode = keywords
+          .join('')
+          .substring(
+            0,
+            keywords.join('').length > 20 ? 20 : keywords.join('').length,
+          );
       if (keywordCode.length >= 3) {
         if (kDebugMode) {
           print('   🎯 Code mots-clés: "$entityDescription" -> "$keywordCode"');
@@ -534,7 +578,10 @@ class EquipmentProvider extends ChangeNotifier {
     code = entityDescription
         .toUpperCase()
         .replaceAll(RegExp(r'[^A-Z0-9]'), '') // Supprimer caractères spéciaux
-        .substring(0, entityDescription.length > 20 ? 20 : entityDescription.length);
+        .substring(
+          0,
+          entityDescription.length > 20 ? 20 : entityDescription.length,
+        );
 
     if (kDebugMode) {
       print('   🎯 Code nettoyé: "$entityDescription" -> "$code"');
@@ -549,7 +596,9 @@ class EquipmentProvider extends ChangeNotifier {
       // ✅ AJOUTÉ: Validation du code équipement
       if (equipmentCode.isEmpty) {
         if (kDebugMode) {
-          print('❌ EquipmentProvider - Code équipement vide, abandon rechargement');
+          print(
+            '❌ EquipmentProvider - Code équipement vide, abandon rechargement',
+          );
         }
         return;
       }
@@ -628,7 +677,7 @@ class EquipmentProvider extends ChangeNotifier {
 
         // Trouver l'équipement à modifier dans les listes locales
         final index = _allEquipments.indexWhere(
-          (eq) => eq['id'] == equipmentId || eq['code'] == equipmentId,
+          (eq) => eq['id'] == equipmentId || eq['ID'] == equipmentId,
         );
 
         if (index != -1) {
@@ -638,59 +687,59 @@ class EquipmentProvider extends ChangeNotifier {
           );
 
           // ✅ NOUVEAU: Mettre à jour UNIQUEMENT les champs qui ont réellement changé selon la réponse API
-          if (equipment.codeParent != null && equipment.codeParent!.isNotEmpty) {
+          if (updatedEquipment['codeParent'] != null &&
+              updatedEquipment['codeParent']!.isNotEmpty) {
             updatedEquipment['codeParent'] = equipment.codeParent;
-            updatedEquipment['Code Parent'] = equipment.codeParent;
           }
 
-          if (equipment.feeder != null && equipment.feeder!.isNotEmpty) {
+          if (updatedEquipment['feeder'] != null &&
+              updatedEquipment['feeder']!.isNotEmpty) {
             updatedEquipment['feeder'] = equipment.feeder;
-            updatedEquipment['Feeder'] = equipment.feeder;
           }
 
-          if (equipment.feederDescription != null && equipment.feederDescription!.isNotEmpty) {
+          if (updatedEquipment['feederDescription'] != null &&
+              updatedEquipment['feederDescription']!.isNotEmpty) {
             updatedEquipment['feederDescription'] = equipment.feederDescription;
-            updatedEquipment['Info Feeder'] = equipment.feederDescription;
           }
 
-          if (equipment.famille.isNotEmpty) {
+          if (updatedEquipment['famille'] != null &&
+              updatedEquipment['famille']!.isNotEmpty) {
             updatedEquipment['famille'] = equipment.famille;
-            updatedEquipment['Famille'] = equipment.famille;
           }
 
-          if (equipment.zone.isNotEmpty) {
+          if (updatedEquipment['zone'] != null &&
+              updatedEquipment['zone']!.isNotEmpty) {
             updatedEquipment['zone'] = equipment.zone;
-            updatedEquipment['Zone'] = equipment.zone;
           }
 
-          if (equipment.entity.isNotEmpty) {
+          if (updatedEquipment['entity'] != null &&
+              updatedEquipment['entity']!.isNotEmpty) {
             updatedEquipment['entity'] = equipment.entity;
-            updatedEquipment['Entité'] = equipment.entity;
           }
 
-          if (equipment.unite.isNotEmpty) {
+          if (updatedEquipment['unite'] != null &&
+              updatedEquipment['unite']!.isNotEmpty) {
             updatedEquipment['unite'] = equipment.unite;
-            updatedEquipment['Unité'] = equipment.unite;
           }
 
-          if (equipment.centreCharge.isNotEmpty) {
+          if (updatedEquipment['centreCharge'] != null &&
+              updatedEquipment['centreCharge']!.isNotEmpty) {
             updatedEquipment['centreCharge'] = equipment.centreCharge;
-            updatedEquipment['Centre'] = equipment.centreCharge;
           }
 
-          if (equipment.description.isNotEmpty) {
+          if (updatedEquipment['description'] != null &&
+              updatedEquipment['description']!.isNotEmpty) {
             updatedEquipment['description'] = equipment.description;
-            updatedEquipment['Description'] = equipment.description;
           }
 
-          if (equipment.longitude.isNotEmpty) {
+          if (updatedEquipment['longitude'] != null &&
+              updatedEquipment['longitude']!.isNotEmpty) {
             updatedEquipment['longitude'] = equipment.longitude;
-            updatedEquipment['Longitude'] = equipment.longitude;
           }
 
-          if (equipment.latitude.isNotEmpty) {
+          if (updatedEquipment['latitude'] != null &&
+              updatedEquipment['latitude']!.isNotEmpty) {
             updatedEquipment['latitude'] = equipment.latitude;
-            updatedEquipment['Latitude'] = equipment.latitude;
           }
 
           // ✅ IMPORTANT: Ne PAS toucher aux autres champs existants (ID, etc.)
@@ -700,7 +749,7 @@ class EquipmentProvider extends ChangeNotifier {
           // Mettre à jour dans les listes
           _allEquipments[index] = updatedEquipment;
           final equipmentIndex = _equipments.indexWhere(
-            (eq) => eq['id'] == equipmentId || eq['code'] == equipmentId,
+            (eq) => eq['id'] == equipmentId,
           );
           if (equipmentIndex != -1) {
             _equipments[equipmentIndex] = updatedEquipment;
@@ -709,14 +758,18 @@ class EquipmentProvider extends ChangeNotifier {
           // ✅ CRITICAL: TOUJOURS mettre à jour les attributs si l'API retourne les nouvelles valeurs
           if (updatedFields.containsKey('attributs')) {
             // ✅ CORRIGÉ: Utiliser le code sauvegardé avant l'appel API
-            final finalEquipmentCode = equipment.code.isNotEmpty ? equipment.code : equipmentCode;
+            final finalEquipmentCode =
+                equipment.code.isNotEmpty ? equipment.code : equipmentCode;
 
-            if (equipment.attributes != null && equipment.attributes!.isNotEmpty) {
+            if (equipment.attributes != null &&
+                equipment.attributes!.isNotEmpty) {
               // ✅ PRIORITY: Cas 1 - L'API retourne les attributs mis à jour (UTILISER CES VALEURS)
               if (kDebugMode) {
-                print('🎯 EquipmentProvider - L\'API retourne ${equipment.attributes!.length} attributs mis à jour');
+                print(
+                  '🎯 EquipmentProvider - L\'API retourne ${equipment.attributes!.length} attributs mis à jour',
+                );
               }
-              
+
               await _updateEquipmentAttributesCache(
                 finalEquipmentCode,
                 equipment.attributes!,
@@ -730,9 +783,11 @@ class EquipmentProvider extends ChangeNotifier {
             } else {
               // ✅ FALLBACK: Cas 2 - L'API ne retourne pas les attributs, forcer le rechargement
               if (kDebugMode) {
-                print('⚠️ EquipmentProvider - L\'API ne retourne pas les attributs, rechargement forcé');
+                print(
+                  '⚠️ EquipmentProvider - L\'API ne retourne pas les attributs, rechargement forcé',
+                );
               }
-              
+
               await _forceReloadEquipmentAttributes(finalEquipmentCode);
 
               if (kDebugMode) {
@@ -782,16 +837,22 @@ class EquipmentProvider extends ChangeNotifier {
       // ✅ AJOUTÉ: Validation du code équipement
       if (equipmentCode.isEmpty) {
         if (kDebugMode) {
-          print('❌ EquipmentProvider - Code équipement vide, abandon mise à jour cache');
+          print(
+            '❌ EquipmentProvider - Code équipement vide, abandon mise à jour cache',
+          );
         }
         return;
       }
 
       if (kDebugMode) {
-        print('🔄 EquipmentProvider - Mise à jour cache attributs avec nouvelles valeurs API pour: $equipmentCode');
+        print(
+          '🔄 EquipmentProvider - Mise à jour cache attributs avec nouvelles valeurs API pour: $equipmentCode',
+        );
         print('📊 EquipmentProvider - Attributs reçus de l\'API:');
         for (final attr in attributesFromAPI) {
-          print('   - ${attr.name}: "${attr.value}" (ID: ${attr.id}, spec: ${attr.specification})');
+          print(
+            '   - ${attr.name}: "${attr.value}" (ID: ${attr.id}, spec: ${attr.specification})',
+          );
         }
       }
 
@@ -820,7 +881,9 @@ class EquipmentProvider extends ChangeNotifier {
       }
 
       // ✅ NOUVEAU: Vérifier immédiatement que le cache a été mis à jour
-      final verificationCache = await HiveService.getCachedAttributeValues(equipmentCode);
+      final verificationCache = await HiveService.getCachedAttributeValues(
+        equipmentCode,
+      );
       if (verificationCache != null) {
         if (kDebugMode) {
           print('🔍 EquipmentProvider - Vérification cache après mise à jour:');
