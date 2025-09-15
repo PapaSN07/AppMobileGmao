@@ -67,7 +67,12 @@ def get_equipments_infinite(
     base_query += " ORDER BY e.pk_equipment, attr_name"
     
     try:
-        with get_database_connection() as db:
+        db_conn = get_database_connection()
+        if db_conn is None:
+            logger.error("Impossible d'obtenir une connexion à la base de données")
+            raise Exception("Connexion DB manquante")
+        
+        with db_conn as db:
             results = db.execute_query(base_query, params=params)
             
             # CORRECTION : Traitement optimisé avec gestion des 19 colonnes
@@ -142,7 +147,11 @@ def get_attribute_values(specification: str, attribute_index: str) -> List[Attri
             # Si erreur de reconstruction, continuer avec la DB
 
     try:
-        with get_database_connection() as db:
+        db_conn = get_database_connection()
+        if db_conn is None:
+            logger.error("Impossible d'obtenir une connexion à la base de données")
+            raise Exception("Connexion DB manquante")
+        with db_conn as db:
             results = db.execute_query(ATTRIBUTE_VALUES_QUERY, params={'specification': specification, 'attribute_index': attribute_index})
 
             if not results:
@@ -201,7 +210,11 @@ def get_feeders(entity: str) -> Dict[str, Any]:
     params = {}
 
     try:
-        with get_database_connection() as db:
+        db_conn = get_database_connection()
+        if db_conn is None:
+            logger.error("Impossible d'obtenir une connexion à la base de données")
+            raise Exception("Connexion DB manquante")
+        with db_conn as db:
             # Filtre par hiérarchie d'entités (OBLIGATOIRE)
             placeholders = ','.join([f':entity_{i}' for i in range(len(hierarchy_entities))])
             query += f" WHERE ereq_entity IN ({placeholders})"
@@ -234,7 +247,11 @@ def get_feeders(entity: str) -> Dict[str, Any]:
 def get_equipment_by_id(equipment_id: str) -> Optional[EquipmentModel]:
     """Récupère un équipement par son ID"""
     try:
-        with get_database_connection() as db:
+        db_conn = get_database_connection()
+        if db_conn is None:
+            logger.error("Impossible d'obtenir une connexion à la base de données")
+            raise Exception("Connexion DB manquante")
+        with db_conn as db:
             results = db.execute_query(EQUIPMENT_BY_ID_QUERY, params={'equipment_id': equipment_id})
             
             if not results:
@@ -269,8 +286,12 @@ def update_equipment_partial(equipment_id: str, updates: Dict[str, Any]) -> bool
         if not existing_equipment:
             logger.error(f"Équipement {equipment_id} non trouvé")
             return False
-            
-        with get_database_connection() as db:
+        
+        db_conn = get_database_connection()
+        if db_conn is None:
+            logger.error("Impossible d'obtenir une connexion à la base de données")
+            raise Exception("Connexion DB manquante")
+        with db_conn as db:
             # 1. Mise à jour des champs de base de l'équipement
             equipment_fields = {
                 'code_parent', 'code', 'famille', 'zone', 'entity', 
@@ -350,7 +371,11 @@ def update_equipment_attributes(equipment_code: str, attributes: List[Dict[str, 
         True si succès, False sinon
     """
     try:
-        with get_database_connection() as db:
+        db_conn = get_database_connection()
+        if db_conn is None:
+            logger.error("Impossible d'obtenir une connexion à la base de données")
+            raise Exception("Connexion DB manquante")
+        with db_conn as db:
             success_count = 0
             
             for attr in attributes:
@@ -401,7 +426,11 @@ def get_equipment_attributes_by_code(equipment_code: str) -> List[EquipmentAttri
     try:
         from app.db.requests import EQUIPMENT_ATTRIBUTS_VALUES_QUERY
         
-        with get_database_connection() as db:
+        db_conn = get_database_connection()
+        if db_conn is None:
+            logger.error("Impossible d'obtenir une connexion à la base de données")
+            raise Exception("Connexion DB manquante")
+        with db_conn as db:
             results = db.execute_query(EQUIPMENT_ATTRIBUTS_VALUES_QUERY, params={'code': equipment_code})
 
             if not results:
@@ -445,7 +474,12 @@ def get_equipment_attributes_by_code_without_value(equipment_code: str) -> List[
     try:
         from app.db.requests import EQUIPMENT_CLASSE_ATTRIBUTS_QUERY
         
-        with get_database_connection() as db:
+        db_conn = get_database_connection()
+        if db_conn is None:
+            logger.error("Impossible d'obtenir une connexion à la base de données")
+            raise Exception("Connexion DB manquante")
+
+        with db_conn as db:
             results = db.execute_query(EQUIPMENT_CLASSE_ATTRIBUTS_QUERY, params={'code': equipment_code})
                         
             if not results:
@@ -492,8 +526,13 @@ def validate_equipment_for_insertion(equipment: EquipmentModel) -> tuple[bool, s
         if not equipment.zone:
             return False, "Zone obligatoire"
         
+        db_conn = get_database_connection()
+        if db_conn is None:
+            logger.error("Impossible d'obtenir une connexion à la base de données")
+            raise Exception("Connexion DB manquante")
+        
         # Vérifier que l'équipement n'existe pas déjà
-        with get_database_connection() as db:
+        with db_conn as db:
             existing_check = db.execute_query(
                 "SELECT COUNT(*) FROM coswin.t_equipment WHERE ereq_code = :code", 
                 params={'code': equipment.code}
@@ -522,7 +561,12 @@ def insert_equipment(equipment: EquipmentModel) -> bool:
             logger.error(f"Validation échouée: {msg}")
             return False
 
-        with get_database_connection() as db:
+        db_conn = get_database_connection()
+        if db_conn is None:
+            logger.error("Impossible d'obtenir une connexion à la base de données")
+            raise Exception("Connexion DB manquante")
+
+        with db_conn as db:
             try:
                 # démarrer transaction si disponible
                 if hasattr(db, "begin_transaction"):

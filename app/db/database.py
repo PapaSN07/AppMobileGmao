@@ -2,7 +2,8 @@ import oracledb
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
 from app.core.config import (
-    DB_USERNAME, DB_PASSWORD, DB_HOST, DB_SERVICE_NAME,
+    DB_USERNAME, DB_PASSWORD, DB_HOST, DB_SERVICE_NAME, TEMP_DB_PORT,
+    TEMP_DB_USERNAME, TEMP_DB_PASSWORD, TEMP_DB_HOST, TEMP_DB_SERVICE_NAME,
     DB_PORT, MAX_LIMIT, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 )
 
@@ -35,15 +36,30 @@ class OracleDatabase:
     def __init__(self):
         """Initialise la connexion à la base de données Oracle"""
         self.connection = None
-        self._connect()
     
-    def _connect(self):
+    def connect(self):
         """Établit la connexion à la base de données"""
         try:
             # Créer la chaîne de connexion Oracle
             connection_string = f"{DB_USERNAME}/{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_SERVICE_NAME}"
             self.connection = oracledb.connect(connection_string)
             print(f"✅ Connexion réussie à Oracle: {DB_HOST}:{DB_SERVICE_NAME}")
+        except oracledb.DatabaseError as e:
+            print(f"❌ Erreur de connexion Oracle: {e}")
+            self.connection = None
+            raise ConnectionError(f"Impossible de se connecter à la base de données: {e}")
+        except Exception as e:
+            print(f"❌ Erreur inattendue: {e}")
+            self.connection = None
+            raise
+
+    def connect_temp(self):
+        """Établit la connexion à la base de données temporaire Oracle"""
+        try:
+            # Créer la chaîne de connexion Oracle
+            connection_string = f"{TEMP_DB_USERNAME}/{TEMP_DB_PASSWORD}@{TEMP_DB_HOST}:{TEMP_DB_PORT}/{TEMP_DB_SERVICE_NAME}"
+            self.connection = oracledb.connect(connection_string)
+            print(f"✅ Connexion réussie à Oracle: {TEMP_DB_HOST}:{TEMP_DB_SERVICE_NAME}")
         except oracledb.DatabaseError as e:
             print(f"❌ Erreur de connexion Oracle: {e}")
             self.connection = None
@@ -328,37 +344,45 @@ class OracleDatabase:
             raise
 
 # Fonction utilitaire pour créer une connexion
-def get_database_connection() -> OracleDatabase:
+oracleDatabase = OracleDatabase()
+
+def get_database_connection() -> OracleDatabase | None:
     """Factory function pour créer une connexion DB"""
-    return OracleDatabase()
+    return oracleDatabase.connect()
+
+def get_database_connection_temp() -> OracleDatabase | None:
+    """Factory function pour créer une connexion DB temporaire"""
+    return oracleDatabase.connect_temp()
 
 # Test de connexion
 def test_connection():
-    """Teste la connexion à la base de données"""
+    """Teste la connexion aux deux bases de données"""
     try:
-        with OracleDatabase() as db:
-            if db.is_connected():
-                print("✅ Test de connexion réussi")
-                # Test simple avec DUAL uniquement
-                results = db.execute_query("SELECT SYSDATE FROM DUAL")
-                print(f"📅 Date système: {results[0][0]}")
-                
-                # Test optionnel de vérification des tables
-                try:
-                    # Vérifier que les tables existent
-                    table_check = db.execute_query("""
-                        SELECT COUNT(*) FROM user_tables 
-                        WHERE table_name IN ('T_EQUIPMENT', 'COSWIN_USER', 'CATEGORY')
-                    """)
-                    tables_count = table_check[0][0] if table_check else 0
-                    print(f"📋 Tables trouvées: {tables_count}/3")
-                except Exception as table_error:
-                    print(f"⚠️ Avertissement tables: {table_error}")
-                
-                return True
-            else:
-                print("❌ Test de connexion échoué")
-                return False
+        # Test DB principale
+        main_db = OracleDatabase()
+        main_db.connect()
+        print("🔎 Test DB principale...")
+        if main_db.is_connected():
+            print("✅ Connexion DB principale OK")
+            results = main_db.execute_query("SELECT SYSDATE FROM DUAL")
+            print(f"📅 Date système (main): {results[0][0]}")
+        else:
+            print("❌ Connexion DB principale échouée")
+        main_db.close_connection()
+
+        # Test DB temporaire
+        temp_db = OracleDatabase()
+        temp_db.connect_temp()
+        print("🔎 Test DB temporaire...")
+        if temp_db.is_connected():
+            print("✅ Connexion DB temporaire OK")
+            results = temp_db.execute_query("SELECT SYSDATE FROM DUAL")
+            print(f"📅 Date système (temp): {results[0][0]}")
+        else:
+            print("❌ Connexion DB temporaire échouée")
+        temp_db.close_connection()
+
+        return True
     except Exception as e:
         print(f"❌ Erreur test connexion: {e}")
         return False

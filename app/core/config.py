@@ -12,6 +12,14 @@ DB_HOST = os.getenv("DB_HOST")
 DB_SERVICE_NAME = os.getenv("DB_SERVICE_NAME")
 DB_PORT = os.getenv("DB_PORT", "1521")
 
+# Configuration de la base de données Oracle
+TEMP_DB_NAME = os.getenv("TEMP_DB_NAME")
+TEMP_DB_USERNAME = os.getenv("TEMP_DB_USERNAME")
+TEMP_DB_PASSWORD = os.getenv("TEMP_DB_PASSWORD")
+TEMP_DB_HOST = os.getenv("TEMP_DB_HOST")
+TEMP_DB_SERVICE_NAME = os.getenv("TEMP_DB_SERVICE_NAME")
+TEMP_DB_PORT = os.getenv("TEMP_DB_PORT", "1521")
+
 # Configuration des limites
 DEFAULT_LIMIT = int(os.getenv("DEFAULT_LIMIT", 10))
 MAX_LIMIT = int(os.getenv("MAX_LIMIT", 1000))

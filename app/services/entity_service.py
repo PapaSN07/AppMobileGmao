@@ -40,7 +40,11 @@ def get_entities(entity: str) -> Dict[str, Any]:
     params = {}
     
     try:
-        with get_database_connection() as db:
+        db_conn = get_database_connection()
+        if db_conn is None:
+            logger.error("Impossible d'obtenir une connexion à la base de données")
+            raise Exception("Connexion DB manquante")
+        with db_conn as db:
             # Filtre par hiérarchie d'entités (OBLIGATOIRE)
             placeholders = ','.join([f':entity_{i}' for i in range(len(hierarchy_entities))])
             query += f" WHERE chen_code IN ({placeholders})"
@@ -84,7 +88,11 @@ def get_hierarchy(entity_code: str) -> Dict[str, Any]:
         return cached
     
     try:
-        with get_database_connection() as db:
+        db_conn = get_database_connection()
+        if db_conn is None:
+            logger.error("Impossible d'obtenir une connexion à la base de données")
+            raise Exception("Connexion DB manquante")
+        with db_conn as db:
             # Appel direct de votre fonction Oracle
             results = db.execute_query(HIERARCHIC, {'entity': entity_code})
             
@@ -117,7 +125,11 @@ def get_hierarchy(entity_code: str) -> Dict[str, Any]:
 def _get_total_count() -> int:
     """Récupère le nombre total d'entités"""
     try:
-        with get_database_connection() as db:
+        db_conn = get_database_connection()
+        if db_conn is None:
+            logger.error("Impossible d'obtenir une connexion à la base de données")
+            raise Exception("Connexion DB manquante")
+        with db_conn as db:
             result = db.execute_query("SELECT COUNT(*) FROM coswin.entity")
             return result[0][0] if result else 0
     except Exception:

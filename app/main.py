@@ -121,7 +121,11 @@ async def health():
         # Test DB simple
         db_ok = True
         try:
-            with get_database_connection() as db:
+            db_conn = get_database_connection()
+            if db_conn is None:
+                logger.error("Impossible d'obtenir une connexion à la base de données")
+                raise Exception("Connexion DB manquante")
+            with db_conn as db:
                 db.execute_query("SELECT 1 FROM DUAL")
         except Exception as e:
             logger.error(f"DB Health check failed: {e}")

@@ -18,7 +18,11 @@ def authenticate_user(username: str, password: str) -> UserModel | None:
         raise ValueError("Username et mot de passe requis")
 
     try:
-        with get_database_connection() as db:
+        db_conn = get_database_connection()
+        if db_conn is None:
+            logger.error("Impossible d'obtenir une connexion à la base de données")
+            raise Exception("Connexion DB manquante")
+        with db_conn as db:
             query = GET_USER_AUTHENTICATION_QUERY
             params = {'username': username, 'password': password}
             results = db.execute_query(query, params=params)
@@ -78,7 +82,11 @@ def update_user(user: UserModel) -> bool:
         return False
     
     try:
-        with get_database_connection() as db:
+        db_conn = get_database_connection()
+        if db_conn is None:
+            logger.error("Impossible d'obtenir une connexion à la base de données")
+            raise Exception("Connexion DB manquante")
+        with db_conn as db:
             query = UPDATE_USER_QUERY
             params = {
                 'code': user.code,
@@ -115,7 +123,11 @@ def get_user_connect(username: str) -> UserModel | None:
         return None
     
     try:
-        with get_database_connection() as db:
+        db_conn = get_database_connection()
+        if db_conn is None:
+            logger.error("Impossible d'obtenir une connexion à la base de données")
+            raise Exception("Connexion DB manquante")
+        with db_conn as db:
             query = GET_USER_CONNECT_QUERY
             params = {'username': username}
             results = db.execute_query(query, params=params)

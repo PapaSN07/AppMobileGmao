@@ -39,7 +39,11 @@ def get_centre_charges(entity: str, limit: int = 260) -> Dict[str, Any]:
     params = {}
     
     try:
-        with get_database_connection() as db:
+        db_conn = get_database_connection()
+        if db_conn is None:
+            logger.error("Impossible d'obtenir une connexion à la base de données")
+            raise Exception("Connexion DB manquante")
+        with db_conn as db:
             # Filtre par hiérarchie d'entités (OBLIGATOIRE)
             placeholders = ','.join([f':entity_{i}' for i in range(len(hierarchy_entities))])
             query += f" WHERE mdcc_entity IN ({placeholders})"
@@ -78,7 +82,11 @@ def get_centre_charges(entity: str, limit: int = 260) -> Dict[str, Any]:
 def _get_total_count() -> int:
     """Récupère le nombre total de centres de charge"""
     try:
-        with get_database_connection() as db:
+        db_conn = get_database_connection()
+        if db_conn is None:
+            logger.error("Impossible d'obtenir une connexion à la base de données")
+            raise Exception("Connexion DB manquante")
+        with db_conn as db:
             result = db.execute_query("SELECT COUNT(*) FROM coswin.costcentre")
             return result[0][0] if result else 0
     except Exception:

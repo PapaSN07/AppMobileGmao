@@ -38,7 +38,11 @@ def get_familles(entity: str) -> Dict[str, Any]:
     params = {}
     
     try:
-        with get_database_connection() as db:
+        db_conn = get_database_connection()
+        if db_conn is None:
+            logger.error("Impossible d'obtenir une connexion à la base de données")
+            raise Exception("Connexion DB manquante")
+        with db_conn as db:
             # Filtre par hiérarchie d'entités (OBLIGATOIRE)
             placeholders = ','.join([f':entity_{i}' for i in range(len(hierarchy_entities))])
             query += f" WHERE mdct_entity IN ({placeholders})"
