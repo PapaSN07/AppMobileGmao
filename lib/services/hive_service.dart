@@ -1192,6 +1192,7 @@ class HiveService {
       description: equipment.description,
       longitude: equipment.longitude,
       latitude: equipment.latitude,
+      attributes: equipment.attributes,
       cachedAt: cachedAt,
     );
   }
@@ -1212,6 +1213,7 @@ class HiveService {
       description: hiveEquipment.description,
       longitude: hiveEquipment.longitude,
       latitude: hiveEquipment.latitude,
+      attributes: hiveEquipment.attributes,
     );
   }
 

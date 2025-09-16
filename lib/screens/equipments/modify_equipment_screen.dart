@@ -1258,6 +1258,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 20),
                             child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 const Expanded(
                                   flex: 1,
@@ -1273,7 +1274,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                                 ),
                                 const SizedBox(width: 16),
                                 Expanded(
-                                  flex: 3,
+                                  flex: 2,
                                   child: Container(
                                     height: 1,
                                     color: AppTheme.thirdColor,
@@ -1285,6 +1286,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                                   flex: 1,
                                   child: Text(
                                     'Valeur',
+                                    textAlign: TextAlign.right,
                                     style: TextStyle(
                                       fontFamily: AppTheme.fontMontserrat,
                                       fontWeight: FontWeight.bold,
