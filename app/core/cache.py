@@ -1,9 +1,9 @@
 import redis
 import json
 import logging
-from typing import Optional, Any, Dict, List, Union
-from datetime import datetime, timedelta
-from app.core.config import REDIS_HOST, REDIS_PORT, REDIS_DB, CACHE_TTL_SHORT, CACHE_TTL_MEDIUM, CACHE_TTL_LONG
+from typing import Optional, Any, Dict, List, cast
+from datetime import datetime
+from app.core.config import REDIS_HOST, REDIS_PORT, REDIS_DB, CACHE_TTL_MEDIUM, CACHE_TTL_LONG
 
 # Configuration du logging
 logger = logging.getLogger(__name__)
@@ -78,12 +78,12 @@ class RedisCache:
         Returns:
             Valeur désérialisée ou None si pas trouvée/erreur
         """
-        if not self.is_available:
+        if not self.is_available or self.redis_client is None:
             return None
         
         try:
             value = self.redis_client.get(key)
-            if value:
+            if value and isinstance(value, (str, bytes, bytearray)):
                 return json.loads(value)
             return None
             
@@ -109,7 +109,7 @@ class RedisCache:
         Returns:
             True si succès, False sinon
         """
-        if not self.is_available:
+        if not self.is_available or self.redis_client is None:
             return False
         
         try:
@@ -125,7 +125,7 @@ class RedisCache:
             
             if result:
                 logger.debug(f"✅ Cache mis à jour: {key} (TTL: {ttl}s)")
-            return result
+            return bool(result)
             
         except Exception as e:
             logger.error(f"❌ Erreur écriture cache {key}: {e}")
@@ -156,7 +156,7 @@ class RedisCache:
         Returns:
             True si succès, False sinon
         """
-        if not self.is_available:
+        if not self.is_available or self.redis_client is None:
             return False
         
         try:
@@ -169,7 +169,7 @@ class RedisCache:
             logger.error(f"❌ Erreur suppression cache {key}: {e}")
             return False
 
-    def clear_pattern(self, pattern: str) -> int:
+    async def clear_pattern(self, pattern: str) -> int:
         """
         Supprime toutes les clés correspondant à un pattern.
         
@@ -179,15 +179,15 @@ class RedisCache:
         Returns:
             Nombre de clés supprimées
         """
-        if not self.is_available:
+        if not self.is_available or self.redis_client is None:
             return 0
         
         try:
-            keys = self.redis_client.keys(pattern)
+            keys = await self.redis_client.keys(pattern)
             if keys:
-                deleted = self.redis_client.delete(*keys)
+                deleted = await self.redis_client.delete(*keys)
                 logger.info(f"🧹 {deleted} clés supprimées pour pattern: {pattern}")
-                return deleted
+                return int(deleted)
             return 0
             
         except Exception as e:
@@ -201,7 +201,7 @@ class RedisCache:
         Returns:
             True si succès, False sinon
         """
-        if not self.is_available:
+        if not self.is_available or self.redis_client is None:
             return False
         
         try:
@@ -220,7 +220,7 @@ class RedisCache:
         Returns:
             Dictionnaire avec les infos du cache
         """
-        if not self.is_available:
+        if not self.is_available or self.redis_client is None:
             return {
                 "status": "unavailable",
                 "keys_count": 0,
@@ -234,9 +234,9 @@ class RedisCache:
             return {
                 "status": "available",
                 "keys_count": keys_count,
-                "memory_usage": info.get('used_memory_human', 'unknown'),
-                "connected_clients": info.get('connected_clients', 0),
-                "total_commands_processed": info.get('total_commands_processed', 0)
+                "memory_usage": info.get('used_memory_human', 'unknown') if isinstance(info, dict) else 'unknown',
+                "connected_clients": info.get('connected_clients', 0) if isinstance(info, dict) else 0,
+                "total_commands_processed": info.get('total_commands_processed', 0) if isinstance(info, dict) else 0
             }
             
         except Exception as e:
@@ -253,7 +253,7 @@ class RedisCache:
         Returns:
             True si existe, False sinon
         """
-        if not self.is_available:
+        if not self.is_available or self.redis_client is None:
             return False
         
         try:
@@ -272,11 +272,11 @@ class RedisCache:
         Returns:
             TTL en secondes (-1 si pas de TTL, -2 si clé n'existe pas)
         """
-        if not self.is_available:
+        if not self.is_available or self.redis_client is None:
             return -2
         
         try:
-            return self.redis_client.ttl(key)
+            return cast(int, self.redis_client.ttl(key))
         except Exception as e:
             logger.error(f"❌ Erreur TTL {key}: {e}")
             return -2
@@ -292,7 +292,7 @@ class RedisCache:
         Returns:
             True si succès, False sinon
         """
-        if not self.is_available:
+        if not self.is_available or self.redis_client is None:
             return False
         
         try:
@@ -310,7 +310,7 @@ class RedisCache:
 cache = RedisCache()
 
 # Fonctions helper spécifiques au projet
-def cache_equipment_list(data: List[Dict], filters: Dict[str, Any] = None, ttl: int = CACHE_TTL_MEDIUM) -> bool:
+def cache_equipment_list(data: List[Dict], filters: Dict[str, Any] | None = None, ttl: int = CACHE_TTL_MEDIUM) -> bool:
     """
     Met en cache une liste d'équipements avec filtres.
     
@@ -325,7 +325,7 @@ def cache_equipment_list(data: List[Dict], filters: Dict[str, Any] = None, ttl: 
     key = cache._create_key("equipment_list", **filters or {})
     return cache.set(key, data, ttl)
 
-def get_cached_equipment_list(filters: Dict[str, Any] = None) -> Optional[List[Dict]]:
+def get_cached_equipment_list(filters: Dict[str, Any] | None = None) -> Optional[List[Dict]]:
     """
     Récupère une liste d'équipements mise en cache.
     
@@ -362,17 +362,17 @@ def get_cached_entities_list() -> Optional[List[str]]:
     """Récupère la liste des entités en cache."""
     return cache.get_data_only("entities_list")
 
-def invalidate_equipment_cache():
+async def invalidate_equipment_cache():
     """Invalide tout le cache des équipements."""
     patterns = ["equipment:*", "equipment_list:*", "zones_list", "familles_list", "entities_list"]
     total_deleted = 0
     for pattern in patterns:
-        total_deleted += cache.clear_pattern(pattern)
+        total_deleted += await cache.clear_pattern(pattern)
     
     logger.info(f"🧹 Cache équipements invalidé: {total_deleted} clés supprimées")
     return total_deleted
 
-def get_cache_stats() -> Dict[str, Any]:
+async def get_cache_stats() -> Dict[str, Any]:
     """
     Récupère les statistiques détaillées du cache.
     
@@ -382,9 +382,10 @@ def get_cache_stats() -> Dict[str, Any]:
     stats = cache.get_cache_info()
     
     # Ajouter des statistiques spécifiques au projet
-    if cache.is_available:
+    if cache.is_available and cache.redis_client is not None:
         try:
-            equipment_keys = len(cache.redis_client.keys("equipment*"))
+            equipment_keys_result = await cache.redis_client.keys("equipment*")
+            equipment_keys = len(equipment_keys_result) if equipment_keys_result else 0
             zones_cached = cache.exists("zones_list")
             familles_cached = cache.exists("familles_list")
             entities_cached = cache.exists("entities_list")

@@ -33,19 +33,25 @@ class PaginationResult:
 class OracleDatabase:
     """Classe pour gérer les connexions et requêtes Oracle"""
     
-    def __init__(self):
+    def __init__(self, db_type: str = "main"):
         """Initialise la connexion à la base de données Oracle"""
         self.connection = None
+        self.db_type = db_type  # "main" ou "temp"
     
     def connect(self):
-        """Établit la connexion à la base de données"""
+        """Établit la connexion à la base de données (principale ou temporaire selon db_type)"""
         try:
-            # Créer la chaîne de connexion Oracle
-            connection_string = f"{DB_USERNAME}/{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_SERVICE_NAME}"
+            if self.db_type == "main":
+                connection_string = f"{DB_USERNAME}/{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_SERVICE_NAME}"
+            elif self.db_type == "temp":
+                connection_string = f"{TEMP_DB_USERNAME}/{TEMP_DB_PASSWORD}@{TEMP_DB_HOST}:{TEMP_DB_PORT}/{TEMP_DB_SERVICE_NAME}"
+            else:
+                raise ValueError("Type de DB invalide")
+            
             self.connection = oracledb.connect(connection_string)
-            print(f"✅ Connexion réussie à Oracle: {DB_HOST}:{DB_SERVICE_NAME}")
+            print(f"✅ Connexion réussie à Oracle ({self.db_type}): {connection_string}")
         except oracledb.DatabaseError as e:
-            print(f"❌ Erreur de connexion Oracle: {e}")
+            print(f"❌ Erreur de connexion Oracle ({self.db_type}): {e}")
             self.connection = None
             raise ConnectionError(f"Impossible de se connecter à la base de données: {e}")
         except Exception as e:
@@ -53,22 +59,6 @@ class OracleDatabase:
             self.connection = None
             raise
 
-    def connect_temp(self):
-        """Établit la connexion à la base de données temporaire Oracle"""
-        try:
-            # Créer la chaîne de connexion Oracle
-            connection_string = f"{TEMP_DB_USERNAME}/{TEMP_DB_PASSWORD}@{TEMP_DB_HOST}:{TEMP_DB_PORT}/{TEMP_DB_SERVICE_NAME}"
-            self.connection = oracledb.connect(connection_string)
-            print(f"✅ Connexion réussie à Oracle: {TEMP_DB_HOST}:{TEMP_DB_SERVICE_NAME}")
-        except oracledb.DatabaseError as e:
-            print(f"❌ Erreur de connexion Oracle: {e}")
-            self.connection = None
-            raise ConnectionError(f"Impossible de se connecter à la base de données: {e}")
-        except Exception as e:
-            print(f"❌ Erreur inattendue: {e}")
-            self.connection = None
-            raise
-    
     def is_connected(self) -> bool:
         """Vérifie si la connexion est active"""
         if not self.connection:
@@ -343,24 +333,26 @@ class OracleDatabase:
             print(f"❌ Erreur rollback: {e}")
             raise
 
-# Fonction utilitaire pour créer une connexion
-oracleDatabase = OracleDatabase()
+# Créer deux instances globales distinctes
+main_db_instance = OracleDatabase(db_type="main")
+temp_db_instance = OracleDatabase(db_type="temp")
 
-def get_database_connection() -> OracleDatabase | None:
-    """Factory function pour créer une connexion DB"""
-    return oracleDatabase.connect()
+def get_database_connection() -> OracleDatabase:
+    """Factory function pour créer une connexion DB principale"""
+    main_db_instance.connect()
+    return main_db_instance
 
-def get_database_connection_temp() -> OracleDatabase | None:
+def get_database_connection_temp() -> OracleDatabase:
     """Factory function pour créer une connexion DB temporaire"""
-    return oracleDatabase.connect_temp()
+    temp_db_instance.connect()
+    return temp_db_instance
 
-# Test de connexion
+# Test de connexion mis à jour
 def test_connection():
     """Teste la connexion aux deux bases de données"""
     try:
         # Test DB principale
-        main_db = OracleDatabase()
-        main_db.connect()
+        main_db = get_database_connection()
         print("🔎 Test DB principale...")
         if main_db.is_connected():
             print("✅ Connexion DB principale OK")
@@ -371,8 +363,7 @@ def test_connection():
         main_db.close_connection()
 
         # Test DB temporaire
-        temp_db = OracleDatabase()
-        temp_db.connect_temp()
+        temp_db = get_database_connection_temp()
         print("🔎 Test DB temporaire...")
         if temp_db.is_connected():
             print("✅ Connexion DB temporaire OK")

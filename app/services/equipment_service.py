@@ -1,4 +1,4 @@
-from app.db.database import get_database_connection
+from app.db.database import get_database_connection, get_database_connection_temp
 from app.core.config import CACHE_TTL_SHORT
 from app.models.models import (EquipmentModel, FeederModel, EquipmentAttributeValueModel, AttributeValuesModel)
 from app.db.requests import (ATTRIBUTE_VALUES_QUERY, EQUIPMENT_ADD_QUERY, EQUIPMENT_ATTRIBUTE_ADD_QUERY, EQUIPMENT_BY_ID_QUERY, EQUIPMENT_INFINITE_QUERY, EQUIPMENT_LENGTH_ATTRIBUTS_QUERY, EQUIPMENT_SPEC_ADD_QUERY, EQUIPMENT_T_SPECIFICATION_CODE_QUERY, FEEDER_QUERY, UPDATE_EQUIPMENT_ATTRIBUTE_QUERY)
@@ -269,7 +269,7 @@ def get_equipment_by_id(equipment_id: str) -> Optional[EquipmentModel]:
         logger.error(f"❌ Erreur récupération équipement {equipment_id}: {e}")
         return None
 
-def update_equipment_partial(equipment_id: str, updates: Dict[str, Any]) -> bool:
+async def update_equipment_partial(equipment_id: str, updates: Dict[str, Any]) -> bool:
     """
     Met à jour partiellement un équipement et ses attributs
     
@@ -350,7 +350,7 @@ def update_equipment_partial(equipment_id: str, updates: Dict[str, Any]) -> bool
             ]
             
             for pattern in cache_patterns:
-                cache.clear_pattern(pattern)
+                await cache.clear_pattern(pattern)
             
             logger.info(f"✅ Mise à jour complète de l'équipement {equipment_id}")
             return True
@@ -547,7 +547,7 @@ def validate_equipment_for_insertion(equipment: EquipmentModel) -> tuple[bool, s
         logger.error(f"Erreur validation équipement: {e}")
         return False, f"Erreur validation: {str(e)}"
 
-def insert_equipment(equipment: EquipmentModel) -> bool:
+async def insert_equipment(equipment: EquipmentModel) -> bool:
     """
     Insère un nouvel équipement en utilisant les méthodes existantes de la couche DB.
     Utilise désormais la gestion transactionnelle de la couche DB :
@@ -561,7 +561,7 @@ def insert_equipment(equipment: EquipmentModel) -> bool:
             logger.error(f"Validation échouée: {msg}")
             return False
 
-        db_conn = get_database_connection()
+        db_conn = get_database_connection_temp()
         if db_conn is None:
             logger.error("Impossible d'obtenir une connexion à la base de données")
             raise Exception("Connexion DB manquante")
@@ -614,7 +614,7 @@ def insert_equipment(equipment: EquipmentModel) -> bool:
                     else:
                         logger.debug("commit_transaction non disponible, la couche DB peut avoir commit automatique")
                     for pattern in (f"mobile_eq_*", f"equipment_*", f"feeders_list_*"):
-                        cache.clear_pattern(pattern)
+                        await cache.clear_pattern(pattern)
                     return True
                 cwsp_code = spec_rows[0][0]
 
@@ -636,7 +636,7 @@ def insert_equipment(equipment: EquipmentModel) -> bool:
                     if hasattr(db, "commit_transaction"):
                         db.commit_transaction()
                     for pattern in (f"mobile_eq_*", f"equipment_*", f"feeders_list_*"):
-                        cache.clear_pattern(pattern)
+                        await cache.clear_pattern(pattern)
                     return True
                 equipment_specs_pk = es_rows[0][0]
 
@@ -671,7 +671,7 @@ def insert_equipment(equipment: EquipmentModel) -> bool:
 
                 # invalider caches
                 for pattern in (f"mobile_eq_*", f"equipment_*", f"feeders_list_*"):
-                    cache.clear_pattern(pattern)
+                    await cache.clear_pattern(pattern)
 
                 logger.info(f"Équipement {equipment.code} inséré avec succès")
                 return True
