@@ -8,7 +8,8 @@ class OverlayContent extends StatelessWidget {
   final Map<String, String> details;
   final IconData? titleIcon;
   final VoidCallback? onClose;
-  final bool showModifyButton; // Nouveau paramètre
+  final bool showModifyButton;
+  final List<Map<String, dynamic>>? moreData; // Données supplémentaires optionnelles
 
   const OverlayContent({
     super.key,
@@ -16,7 +17,8 @@ class OverlayContent extends StatelessWidget {
     required this.details,
     this.titleIcon,
     this.onClose,
-    this.showModifyButton = true, // Par défaut, afficher le bouton
+    this.showModifyButton = true,
+    this.moreData,
   });
 
   @override
@@ -155,7 +157,7 @@ class OverlayContent extends StatelessWidget {
             context,
             MaterialPageRoute(
               builder:
-                  (context) => ModifyEquipmentScreen(equipmentData: details),
+                  (context) => ModifyEquipmentScreen(equipmentData: details, equipmentAttributes: moreData),
             ),
           );
         },

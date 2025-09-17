@@ -16,6 +16,7 @@ class ListItemCustom extends StatelessWidget {
   final Color? textColor;
   final Color? iconColor;
   final bool showModifyButton;
+  final List<Map<String, dynamic>>? attributes;
 
   const ListItemCustom({
     super.key,
@@ -31,6 +32,7 @@ class ListItemCustom extends StatelessWidget {
     this.textColor,
     this.iconColor,
     this.showModifyButton = true,
+    this.attributes,
   });
 
   // Constructeur pour les équipements
@@ -48,6 +50,7 @@ class ListItemCustom extends StatelessWidget {
     required String description,
     required String longitude,
     required String latitude,
+    List<Map<String, dynamic>>? attributes,
     bool showModifyButton = true,
     String overlayTitle = 'Détails de l\'équipement',
     VoidCallback? onTap,
@@ -81,6 +84,7 @@ class ListItemCustom extends StatelessWidget {
       overlayTitle: overlayTitle,
       showModifyButton: showModifyButton,
       onTap: onTap,
+      attributes: attributes,
     );
   }
 
@@ -326,9 +330,9 @@ class ListItemCustom extends StatelessWidget {
           content: OverlayContent(
             title: overlayTitle,
             details: overlayDetails,
+            moreData: attributes,
             titleIcon: icon,
             showModifyButton: showModifyButton,
-            // actions: _buildOverlayActions(context),
           ),
         );
       },

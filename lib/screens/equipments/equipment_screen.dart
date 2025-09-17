@@ -598,6 +598,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
       description: equipment['description'] ?? '',
       longitude: equipment['longitude']?.toString() ?? '',
       latitude: equipment['latitude']?.toString() ?? '',
+      attributes: equipment['attributes'] as List<Map<String, dynamic>>?,
     );
   }
 }

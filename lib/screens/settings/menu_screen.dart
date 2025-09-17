@@ -387,7 +387,7 @@ class ProfilMenu extends StatelessWidget {
         leading: Container(
           padding: const EdgeInsets.all(6), // ✅ RÉDUIT: Padding plus petit
           decoration: BoxDecoration(
-            color: iconColor.withOpacity(0.1),
+            color: iconColor.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(
               6,
             ), // ✅ RÉDUIT: Coins moins arrondis
@@ -443,7 +443,7 @@ class ProfilMenu extends StatelessWidget {
         leading: Container(
           padding: const EdgeInsets.all(6), // ✅ RÉDUIT: Padding plus petit
           decoration: BoxDecoration(
-            color: iconColor.withOpacity(0.1),
+            color: iconColor.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(
               6,
             ), // ✅ RÉDUIT: Coins moins arrondis

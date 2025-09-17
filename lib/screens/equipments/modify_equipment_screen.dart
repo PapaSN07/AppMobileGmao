@@ -14,8 +14,9 @@ import 'package:provider/provider.dart';
 class ModifyEquipmentScreen extends StatefulWidget {
   final Map<String, String>?
   equipmentData; // Données de l'équipement à modifier
+  final List<Map<String, dynamic>>? equipmentAttributes;
 
-  const ModifyEquipmentScreen({super.key, this.equipmentData});
+  const ModifyEquipmentScreen({super.key, this.equipmentData, this.equipmentAttributes});
 
   @override
   State<ModifyEquipmentScreen> createState() => _ModifyEquipmentScreenState();
@@ -79,8 +80,77 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadValuesEquipmentsWithUserInfo();
-      _loadEquipmentAttributes(); // ✅ Charger les attributs de l'équipement
+      if (widget.equipmentAttributes != null && widget.equipmentAttributes!.isNotEmpty) {
+        _initializeAttributesFromParams();
+      } else {
+        _loadEquipmentAttributes(); // Charger depuis l'API comme avant
+      }
     });
+  }
+
+  // ✅ NOUVEAU: Initialiser les attributs depuis les paramètres passés
+  void _initializeAttributesFromParams() {
+    if (widget.equipmentAttributes == null || widget.equipmentAttributes!.isEmpty) {
+      if (kDebugMode) {
+        print('📋 Aucun attribut passé en paramètre');
+      }
+      return;
+    }
+
+    try {
+      // Convertir les attributs passés en EquipmentAttribute
+      final List<EquipmentAttribute> convertedAttributes = [];
+      
+      for (int i = 0; i < widget.equipmentAttributes!.length; i++) {
+        final attrData = widget.equipmentAttributes![i];
+        
+        final attribute = EquipmentAttribute(
+          id: attrData['id']?.toString(),
+          name: attrData['name']?.toString(),
+          value: attrData['value']?.toString() ?? '',
+          type: attrData['type']?.toString() ?? 'string',
+          specification: attrData['specification']?.toString(),
+          index: attrData['index']?.toString(),
+        );
+        
+        convertedAttributes.add(attribute);
+      }
+
+      if (mounted) {
+        setState(() {
+          availableAttributes = convertedAttributes;
+          
+          // Initialiser les valeurs sélectionnées
+          selectedAttributeValues.clear();
+          for (final attr in convertedAttributes) {
+            if (attr.id != null && attr.value != null) {
+              selectedAttributeValues[attr.id!] = attr.value!;
+            }
+          }
+          
+          _loadingAttributes = false;
+        });
+
+        // Sauvegarder les valeurs initiales après l'initialisation
+        _saveInitialValues();
+        
+        // Charger les spécifications pour les dropdowns
+        _loadAttributeSpecifications();
+      }
+
+      if (kDebugMode) {
+        print('✅ ModifyEquipmentScreen - ${convertedAttributes.length} attributs initialisés depuis les paramètres:');
+        for (final attr in convertedAttributes) {
+          print('   - ${attr.name}: "${attr.value}"');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Erreur initialisation attributs depuis paramètres: $e');
+      }
+      // Fallback : charger depuis l'API
+      _loadEquipmentAttributes();
+    }
   }
 
   @override
@@ -1500,7 +1570,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
             setState(() {
               attributeValuesBySpec[specKey] = [
                 EquipmentAttribute(
-                  id: '${attr.id}_current',
+                  id: attr.id,
                   specification: attr.specification,
                   index: attr.index,
                   name: attr.name,

@@ -21,8 +21,7 @@ class HiveService {
   static late Box<String> metadataBox;
   static late Box<Map<String, dynamic>> pendingActionsBox; // Actions en attente
   static late Box<Map<String, dynamic>> workOrderBox; // Ordres de travail
-  static late Box<Map<String, dynamic>>
-  interventionBox; // Demandes d'intervention
+  static late Box<Map<String, dynamic>> interventionBox; // Demandes d'intervention
   // ✅ NOUVEAU: Box pour les valeurs d'attributs des équipements
   static late Box<Map<String, dynamic>>
   attributeValuesBox; // Valeurs d'attributs par équipement
@@ -306,6 +305,52 @@ class HiveService {
         print('❌ GMAO: Erreur lecture cache équipements: $e');
       }
       return [];
+    }
+  }
+
+  /// ✅ NOUVEAU: Mettre à jour un équipement spécifique dans le cache
+  static Future<void> updateEquipmentInCache(Equipment updatedEquipment) async {
+    try {
+      if (updatedEquipment.id == null || updatedEquipment.id!.isEmpty) {
+        if (kDebugMode) {
+          print('⚠️ GMAO: ID équipement manquant, impossible de mettre à jour le cache');
+        }
+        return;
+      }
+
+      // Trouver l'équipement existant dans le cache
+      final existingEquipmentKey = equipmentBox.keys.firstWhere(
+        (key) {
+          final equipment = equipmentBox.get(key);
+          return equipment?.id == updatedEquipment.id;
+        },
+        orElse: () => null,
+      );
+
+      if (existingEquipmentKey != null) {
+        // Mettre à jour l'équipement existant
+        await equipmentBox.put(existingEquipmentKey, updatedEquipment);
+        
+        if (kDebugMode) {
+          print('✅ GMAO: Équipement ${updatedEquipment.code} mis à jour dans le cache');
+        }
+      } else {
+        // Si l'équipement n'existe pas, l'ajouter
+        await equipmentBox.add(updatedEquipment);
+        
+        if (kDebugMode) {
+          print('✅ GMAO: Équipement ${updatedEquipment.code} ajouté au cache');
+        }
+      }
+
+      // Mettre à jour le timestamp du cache
+      await _updateTimestamp('equipments');
+
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ GMAO: Erreur mise à jour équipement dans cache: $e');
+      }
+      rethrow;
     }
   }
 

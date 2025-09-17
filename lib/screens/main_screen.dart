@@ -205,8 +205,8 @@ class _MainScreenState extends State<MainScreen> {
                       style: TextStyle(
                         color:
                             isHome
-                                ? textColor.withOpacity(0.7)
-                                : textColor.withOpacity(0.8),
+                                ? textColor.withValues(alpha: 0.7)
+                                : textColor.withValues(alpha: 0.8),
                         fontSize: 10,
                       ),
                     ),

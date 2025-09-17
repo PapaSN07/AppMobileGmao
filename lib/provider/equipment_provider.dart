@@ -79,6 +79,7 @@ class EquipmentProvider extends ChangeNotifier {
           if (kDebugMode) {
             print('📋 GMAO: Chargement depuis cache');
           }
+          
           _allEquipments = _convertToMapList(equipments);
           _equipments = List.from(_allEquipments);
           _isLoading = false;
@@ -328,18 +329,7 @@ class EquipmentProvider extends ChangeNotifier {
         List<EquipmentAttribute> finalAttributes = [];
 
         if (equipmentData['attributs'] != null) {
-          final attributsData =
-              equipmentData['attributs'] as List<Map<String, String>>;
-
-          for (final attrData in attributsData) {
-            final attribute = EquipmentAttribute(
-              name: attrData['name'],
-              value:
-                  attrData['value'] ?? '', // ✅ Même si vide, inclure l'attribut
-              type: attrData['type'] ?? 'string',
-            );
-            finalAttributes.add(attribute);
-          }
+          finalAttributes = _extractAttributeValue(equipmentData['attributs']);
         }
 
         if (kDebugMode) {
@@ -400,6 +390,24 @@ class EquipmentProvider extends ChangeNotifier {
       }
       rethrow;
     }
+  }
+
+  List<EquipmentAttribute> _extractAttributeValue(
+    List<Map<String, String>> attributsData,
+  ) {
+    List<EquipmentAttribute> attributes = [];
+    for (final attrData in attributsData) {
+      final attribute = EquipmentAttribute(
+        id: attrData['id'],
+        specification: attrData['specification'],
+        index: attrData['index'],
+        name: attrData['name'],
+        value: attrData['value'] ?? '', // ✅ Même si vide, inclure l'attribut
+        type: attrData['type'] ?? 'string',
+      );
+      attributes.add(attribute);
+    }
+    return attributes;
   }
 
   // ✅ CORRIGÉ: Extraire le code depuis une description de sélecteur avec gestion des erreurs
@@ -626,12 +634,16 @@ class EquipmentProvider extends ChangeNotifier {
         );
 
         if (index == -1) {
-          throw Exception('Équipement $equipmentId non trouvé dans les données locales');
+          throw Exception(
+            'Équipement $equipmentId non trouvé dans les données locales',
+          );
         }
 
         // ✅ NOUVEAU: Préparer les données locales AVANT l'appel API
-        final localUpdatedEquipment = Map<String, dynamic>.from(_allEquipments[index]);
-        
+        final localUpdatedEquipment = Map<String, dynamic>.from(
+          _allEquipments[index],
+        );
+
         // Appliquer les modifications localement
         updatedFields.forEach((key, value) {
           if (value != null && value.toString().isNotEmpty) {
@@ -642,13 +654,15 @@ class EquipmentProvider extends ChangeNotifier {
         // ✅ Appeler l'API pour la synchronisation
         try {
           await _apiService.updateEquipment(equipmentId, updatedFields);
-          
+
           if (kDebugMode) {
             print('✅ EquipmentProvider - Synchronisation API réussie');
           }
         } catch (apiError) {
           if (kDebugMode) {
-            print('⚠️ EquipmentProvider - Erreur API mais mise à jour locale maintenue: $apiError');
+            print(
+              '⚠️ EquipmentProvider - Erreur API mais mise à jour locale maintenue: $apiError',
+            );
           }
           // Ne pas faire échouer la mise à jour si l'API échoue
           // Les changements locaux restent actifs
@@ -663,36 +677,90 @@ class EquipmentProvider extends ChangeNotifier {
           _equipments[equipmentIndex] = localUpdatedEquipment;
         }
 
+        // ✅ CRITICAL: NOUVEAU - Mettre à jour le cache Hive avec les nouvelles données
+        try {
+          // Convertir les données locales en Equipment pour le cache
+          final updatedEquipment = Equipment(
+            id: localUpdatedEquipment['id']?.toString(),
+            codeParent: localUpdatedEquipment['codeParent']?.toString(),
+            feeder: localUpdatedEquipment['feeder']?.toString(),
+            feederDescription:
+                localUpdatedEquipment['feederDescription']?.toString(),
+            code: localUpdatedEquipment['code']?.toString() ?? '',
+            famille: localUpdatedEquipment['famille']?.toString() ?? '',
+            zone: localUpdatedEquipment['zone']?.toString() ?? '',
+            entity: localUpdatedEquipment['entity']?.toString() ?? '',
+            unite: localUpdatedEquipment['unite']?.toString() ?? '',
+            centreCharge:
+                localUpdatedEquipment['centreCharge']?.toString() ?? '',
+            description: localUpdatedEquipment['description']?.toString() ?? '',
+            longitude: localUpdatedEquipment['longitude']?.toString() ?? '',
+            latitude: localUpdatedEquipment['latitude']?.toString() ?? '',
+            attributes:
+                localUpdatedEquipment['attributes']?.toList() ??
+                [], // Les attributs seront gérés séparément
+            cachedAt: DateTime.now(),
+          );
+
+          // ✅ CRITICAL: Mettre à jour le cache Hive avec l'équipement modifié
+          await HiveService.updateEquipmentInCache(updatedEquipment);
+
+          if (kDebugMode) {
+            print(
+              '✅ EquipmentProvider - Cache Hive mis à jour avec les nouvelles données',
+            );
+          }
+        } catch (cacheError) {
+          if (kDebugMode) {
+            print(
+              '⚠️ EquipmentProvider - Erreur mise à jour cache Hive: $cacheError',
+            );
+          }
+          // Ne pas faire échouer la mise à jour si le cache échoue
+        }
+
         // ✅ CRITICAL: Mettre à jour les attributs si nécessaire
         if (updatedFields.containsKey('attributs')) {
-          final finalEquipmentCode = equipmentCode.isNotEmpty 
-            ? equipmentCode 
-            : localUpdatedEquipment['code']?.toString() ?? '';
+          final finalEquipmentCode =
+              equipmentCode.isNotEmpty
+                  ? equipmentCode
+                  : localUpdatedEquipment['code']?.toString() ?? '';
 
           if (finalEquipmentCode.isNotEmpty) {
             // Créer des EquipmentAttribute depuis les données envoyées
-            final attributsData = updatedFields['attributs'] as List<Map<String, String>>? ?? [];
-            final newAttributes = attributsData.map((attrData) => 
-              EquipmentAttribute(
-                name: attrData['name'],
-                value: attrData['value'] ?? '',
-                type: attrData['type'] ?? 'string',
-              )
-            ).toList();
+            final attributsData =
+                updatedFields['attributs'] as List<Map<String, String>>? ?? [];
+            final newAttributes =
+                attributsData
+                    .map(
+                      (attrData) => EquipmentAttribute(
+                        name: attrData['name'],
+                        value: attrData['value'] ?? '',
+                        type: attrData['type'] ?? 'string',
+                      ),
+                    )
+                    .toList();
 
-            await _updateEquipmentAttributesCache(finalEquipmentCode, newAttributes);
+            await _updateEquipmentAttributesCache(
+              finalEquipmentCode,
+              newAttributes,
+            );
 
             if (kDebugMode) {
-              print('✅ EquipmentProvider - Attributs mis à jour localement pour: $finalEquipmentCode');
+              print(
+                '✅ EquipmentProvider - Attributs mis à jour localement pour: $finalEquipmentCode',
+              );
             }
           }
         }
 
         if (kDebugMode) {
-          print('✅ EquipmentProvider - Données locales mises à jour');
+          print('✅ EquipmentProvider - Données locales et cache mis à jour');
         }
       } else {
-        throw Exception('Impossible de modifier un équipement en mode hors ligne');
+        throw Exception(
+          'Impossible de modifier un équipement en mode hors ligne',
+        );
       }
 
       notifyListeners();
