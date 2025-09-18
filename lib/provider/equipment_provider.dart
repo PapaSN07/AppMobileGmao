@@ -598,13 +598,13 @@ class EquipmentProvider extends ChangeNotifier {
     return code;
   }
 
-  // ✅ CORRIGÉ: Méthode compatible avec modify_equipment_screen.dart + attributs
+  // ✅ CORRIGÉ: Méthode de mise à jour avec cache Hive correct
   Future<void> updateEquipment(
     String equipmentId,
     Map<String, dynamic> updatedFields,
   ) async {
     try {
-      // ✅ AJOUTÉ: Validation des paramètres d'entrée
+      // ✅ Validation des paramètres d'entrée
       if (equipmentId.isEmpty) {
         throw Exception('ID équipement requis');
       }
@@ -617,58 +617,47 @@ class EquipmentProvider extends ChangeNotifier {
 
       if (!_isOffline) {
         if (kDebugMode) {
-          print(
-            '🔄 EquipmentProvider - Début mise à jour équipement: $equipmentId',
-          );
-          print(
-            '📊 EquipmentProvider - Données: ${updatedFields.keys.join(', ')}',
-          );
+          print('🔄 EquipmentProvider - Début mise à jour équipement: $equipmentId');
+          print('📊 EquipmentProvider - Données: ${updatedFields.keys.join(', ')}');
         }
 
-        // ✅ IMPORTANT: Sauvegarder le code équipement AVANT l'appel API
+        // Sauvegarder le code équipement AVANT l'appel API
         final equipmentCode = updatedFields['code'] as String? ?? '';
 
-        // ✅ NOUVEAU: Trouver l'équipement à modifier AVANT l'appel API
+        // Trouver l'équipement à modifier AVANT l'appel API
         final index = _allEquipments.indexWhere(
           (eq) => eq['id'] == equipmentId || eq['ID'] == equipmentId,
         );
 
         if (index == -1) {
-          throw Exception(
-            'Équipement $equipmentId non trouvé dans les données locales',
-          );
+          throw Exception('Équipement $equipmentId non trouvé dans les données locales');
         }
 
-        // ✅ NOUVEAU: Préparer les données locales AVANT l'appel API
-        final localUpdatedEquipment = Map<String, dynamic>.from(
-          _allEquipments[index],
-        );
-
+        // Préparer les données locales AVANT l'appel API
+        final localUpdatedEquipment = Map<String, dynamic>.from(_allEquipments[index]);
+        
         // Appliquer les modifications localement
         updatedFields.forEach((key, value) {
-          if (value != null && value.toString().isNotEmpty) {
+          if (value != null) {
             localUpdatedEquipment[key] = value;
           }
         });
 
-        // ✅ Appeler l'API pour la synchronisation
+        // ✅ Appeler l'API pour la synchronisation (mais ne pas s'arrêter si ça échoue)
         try {
           await _apiService.updateEquipment(equipmentId, updatedFields);
-
+          
           if (kDebugMode) {
             print('✅ EquipmentProvider - Synchronisation API réussie');
           }
         } catch (apiError) {
           if (kDebugMode) {
-            print(
-              '⚠️ EquipmentProvider - Erreur API mais mise à jour locale maintenue: $apiError',
-            );
+            print('⚠️ EquipmentProvider - Erreur API mais mise à jour locale maintenue: $apiError');
           }
           // Ne pas faire échouer la mise à jour si l'API échoue
-          // Les changements locaux restent actifs
         }
 
-        // ✅ IMPORTANT: Mettre à jour les données locales avec nos valeurs
+        // ✅ IMPORTANT: Mettre à jour les données locales
         _allEquipments[index] = localUpdatedEquipment;
         final equipmentIndex = _equipments.indexWhere(
           (eq) => eq['id'] == equipmentId || eq['ID'] == equipmentId,
@@ -677,79 +666,78 @@ class EquipmentProvider extends ChangeNotifier {
           _equipments[equipmentIndex] = localUpdatedEquipment;
         }
 
-        // ✅ CRITICAL: NOUVEAU - Mettre à jour le cache Hive avec les nouvelles données
+        // ✅ CRITICAL: Mettre à jour le cache Hive avec les nouvelles données
         try {
           // Convertir les données locales en Equipment pour le cache
           final updatedEquipment = Equipment(
             id: localUpdatedEquipment['id']?.toString(),
-            codeParent: localUpdatedEquipment['codeParent']?.toString(),
+            codeParent: localUpdatedEquipment['code_parent']?.toString(),
             feeder: localUpdatedEquipment['feeder']?.toString(),
-            feederDescription:
-                localUpdatedEquipment['feederDescription']?.toString(),
+            feederDescription: localUpdatedEquipment['feeder_description']?.toString(),
             code: localUpdatedEquipment['code']?.toString() ?? '',
             famille: localUpdatedEquipment['famille']?.toString() ?? '',
             zone: localUpdatedEquipment['zone']?.toString() ?? '',
             entity: localUpdatedEquipment['entity']?.toString() ?? '',
             unite: localUpdatedEquipment['unite']?.toString() ?? '',
-            centreCharge:
-                localUpdatedEquipment['centreCharge']?.toString() ?? '',
+            centreCharge: localUpdatedEquipment['centre_charge']?.toString() ?? '',
             description: localUpdatedEquipment['description']?.toString() ?? '',
             longitude: localUpdatedEquipment['longitude']?.toString() ?? '',
             latitude: localUpdatedEquipment['latitude']?.toString() ?? '',
-            attributes:
-                localUpdatedEquipment['attributes']?.toList() ??
-                [], // Les attributs seront gérés séparément
+            attributes: [], // Les attributs seront gérés séparément
             cachedAt: DateTime.now(),
           );
 
-          // ✅ CRITICAL: Mettre à jour le cache Hive avec l'équipement modifié
+          // ✅ IMPORTANT: Mettre à jour le cache Hive
           await HiveService.updateEquipmentInCache(updatedEquipment);
 
           if (kDebugMode) {
-            print(
-              '✅ EquipmentProvider - Cache Hive mis à jour avec les nouvelles données',
-            );
+            print('✅ EquipmentProvider - Cache Hive mis à jour avec les nouvelles données');
           }
         } catch (cacheError) {
           if (kDebugMode) {
-            print(
-              '⚠️ EquipmentProvider - Erreur mise à jour cache Hive: $cacheError',
-            );
+            print('⚠️ EquipmentProvider - Erreur mise à jour cache Hive: $cacheError');
           }
-          // Ne pas faire échouer la mise à jour si le cache échoue
         }
 
         // ✅ CRITICAL: Mettre à jour les attributs si nécessaire
         if (updatedFields.containsKey('attributs')) {
-          final finalEquipmentCode =
-              equipmentCode.isNotEmpty
-                  ? equipmentCode
-                  : localUpdatedEquipment['code']?.toString() ?? '';
+          final finalEquipmentCode = equipmentCode.isNotEmpty 
+            ? equipmentCode 
+            : localUpdatedEquipment['code']?.toString() ?? '';
 
           if (finalEquipmentCode.isNotEmpty) {
-            // Créer des EquipmentAttribute depuis les données envoyées
-            final attributsData =
-                updatedFields['attributs'] as List<Map<String, String>>? ?? [];
-            final newAttributes =
-                attributsData
-                    .map(
-                      (attrData) => EquipmentAttribute(
-                        name: attrData['name'],
-                        value: attrData['value'] ?? '',
-                        type: attrData['type'] ?? 'string',
-                      ),
-                    )
-                    .toList();
+            try {
+              // ✅ NOUVEAU: Traitement correct des attributs
+              final attributsData = updatedFields['attributs'] as List<Map<String, String>>? ?? [];
+              final newAttributes = attributsData.map((attrData) => 
+                EquipmentAttribute(
+                  name: attrData['name'],
+                  value: attrData['value'] ?? '',
+                  type: attrData['type'] ?? 'string',
+                )
+              ).toList();
 
-            await _updateEquipmentAttributesCache(
-              finalEquipmentCode,
-              newAttributes,
-            );
+              // ✅ IMPORTANT: Nettoyer d'abord le cache des attributs
+              await HiveService.clearAttributeValues(finalEquipmentCode);
+              
+              // ✅ IMPORTANT: Sauvegarder les nouveaux attributs
+              if (newAttributes.isNotEmpty) {
+                await HiveService.cacheAttributeValues(finalEquipmentCode, newAttributes);
+              }
 
-            if (kDebugMode) {
-              print(
-                '✅ EquipmentProvider - Attributs mis à jour localement pour: $finalEquipmentCode',
-              );
+              // ✅ Mettre à jour en mémoire aussi
+              _equipmentAttributes[finalEquipmentCode] = newAttributes;
+
+              if (kDebugMode) {
+                print('✅ EquipmentProvider - ${newAttributes.length} attributs mis à jour en cache pour: $finalEquipmentCode');
+                for (final attr in newAttributes) {
+                  print('   - ${attr.name}: "${attr.value}"');
+                }
+              }
+            } catch (attrError) {
+              if (kDebugMode) {
+                print('⚠️ EquipmentProvider - Erreur mise à jour attributs: $attrError');
+              }
             }
           }
         }
@@ -758,90 +746,15 @@ class EquipmentProvider extends ChangeNotifier {
           print('✅ EquipmentProvider - Données locales et cache mis à jour');
         }
       } else {
-        throw Exception(
-          'Impossible de modifier un équipement en mode hors ligne',
-        );
+        throw Exception('Impossible de modifier un équipement en mode hors ligne');
       }
 
       notifyListeners();
     } catch (e) {
       if (kDebugMode) {
-        print('❌ GMAO: Erreur modification équipement: $e');
+        print('❌ EquipmentProvider: Erreur modification équipement: $e');
       }
       rethrow;
-    }
-  }
-
-  /// ✅ CORRIGÉ: Mettre à jour le cache des attributs avec les nouvelles valeurs de l'API
-  Future<void> _updateEquipmentAttributesCache(
-    String equipmentCode,
-    List<EquipmentAttribute> attributesFromAPI,
-  ) async {
-    try {
-      // ✅ AJOUTÉ: Validation du code équipement
-      if (equipmentCode.isEmpty) {
-        if (kDebugMode) {
-          print(
-            '❌ EquipmentProvider - Code équipement vide, abandon mise à jour cache',
-          );
-        }
-        return;
-      }
-
-      if (kDebugMode) {
-        print(
-          '🔄 EquipmentProvider - Mise à jour cache attributs avec nouvelles valeurs API pour: $equipmentCode',
-        );
-        print('📊 EquipmentProvider - Attributs reçus de l\'API:');
-        for (final attr in attributesFromAPI) {
-          print(
-            '   - ${attr.name}: "${attr.value}" (ID: ${attr.id}, spec: ${attr.specification})',
-          );
-        }
-      }
-
-      // ✅ MODIFIÉ: Utiliser directement les attributs de la réponse API (qui contiennent les nouvelles valeurs)
-      final uniqueAttributes = _filterDuplicateAttributes(attributesFromAPI);
-
-      // ✅ IMPORTANT: Vider le cache existant avant de mettre les nouvelles valeurs
-      await HiveService.clearAttributeValues(equipmentCode);
-
-      // ✅ IMPORTANT: Mettre à jour le cache avec les nouvelles valeurs de l'API
-      await HiveService.cacheAttributeValues(equipmentCode, uniqueAttributes);
-
-      // ✅ IMPORTANT: Mettre à jour en mémoire avec les nouvelles valeurs
-      _equipmentAttributes[equipmentCode] = uniqueAttributes;
-
-      if (kDebugMode) {
-        print(
-          '✅ EquipmentProvider - Cache des attributs mis à jour pour $equipmentCode (${uniqueAttributes.length} attributs)',
-        );
-        // ✅ AJOUTÉ: Logs pour voir les nouvelles valeurs mises en cache
-        for (final attr in uniqueAttributes) {
-          print(
-            '   ✓ MISE EN CACHE: ${attr.name}: "${attr.value}" (spec: ${attr.specification}, index: ${attr.index})',
-          );
-        }
-      }
-
-      // ✅ NOUVEAU: Vérifier immédiatement que le cache a été mis à jour
-      final verificationCache = await HiveService.getCachedAttributeValues(
-        equipmentCode,
-      );
-      if (verificationCache != null) {
-        if (kDebugMode) {
-          print('🔍 EquipmentProvider - Vérification cache après mise à jour:');
-        }
-        for (final attr in verificationCache) {
-          if (kDebugMode) {
-            print('   ✓ VÉRIFIÉ: ${attr.name}: "${attr.value}"');
-          }
-        }
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ EquipmentProvider - Erreur mise à jour cache attributs: $e');
-      }
     }
   }
 

@@ -16,7 +16,11 @@ class ModifyEquipmentScreen extends StatefulWidget {
   equipmentData; // Données de l'équipement à modifier
   final List<Map<String, dynamic>>? equipmentAttributes;
 
-  const ModifyEquipmentScreen({super.key, this.equipmentData, this.equipmentAttributes});
+  const ModifyEquipmentScreen({
+    super.key,
+    this.equipmentData,
+    this.equipmentAttributes,
+  });
 
   @override
   State<ModifyEquipmentScreen> createState() => _ModifyEquipmentScreenState();
@@ -56,7 +60,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
   Map<String, List<EquipmentAttribute>> attributeValuesBySpec = {};
   Map<String, String> selectedAttributeValues = {};
   bool _loadingAttributes = false; // ✅ CORRIGÉ: Changé de final bool vers bool
-  
+
   // ✅ État de chargement pour le bouton Modifier
   bool _isUpdating = false;
 
@@ -71,28 +75,35 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
   String? _initialDescription;
   Map<String, String> _initialAttributeValues = {};
 
+  // ✅ NOUVEAU: Flag pour éviter les appels multiples
+  bool _initialValuesSaved = false;
+
+  // Logging
+  static const String __logName = 'ModifyEquipmentScreen -';
+
   @override
   void initState() {
     super.initState();
-    
-    // ✅ NOUVEAU: Écouter les changements dans le controller de description
+
     _descriptionController.addListener(_onFieldChanged);
-    
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadValuesEquipmentsWithUserInfo();
-      if (widget.equipmentAttributes != null && widget.equipmentAttributes!.isNotEmpty) {
+      if (widget.equipmentAttributes != null &&
+          widget.equipmentAttributes!.isNotEmpty) {
         _initializeAttributesFromParams();
       } else {
-        _loadEquipmentAttributes(); // Charger depuis l'API comme avant
+        _loadEquipmentAttributes();
       }
     });
   }
 
   // ✅ NOUVEAU: Initialiser les attributs depuis les paramètres passés
   void _initializeAttributesFromParams() {
-    if (widget.equipmentAttributes == null || widget.equipmentAttributes!.isEmpty) {
+    if (widget.equipmentAttributes == null ||
+        widget.equipmentAttributes!.isEmpty) {
       if (kDebugMode) {
-        print('📋 Aucun attribut passé en paramètre');
+        print('📋 $__logName Aucun attribut passé en paramètre');
       }
       return;
     }
@@ -100,10 +111,10 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     try {
       // Convertir les attributs passés en EquipmentAttribute
       final List<EquipmentAttribute> convertedAttributes = [];
-      
+
       for (int i = 0; i < widget.equipmentAttributes!.length; i++) {
         final attrData = widget.equipmentAttributes![i];
-        
+
         final attribute = EquipmentAttribute(
           id: attrData['id']?.toString(),
           name: attrData['name']?.toString(),
@@ -112,14 +123,14 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
           specification: attrData['specification']?.toString(),
           index: attrData['index']?.toString(),
         );
-        
+
         convertedAttributes.add(attribute);
       }
 
       if (mounted) {
         setState(() {
           availableAttributes = convertedAttributes;
-          
+
           // Initialiser les valeurs sélectionnées
           selectedAttributeValues.clear();
           for (final attr in convertedAttributes) {
@@ -127,26 +138,32 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
               selectedAttributeValues[attr.id!] = attr.value!;
             }
           }
-          
+
           _loadingAttributes = false;
         });
 
-        // Sauvegarder les valeurs initiales après l'initialisation
-        _saveInitialValues();
-        
+        // ✅ MODIFIÉ: Sauvegarder seulement si ce n'est pas déjà fait
+        if (!_initialValuesSaved) {
+          _saveInitialValues();
+        }
+
         // Charger les spécifications pour les dropdowns
         _loadAttributeSpecifications();
       }
 
       if (kDebugMode) {
-        print('✅ ModifyEquipmentScreen - ${convertedAttributes.length} attributs initialisés depuis les paramètres:');
+        print(
+          '✅ $__logName ${convertedAttributes.length} attributs initialisés depuis les paramètres:',
+        );
         for (final attr in convertedAttributes) {
           print('   - ${attr.name}: "${attr.value}"');
         }
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Erreur initialisation attributs depuis paramètres: $e');
+        print(
+          '❌ $__logName Erreur initialisation attributs depuis paramètres: $e',
+        );
       }
       // Fallback : charger depuis l'API
       _loadEquipmentAttributes();
@@ -160,14 +177,14 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     super.dispose();
   }
 
-  // ✅ NOUVEAU: Méthode appelée quand un champ change
+  // Méthode appelée quand un champ change
   void _onFieldChanged() {
     setState(() {
       // Déclencher un rebuild pour vérifier si des changements ont eu lieu
     });
   }
 
-  // ✅ NOUVEAU: Vérifier s'il y a des changements par rapport aux valeurs initiales
+  // Vérifier s'il y a des changements par rapport aux valeurs initiales
   bool _hasChanges() {
     // Vérifier les ComboBox
     if (selectedCodeParent != _initialCodeParent) return true;
@@ -179,11 +196,13 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     if (selectedCentreCharge != _initialCentreCharge) return true;
 
     // Vérifier le champ de description
-    if (_descriptionController.text.trim() != _initialDescription?.trim()) return true;
+    if (_descriptionController.text.trim() != _initialDescription?.trim())
+      return true;
 
     // Vérifier les attributs
-    if (_initialAttributeValues.length != selectedAttributeValues.length) return true;
-    
+    if (_initialAttributeValues.length != selectedAttributeValues.length)
+      return true;
+
     for (final entry in selectedAttributeValues.entries) {
       final initialValue = _initialAttributeValues[entry.key] ?? '';
       if (entry.value != initialValue) return true;
@@ -223,7 +242,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
       await _loadSelectorsFromAPI();
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Erreur chargement sélecteurs: $e');
+        print('❌ $__logName Erreur chargement sélecteurs: $e');
       }
       if (mounted) {
         setState(() {
@@ -245,11 +264,11 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
       feeders = _extractSelectorData(selectorsBox['feeders']);
 
       if (kDebugMode) {
-        print('✅ Sélecteurs chargés depuis le cache');
+        print('✅ $__logName Sélecteurs chargés depuis le cache');
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Erreur extraction cache: $e');
+        print('❌ $__logName Erreur extraction cache: $e');
       }
       // ✅ Différer l'appel API avec Future.microtask
       Future.microtask(() => _loadSelectorsFromAPI());
@@ -327,7 +346,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Erreur chargement API: $e');
+        print('❌ $__logName Erreur chargement API: $e');
       }
       if (mounted) {
         setState(() {
@@ -402,13 +421,23 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
       valueLongitude = data['Longitude']?.toString() ?? '12311231';
       valueLatitude = data['Latitude']?.toString() ?? '12311231';
 
-      // ✅ NOUVEAU: Sauvegarder les valeurs initiales
-      _saveInitialValues();
+      // ✅ MODIFIÉ: Sauvegarder seulement si ce n'est pas déjà fait
+      if (!_initialValuesSaved) {
+        _saveInitialValues();
+      }
     }
   }
 
-  // ✅ NOUVEAU: Sauvegarder les valeurs initiales
+  // ✅ CORRIGÉ: Sauvegarder les valeurs initiales avec protection contre les appels multiples
   void _saveInitialValues() {
+    // ✅ IMPORTANT: Éviter les appels multiples
+    if (_initialValuesSaved) {
+      if (kDebugMode) {
+        print('⚠️ $__logName Valeurs initiales déjà sauvegardées, skip');
+      }
+      return;
+    }
+
     _initialCodeParent = selectedCodeParent;
     _initialFeeder = selectedFeeder;
     _initialFamille = selectedFamille;
@@ -417,12 +446,15 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     _initialUnite = selectedUnite;
     _initialCentreCharge = selectedCentreCharge;
     _initialDescription = _descriptionController.text.trim();
-    
+
     // Sauvegarder les valeurs initiales des attributs
     _initialAttributeValues = Map<String, String>.from(selectedAttributeValues);
-    
+
+    // ✅ IMPORTANT: Marquer comme sauvegardé
+    _initialValuesSaved = true;
+
     if (kDebugMode) {
-      print('✅ ModifyEquipmentScreen - Valeurs initiales sauvegardées');
+      print('✅ $__logName Valeurs initiales sauvegardées');
       print('   - Code Parent: $_initialCodeParent');
       print('   - Feeder: $_initialFeeder');
       print('   - Famille: $_initialFamille');
@@ -1144,7 +1176,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                 GestureDetector(
                   onTap: () {
                     if (kDebugMode) {
-                      print('Toucher pour modifier la position');
+                      print('$__logName Toucher pour modifier la position');
                     }
                   },
                   child: const Text(
@@ -1449,7 +1481,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
           widget.equipmentData!['Code'] ?? widget.equipmentData!['code'] ?? '';
       if (equipmentCode.isEmpty) {
         if (kDebugMode) {
-          print('❌ Code équipement manquant');
+          print('❌ $__logName Code équipement manquant');
         }
         return;
       }
@@ -1478,15 +1510,17 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
             }
           });
 
-          // ✅ NOUVEAU: Sauvegarder les valeurs initiales des attributs après chargement
-          _saveInitialValues();
+          // ✅ MODIFIÉ: Sauvegarder seulement si ce n'est pas déjà fait
+          if (!_initialValuesSaved) {
+            _saveInitialValues();
+          }
 
           // Charger les valeurs possibles pour chaque attribut
           await _loadAttributeSpecifications();
         } else {
           // ✅ MODIFIÉ: Si aucun attribut trouvé, ne pas en créer
           if (kDebugMode) {
-            print('📋 Aucun attribut trouvé pour cet équipement');
+            print('📋 $__logName Aucun attribut trouvé pour cet équipement');
           }
 
           if (mounted) {
@@ -1498,7 +1532,9 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
         }
       } catch (e) {
         if (kDebugMode) {
-          print('⚠️ Impossible de charger les attributs depuis l\'API: $e');
+          print(
+            '⚠️ $__logName Impossible de charger les attributs depuis l\'API: $e',
+          );
         }
 
         // ✅ MODIFIÉ: En cas d'erreur, laisser la liste vide
@@ -1510,7 +1546,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Erreur chargement attributs équipement: $e');
+        print('❌ $__logName Erreur chargement attributs équipement: $e');
       }
 
       // ✅ MODIFIÉ: En cas d'erreur, laisser la liste vide
@@ -1563,7 +1599,9 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
           }
         } catch (e) {
           if (kDebugMode) {
-            print('❌ Erreur chargement valeurs attribut ${attr.name}: $e');
+            print(
+              '❌ $__logName Erreur chargement valeurs attribut ${attr.name}: $e',
+            );
           }
           // ✅ En cas d'erreur, créer une liste avec au moins la valeur actuelle
           if (mounted) {
@@ -1773,9 +1811,9 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     );
   }
 
-  /// ✅ AMÉLIORÉ: Gérer la modification avec loader pour éviter les envois multiples
+  /// ✅ AMÉLIORÉ: Gérer la modification avec mise à jour immédiate du cache
   Future<void> _handleUpdate() async {
-    // ✅ NOUVEAU: Vérifier si une mise à jour est déjà en cours
+    // Vérifier si une mise à jour est déjà en cours
     if (_isUpdating) {
       if (kDebugMode) {
         print('⚠️ ModifyEquipmentScreen - Mise à jour déjà en cours, abandon');
@@ -1784,7 +1822,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     }
 
     try {
-      // ✅ NOUVEAU: Activer le loader
+      // Activer le loader
       setState(() {
         _isUpdating = true;
       });
@@ -1793,24 +1831,10 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
         print('🔄 ModifyEquipmentScreen - Début de la mise à jour');
       }
 
-      // ✅ NOUVEAU: Préparer les attributs modifiés au format requis
+      // Préparer les attributs modifiés au format requis
       final attributs = _prepareAttributesForUpdate();
 
-      // ✅ LOGS: Voir quels attributs vont être envoyés
-      if (attributs.isNotEmpty) {
-        if (kDebugMode) {
-          print('📋 ModifyEquipmentScreen - Attributs qui vont être envoyés:');
-        }
-        for (final attr in attributs) {
-          if (kDebugMode) {
-            print(
-            '   - ${attr['name']}: "${attr['value']}" (type: ${attr['type']})',
-          );
-          }
-        }
-      }
-
-      // ✅ NOUVEAU: Préparer les données selon le schéma requis avec gestion des valeurs nulles
+      // Préparer les données selon le schéma requis
       final updatedData = {
         'code_parent': selectedCodeParent ?? '',
         'feeder': _getSelectedCode(selectedFeeder) ?? '',
@@ -1827,51 +1851,50 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
         'description': _descriptionController.text.trim(),
         'longitude': valueLongitude ?? '',
         'latitude': valueLatitude ?? '',
-        'attributs': attributs, // ✅ Inclure les attributs modifiés
+        'attributs': attributs, // Inclure les attributs modifiés
       };
 
-      // ✅ MODIFIÉ: Utiliser l'ID correct passé depuis equipment_screen
       final equipmentId =
           widget.equipmentData!['id'] ?? widget.equipmentData!['ID'] ?? '';
 
-      if (kDebugMode) {
-        print('📊 ModifyEquipmentScreen - Données à envoyer (avec CODES):');
-        print('   - ID équipement: $equipmentId');
-        print('   - Code: ${updatedData['code']}');
-        print('   - Famille (CODE): ${updatedData['famille']}');
-        print('   - Zone (CODE): ${updatedData['zone']}');
-        print('   - Entity (CODE): ${updatedData['entity']}');
-        print('   - Unite (CODE): ${updatedData['unite']}');
-        print('   - Centre Charge (CODE): ${updatedData['centre_charge']}');
-        print('   - Description: ${updatedData['description']}');
-        print('   - Attributs: ${attributs.length} éléments');
-        for (final attr in attributs) {
-          print('     • ${attr['name']}: ${attr['value']} (${attr['type']})');
-        }
-      }
-
-      // ✅ VALIDATION: Vérifier que l'ID est présent
       if (equipmentId.isEmpty) {
         throw Exception('ID de l\'équipement manquant pour la modification');
       }
 
-      // ✅ MODIFIÉ: Envoyer tout en une seule fois via l'API avec l'ID correct
+      if (kDebugMode) {
+        print('📊 ModifyEquipmentScreen - Envoi des données au provider');
+        print('   - ID équipement: $equipmentId');
+        print('   - Attributs: ${attributs.length} éléments');
+      }
+
+      // ✅ Envoyer les données au provider (qui gère le cache automatiquement)
       await context.read<EquipmentProvider>().updateEquipment(
-        equipmentId, // ✅ Utiliser l'ID réel
+        equipmentId,
         updatedData,
       );
 
-      // ✅ NOUVEAU: Rafraîchir immédiatement les attributs en local après la modification
-      if (attributs.isNotEmpty) {
-        final equipmentCode = updatedData['code'] as String;
-        await _refreshAttributesAfterUpdate(equipmentCode);
+      // ✅ NOUVEAU: Attendre un petit délai pour s'assurer que le cache est mis à jour
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      // ✅ NOUVEAU: Forcer un rechargement depuis le cache pour vérifier
+      if (mounted) {
+        final equipmentProvider = context.read<EquipmentProvider>();
+        await equipmentProvider.fetchEquipments(
+          forceRefresh: false,
+        ); // ✅ Charger depuis le cache mis à jour
+
+        if (kDebugMode) {
+          print(
+            '✅ ModifyEquipmentScreen - Liste des équipements rechargée depuis le cache mis à jour',
+          );
+        }
       }
 
       if (mounted && Navigator.canPop(context)) {
         NotificationService.showSuccess(
           context,
           title: '🎉 Succès',
-          message: 'Équipement et attributs modifiés avec succès !',
+          message: 'Équipement modifié et sauvegardé avec succès !',
           showAction: false,
           duration: const Duration(seconds: 2),
         );
@@ -1879,13 +1902,14 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
         await Future.delayed(const Duration(milliseconds: 800));
 
         if (mounted && Navigator.canPop(context)) {
-          // ✅ NOUVEAU: Retourner true pour indiquer qu'une modification a eu lieu
-          Navigator.of(context).pop(true);
+          Navigator.of(
+            context,
+          ).pop(true); // Retourner true pour indiquer modification
         }
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Erreur lors de la modification: $e');
+        print('❌ ModifyEquipmentScreen - Erreur lors de la modification: $e');
       }
 
       if (mounted) {
@@ -1900,72 +1924,11 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
         );
       }
     } finally {
-      // ✅ NOUVEAU: Désactiver le loader dans tous les cas
+      // Désactiver le loader dans tous les cas
       if (mounted) {
         setState(() {
           _isUpdating = false;
         });
-      }
-    }
-  }
-
-  /// ✅ CORRIGÉ: Rafraîchir les attributs immédiatement après modification
-  Future<void> _refreshAttributesAfterUpdate(String equipmentCode) async {
-    try {
-      // ✅ AJOUTÉ: Validation du code équipement
-      if (equipmentCode.isEmpty) {
-        if (kDebugMode) {
-          print('❌ ModifyEquipmentScreen - Code équipement vide, abandon rafraîchissement');
-        }
-        return;
-      }
-
-      if (kDebugMode) {
-        print(
-          '🔄 ModifyEquipmentScreen - Rafraîchissement des attributs après modification pour: $equipmentCode',
-        );
-      }
-
-      final equipmentProvider = Provider.of<EquipmentProvider>(
-        context,
-        listen: false,
-      );
-
-      // Forcer le rechargement des attributs depuis l'API
-      final updatedAttributes = await equipmentProvider.loadEquipmentAttributes(
-        equipmentCode,
-      );
-
-      if (mounted) {
-        setState(() {
-          availableAttributes = updatedAttributes;
-
-          // ✅ IMPORTANT: Mettre à jour les valeurs sélectionnées avec les nouvelles valeurs de l'API
-          selectedAttributeValues.clear();
-          for (final attr in updatedAttributes) {
-            if (attr.id != null && attr.value != null) {
-              selectedAttributeValues[attr.id!] = attr.value!;
-            }
-          }
-        });
-
-        // Recharger aussi les spécifications si nécessaire
-        await _loadAttributeSpecifications();
-
-        if (kDebugMode) {
-          print(
-            '✅ ModifyEquipmentScreen - Attributs rafraîchis avec les nouvelles valeurs',
-          );
-          for (final attr in updatedAttributes) {
-            print('   - ${attr.name}: "${attr.value}" (valeur mise à jour)');
-          }
-        }
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print(
-          '❌ ModifyEquipmentScreen - Erreur rafraîchissement attributs: $e',
-        );
       }
     }
   }
@@ -1984,7 +1947,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
 
           // ✅ AJOUTÉ: Debug pour voir quelle valeur est utilisée
           if (kDebugMode) {
-            print('🔍 Attribut ${attribute.name}:');
+            print('🔍 $__logName Attribut ${attribute.name}:');
             print('   - Valeur originale: "${attribute.value}"');
             print('   - Valeur sélectionnée: "$selectedValue"');
             print('   - Valeur finale: "$finalValue"');
@@ -1999,7 +1962,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
 
           if (kDebugMode) {
             print(
-              '✓ Attribut préparé: ${attribute.name} = "$finalValue" (${_determineAttributeType(attribute)})',
+              '✓  $__logName Attribut préparé: ${attribute.name} = "$finalValue" (${_determineAttributeType(attribute)})',
             );
           }
         }
@@ -2008,7 +1971,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
 
     if (kDebugMode) {
       print(
-        '📋 ModifyEquipmentScreen - ${attributs.length} attributs préparés pour l\'envoi',
+        '📋 $__logName ${attributs.length} attributs préparés pour l\'envoi',
       );
     }
 
@@ -2076,7 +2039,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
   Widget _buildActionButtons() {
     // ✅ NOUVEAU: Vérifier s'il y a des changements
     final hasChanges = _hasChanges();
-    
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 0),
       child: Row(
@@ -2090,88 +2053,109 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
           ),
           const SizedBox(width: 16),
           Expanded(
-            child: _isUpdating
-                ? // ✅ EXISTANT: Afficher un bouton avec loader pendant la mise à jour
-                Container(
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: AppTheme.secondaryColor70,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.white,
-                            ),
-                          ),
-                        ),
-                        SizedBox(width: 8), // ✅ RÉDUIT: de 12 à 8
-                        Flexible( // ✅ AJOUTÉ: Flexible pour le texte
-                          child: Text(
-                            'Modification...',
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontFamily: AppTheme.fontMontserrat,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                : // ✅ CORRIGÉ: Bouton avec gestion du débordement
-                Container(
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: hasChanges 
-                          ? AppTheme.secondaryColor 
-                          : AppTheme.thirdColor50, // ✅ Couleur grisée si pas de changements
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
+            child:
+                _isUpdating
+                    ? // ✅ EXISTANT: Afficher un bouton avec loader pendant la mise à jour
+                    Container(
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: AppTheme.secondaryColor70,
                         borderRadius: BorderRadius.circular(8),
-                        onTap: hasChanges ? _handleUpdate : null, // ✅ Désactivé si pas de changements
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12), // ✅ RÉDUIT: de 16 à 12
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            mainAxisSize: MainAxisSize.min, // ✅ AJOUTÉ: Prendre l'espace minimum nécessaire
-                            children: [
-                              Icon(
-                                Icons.save,
-                                color: hasChanges ? Colors.white : AppTheme.thirdColor,
-                                size: 18, // ✅ RÉDUIT: de 20 à 18
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
                               ),
-                              const SizedBox(width: 6), // ✅ RÉDUIT: de 8 à 6
-                              Flexible( // ✅ AJOUTÉ: Flexible pour que le texte s'adapte
-                                child: Text(
-                                  hasChanges ? 'Modifier' : 'Aucun changement',
-                                  overflow: TextOverflow.ellipsis,
-                                  maxLines: 1, // ✅ AJOUTÉ: Forcer sur une seule ligne
-                                  style: TextStyle(
-                                    fontFamily: AppTheme.fontMontserrat,
-                                    fontWeight: FontWeight.w600,
-                                    color: hasChanges ? Colors.white : AppTheme.thirdColor,
-                                    fontSize: 14, // ✅ RÉDUIT: de 16 à 14
+                            ),
+                          ),
+                          SizedBox(width: 8), // ✅ RÉDUIT: de 12 à 8
+                          Flexible(
+                            // ✅ AJOUTÉ: Flexible pour le texte
+                            child: Text(
+                              'Modification...',
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontFamily: AppTheme.fontMontserrat,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                    : // ✅ CORRIGÉ: Bouton avec gestion du débordement
+                    Container(
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color:
+                            hasChanges
+                                ? AppTheme.secondaryColor
+                                : AppTheme
+                                    .thirdColor50, // ✅ Couleur grisée si pas de changements
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(8),
+                          onTap:
+                              hasChanges
+                                  ? _handleUpdate
+                                  : null, // ✅ Désactivé si pas de changements
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                            ), // ✅ RÉDUIT: de 16 à 12
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize:
+                                  MainAxisSize
+                                      .min, // ✅ AJOUTÉ: Prendre l'espace minimum nécessaire
+                              children: [
+                                Icon(
+                                  Icons.save,
+                                  color:
+                                      hasChanges
+                                          ? Colors.white
+                                          : AppTheme.thirdColor,
+                                  size: 18, // ✅ RÉDUIT: de 20 à 18
+                                ),
+                                const SizedBox(width: 6), // ✅ RÉDUIT: de 8 à 6
+                                Flexible(
+                                  // ✅ AJOUTÉ: Flexible pour que le texte s'adapte
+                                  child: Text(
+                                    hasChanges
+                                        ? 'Modifier'
+                                        : 'Aucun changement',
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines:
+                                        1, // ✅ AJOUTÉ: Forcer sur une seule ligne
+                                    style: TextStyle(
+                                      fontFamily: AppTheme.fontMontserrat,
+                                      fontWeight: FontWeight.w600,
+                                      color:
+                                          hasChanges
+                                              ? Colors.white
+                                              : AppTheme.thirdColor,
+                                      fontSize: 14, // ✅ RÉDUIT: de 16 à 14
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
           ),
         ],
       ),

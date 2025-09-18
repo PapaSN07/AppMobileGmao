@@ -584,6 +584,56 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
   }
 
   Widget _itemBuilder(dynamic equipment) {
+    // ✅ NOUVEAU: Extraire les attributs correctement depuis les données mises à jour
+    List<Map<String, dynamic>>? equipmentAttributes;
+
+    try {
+      if (equipment['attributes'] != null) {
+        if (equipment['attributes'] is List) {
+          final attributesList = equipment['attributes'] as List;
+          equipmentAttributes = attributesList
+              .map((attr) {
+                if (attr is Map<String, dynamic>) {
+                  return attr;
+                } else if (attr is Map) {
+                  return Map<String, dynamic>.from(attr);
+                } else {
+                  // Si c'est un objet EquipmentAttribute, le convertir
+                  try {
+                    final dynamic attrObj = attr;
+                    return <String, dynamic>{
+                      'id': attrObj.id?.toString(),
+                      'name': attrObj.name?.toString(),
+                      'value': attrObj.value?.toString(),
+                      'type': attrObj.type?.toString(),
+                      'specification': attrObj.specification?.toString(),
+                      'index': attrObj.index?.toString(),
+                    };
+                  } catch (e) {
+                    if (kDebugMode) {
+                      print('⚠️ EquipmentScreen: Erreur conversion attribut: $e');
+                    }
+                    return <String, dynamic>{};
+                  }
+                }
+              })
+              .where((attr) => attr.isNotEmpty)
+              .toList();
+        }
+      }
+
+      if (equipmentAttributes != null && equipmentAttributes.isNotEmpty) {
+        if (kDebugMode) {
+          print('📋 EquipmentScreen: Attributs trouvés pour ${equipment['code']}: ${equipmentAttributes.length} éléments');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ EquipmentScreen: Erreur extraction attributs: $e');
+      }
+      equipmentAttributes = null;
+    }
+
     return ListItemCustom.equipment(
       id: equipment['id']?.toString() ?? '',
       codeParent: equipment['codeParent'] ?? '',
@@ -598,7 +648,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
       description: equipment['description'] ?? '',
       longitude: equipment['longitude']?.toString() ?? '',
       latitude: equipment['latitude']?.toString() ?? '',
-      attributes: equipment['attributes'] as List<Map<String, dynamic>>?,
+      attributes: equipmentAttributes, // ✅ Passer les attributs extraits
     );
   }
 }
