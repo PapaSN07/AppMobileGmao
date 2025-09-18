@@ -674,7 +674,7 @@ def insert_equipment(equipment: EquipmentModel) -> bool:
 
                 # 5) Ajout des attributs éventuels
                 attributes = equipment.attributes
-                if attributes:
+                if attributes is not None and len(attributes) > 0:
                     logger.info(f"5) Attributs supplémentaires mis à jour pour {equipment.code}")
                     update_equipment_attributes(equipment.code, [attr.model_dump() for attr in attributes])
                 
