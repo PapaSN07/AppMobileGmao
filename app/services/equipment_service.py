@@ -269,7 +269,7 @@ def get_equipment_by_id(equipment_id: str) -> Optional[EquipmentModel]:
         logger.error(f"❌ Erreur récupération équipement {equipment_id}: {e}")
         return None
 
-async def update_equipment_partial(equipment_id: str, updates: Dict[str, Any]) -> bool:
+def update_equipment_partial(equipment_id: str, updates: Dict[str, Any]) -> bool:
     """
     Met à jour partiellement un équipement et ses attributs
     
@@ -350,7 +350,7 @@ async def update_equipment_partial(equipment_id: str, updates: Dict[str, Any]) -
             ]
             
             for pattern in cache_patterns:
-                await cache.clear_pattern(pattern)
+                cache.clear_pattern(pattern)
             
             logger.info(f"✅ Mise à jour complète de l'équipement {equipment_id}")
             return True
@@ -614,7 +614,7 @@ async def insert_equipment(equipment: EquipmentModel) -> bool:
                     else:
                         logger.debug("commit_transaction non disponible, la couche DB peut avoir commit automatique")
                     for pattern in (f"mobile_eq_*", f"equipment_*", f"feeders_list_*"):
-                        await cache.clear_pattern(pattern)
+                        cache.clear_pattern(pattern)
                     return True
                 cwsp_code = spec_rows[0][0]
 
@@ -636,7 +636,7 @@ async def insert_equipment(equipment: EquipmentModel) -> bool:
                     if hasattr(db, "commit_transaction"):
                         db.commit_transaction()
                     for pattern in (f"mobile_eq_*", f"equipment_*", f"feeders_list_*"):
-                        await cache.clear_pattern(pattern)
+                        cache.clear_pattern(pattern)
                     return True
                 equipment_specs_pk = es_rows[0][0]
 
@@ -671,7 +671,7 @@ async def insert_equipment(equipment: EquipmentModel) -> bool:
 
                 # invalider caches
                 for pattern in (f"mobile_eq_*", f"equipment_*", f"feeders_list_*"):
-                    await cache.clear_pattern(pattern)
+                    cache.clear_pattern(pattern)
 
                 logger.info(f"Équipement {equipment.code} inséré avec succès")
                 return True

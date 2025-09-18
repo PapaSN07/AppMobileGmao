@@ -169,7 +169,7 @@ class RedisCache:
             logger.error(f"❌ Erreur suppression cache {key}: {e}")
             return False
 
-    async def clear_pattern(self, pattern: str) -> int:
+    def clear_pattern(self, pattern: str) -> int:  # ❌ RETIRE async
         """
         Supprime toutes les clés correspondant à un pattern.
         
@@ -183,11 +183,11 @@ class RedisCache:
             return 0
         
         try:
-            keys = await self.redis_client.keys(pattern)
+            keys = self.redis_client.keys(pattern)
             if keys:
-                deleted = await self.redis_client.delete(*keys)
+                deleted = self.redis_client.delete(*keys)  # type: ignore
                 logger.info(f"🧹 {deleted} clés supprimées pour pattern: {pattern}")
-                return int(deleted)
+                return int(deleted) # type: ignore
             return 0
             
         except Exception as e:
@@ -362,12 +362,12 @@ def get_cached_entities_list() -> Optional[List[str]]:
     """Récupère la liste des entités en cache."""
     return cache.get_data_only("entities_list")
 
-async def invalidate_equipment_cache():
+def invalidate_equipment_cache():
     """Invalide tout le cache des équipements."""
     patterns = ["equipment:*", "equipment_list:*", "zones_list", "familles_list", "entities_list"]
     total_deleted = 0
     for pattern in patterns:
-        total_deleted += await cache.clear_pattern(pattern)
+        total_deleted += cache.clear_pattern(pattern)
     
     logger.info(f"🧹 Cache équipements invalidé: {total_deleted} clés supprimées")
     return total_deleted
