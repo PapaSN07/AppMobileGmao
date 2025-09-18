@@ -2,13 +2,13 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Any
 
 class EquipmentAttribute(BaseModel):
-    id: str
-    specification: str
-    index: str
-    name: str
-    value: Any
-    type: str
-    
+    id: Optional[str] = Field(None, description="ID de l'attribut (optionnel, utilisé pour les mises à jour)")
+    specification: Optional[str] = Field(None, description="Spécification / cwsp_code de l'attribut")
+    index: Optional[str] = Field(None, description="Index de l'attribut")
+    name: Optional[str] = Field(None, description="Nom de l'attribut")
+    value: Optional[str] = Field(None, description="Valeur de l'attribut")
+    type: Optional[str] = Field(None, description="Type de l'attribut")
+
     class Config:
         json_schema_extra = {
             "example": {

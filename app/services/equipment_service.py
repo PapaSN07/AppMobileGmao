@@ -375,11 +375,12 @@ def update_equipment_attributes(equipment_code: str, attributes: List[Dict[str, 
         if db_conn is None:
             logger.error("Impossible d'obtenir une connexion à la base de données")
             raise Exception("Connexion DB manquante")
+        
         with db_conn as db:
             success_count = 0
             
             for attr in attributes:
-                attr_name = attr.get('name')
+                attr_name = attr.get('name', '')
                 attr_value = str(attr.get('value', ''))
                 
                 if not attr_name:
@@ -547,16 +548,19 @@ def validate_equipment_for_insertion(equipment: EquipmentModel) -> tuple[bool, s
         logger.error(f"Erreur validation équipement: {e}")
         return False, f"Erreur validation: {str(e)}"
 
-async def insert_equipment(equipment: EquipmentModel) -> bool:
+def insert_equipment(equipment: EquipmentModel) -> bool:
     """
     Insère un nouvel équipement en utilisant les méthodes existantes de la couche DB.
     Utilise désormais la gestion transactionnelle de la couche DB :
     - execute_update(..., commit=False) pour les opérations intermédiaires
     - commit_transaction() / rollback_transaction() à la fin selon le résultat
     """
+    print("Insertion équipement:", equipment)
+    
     try:
         # validation préalable
         is_valid, msg = validate_equipment_for_insertion(equipment)
+        logger.info(f"Validation équipement avant insertion: {msg}")
         if not is_valid:
             logger.error(f"Validation échouée: {msg}")
             return False
@@ -571,12 +575,29 @@ async def insert_equipment(equipment: EquipmentModel) -> bool:
                 # démarrer transaction si disponible
                 if hasattr(db, "begin_transaction"):
                     try:
+                        logger.info("Démarrage d'une transaction explicite")
                         db.begin_transaction()
                     except Exception:
                         logger.debug("begin_transaction non opérationnel, continuation sans appel explicite")
 
                 # 1) Insert équipement (commit différé)
+                # 1a) Récupérer pk_equipment fraîchement créé (même session)
+                pk_rows = db.execute_query(
+                    "SELECT COUNT(pk_equipment) FROM coswin.t_equipment",
+                )
+                if not pk_rows:
+                    logger.error("Impossible de récupérer pk_equipment après INSERT")
+                    # rollback si possible
+                    if hasattr(db, "rollback_transaction"):
+                        db.rollback_transaction()
+                    return False
+                else:
+                    logger.info(f"1a) pk_equipment récupéré: {pk_rows}")
+                equipment_pk = pk_rows[0][0] + 1 # supposition que le prochain ID est +1
+                equipment.id = str(equipment_pk)
+                
                 db.execute_update(EQUIPMENT_ADD_QUERY, params={
+                    'id': equipment.id,
                     'code': equipment.code,
                     'description': equipment.description,
                     'category': equipment.famille,
@@ -587,27 +608,16 @@ async def insert_equipment(equipment: EquipmentModel) -> bool:
                     'longitude': equipment.longitude,
                     'latitude': equipment.latitude,
                     'feeder': getattr(equipment, 'feeder', None),
-                    'creation_date': datetime.now().strftime("%d/%m/%Y")
+                    'creation_date': datetime.now()
                 }, commit=False)
-
-                # 1b) Récupérer pk_equipment fraîchement créé (même session)
-                pk_rows = db.execute_query(
-                    "SELECT pk_equipment FROM coswin.t_equipment WHERE ereq_code = :code AND ROWNUM = 1",
-                    params={'code': equipment.code}
-                )
-                if not pk_rows:
-                    logger.error("Impossible de récupérer pk_equipment après INSERT")
-                    # rollback si possible
-                    if hasattr(db, "rollback_transaction"):
-                        db.rollback_transaction()
-                    return False
-                equipment_pk = pk_rows[0][0]
-                equipment.id = str(equipment_pk)
+                logger.info(f"1) Équipement {equipment.id} inséré en base (commit différé)")
+                
 
                 # 2) Récupérer cwsp_code (spec) pour la catégorie
                 spec_rows = db.execute_query(EQUIPMENT_T_SPECIFICATION_CODE_QUERY, params={'category': equipment.famille})
+                logger.info(f"Spécifications trouvées pour la catégorie {equipment.famille}: {len(spec_rows)}")
                 if not spec_rows:
-                    logger.info(f"Aucune specification trouvée pour la catégorie {equipment.famille} -> insertion terminée sans specs")
+                    logger.info(f"2) Aucune specification trouvée pour la catégorie {equipment.famille} -> insertion terminée sans specs")
                     # commit partiel et invalider cache
                     if hasattr(db, "commit_transaction"):
                         db.commit_transaction()
@@ -619,17 +629,9 @@ async def insert_equipment(equipment: EquipmentModel) -> bool:
                 cwsp_code = spec_rows[0][0]
 
                 # 3) INSERT equipment_specs (commit différé)
-                db.execute_update(EQUIPMENT_SPEC_ADD_QUERY, params={
-                    'specification': cwsp_code,
-                    'equipment': equipment.code,
-                    'release_date': datetime.now().strftime("%d/%m/%Y"),
-                    'release_number': 1
-                }, commit=False)
-
                 # 3b) Récupérer pk_equipment_specs
                 es_rows = db.execute_query(
-                    "SELECT pk_equipment_specs FROM coswin.equipment_specs WHERE etes_equipment = :equipment AND etes_specification = :specification AND ROWNUM = 1",
-                    params={'equipment': equipment.code, 'specification': cwsp_code}
+                    "SELECT COUNT(pk_equipment_specs) FROM coswin.equipment_specs"
                 )
                 if not es_rows:
                     logger.warning("Impossible de récupérer pk_equipment_specs après INSERT -> commit et fin sans création d'attributs")
@@ -638,10 +640,22 @@ async def insert_equipment(equipment: EquipmentModel) -> bool:
                     for pattern in (f"mobile_eq_*", f"equipment_*", f"feeders_list_*"):
                         cache.clear_pattern(pattern)
                     return True
-                equipment_specs_pk = es_rows[0][0]
+                else:
+                    logger.info(f"3b) pk_equipment_specs récupéré: {es_rows[0][0]}")
+                equipment_specs_pk = es_rows[0][0] + 1
+                
+                db.execute_update(EQUIPMENT_SPEC_ADD_QUERY, params={
+                    'id': equipment_specs_pk,  # pk_equipment_specs
+                    'specification': cwsp_code,
+                    'equipment': equipment.code,
+                    'release_date': datetime.now(),
+                    'release_number': 1
+                }, commit=False)
+                logger.info(f"3) equipment_specs inséré pour {equipment.code} et specification {cwsp_code} (commit différé)")
 
                 # 4) Récupérer les index d'attributs pour la famille et créer les equipment_attribute (commit différé)
                 attr_rows = db.execute_query(EQUIPMENT_LENGTH_ATTRIBUTS_QUERY, params={'category': equipment.famille})
+                logger.info(f"4) Attributs trouvés pour la catégorie {equipment.famille}: {len(attr_rows)}")
                 created = 0
                 index_val = None
                 if attr_rows:
@@ -649,8 +663,8 @@ async def insert_equipment(equipment: EquipmentModel) -> bool:
                         try:
                             index_val = r[0]
                             db.execute_update(EQUIPMENT_ATTRIBUTE_ADD_QUERY, params={
-                                'specification': equipment_specs_pk,  # commonkey = pk_equipment_specs
-                                'index': index_val
+                                'commonkey': equipment_specs_pk,
+                                'indx': index_val
                             }, commit=False)
                             created += 1
                         except Exception as e:
@@ -661,11 +675,13 @@ async def insert_equipment(equipment: EquipmentModel) -> bool:
                 # 5) Ajout des attributs éventuels
                 attributes = equipment.attributes
                 if attributes:
+                    logger.info(f"5) Attributs supplémentaires mis à jour pour {equipment.code}")
                     update_equipment_attributes(equipment.code, [attr.model_dump() for attr in attributes])
                 
                 # commit de la transaction
                 if hasattr(db, "commit_transaction"):
                     db.commit_transaction()
+                    logger.info("Transaction commitée avec succès")
                 else:
                     logger.debug("commit_transaction non disponible, verifier comportement de commit de la couche DB")
 

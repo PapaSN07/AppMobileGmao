@@ -144,6 +144,7 @@ WHERE 1=1
 """
 EQUIPMENT_ADD_QUERY = """
 INSERT INTO coswin.t_equipment (
+    pk_equipment,
     ereq_code,
     ereq_description,
     ereq_category,
@@ -156,6 +157,7 @@ INSERT INTO coswin.t_equipment (
     ereq_string2,
     ereq_creation_date
 ) VALUES (
+    :id,
     :code,
     :description,
     :category,
@@ -262,11 +264,13 @@ WHERE 1=1
 """
 EQUIPMENT_SPEC_ADD_QUERY = """
 INSERT INTO coswin.equipment_specs (
+    pk_equipment_specs,
     etes_specification,
     etes_equipment,
     etes_release_date,
     etes_release_number
 ) VALUES (
+    :id, -- pk_equipment_specs (equipment_specs)
     :specification, -- cwsp_code (t_specification)
     :equipment, -- ereq_code (t_equipment)
     :release_date,
@@ -313,8 +317,8 @@ INSERT INTO coswin.equipment_attribute (
     commonkey,
     indx
 ) VALUES (
-    :specification, -- pk_equipment (equipment_specs)
-    :index -- CWAT_INDEX (attribute)
+    :commonkey, -- pk_equipment (equipment_specs)
+    :indx -- CWAT_INDEX (attribute)
 )
 """
 # Pour récupérer le cwsp_code(t_specification) d'un équipement pour la création d'une ligne dans equipment_specs
