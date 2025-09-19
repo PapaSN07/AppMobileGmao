@@ -44,6 +44,9 @@ class EquipmentProvider extends ChangeNotifier {
       _attributeSpecifications;
   bool get attributesLoading => _attributesLoading;
 
+  // Logging
+  static const String __logName = '';
+
   // Initialisation
   Future<void> initialize() async {
     await _checkConnectivity();
@@ -77,9 +80,9 @@ class EquipmentProvider extends ChangeNotifier {
         equipments = await HiveService.getCachedEquipments(filters: _filters);
         if (equipments.isNotEmpty) {
           if (kDebugMode) {
-            print('📋 GMAO: Chargement depuis cache');
+            print('📋 $__logName GMAO: Chargement depuis cache');
           }
-          
+
           _allEquipments = _convertToMapList(equipments);
           _equipments = List.from(_allEquipments);
           _isLoading = false;
@@ -91,7 +94,7 @@ class EquipmentProvider extends ChangeNotifier {
       // Charger depuis l'API si connecté
       if (!_isOffline) {
         if (kDebugMode) {
-          print('🌐 GMAO: Chargement depuis API');
+          print('🌐 $__logName GMAO: Chargement depuis API');
         }
 
         final response = await _apiService.getEquipments(
@@ -120,7 +123,7 @@ class EquipmentProvider extends ChangeNotifier {
       _equipments = List.from(_allEquipments);
 
       if (kDebugMode) {
-        print('📊 GMAO: ${equipments.length} équipements chargés');
+        print('📊 $__logName GMAO: ${equipments.length} équipements chargés');
       }
     } catch (e) {
       _handleError(e);
@@ -135,7 +138,7 @@ class EquipmentProvider extends ChangeNotifier {
     try {
       if (kDebugMode) {
         print(
-          '🔧 EquipmentProvider - Chargement des sélecteurs pour l\'entité $entity',
+          '🔧 $__logName Chargement des sélecteurs pour l\'entité $entity',
         );
       }
 
@@ -145,7 +148,7 @@ class EquipmentProvider extends ChangeNotifier {
         final convertedSelectors = _convertSelectorsToMap(cachedSelectors);
         if (kDebugMode) {
           print(
-            '📋 EquipmentProvider - Sélecteurs chargés depuis Hive (${convertedSelectors.keys.join(', ')})',
+            '📋 $__logName Sélecteurs chargés depuis Hive (${convertedSelectors.keys.join(', ')})',
           );
         }
         _cachedSelectors = convertedSelectors;
@@ -155,7 +158,7 @@ class EquipmentProvider extends ChangeNotifier {
 
       // 2. Si pas de cache, charger depuis l'API
       if (kDebugMode) {
-        print('🌐 EquipmentProvider - Chargement des sélecteurs depuis l\'API');
+        print('🌐 $__logName Chargement des sélecteurs depuis l\'API');
       }
 
       final apiSelectors = await _apiService.getEquipmentSelectors(
@@ -173,14 +176,14 @@ class EquipmentProvider extends ChangeNotifier {
 
       if (kDebugMode) {
         print(
-          '✅ EquipmentProvider - Sélecteurs chargés et mis en cache (${convertedSelectors.keys.join(', ')})',
+          '✅ $__logName Sélecteurs chargés et mis en cache (${convertedSelectors.keys.join(', ')})',
         );
       }
 
       return convertedSelectors;
     } catch (e) {
       if (kDebugMode) {
-        print('❌ EquipmentProvider - Erreur chargement des sélecteurs: $e');
+        print('❌ $__logName  Erreur chargement des sélecteurs: $e');
       }
       rethrow;
     }
@@ -253,7 +256,7 @@ class EquipmentProvider extends ChangeNotifier {
   // Méthode helper pour gérer les erreurs
   void _handleError(dynamic e) {
     if (kDebugMode) {
-      print('❌ GMAO: Erreur chargement équipements: $e');
+      print('❌ $__logName GMAO: Erreur chargement équipements: $e');
     }
     _error = e.toString();
 
@@ -271,7 +274,7 @@ class EquipmentProvider extends ChangeNotifier {
       }
     } catch (cacheError) {
       if (kDebugMode) {
-        print('❌ GMAO: Erreur fallback cache: $cacheError');
+        print('❌ $__logName GMAO: Erreur fallback cache: $cacheError');
       }
     }
   }
@@ -283,9 +286,9 @@ class EquipmentProvider extends ChangeNotifier {
 
       if (!_isOffline) {
         if (kDebugMode) {
-          print('🔄 EquipmentProvider - Début ajout équipement');
+          print('🔄 $__logName Début ajout équipement');
           print(
-            '📊 EquipmentProvider - Données reçues: ${equipmentData.keys.join(', ')}',
+            '📊 $__logName Données reçues: ${equipmentData.keys.join(', ')}',
           );
         }
 
@@ -333,15 +336,15 @@ class EquipmentProvider extends ChangeNotifier {
         }
 
         if (kDebugMode) {
-          print('📊 EquipmentProvider - Données traitées pour l\'API:');
-          print('   - Famille (CODE): ${processedData['famille']}');
-          print('   - Zone (CODE): ${processedData['zone']}');
-          print('   - Entity (CODE): ${processedData['entity']}');
-          print('   - Unite (CODE): ${processedData['unite']}');
-          print('   - Centre Charge (CODE): ${processedData['centre_charge']}');
-          print('   - Attributs: ${finalAttributes.length} éléments');
+          print('📊 $__logName Données traitées pour l\'API:');
+          print('  - Famille (CODE): ${processedData['famille']}');
+          print('  - Zone (CODE): ${processedData['zone']}');
+          print('  - Entity (CODE): ${processedData['entity']}');
+          print('  - Unite (CODE): ${processedData['unite']}');
+          print('  - Centre Charge (CODE): ${processedData['centre_charge']}');
+          print('  - Attributs: ${finalAttributes.length} éléments');
           for (final attr in finalAttributes) {
-            print('     • ${attr.name}: "${attr.value}" (${attr.type})');
+            print('    • ${attr.name}: "${attr.value}" (${attr.type})');
           }
         }
 
@@ -364,18 +367,36 @@ class EquipmentProvider extends ChangeNotifier {
         );
 
         // ✅ Envoyer à l'API
-        final addedEquipment = await _apiService.addEquipment(equipment);
+        await _apiService.addEquipment(equipment);
 
         // ✅ Ajouter à la liste locale avec l'ID retourné par l'API
-        final newEquipmentMap = _convertEquipmentToMap(addedEquipment);
+        final newEquipmentMap = _convertEquipmentToMap(equipment);
         _allEquipments.insert(0, newEquipmentMap);
         _equipments.insert(0, newEquipmentMap);
 
         // ✅ Mettre en cache avec les données complètes
-        await HiveService.cacheEquipments([addedEquipment]);
+        await HiveService.cacheEquipments(_equipments
+            .map((e) => Equipment(
+                  id: e['id']?.toString(),
+                  codeParent: e['code_parent']?.toString(),
+                  feeder: e['feeder']?.toString(),
+                  feederDescription: e['feeder_description']?.toString(),
+                  code: e['code']?.toString() ?? '',
+                  famille: e['famille']?.toString() ?? '',
+                  zone: e['zone']?.toString() ?? '',
+                  entity: e['entity']?.toString() ?? '',
+                  unite: e['unite']?.toString() ?? '',
+                  centreCharge: e['centre_charge']?.toString() ?? '',
+                  description: e['description']?.toString() ?? '',
+                  longitude: e['longitude']?.toString() ?? '',
+                  latitude: e['latitude']?.toString() ?? '',
+                  attributes: finalAttributes,
+                  cachedAt: DateTime.now(),
+                ))
+            .toList());
 
         if (kDebugMode) {
-          print('✅ EquipmentProvider - Équipement ajouté avec succès via API');
+          print('✅ $__logName Équipement ajouté avec succès via API');
         }
       } else {
         throw Exception(
@@ -386,7 +407,7 @@ class EquipmentProvider extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       if (kDebugMode) {
-        print('❌ EquipmentProvider - Erreur ajout équipement: $e');
+        print('❌ $__logName Erreur ajout équipement: $e');
       }
       rethrow;
     }
@@ -455,7 +476,7 @@ class EquipmentProvider extends ChangeNotifier {
 
     if (kDebugMode) {
       print(
-        '🔍 Recherche code pour "$displayValue" dans $selectorType (${searchList.length} éléments)',
+        '🔍 $__logName Recherche code pour "$displayValue" dans $selectorType (${searchList.length} éléments)',
       );
     }
 
@@ -494,7 +515,7 @@ class EquipmentProvider extends ChangeNotifier {
       // ✅ SPÉCIAL ENTITY: Essayer de créer un code court depuis la description
       final shortCode = _generateShortEntityCode(displayValue);
       if (kDebugMode) {
-        print('   ⚠️ Aucun code entity trouvé pour: "$displayValue"');
+        print('  ⚠️ Aucun code entity trouvé pour: "$displayValue"');
         print(
           '   🔧 Code généré: "$shortCode" (longueur: ${shortCode.length})',
         );
@@ -617,8 +638,12 @@ class EquipmentProvider extends ChangeNotifier {
 
       if (!_isOffline) {
         if (kDebugMode) {
-          print('🔄 EquipmentProvider - Début mise à jour équipement: $equipmentId');
-          print('📊 EquipmentProvider - Données: ${updatedFields.keys.join(', ')}');
+          print(
+            '🔄 $__logName Début mise à jour équipement: $equipmentId',
+          );
+          print(
+            '📊 $__logName Données: ${updatedFields.keys.join(', ')}',
+          );
         }
 
         // Sauvegarder le code équipement AVANT l'appel API
@@ -630,12 +655,16 @@ class EquipmentProvider extends ChangeNotifier {
         );
 
         if (index == -1) {
-          throw Exception('Équipement $equipmentId non trouvé dans les données locales');
+          throw Exception(
+            'Équipement $equipmentId non trouvé dans les données locales',
+          );
         }
 
         // Préparer les données locales AVANT l'appel API
-        final localUpdatedEquipment = Map<String, dynamic>.from(_allEquipments[index]);
-        
+        final localUpdatedEquipment = Map<String, dynamic>.from(
+          _allEquipments[index],
+        );
+
         // Appliquer les modifications localement
         updatedFields.forEach((key, value) {
           if (value != null) {
@@ -646,13 +675,15 @@ class EquipmentProvider extends ChangeNotifier {
         // ✅ Appeler l'API pour la synchronisation (mais ne pas s'arrêter si ça échoue)
         try {
           await _apiService.updateEquipment(equipmentId, updatedFields);
-          
+
           if (kDebugMode) {
-            print('✅ EquipmentProvider - Synchronisation API réussie');
+            print('✅ $__logName  Synchronisation API réussie');
           }
         } catch (apiError) {
           if (kDebugMode) {
-            print('⚠️ EquipmentProvider - Erreur API mais mise à jour locale maintenue: $apiError');
+            print(
+              '⚠️ $__logName Erreur API mais mise à jour locale maintenue: $apiError',
+            );
           }
           // Ne pas faire échouer la mise à jour si l'API échoue
         }
@@ -673,13 +704,15 @@ class EquipmentProvider extends ChangeNotifier {
             id: localUpdatedEquipment['id']?.toString(),
             codeParent: localUpdatedEquipment['code_parent']?.toString(),
             feeder: localUpdatedEquipment['feeder']?.toString(),
-            feederDescription: localUpdatedEquipment['feeder_description']?.toString(),
+            feederDescription:
+                localUpdatedEquipment['feeder_description']?.toString(),
             code: localUpdatedEquipment['code']?.toString() ?? '',
             famille: localUpdatedEquipment['famille']?.toString() ?? '',
             zone: localUpdatedEquipment['zone']?.toString() ?? '',
             entity: localUpdatedEquipment['entity']?.toString() ?? '',
             unite: localUpdatedEquipment['unite']?.toString() ?? '',
-            centreCharge: localUpdatedEquipment['centre_charge']?.toString() ?? '',
+            centreCharge:
+                localUpdatedEquipment['centre_charge']?.toString() ?? '',
             description: localUpdatedEquipment['description']?.toString() ?? '',
             longitude: localUpdatedEquipment['longitude']?.toString() ?? '',
             latitude: localUpdatedEquipment['latitude']?.toString() ?? '',
@@ -691,68 +724,87 @@ class EquipmentProvider extends ChangeNotifier {
           await HiveService.updateEquipmentInCache(updatedEquipment);
 
           if (kDebugMode) {
-            print('✅ EquipmentProvider - Cache Hive mis à jour avec les nouvelles données');
+            print(
+              '✅ $__logName Cache Hive mis à jour avec les nouvelles données',
+            );
           }
         } catch (cacheError) {
           if (kDebugMode) {
-            print('⚠️ EquipmentProvider - Erreur mise à jour cache Hive: $cacheError');
+            print(
+              '⚠️ $__logName Erreur mise à jour cache Hive: $cacheError',
+            );
           }
         }
 
         // ✅ CRITICAL: Mettre à jour les attributs si nécessaire
         if (updatedFields.containsKey('attributs')) {
-          final finalEquipmentCode = equipmentCode.isNotEmpty 
-            ? equipmentCode 
-            : localUpdatedEquipment['code']?.toString() ?? '';
+          final finalEquipmentCode =
+              equipmentCode.isNotEmpty
+                  ? equipmentCode
+                  : localUpdatedEquipment['code']?.toString() ?? '';
 
           if (finalEquipmentCode.isNotEmpty) {
             try {
               // ✅ NOUVEAU: Traitement correct des attributs
-              final attributsData = updatedFields['attributs'] as List<Map<String, String>>? ?? [];
-              final newAttributes = attributsData.map((attrData) => 
-                EquipmentAttribute(
-                  name: attrData['name'],
-                  value: attrData['value'] ?? '',
-                  type: attrData['type'] ?? 'string',
-                )
-              ).toList();
+              final attributsData =
+                  updatedFields['attributs'] as List<Map<String, String>>? ??
+                  [];
+              final newAttributes =
+                  attributsData
+                      .map(
+                        (attrData) => EquipmentAttribute(
+                          name: attrData['name'],
+                          value: attrData['value'] ?? '',
+                          type: attrData['type'] ?? 'string',
+                        ),
+                      )
+                      .toList();
 
               // ✅ IMPORTANT: Nettoyer d'abord le cache des attributs
               await HiveService.clearAttributeValues(finalEquipmentCode);
-              
+
               // ✅ IMPORTANT: Sauvegarder les nouveaux attributs
               if (newAttributes.isNotEmpty) {
-                await HiveService.cacheAttributeValues(finalEquipmentCode, newAttributes);
+                await HiveService.cacheAttributeValues(
+                  finalEquipmentCode,
+                  newAttributes,
+                );
               }
 
               // ✅ Mettre à jour en mémoire aussi
               _equipmentAttributes[finalEquipmentCode] = newAttributes;
 
               if (kDebugMode) {
-                print('✅ EquipmentProvider - ${newAttributes.length} attributs mis à jour en cache pour: $finalEquipmentCode');
+                print(
+                  '✅ $__logName ${newAttributes.length} attributs mis à jour en cache pour: $finalEquipmentCode',
+                );
                 for (final attr in newAttributes) {
                   print('   - ${attr.name}: "${attr.value}"');
                 }
               }
             } catch (attrError) {
               if (kDebugMode) {
-                print('⚠️ EquipmentProvider - Erreur mise à jour attributs: $attrError');
+                print(
+                  '⚠️ $__logName Erreur mise à jour attributs: $attrError',
+                );
               }
             }
           }
         }
 
         if (kDebugMode) {
-          print('✅ EquipmentProvider - Données locales et cache mis à jour');
+          print('✅ $__logName  Données locales et cache mis à jour');
         }
       } else {
-        throw Exception('Impossible de modifier un équipement en mode hors ligne');
+        throw Exception(
+          'Impossible de modifier un équipement en mode hors ligne',
+        );
       }
 
       notifyListeners();
     } catch (e) {
       if (kDebugMode) {
-        print('❌ EquipmentProvider: Erreur modification équipement: $e');
+        print('❌ $__logName EquipmentProvider: Erreur modification équipement: $e');
       }
       rethrow;
     }
@@ -809,7 +861,7 @@ class EquipmentProvider extends ChangeNotifier {
     try {
       if (kDebugMode) {
         print(
-          '🔧 EquipmentProvider - Chargement des attributs pour équipement: $equipmentCode',
+          '🔧 $__logName Chargement des attributs pour équipement: $equipmentCode',
         );
       }
 
@@ -824,7 +876,7 @@ class EquipmentProvider extends ChangeNotifier {
         _equipmentAttributes[equipmentCode] = uniqueAttributes;
         if (kDebugMode) {
           print(
-            '📋 EquipmentProvider - ${uniqueAttributes.length} attributs équipement uniques depuis le cache (${cachedAttributes.length} au total)',
+            '📋 $__logName ${uniqueAttributes.length} attributs équipement uniques depuis le cache (${cachedAttributes.length} au total)',
           );
         }
         return uniqueAttributes;
@@ -840,7 +892,7 @@ class EquipmentProvider extends ChangeNotifier {
 
       if (kDebugMode) {
         print(
-          '🌐 EquipmentProvider - Chargement des attributs équipement depuis l\'API',
+          '🌐 $__logName Chargement des attributs équipement depuis l\'API',
         );
       }
 
@@ -881,7 +933,7 @@ class EquipmentProvider extends ChangeNotifier {
       if (uniqueAttributes.isEmpty) {
         if (kDebugMode) {
           print(
-            '📋 EquipmentProvider - Aucun attribut trouvé pour l\'équipement $equipmentCode',
+            '📋 $__logName Aucun attribut trouvé pour l\'équipement $equipmentCode',
           );
         }
         return [];
@@ -895,7 +947,7 @@ class EquipmentProvider extends ChangeNotifier {
 
       if (kDebugMode) {
         print(
-          '✅ EquipmentProvider - ${uniqueAttributes.length} attributs équipement uniques chargés (${attributeValues.length} au total)',
+          '✅ $__logName ${uniqueAttributes.length} attributs équipement uniques chargés (${attributeValues.length} au total)',
         );
       }
 
@@ -903,7 +955,7 @@ class EquipmentProvider extends ChangeNotifier {
     } catch (e) {
       if (kDebugMode) {
         print(
-          '❌ EquipmentProvider - Erreur chargement attributs équipement: $e',
+          '❌ $__logName Erreur chargement attributs équipement: $e',
         );
       }
       rethrow;
@@ -957,7 +1009,7 @@ class EquipmentProvider extends ChangeNotifier {
 
     if (kDebugMode) {
       print(
-        '🔍 Filtrage attributs: ${attributes.length} -> ${uniqueList.length} uniques',
+        '🔍 $__logName Filtrage attributs: ${attributes.length} -> ${uniqueList.length} uniques',
       );
 
       // Afficher les attributs filtrés pour debug
@@ -993,7 +1045,7 @@ class EquipmentProvider extends ChangeNotifier {
     try {
       if (kDebugMode) {
         print(
-          '🔧 EquipmentProvider - Chargement des valeurs possibles pour: $specKey',
+          '🔧 $__logName Chargement des valeurs possibles pour: $specKey',
         );
       }
 
@@ -1008,7 +1060,7 @@ class EquipmentProvider extends ChangeNotifier {
         _attributeSpecifications[specKey] = cachedAttributes;
         if (kDebugMode) {
           print(
-            '📋 EquipmentProvider - ${cachedAttributes.length} valeurs possibles depuis le cache',
+            '📋 $__logName ${cachedAttributes.length} valeurs possibles depuis le cache',
           );
         }
         return cachedAttributes;
@@ -1021,7 +1073,7 @@ class EquipmentProvider extends ChangeNotifier {
       }
 
       if (kDebugMode) {
-        print('🌐 EquipmentProvider - Chargement des valeurs depuis l\'API');
+        print('🌐 $__logName  Chargement des valeurs depuis l\'API');
       }
 
       final apiResponse = await _apiService.getAttributeValuesEquipment(
@@ -1036,7 +1088,7 @@ class EquipmentProvider extends ChangeNotifier {
 
       if (hasError) {
         if (kDebugMode) {
-          print('⚠️ EquipmentProvider - Erreur API: ${apiResponse['message']}');
+          print('⚠️ $__logName  Erreur API: ${apiResponse['message']}');
         }
       }
 
@@ -1052,14 +1104,14 @@ class EquipmentProvider extends ChangeNotifier {
 
       if (kDebugMode) {
         print(
-          '✅ EquipmentProvider - ${attributeValues.length} valeurs possibles chargées',
+          '✅ $__logName ${attributeValues.length} valeurs possibles chargées',
         );
       }
 
       return attributeValues;
     } catch (e) {
       if (kDebugMode) {
-        print('❌ EquipmentProvider - Erreur chargement valeurs possibles: $e');
+        print('❌ $__logName  Erreur chargement valeurs possibles: $e');
       }
 
       // ✅ Retourner une liste vide au lieu de relancer l'erreur
@@ -1102,7 +1154,7 @@ class EquipmentProvider extends ChangeNotifier {
       if (!_isOffline) {
         if (kDebugMode) {
           print(
-            '🌐 EquipmentProvider - Mise à jour attribut via API (à implémenter)',
+            '🌐 $__logName Mise à jour attribut via API (à implémenter)',
           );
         }
       } else {
@@ -1119,11 +1171,11 @@ class EquipmentProvider extends ChangeNotifier {
       notifyListeners();
 
       if (kDebugMode) {
-        print('✅ EquipmentProvider - Valeur d\'attribut mise à jour');
+        print('✅ $__logName Valeur d\'attribut mise à jour');
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ EquipmentProvider - Erreur mise à jour attribut: $e');
+        print('❌ $__logName Erreur mise à jour attribut: $e');
       }
       rethrow;
     }
@@ -1204,7 +1256,7 @@ class EquipmentProvider extends ChangeNotifier {
 
     if (kDebugMode) {
       print(
-        '🔍 EquipmentProvider - Filtrage par $field: "$searchTerm" -> ${_equipments.length} résultats',
+        '🔍 $__logName Filtrage par $field: "$searchTerm" -> ${_equipments.length} résultats',
       );
     }
   }
@@ -1247,7 +1299,7 @@ class EquipmentProvider extends ChangeNotifier {
 
     if (kDebugMode) {
       print(
-        '🔍 EquipmentProvider - Recherche générale: "$searchTerm" -> ${_equipments.length} résultats',
+        '🔍 $__logName Recherche générale: "$searchTerm" -> ${_equipments.length} résultats',
       );
     }
   }

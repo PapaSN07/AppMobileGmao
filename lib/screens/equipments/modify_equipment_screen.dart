@@ -1,6 +1,7 @@
 import 'package:appmobilegmao/models/equipment_attribute.dart';
 import 'package:appmobilegmao/provider/auth_provider.dart';
 import 'package:appmobilegmao/provider/equipment_provider.dart';
+import 'package:appmobilegmao/services/equipment_service.dart';
 import 'package:appmobilegmao/services/hive_service.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:appmobilegmao/widgets/custom_buttons.dart';
@@ -87,87 +88,15 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
 
     _descriptionController.addListener(_onFieldChanged);
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       _loadValuesEquipmentsWithUserInfo();
       if (widget.equipmentAttributes != null &&
           widget.equipmentAttributes!.isNotEmpty) {
-        _initializeAttributesFromParams();
+        await _initializeAttributesFromParams();
       } else {
-        _loadEquipmentAttributes();
+        await _loadEquipmentAttributes();
       }
     });
-  }
-
-  // ✅ NOUVEAU: Initialiser les attributs depuis les paramètres passés
-  void _initializeAttributesFromParams() {
-    if (widget.equipmentAttributes == null ||
-        widget.equipmentAttributes!.isEmpty) {
-      if (kDebugMode) {
-        print('📋 $__logName Aucun attribut passé en paramètre');
-      }
-      return;
-    }
-
-    try {
-      // Convertir les attributs passés en EquipmentAttribute
-      final List<EquipmentAttribute> convertedAttributes = [];
-
-      for (int i = 0; i < widget.equipmentAttributes!.length; i++) {
-        final attrData = widget.equipmentAttributes![i];
-
-        final attribute = EquipmentAttribute(
-          id: attrData['id']?.toString(),
-          name: attrData['name']?.toString(),
-          value: attrData['value']?.toString() ?? '',
-          type: attrData['type']?.toString() ?? 'string',
-          specification: attrData['specification']?.toString(),
-          index: attrData['index']?.toString(),
-        );
-
-        convertedAttributes.add(attribute);
-      }
-
-      if (mounted) {
-        setState(() {
-          availableAttributes = convertedAttributes;
-
-          // Initialiser les valeurs sélectionnées
-          selectedAttributeValues.clear();
-          for (final attr in convertedAttributes) {
-            if (attr.id != null && attr.value != null) {
-              selectedAttributeValues[attr.id!] = attr.value!;
-            }
-          }
-
-          _loadingAttributes = false;
-        });
-
-        // ✅ MODIFIÉ: Sauvegarder seulement si ce n'est pas déjà fait
-        if (!_initialValuesSaved) {
-          _saveInitialValues();
-        }
-
-        // Charger les spécifications pour les dropdowns
-        _loadAttributeSpecifications();
-      }
-
-      if (kDebugMode) {
-        print(
-          '✅ $__logName ${convertedAttributes.length} attributs initialisés depuis les paramètres:',
-        );
-        for (final attr in convertedAttributes) {
-          print('   - ${attr.name}: "${attr.value}"');
-        }
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print(
-          '❌ $__logName Erreur initialisation attributs depuis paramètres: $e',
-        );
-      }
-      // Fallback : charger depuis l'API
-      _loadEquipmentAttributes();
-    }
   }
 
   @override
@@ -196,12 +125,14 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     if (selectedCentreCharge != _initialCentreCharge) return true;
 
     // Vérifier le champ de description
-    if (_descriptionController.text.trim() != _initialDescription?.trim())
+    if (_descriptionController.text.trim() != _initialDescription?.trim()) {
       return true;
+    }
 
     // Vérifier les attributs
-    if (_initialAttributeValues.length != selectedAttributeValues.length)
+    if (_initialAttributeValues.length != selectedAttributeValues.length) {
       return true;
+    }
 
     for (final entry in selectedAttributeValues.entries) {
       final initialValue = _initialAttributeValues[entry.key] ?? '';
@@ -1250,9 +1181,6 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     );
   }
 
-  // Widgets utilitaires
-  // Fin
-
   void _showAttributesModal() {
     // ✅ Vérifier s'il y a des attributs disponibles
     if (availableAttributes.isEmpty) {
@@ -1468,134 +1396,51 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     );
   }
 
-  /// ✅ Charger les attributs de l'équipement sans créer d'attributs par défaut
-  Future<void> _loadEquipmentAttributes() async {
-    if (widget.equipmentData == null) return;
-
-    setState(() {
-      _loadingAttributes = true;
-    });
-
-    try {
-      final equipmentCode =
-          widget.equipmentData!['Code'] ?? widget.equipmentData!['code'] ?? '';
-      if (equipmentCode.isEmpty) {
-        if (kDebugMode) {
-          print('❌ $__logName Code équipement manquant');
-        }
-        return;
-      }
-
-      final equipmentProvider = Provider.of<EquipmentProvider>(
-        context,
-        listen: false,
-      );
-
-      // ✅ Essayer de charger depuis l'API
-      try {
-        final attributes = await equipmentProvider.loadEquipmentAttributes(
-          equipmentCode,
-        );
-
-        if (mounted && attributes.isNotEmpty) {
-          setState(() {
-            availableAttributes = attributes;
-
-            // Initialiser les valeurs sélectionnées
-            selectedAttributeValues.clear();
-            for (final attr in attributes) {
-              if (attr.id != null && attr.value != null) {
-                selectedAttributeValues[attr.id!] = attr.value!;
-              }
-            }
-          });
-
-          // ✅ MODIFIÉ: Sauvegarder seulement si ce n'est pas déjà fait
-          if (!_initialValuesSaved) {
-            _saveInitialValues();
-          }
-
-          // Charger les valeurs possibles pour chaque attribut
-          await _loadAttributeSpecifications();
-        } else {
-          // ✅ MODIFIÉ: Si aucun attribut trouvé, ne pas en créer
-          if (kDebugMode) {
-            print('📋 $__logName Aucun attribut trouvé pour cet équipement');
-          }
-
-          if (mounted) {
-            setState(() {
-              availableAttributes =
-                  []; // ✅ Laisser vide au lieu de créer des attributs par défaut
-            });
-          }
-        }
-      } catch (e) {
-        if (kDebugMode) {
-          print(
-            '⚠️ $__logName Impossible de charger les attributs depuis l\'API: $e',
-          );
-        }
-
-        // ✅ MODIFIÉ: En cas d'erreur, laisser la liste vide
-        if (mounted) {
-          setState(() {
-            availableAttributes = []; // ✅ Pas d'attributs par défaut
-          });
-        }
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ $__logName Erreur chargement attributs équipement: $e');
-      }
-
-      // ✅ MODIFIÉ: En cas d'erreur, laisser la liste vide
-      if (mounted) {
-        setState(() {
-          availableAttributes = []; // ✅ Pas d'attributs par défaut
-        });
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _loadingAttributes = false;
-        });
-      }
-    }
-  }
-
-  /// ✅ Charger les spécifications avec gestion d'erreur améliorée
+  /// ✅ Charger les spécifications avec la même logique que add_equipment_screen.dart
   Future<void> _loadAttributeSpecifications() async {
-    final equipmentProvider = Provider.of<EquipmentProvider>(
-      context,
-      listen: false,
-    );
-
-    // ✅ Créer un Map pour éviter les doublons de spécifications
-    final Map<String, bool> processedSpecs = {};
-
+    // ✅ IMPORTANT: Ne pas créer de Map pour éviter les doublons - charger TOUJOURS
     for (final attr in availableAttributes) {
       if (attr.specification != null && attr.index != null) {
         final specKey = '${attr.specification}_${attr.index}';
-
-        // ✅ Éviter de charger plusieurs fois la même spécification
-        if (processedSpecs.containsKey(specKey)) {
-          continue;
+        if (kDebugMode) {
+          print(
+            '🔍 $__logName Attribut ${attr.name} (spec: ${attr.specification}, index: ${attr.index}) .',
+          );
         }
 
-        processedSpecs[specKey] = true;
-
         try {
-          // ✅ Utiliser la méthode pour charger les valeurs possibles
-          final values = await equipmentProvider.loadPossibleValuesForAttribute(
-            attr.specification!,
-            attr.index!,
+          // ✅ FORCER l'appel API directement comme dans add_equipment_screen.dart
+          final equipmentService = EquipmentService();
+          final result = await equipmentService.getAttributeValuesEquipment(
+            specification: attr.specification!,
+            attributeIndex: attr.index!,
           );
+
+          if (kDebugMode) {
+            print(
+              '🔍 $__logName-------------Chargement valeurs attribut result: $result '
+              '🔍 $__logName Chargement valeurs attribut ${attr.name} '
+              '(spec: ${attr.specification}, index: ${attr.index})',
+            );
+          }
+
+          final values =
+              result['attributes'] as List<EquipmentAttribute>? ?? [];
 
           if (mounted) {
             setState(() {
               attributeValuesBySpec[specKey] = values;
             });
+          }
+
+          if (kDebugMode) {
+            print(
+              '✅ $__logName ${values.length} valeurs chargées pour attribut ${attr.name}',
+            );
+            // ✅ NOUVEAU: Afficher les valeurs récupérées
+            for (final val in values) {
+              print('   • Valeur disponible: "${val.value}"');
+            }
           }
         } catch (e) {
           if (kDebugMode) {
@@ -1603,18 +1448,26 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
               '❌ $__logName Erreur chargement valeurs attribut ${attr.name}: $e',
             );
           }
-          // ✅ En cas d'erreur, créer une liste avec au moins la valeur actuelle
+
+          // ✅ MODIFIÉ: En cas d'erreur, créer une liste avec des valeurs par défaut + valeur actuelle
           if (mounted) {
             setState(() {
-              attributeValuesBySpec[specKey] = [
-                EquipmentAttribute(
-                  id: attr.id,
-                  specification: attr.specification,
-                  index: attr.index,
-                  name: attr.name,
-                  value: attr.value ?? 'Valeur actuelle',
-                ),
-              ];
+              final defaultValues = <EquipmentAttribute>[];
+
+              // ✅ Toujours inclure la valeur actuelle
+              if (attr.value != null && attr.value!.isNotEmpty) {
+                defaultValues.add(
+                  EquipmentAttribute(
+                    id: '${attr.id}_current',
+                    specification: attr.specification,
+                    index: attr.index,
+                    name: attr.name,
+                    value: attr.value,
+                  ),
+                );
+              }
+
+              attributeValuesBySpec[specKey] = defaultValues;
             });
           }
         }
@@ -1622,7 +1475,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     }
   }
 
-  /// ✅ Widget pour afficher une ligne d'attribut avec gestion des erreurs et détection de changement
+  /// ✅ CORRIGÉ: Widget pour afficher une ligne d'attribut avec indication de la valeur actuelle
   Widget _buildAttributeRow(
     EquipmentAttribute attribute,
     StateSetter setModalState,
@@ -1630,50 +1483,42 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     final specKey = '${attribute.specification}_${attribute.index}';
     final availableValues = attributeValuesBySpec[specKey] ?? [];
 
-    // ✅ Créer la liste des options UNIQUES à partir des valeurs possibles
+    // ✅ NOUVEAU: Créer la liste des options UNIQUES à partir des valeurs de l'API
     final optionsSet = <String>{};
 
-    // Ajouter les valeurs disponibles depuis l'API des valeurs possibles
+    // ✅ PRIORITÉ 1: Ajouter TOUTES les valeurs récupérées depuis l'API
     for (final attr in availableValues) {
       if (attr.value != null && attr.value!.isNotEmpty) {
         optionsSet.add(attr.value!);
       }
     }
 
-    // ✅ Toujours ajouter la valeur actuelle de l'attribut
+    // ✅ PRIORITÉ 2: Toujours inclure la valeur actuelle (même si pas dans l'API)
     if (attribute.value != null && attribute.value!.isNotEmpty) {
       optionsSet.add(attribute.value!);
     }
 
-    // ✅ Si aucune option, ajouter des valeurs par défaut selon le type d'attribut
-    if (optionsSet.isEmpty) {
-      switch (attribute.name?.toLowerCase()) {
-        case 'famille':
-          optionsSet.addAll([
-            'CELLULE_DEPART',
-            'TRANSFO_HTA/BT',
-            'CABLE_HTA',
-            'CABLE_BT',
-          ]);
-          break;
-        case 'zone':
-          optionsSet.addAll(['DAKAR', 'THIES', 'SAINT-LOUIS', 'KAOLACK']);
-          break;
-        case 'entité':
-        case 'entity':
-          optionsSet.addAll(['SDDV', 'SDT', 'SDSL', 'SDK']);
-          break;
-        default:
-          optionsSet.add('Aucune valeur disponible');
-      }
-    }
+    // ✅ Toujours ajouter l'option vide pour permettre de vider le champ
+    optionsSet.add('');
 
-    // Convertir en liste triée
-    final options = optionsSet.toList()..sort();
+    // Convertir en liste triée (option vide à la fin)
+    final options =
+        optionsSet.where((opt) => opt.isNotEmpty).toList()
+          ..sort()
+          ..add(''); // Ajouter l'option vide à la fin
 
-    // Valeur actuelle sélectionnée
+    // ✅ IMPORTANT: Valeur actuellement sélectionnée (priorité aux modifications utilisateur)
     final currentValue =
         selectedAttributeValues[attribute.id ?? ''] ?? attribute.value;
+
+    if (kDebugMode) {
+      print('🔍 $__logName Attribut ${attribute.name}:');
+      print('   - Valeur originale: "${attribute.value}"');
+      print('   - Valeur sélectionnée: "$currentValue"');
+      print(
+        '   - Options disponibles: ${options.length} (${options.join(', ')})',
+      );
+    }
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
@@ -1696,7 +1541,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
 
           const SizedBox(width: 16),
 
-          // ✅ Dropdown des valeurs
+          // ✅ Dropdown avec toutes les valeurs de l'API + valeur actuelle mise en évidence
           Expanded(
             flex: 3,
             child: DropdownSearch<String>(
@@ -1704,11 +1549,10 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
               selectedItem: currentValue,
               onChanged: (value) {
                 setModalState(() {
-                  if (value != null && attribute.id != null) {
-                    selectedAttributeValues[attribute.id!] = value;
+                  if (attribute.id != null) {
+                    selectedAttributeValues[attribute.id!] = value ?? '';
                   }
                 });
-                // ✅ NOUVEAU: Détecter le changement d'attribut
                 _onFieldChanged();
               },
 
@@ -1735,6 +1579,10 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 itemBuilder: (context, item, isSelected) {
+                  // ✅ NOUVEAU: Déterminer si c'est la valeur originale de l'attribut
+                  final isOriginalValue = item == attribute.value;
+                  final displayText = item.isEmpty ? '(Vide)' : item;
+
                   return Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
@@ -1742,9 +1590,16 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                     ),
                     decoration: BoxDecoration(
                       color: isSelected ? AppTheme.secondaryColor10 : null,
+                      border: const Border(
+                        bottom: BorderSide(
+                          color: AppTheme.thirdColor30,
+                          width: 0.5,
+                        ),
+                      ),
                     ),
                     child: Row(
                       children: [
+                        // ✅ Icône de sélection
                         if (isSelected)
                           const Icon(
                             Icons.check_circle,
@@ -1752,19 +1607,65 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                             size: 16,
                           ),
                         if (isSelected) const SizedBox(width: 8),
+
+                        // ✅ NOUVEAU: Indicateur pour la valeur originale
+                        if (isOriginalValue && !isSelected)
+                          const Icon(
+                            Icons.star,
+                            color: AppTheme.thirdColor,
+                            size: 16,
+                          ),
+                        if (isOriginalValue && !isSelected)
+                          const SizedBox(width: 8),
+
+                        // ✅ Icône spéciale pour l'option vide
+                        if (item.isEmpty && !isSelected)
+                          const Icon(
+                            Icons.clear,
+                            color: AppTheme.thirdColor,
+                            size: 16,
+                          ),
+                        if (item.isEmpty && !isSelected)
+                          const SizedBox(width: 8),
+
                         Expanded(
-                          child: Text(
-                            item,
-                            style: TextStyle(
-                              fontSize: 14,
-                              color:
-                                  isSelected
-                                      ? AppTheme.secondaryColor
-                                      : Colors.black87,
-                              fontWeight:
-                                  isSelected
-                                      ? FontWeight.w600
-                                      : FontWeight.normal,
+                          child: RichText(
+                            text: TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: displayText,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color:
+                                        isSelected
+                                            ? AppTheme.secondaryColor
+                                            : (isOriginalValue
+                                                ? AppTheme.thirdColor
+                                                : Colors.black87),
+                                    fontWeight:
+                                        isSelected
+                                            ? FontWeight.w600
+                                            : (isOriginalValue
+                                                ? FontWeight.w500
+                                                : FontWeight.normal),
+                                    fontStyle:
+                                        item.isEmpty
+                                            ? FontStyle.italic
+                                            : FontStyle.normal,
+                                  ),
+                                ),
+                                // ✅ NOUVEAU: Étiquette pour la valeur actuelle
+                                if (isOriginalValue && !isSelected)
+                                  TextSpan(
+                                    text: ' (actuel)',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: AppTheme.thirdColor,
+                                      fontWeight: FontWeight.normal,
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  ),
+                              ],
                             ),
                           ),
                         ),
@@ -1800,15 +1701,190 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                 ),
               ),
 
-              // Validation et affichage
-              itemAsString:
-                  (String item) =>
-                      item.length > 25 ? '${item.substring(0, 25)}...' : item,
+              // ✅ Configuration de l'affichage du texte sélectionné
+              itemAsString: (String item) {
+                if (item.isEmpty) return '(Vide)';
+                return item.length > 25 ? '${item.substring(0, 25)}...' : item;
+              },
             ),
           ),
         ],
       ),
     );
+  }
+
+  /// ✅ MODIFIÉ: Améliorer l'initialisation des attributs depuis les paramètres
+  Future<void> _initializeAttributesFromParams() async {
+    if (widget.equipmentAttributes == null ||
+        widget.equipmentAttributes!.isEmpty) {
+      if (kDebugMode) {
+        print('📋 $__logName Aucun attribut passé en paramètre');
+      }
+      return;
+    }
+
+    try {
+      // Convertir les attributs passés en EquipmentAttribute
+      final List<EquipmentAttribute> convertedAttributes = [];
+
+      for (int i = 0; i < widget.equipmentAttributes!.length; i++) {
+        final attrData = widget.equipmentAttributes![i];
+
+        final attribute = EquipmentAttribute(
+          id: attrData['id']?.toString(),
+          name: attrData['name']?.toString(),
+          value: attrData['value']?.toString() ?? '',
+          type: attrData['type']?.toString() ?? 'string',
+          specification: attrData['specification']?.toString(),
+          index: attrData['index']?.toString(),
+        );
+
+        convertedAttributes.add(attribute);
+      }
+
+      if (mounted) {
+        setState(() {
+          availableAttributes = convertedAttributes;
+
+          // ✅ IMPORTANT: Initialiser les valeurs sélectionnées avec les valeurs actuelles
+          selectedAttributeValues.clear();
+          for (final attr in convertedAttributes) {
+            if (attr.id != null) {
+              selectedAttributeValues[attr.id!] = attr.value ?? '';
+            }
+          }
+
+          _loadingAttributes = false;
+        });
+
+        // ✅ MODIFIÉ: Sauvegarder seulement si ce n'est pas déjà fait
+        if (!_initialValuesSaved) {
+          _saveInitialValues();
+        }
+
+        // ✅ IMPORTANT: TOUJOURS charger les spécifications pour récupérer toutes les valeurs possibles
+        if (kDebugMode) {
+          print(
+            '🔄 $__logName Chargement des spécifications pour récupérer toutes les valeurs...(1)',
+          );
+        }
+        await _loadAttributeSpecifications();
+      }
+
+      if (kDebugMode) {
+        print(
+          '✅ $__logName ${convertedAttributes.length} attributs initialisés depuis les paramètres:',
+        );
+        for (final attr in convertedAttributes) {
+          print('   - ${attr.name}: "${attr.value}" (ID: ${attr.id})');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print(
+          '❌ $__logName Erreur initialisation attributs depuis paramètres: $e',
+        );
+      }
+      // Fallback : charger depuis l'API
+      await _loadEquipmentAttributes();
+    }
+  }
+
+  /// ✅ CORRIGÉ: Charger les attributs de l'équipement ET les spécifications
+  Future<void> _loadEquipmentAttributes() async {
+    if (widget.equipmentData == null) return;
+
+    setState(() {
+      _loadingAttributes = true;
+    });
+
+    try {
+      final equipmentCode =
+          widget.equipmentData!['Code'] ?? widget.equipmentData!['code'] ?? '';
+      if (equipmentCode.isEmpty) {
+        if (kDebugMode) {
+          print('❌ $__logName Code équipement manquant');
+        }
+        return;
+      }
+
+      final equipmentProvider = Provider.of<EquipmentProvider>(
+        context,
+        listen: false,
+      );
+
+      // ✅ Charger les attributs depuis l'API
+      try {
+        final attributes = await equipmentProvider.loadEquipmentAttributes(
+          equipmentCode,
+        );
+
+        if (mounted && attributes.isNotEmpty) {
+          setState(() {
+            availableAttributes = attributes;
+
+            // ✅ Initialiser les valeurs sélectionnées avec les valeurs actuelles
+            selectedAttributeValues.clear();
+            for (final attr in attributes) {
+              if (attr.id != null && attr.value != null) {
+                selectedAttributeValues[attr.id!] = attr.value!;
+              }
+            }
+          });
+
+          // ✅ Sauvegarder les valeurs initiales
+          if (!_initialValuesSaved) {
+            _saveInitialValues();
+          }
+
+          // ✅ IMPORTANT: Toujours charger les spécifications pour obtenir toutes les valeurs possibles
+          if (kDebugMode) {
+            print(
+              '🔄 $__logName Chargement des spécifications pour récupérer toutes les valeurs...(2)',
+            );
+          }
+          await _loadAttributeSpecifications();
+        } else {
+          if (kDebugMode) {
+            print('📋 $__logName Aucun attribut trouvé pour cet équipement');
+          }
+
+          if (mounted) {
+            setState(() {
+              availableAttributes = [];
+            });
+          }
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print(
+            '⚠️ $__logName Impossible de charger les attributs depuis l\'API: $e',
+          );
+        }
+
+        if (mounted) {
+          setState(() {
+            availableAttributes = [];
+          });
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ $__logName Erreur chargement attributs équipement: $e');
+      }
+
+      if (mounted) {
+        setState(() {
+          availableAttributes = [];
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _loadingAttributes = false;
+        });
+      }
+    }
   }
 
   /// ✅ AMÉLIORÉ: Gérer la modification avec mise à jour immédiate du cache

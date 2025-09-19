@@ -105,7 +105,7 @@ class HiveService {
     attributeValuesBox = await Hive.openBox<Map<String, dynamic>>(
       'gmao_attribute_values',
     );
-  }
+  } 
 
   /// Affichage des statistiques du cache
   static void _printCacheStats() {

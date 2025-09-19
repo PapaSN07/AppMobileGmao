@@ -28,6 +28,9 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
   String _searchType = 'all'; // 'all', 'code', 'description', 'zone', 'famille'
   bool _showSearchOptions = false;
 
+  // Logging
+  static const String __logName = 'EquipmentScreen -';
+
   @override
   void initState() {
     super.initState();
@@ -62,7 +65,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
       // ✅ 1. Charger d'abord les sélecteurs (priorité cache)
       try {
         if (kDebugMode) {
-          print('🚀 EquipmentScreen - Chargement initial des sélecteurs');
+          print('🚀 $__logName Chargement initial des sélecteurs');
         }
 
         // Chargement en arrière-plan des sélecteurs (cache prioritaire)
@@ -72,7 +75,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
         await equipmentProvider.fetchEquipments(entity: user.entity);
       } catch (e) {
         if (kDebugMode) {
-          print('❌ EquipmentScreen - Erreur chargement initial: $e');
+          print('❌ $__logName Erreur chargement initial: $e');
         }
       }
     } else {
@@ -91,14 +94,14 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
       if (selectors.isNotEmpty) {
         if (kDebugMode) {
           print(
-            '✅ EquipmentScreen - Sélecteurs chargés en arrière-plan (${selectors.keys.join(', ')})',
+            '✅ $__logName Sélecteurs chargés en arrière-plan (${selectors.keys.join(', ')})',
           );
         }
       }
     } catch (e) {
       if (kDebugMode) {
         print(
-          '❌ EquipmentScreen - Erreur chargement sélecteurs en arrière-plan: $e',
+          '❌ $__logName Erreur chargement sélecteurs en arrière-plan: $e',
         );
       }
     }
@@ -583,8 +586,8 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     }
   }
 
+  // Extraire les attributs correctement depuis les données mises à jour
   Widget _itemBuilder(dynamic equipment) {
-    // ✅ NOUVEAU: Extraire les attributs correctement depuis les données mises à jour
     List<Map<String, dynamic>>? equipmentAttributes;
 
     try {
@@ -611,7 +614,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                     };
                   } catch (e) {
                     if (kDebugMode) {
-                      print('⚠️ EquipmentScreen: Erreur conversion attribut: $e');
+                      print('⚠️ $__logName Erreur conversion attribut: $e');
                     }
                     return <String, dynamic>{};
                   }
@@ -624,12 +627,12 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
 
       if (equipmentAttributes != null && equipmentAttributes.isNotEmpty) {
         if (kDebugMode) {
-          print('📋 EquipmentScreen: Attributs trouvés pour ${equipment['code']}: ${equipmentAttributes.length} éléments');
+          print('📋 $__logName Attributs trouvés pour ${equipment['code']}: ${equipmentAttributes.length} éléments');
         }
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ EquipmentScreen: Erreur extraction attributs: $e');
+        print('❌ $__logName Erreur extraction attributs: $e');
       }
       equipmentAttributes = null;
     }

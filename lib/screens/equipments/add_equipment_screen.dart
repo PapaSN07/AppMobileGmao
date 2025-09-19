@@ -1,4 +1,4 @@
-import 'package:appmobilegmao/models/equipment_attribute.dart'; // ✅ AJOUTÉ: Import pour les attributs
+import 'package:appmobilegmao/models/equipment_attribute.dart';
 import 'package:appmobilegmao/provider/auth_provider.dart';
 import 'package:appmobilegmao/provider/equipment_provider.dart';
 import 'package:appmobilegmao/services/equipment_service.dart';
@@ -61,6 +61,9 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
   bool _isLoading = true;
   bool _hasError = false;
 
+  // Logging
+  static const String __logName = 'AddEquipmentScreen -';
+
   @override
   void initState() {
     super.initState();
@@ -111,7 +114,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
       await _loadSelectorsFromAPI();
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Erreur chargement sélecteurs: $e');
+        print('❌ $__logName Erreur chargement sélecteurs: $e');
       }
       if (mounted) {
         setState(() {
@@ -133,14 +136,14 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
       feeders = _extractSelectorData(selectorsBox['feeders']);
 
       if (kDebugMode) {
-        print('✅ Sélecteurs chargés depuis le cache');
+        print('✅ $__logName Sélecteurs chargés depuis le cache');
         print(
-          '📊 Entités: ${entities.length}, Zones: ${zones.length}, Familles: ${familles.length}',
+          '📊 $__logName Entités: ${entities.length}, Zones: ${zones.length}, Familles: ${familles.length}',
         );
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Erreur extraction cache: $e');
+        print('❌ $__logName Erreur extraction cache: $e');
       }
       Future.microtask(() => _loadSelectorsFromAPI());
     }
@@ -217,7 +220,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Erreur chargement API: $e');
+        print('❌ $__logName Erreur chargement API: $e');
       }
       if (mounted) {
         setState(() {
@@ -242,10 +245,13 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
   List<String> _getSelectorsOptions(
     List<Map<String, dynamic>> data, {
     String codeKey = 'description',
+    bool tronquer = true,
   }) {
     return data
         .map((item) {
           final code = item[codeKey]?.toString().trim() ?? '';
+
+          if (!tronquer) return code;
 
           final shortDesc = _formatDescription(code);
           return shortDesc;
@@ -311,7 +317,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
   Future<void> _loadAttributesForFamily(String familleCode) async {
     if (familleCode.isEmpty) {
       if (kDebugMode) {
-        print('❌ AddEquipmentScreen - Code famille vide');
+        print('❌ $__logName Code famille vide');
       }
       return;
     }
@@ -324,9 +330,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
 
     try {
       if (kDebugMode) {
-        print(
-          '🔄 AddEquipmentScreen - Chargement attributs pour famille: $familleCode',
-        );
+        print('🔄 $__logName Chargement attributs pour famille: $familleCode');
       }
 
       Provider.of<EquipmentProvider>(context, listen: false);
@@ -358,13 +362,13 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
 
         if (kDebugMode) {
           print(
-            '✅ AddEquipmentScreen - ${attributes.length} attributs chargés pour famille $familleCode',
+            '✅ $__logName ${attributes.length} attributs chargés pour famille $familleCode',
           );
         }
       } else {
         if (kDebugMode) {
           print(
-            '📋 AddEquipmentScreen - Aucun attribut trouvé pour famille $familleCode',
+            '📋 $__logName Aucun attribut trouvé pour famille $familleCode',
           );
         }
 
@@ -376,7 +380,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ AddEquipmentScreen - Erreur chargement attributs famille: $e');
+        print('❌ $__logName Erreur chargement attributs famille: $e');
       }
 
       if (mounted) {
@@ -428,13 +432,13 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
 
           if (kDebugMode) {
             print(
-              '✅ AddEquipmentScreen - ${values.length} valeurs chargées pour attribut ${attr.name}',
+              '✅ $__logName ${values.length} valeurs chargées pour attribut ${attr.name}',
             );
           }
         } catch (e) {
           if (kDebugMode) {
             print(
-              '❌ AddEquipmentScreen - Erreur chargement valeurs attribut ${attr.name}: $e',
+              '❌ $__logName Erreur chargement valeurs attribut ${attr.name}: $e',
             );
           }
 
@@ -1486,7 +1490,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
           child: _buildComboBoxField(
             label: 'Famille',
             msgError: 'Veuillez sélectionner une famille',
-            items: _getSelectorsOptions(familles),
+            items: _getSelectorsOptions(familles, tronquer: false),
             selectedValue: selectedFamille,
             onChanged: (value) {
               setState(() {
@@ -1547,7 +1551,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
           child: _buildComboBoxField(
             label: 'Unité',
             msgError: 'Veuillez sélectionner une unité',
-            items: _getSelectorsOptions(unites),
+            items: _getSelectorsOptions(unites, tronquer: false),
             selectedValue: selectedUnite,
             onChanged: (value) {
               setState(() {
@@ -1736,7 +1740,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
 
           if (kDebugMode) {
             print(
-              '✓ Attribut préparé: ${attribute.name} = "$finalValue" ($attributeType)',
+              '✓ $__logName Attribut préparé: ${attribute.name} = "$finalValue" ($attributeType)',
             );
           }
         }
@@ -1745,86 +1749,38 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
 
     if (kDebugMode) {
       print(
-        '📋 AddEquipmentScreen - ${attributs.length} attributs préparés pour l\'envoi',
+        '📋 $__logName ${attributs.length} attributs préparés pour l\'envoi',
       );
     }
 
     return attributs;
   }
 
-  // ✅ NOUVEAU: Méthode pour obtenir le code court depuis une description
-  String? _getShortCodeFromDescription(String? description, String type) {
+  // ✅ CORRIGÉ: Méthode universelle pour extraire le CODE depuis une description
+  String? _getCodeFromDescription(
+    String? description,
+    List<Map<String, dynamic>> dataList,
+  ) {
     if (description == null || description.isEmpty) return null;
 
-    // ✅ Pour les entities, appliquer une logique spéciale
-    if (type == 'entity') {
-      // Cas spéciaux connus
-      final knownEntityCodes = {
-        'SERVICE DE DISTRIB DAKAR VILLE': 'SDDV',
-        'SERVICE DE DISTRIBUTION DAKAR VILLE': 'SDDV',
-        'DIRECTION TECHNIQUE': 'DT',
-        'DIRECTION GENERALE': 'DG',
-        'SERVICE MAINTENANCE': 'SM',
-        'AGENCE DE BOURGUIBA': 'ABG',
-        // Ajouter d'autres mappings selon les besoins
-      };
+    // Chercher dans la liste des données
+    for (final item in dataList) {
+      final itemDescription = item['description']?.toString() ?? '';
+      final itemCode = item['code']?.toString() ?? '';
 
-      // Chercher d'abord dans les mappings connus
-      if (knownEntityCodes.containsKey(description)) {
-        return knownEntityCodes[description];
-      }
-
-      // Générer un code automatiquement
-      return _generateEntityCode(description);
-    }
-
-    // Pour les autres types, utiliser la description telle quelle (sera tronquée si nécessaire)
-    return description;
-  }
-
-  // ✅ NOUVEAU: Générer un code entity automatiquement
-  String _generateEntityCode(String description) {
-    if (description.isEmpty) return '';
-
-    // Stratégie 1: Extraire les acronymes
-    final words = description.split(' ');
-    if (words.length > 1) {
-      final acronym = words
-          .where((word) => word.isNotEmpty && word.length > 1)
-          .map((word) => word[0].toUpperCase())
-          .join('');
-
-      if (acronym.length <= 20 && acronym.length >= 2) {
+      // Si la description correspond, retourner le CODE
+      if (itemDescription == description) {
         if (kDebugMode) {
-          print(
-            '📝 Code entity généré (acronyme): "$description" -> "$acronym"',
-          );
+          print('✓ $__logName Code trouvé: "$description" -> "$itemCode"');
         }
-        return acronym;
+        return itemCode;
       }
-    }
-
-    // Stratégie 2: Nettoyer et tronquer
-    String code = description
-        .toUpperCase()
-        .replaceAll('SERVICE DE ', 'S')
-        .replaceAll('DIRECTION ', 'D')
-        .replaceAll('AGENCE DE ', 'A')
-        .replaceAll(' DE ', '')
-        .replaceAll(' DU ', '')
-        .replaceAll(' ', '')
-        .replaceAll(RegExp(r'[^A-Z0-9]'), '');
-
-    // Limiter à 20 caractères maximum
-    if (code.length > 20) {
-      code = code.substring(0, 20);
     }
 
     if (kDebugMode) {
-      print('📝 Code entity généré (nettoyé): "$description" -> "$code"');
+      print('⚠️ $__logName Code non trouvé pour: "$description"');
     }
-
-    return code;
+    return description; // ✅ Fallback: retourner la description si pas de code trouvé
   }
 
   // ✅ CORRIGÉ: Gestion de la sauvegarde avec codes corrects
@@ -1832,7 +1788,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
     // ✅ Vérifier si un ajout est déjà en cours
     if (_isUpdating) {
       if (kDebugMode) {
-        print('⚠️ AddEquipmentScreen - Ajout déjà en cours, abandon');
+        print('⚠️ $__logName Ajout déjà en cours, abandon');
       }
       return;
     }
@@ -1857,40 +1813,46 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
       });
 
       if (kDebugMode) {
-        print('🔄 AddEquipmentScreen - Début de l\'ajout');
+        print('🔄 $__logName Début de l\'ajout');
       }
 
       // ✅ IMPORTANT: Préparer les attributs AVANT de créer les données
       final attributs = _prepareAttributesForSave();
 
-      // ✅ NOUVEAU: Traitement spécial pour l'entity (génération de code court)
-      final entityCode = _getShortCodeFromDescription(selectedEntity, 'entity');
+      // ✅ CRUCIAL: Convertir CHAQUE description sélectionnée en CODE
+      final familleCode = _getCodeFromDescription(selectedFamille, familles);
+      final zoneCode = _getCodeFromDescription(selectedZone, zones);
+      final entityCode = _getCodeFromDescription(selectedEntity, entities);
+      final uniteCode = _getCodeFromDescription(selectedUnite, unites);
+      final centreChargeCode = _getCodeFromDescription(
+        selectedCentreCharge,
+        centreCharges,
+      );
+      final feederCode = _getCodeFromDescription(selectedFeeder, feeders);
+      final codeParentCode = _getCodeFromDescription(
+        selectedCodeParent,
+        feeders,
+      );
 
       // ✅ IMPORTANT: Utiliser les codes courts pour éviter les erreurs de longueur
       final equipmentData = {
-        'codeParent': selectedCodeParent, // ✅ Peut être null
-        'code': generatedCode, // ✅ Code généré automatiquement
-        'feeder': selectedFeeder, // ✅ Peut être null
-        'infoFeeder': selectedFeeder, // ✅ Description du feeder
-        'famille':
-            selectedFamille, // ✅ OBLIGATOIRE - Description (sera convertie en code)
-        'zone':
-            selectedZone, // ✅ OBLIGATOIRE - Description (sera convertie en code)
-        'entity':
-            entityCode ??
-            selectedEntity, // ✅ CORRIGÉ: Utiliser le code court généré
-        'unite':
-            selectedUnite, // ✅ Peut être null - Description (sera convertie en code)
-        'centreCharge':
-            selectedCentreCharge, // ✅ Peut être null - Description (sera convertie en code)
-        'description': _descriptionController.text.trim(), // ✅ OBLIGATOIRE
-        'longitude': valueLongitude ?? '12311231', // ✅ Valeur par défaut
-        'latitude': valueLatitude ?? '12311231', // ✅ Valeur par défaut
-        'attributs': attributs, // ✅ TOUS les attributs de la famille
+        'codeParent': codeParentCode,
+        'code': generatedCode,
+        'feeder': feederCode,
+        'infoFeeder': feederCode,
+        'famille': familleCode,
+        'zone': zoneCode,
+        'entity': entityCode,
+        'unite': uniteCode,
+        'centreCharge': centreChargeCode,
+        'description': _descriptionController.text.trim(),
+        'longitude': valueLongitude ?? '12311231',
+        'latitude': valueLatitude ?? '12311231',
+        'attributs': attributs,
       };
 
       if (kDebugMode) {
-        print('📊 AddEquipmentScreen - Données à envoyer:');
+        print('📊 $__logName Données à envoyer:');
         print('   - Code Parent: ${equipmentData['codeParent']}');
         print('   - Code: ${equipmentData['code']}');
         print('   - Feeder: ${equipmentData['feeder']}');
@@ -1928,7 +1890,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Erreur lors de l\'ajout: $e');
+        print('❌ $__logName Erreur lors de l\'ajout: $e');
       }
 
       if (mounted) {

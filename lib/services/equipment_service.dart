@@ -12,6 +12,8 @@ import 'api_service.dart';
 
 class EquipmentService {
   late final ApiService _apiService;
+  // Logging
+  static const String __logName = 'EquipmentService -';
 
   EquipmentService({ApiService? apiService}) {
     _apiService = apiService ?? ApiService(port: 8000);
@@ -44,11 +46,11 @@ class EquipmentService {
       };
 
       if (kDebugMode) {
-        print('🔍 EquipmentApi - Requête équipements: $queryParams');
+        print('🔍 $__logName Requête équipements: $queryParams');
       }
 
       final data = await _apiService.get(
-        '/api/v1/equipments/',
+        '/api/v1/equipments',
         queryParameters: queryParams,
       );
       return ApiResponse.fromJson(
@@ -58,7 +60,7 @@ class EquipmentService {
       );
     } catch (e) {
       if (kDebugMode) {
-        print('❌ EquipmentApi - Erreur getEquipments: $e');
+        print('❌ $__logName Erreur getEquipments: $e');
       }
       rethrow;
     }
@@ -72,7 +74,7 @@ class EquipmentService {
     try {
       if (kDebugMode) {
         print(
-          '🔧 EquipmentApi - Récupération des valeurs pour un attribut: $specification, $attributeIndex',
+          '🔧 $__logName Récupération des valeurs pour un attribut: $specification, $attributeIndex',
         );
       }
 
@@ -82,7 +84,7 @@ class EquipmentService {
 
       if (kDebugMode) {
         print(
-          '📋 EquipmentApi - Données reçues: ${data['attr']?.length ?? 0} valeurs',
+          '📋 $__logName Données reçues: ${data['attr']?.length ?? 0} valeurs',
         );
       }
 
@@ -92,7 +94,7 @@ class EquipmentService {
       if (attrData == null || attrData is! List) {
         if (kDebugMode) {
           print(
-            '⚠️ EquipmentApi - Aucun attribut trouvé ou format invalide pour $specification/$attributeIndex',
+            '⚠️ $__logName Aucun attribut trouvé ou format invalide pour $specification/$attributeIndex',
           );
         }
 
@@ -122,13 +124,13 @@ class EquipmentService {
       };
 
       if (kDebugMode) {
-        print('✅ EquipmentApi - ${attributes.length} attributs traités');
+        print('✅ $__logName ${attributes.length} attributs traités');
       }
 
       return result;
     } catch (e) {
       if (kDebugMode) {
-        print('❌ EquipmentApi - Erreur getAttributeValuesEquipment: $e');
+        print('❌ $__logName Erreur getAttributeValuesEquipment: $e');
       }
 
       // ✅ Retourner une structure cohérente même en cas d'erreur
@@ -146,7 +148,7 @@ class EquipmentService {
     try {
       if (kDebugMode) {
         print(
-          '🔧 EquipmentApi - Récupération des valeurs pour un attribut: $codeFamille',
+          '🔧 $__logName Récupération des valeurs pour un attribut: $codeFamille',
         );
       }
 
@@ -156,7 +158,7 @@ class EquipmentService {
 
       if (kDebugMode) {
         print(
-          '📋 EquipmentApi - Données reçues: ${data['attr']?.length ?? 0} valeurs',
+          '📋 $__logName Données reçues: ${data['attr']?.length ?? 0} valeurs',
         );
       }
 
@@ -166,7 +168,7 @@ class EquipmentService {
       if (attrData == null || attrData is! List) {
         if (kDebugMode) {
           print(
-            '⚠️ EquipmentApi - Aucun attribut trouvé ou format invalide pour $codeFamille',
+            '⚠️ $__logName Aucun attribut trouvé ou format invalide pour $codeFamille',
           );
         }
 
@@ -197,13 +199,13 @@ class EquipmentService {
       };
 
       if (kDebugMode) {
-        print('✅ EquipmentApi - ${attributes.length} attributs traités');
+        print('✅ $__logName ${attributes.length} attributs traités');
       }
 
       return result;
     } catch (e) {
       if (kDebugMode) {
-        print('❌ EquipmentApi - Erreur getAttributeValuesEquipment: $e');
+        print('❌ $__logName Erreur getAttributeValuesEquipment: $e');
       }
 
       // ✅ Retourner une structure cohérente même en cas d'erreur
@@ -222,18 +224,18 @@ class EquipmentService {
     try {
       if (kDebugMode) {
         print(
-          '🔧 EquipmentApi - Récupération des sélecteurs pour entité: $entity',
+          '🔧 $__logName Récupération des sélecteurs pour entité: $entity',
         );
       }
 
       final data = await _apiService.get('/api/v1/equipments/values/$entity');
 
       if (kDebugMode) {
-        print('📋 EquipmentApi - Données reçues: ${data['data']?.keys}');
+        print('📋 $__logName Données reçues: ${data['data']?.keys}');
       }
       for (var entity in data['data']['entities']) {
         if (kDebugMode) {
-          print('📋 EquipmentApi - Entité: $entity');
+          print('📋 $__logName Entité: $entity');
         }
       }
 
@@ -273,14 +275,14 @@ class EquipmentService {
 
       if (kDebugMode) {
         print(
-          '✅ EquipmentApi - Sélecteurs traités: ${selectors.keys.join(', ')}',
+          '✅ $__logName Sélecteurs traités: ${selectors.keys.join(', ')}',
         );
       }
 
       return selectors;
     } catch (e) {
       if (kDebugMode) {
-        print('❌ EquipmentApi - Erreur getEquipmentSelectors: $e');
+        print('❌ $__logName Erreur getEquipmentSelectors: $e');
       }
       rethrow;
     }
@@ -290,7 +292,7 @@ class EquipmentService {
   Future<Equipment> addEquipment(Equipment equipment) async {
     try {
       if (kDebugMode) {
-        print('➕ EquipmentApi - Ajout équipement: ${equipment.code}');
+        print('➕ $__logName Ajout équipement: ${equipment.code}');
       }
 
       // ✅ VALIDATION: Vérifier les champs obligatoires
@@ -302,7 +304,7 @@ class EquipmentService {
       final equipmentData = equipment.toJson();
 
       if (kDebugMode) {
-        print('📊 EquipmentApi - Données envoyées au backend:');
+        print('📊 $__logName Données envoyées au backend:');
         print('   - Code: ${equipmentData['code']}');
         print('   - Famille: ${equipmentData['famille']}');
         print('   - Zone: ${equipmentData['zone']}');
@@ -330,20 +332,20 @@ class EquipmentService {
 
       // ✅ CORRIGÉ: Utiliser l'URL sans slash final pour éviter la redirection 307
       final data = await _apiService.post(
-        '/api/v1/equipments', // ✅ SANS le slash final
+        '/api/v1/equipments',
         data: equipmentData,
       );
 
       if (kDebugMode) {
-        print('✅ EquipmentApi - Réponse API: $data');
-        print('✅ EquipmentApi - Type de réponse: ${data.runtimeType}');
+        print('✅ $__logName Réponse API: $data');
+        print('✅ $__logName Type de réponse: ${data.runtimeType}');
       }
 
       // ✅ NOUVEAU: Gestion des différents types de réponse de l'API
       if (data is String) {
         // ✅ Cas 1: L'API renvoie juste un ID ou un message de succès
         if (kDebugMode) {
-          print('📋 EquipmentApi - API a renvoyé une chaîne: "$data"');
+          print('📋 $__logName API a renvoyé une chaîne: "$data"');
         }
 
         // Créer un équipement minimal avec les données envoyées + ID de l'API
@@ -367,13 +369,13 @@ class EquipmentService {
       } else if (data is Map<String, dynamic>) {
         // ✅ Cas 2: L'API renvoie un objet JSON complet
         if (kDebugMode) {
-          print('📋 EquipmentApi - API a renvoyé un objet JSON');
+          print('📋 $__logName API a renvoyé un objet JSON');
         }
         return Equipment.fromJson(data);
       } else if (data is int) {
         // ✅ Cas 3: L'API renvoie juste un ID numérique
         if (kDebugMode) {
-          print('📋 EquipmentApi - API a renvoyé un ID numérique: $data');
+          print('📋 $__logName API a renvoyé un ID numérique: $data');
         }
 
         return Equipment(
@@ -397,9 +399,9 @@ class EquipmentService {
         // ✅ Cas 4: Type de réponse inattendu
         if (kDebugMode) {
           print(
-            '⚠️ EquipmentApi - Type de réponse inattendu: ${data.runtimeType}',
+            '⚠️ $__logName Type de réponse inattendu: ${data.runtimeType}',
           );
-          print('⚠️ EquipmentApi - Contenu: $data');
+          print('⚠️ $__logName Contenu: $data');
         }
 
         // Créer un équipement avec un ID généré
@@ -423,7 +425,7 @@ class EquipmentService {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ EquipmentApi - Erreur addEquipment: $e');
+        print('❌ $__logName Erreur addEquipment: $e');
       }
       rethrow;
     }
@@ -436,8 +438,8 @@ class EquipmentService {
   ) async {
     try {
       if (kDebugMode) {
-        print('🔄 EquipmentApi - Mise à jour équipement: $equipmentId');
-        print('📊 EquipmentApi - Données envoyées: $updatedFields');
+        print('🔄 $__logName Mise à jour équipement: $equipmentId');
+        print('📊 $__logName Données envoyées: $updatedFields');
       }
 
       // ✅ Validation de l'ID équipement
@@ -456,13 +458,13 @@ class EquipmentService {
       );
 
       if (kDebugMode) {
-        print('✅ EquipmentApi - Équipement mis à jour avec succès');
+        print('✅ $__logName Équipement mis à jour avec succès');
       }
 
       return Equipment.fromJson(data['equipment']);
     } catch (e) {
       if (kDebugMode) {
-        print('❌ EquipmentApi - Erreur updateEquipment: $e');
+        print('❌ $__logName Erreur updateEquipment: $e');
       }
       rethrow;
     }
