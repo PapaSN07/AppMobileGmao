@@ -146,6 +146,7 @@ EQUIPMENT_ADD_QUERY = """
 INSERT INTO coswin.t_equipment (
     pk_equipment,
     ereq_code,
+    ereq_bar_code,
     ereq_description,
     ereq_category,
     ereq_zone,
@@ -159,6 +160,7 @@ INSERT INTO coswin.t_equipment (
 ) VALUES (
     :id,
     :code,
+    :bar_code,
     :description,
     :category,
     :zone,

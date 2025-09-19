@@ -64,7 +64,7 @@ def get_equipments_infinite(
         params['search'] = f"%{search_term}%"
     
     # CORRECTION : ORDER BY avec les bonnes colonnes
-    base_query += " ORDER BY e.pk_equipment, attr_name"
+    base_query += " ORDER BY e.pk_equipment DESC"
     
     try:
         db_conn = get_database_connection()
@@ -599,6 +599,7 @@ def insert_equipment(equipment: EquipmentModel) -> bool:
                 db.execute_update(EQUIPMENT_ADD_QUERY, params={
                     'id': equipment.id,
                     'code': equipment.code,
+                    'bar_code': equipment.code,
                     'description': equipment.description,
                     'category': equipment.famille,
                     'zone': equipment.zone,
@@ -675,7 +676,7 @@ def insert_equipment(equipment: EquipmentModel) -> bool:
                 # 5) Ajout des attributs éventuels
                 attributes = equipment.attributes
                 if attributes is not None and len(attributes) > 0:
-                    logger.info(f"5) Attributs supplémentaires mis à jour pour {equipment.code}")
+                    logger.info(f"5) Attributs supplémentaires mis à jour pour {equipment.code} - {len(attributes)} à traiter")
                     update_equipment_attributes(equipment.code, [attr.model_dump() for attr in attributes])
                 
                 # commit de la transaction
