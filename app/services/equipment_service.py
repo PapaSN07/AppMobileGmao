@@ -179,10 +179,8 @@ def get_attribute_values(specification: str, attribute_index: str) -> List[Attri
         logger.error(f"❌ Erreur récupération attributs pour {specification}_{attribute_index}: {e}")
         return []
 
-def get_feeders(entity: str) -> Dict[str, Any]:
+def get_feeders(entity: str, hierarchy_result: Dict[str, Any]) -> Dict[str, Any]:
     """Récupère la liste des feeders."""
-    # Import local pour éviter les imports circulaires
-    from app.services.entity_service import get_hierarchy
     
     cache_key = f"feeders_list_{entity}"
     cached = cache.get_data_only(cache_key)
@@ -191,7 +189,6 @@ def get_feeders(entity: str) -> Dict[str, Any]:
     
     # Récupérer la hiérarchie de l'entité
     try:
-        hierarchy_result = get_hierarchy(entity)
         hierarchy_entities = hierarchy_result.get('hierarchy', [])
         
         if not hierarchy_entities:

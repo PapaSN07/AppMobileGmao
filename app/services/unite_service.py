@@ -8,10 +8,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def get_unites(entity: str) -> Dict[str, Any]:
+def get_unites(entity: str, hierarchy_result: Dict[str, Any]) -> Dict[str, Any]:
     """Récupère toutes les unités depuis la base de données."""
-    # Import local pour éviter les imports circulaires
-    from app.services.entity_service import get_hierarchy
     
     cache_key = f"mobile_unites_{entity}"
     cached = cache.get_data_only(cache_key)
@@ -20,7 +18,6 @@ def get_unites(entity: str) -> Dict[str, Any]:
     
     # Récupérer la hiérarchie de l'entité
     try:
-        hierarchy_result = get_hierarchy(entity)
         hierarchy_entities = hierarchy_result.get('hierarchy', [])
         
         if not hierarchy_entities:

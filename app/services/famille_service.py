@@ -8,10 +8,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def get_familles(entity: str) -> Dict[str, Any]:
+def get_familles(entity: str, hierarchy_result: Dict[str, Any]) -> Dict[str, Any]:
     """Récupère toutes les familles depuis la base de données."""
-    # Import local pour éviter les imports circulaires
-    from app.services.entity_service import get_hierarchy
     
     cached = cache.get_data_only("mobile_familles")
     if cached:
@@ -19,7 +17,6 @@ def get_familles(entity: str) -> Dict[str, Any]:
     
     # Récupérer la hiérarchie de l'entité
     try:
-        hierarchy_result = get_hierarchy(entity)
         hierarchy_entities = hierarchy_result.get('hierarchy', [])
         
         if not hierarchy_entities:

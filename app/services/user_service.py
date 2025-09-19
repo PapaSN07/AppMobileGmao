@@ -2,7 +2,6 @@ from app.db.database import get_database_connection
 from app.models.models import UserModel
 from app.core.config import CACHE_TTL_SHORT
 from app.core.cache import cache
-from app.schemas.rest_response import create_simple_response
 from app.db.requests import (GET_USER_AUTHENTICATION_QUERY, UPDATE_USER_QUERY, GET_USER_CONNECT_QUERY)
 import logging
 import oracledb

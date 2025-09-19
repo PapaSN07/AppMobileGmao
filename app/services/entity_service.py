@@ -8,10 +8,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def get_entities(entity: str) -> Dict[str, Any]:
+def get_entities(entity: str, hierarchy_result: Dict[str, Any]) -> Dict[str, Any]:
     """Récupère les entités depuis la base de données."""
-    # Import local pour éviter les imports circulaires
-    from app.services.entity_service import get_hierarchy
     
     # Inclure la limite dans la clé de cache
     cache_key = f"mobile_entities_{entity}"
@@ -21,7 +19,6 @@ def get_entities(entity: str) -> Dict[str, Any]:
     
     # Récupérer la hiérarchie de l'entité
     try:
-        hierarchy_result = get_hierarchy(entity)
         hierarchy_entities = hierarchy_result.get('hierarchy', [])
         
         if not hierarchy_entities:
@@ -68,8 +65,7 @@ def get_entities(entity: str) -> Dict[str, Any]:
 
             response = {
                 "entities": entities, 
-                "count": len(entities),
-                "total_available": _get_total_count()  # Nombre total en DB
+                "count": len(entities)
             }
             
             cache.set(cache_key, response, CACHE_TTL_SHORT)
@@ -121,16 +117,3 @@ def get_hierarchy(entity_code: str) -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"❌ Erreur hiérarchie Oracle: {e}")
         raise
-
-def _get_total_count() -> int:
-    """Récupère le nombre total d'entités"""
-    try:
-        db_conn = get_database_connection()
-        if db_conn is None:
-            logger.error("Impossible d'obtenir une connexion à la base de données")
-            raise Exception("Connexion DB manquante")
-        with db_conn as db:
-            result = db.execute_query("SELECT COUNT(*) FROM coswin.entity")
-            return result[0][0] if result else 0
-    except Exception:
-        return 0

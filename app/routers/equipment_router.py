@@ -164,13 +164,18 @@ async def update_equipment_partial_endpoint(
 )
 async def get_equipment_values(entity: str) -> Dict[str, Any]:
     """Récupération des valeurs des équipements"""
+    
+    # Import local pour éviter les imports circulaires
+    from app.services.entity_service import get_hierarchy
+    
     try:
-        cost_charges_result = get_centre_charges(entity)
-        entities_result = get_entities(entity)
-        familles_result = get_familles(entity)
-        unites_result = get_unites(entity)
-        zones_result = get_zones(entity)
-        feeder_result = get_feeders(entity)
+        hierarchy_result = get_hierarchy(entity)
+        cost_charges_result = get_centre_charges(entity, hierarchy_result)
+        entities_result = get_entities(entity, hierarchy_result)
+        familles_result = get_familles(entity, hierarchy_result)
+        unites_result = get_unites(entity, hierarchy_result)
+        zones_result = get_zones(entity, hierarchy_result)
+        feeder_result = get_feeders(entity, hierarchy_result)
 
         # Vérification des résultats
         if not cost_charges_result or not entities_result or not familles_result or not unites_result or not zones_result:

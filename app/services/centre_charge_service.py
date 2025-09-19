@@ -8,10 +8,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def get_centre_charges(entity: str, limit: int = 260) -> Dict[str, Any]:
+def get_centre_charges(entity: str, hierarchy_result: Dict[str, Any], limit: int = 260) -> Dict[str, Any]:
     """Récupère les centres de charge depuis la base de données."""
-    # Import local pour éviter les imports circulaires
-    from app.services.entity_service import get_hierarchy
 
     cache_key = f"mobile_centre_charges_{entity}"
     cached = cache.get_data_only(cache_key)
@@ -20,7 +18,6 @@ def get_centre_charges(entity: str, limit: int = 260) -> Dict[str, Any]:
     
     # Récupérer la hiérarchie de l'entité
     try:
-        hierarchy_result = get_hierarchy(entity)
         hierarchy_entities = hierarchy_result.get('hierarchy', [])
         
         if not hierarchy_entities:
@@ -67,8 +64,7 @@ def get_centre_charges(entity: str, limit: int = 260) -> Dict[str, Any]:
 
             response = {
                 "centre_charges": centre_charges, 
-                "count": len(centre_charges),
-                "total_available": _get_total_count()  # Nombre total en DB
+                "count": len(centre_charges),# Nombre total en DB
             }
             
             cache.set(cache_key, response, CACHE_TTL_SHORT)
@@ -78,16 +74,3 @@ def get_centre_charges(entity: str, limit: int = 260) -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"❌ Erreur centres de charge: {e}")
         raise
-
-def _get_total_count() -> int:
-    """Récupère le nombre total de centres de charge"""
-    try:
-        db_conn = get_database_connection()
-        if db_conn is None:
-            logger.error("Impossible d'obtenir une connexion à la base de données")
-            raise Exception("Connexion DB manquante")
-        with db_conn as db:
-            result = db.execute_query("SELECT COUNT(*) FROM coswin.costcentre")
-            return result[0][0] if result else 0
-    except Exception:
-        return 0
