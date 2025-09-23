@@ -1,8 +1,8 @@
-from app.db.database import get_database_connection, get_database_connection_temp
+from app.db.database import OracleDatabase, get_database_connection, get_database_connection_temp
 from app.core.config import CACHE_TTL_SHORT
 from app.models.models import (EquipmentModel, FeederModel, EquipmentAttributeValueModel, AttributeValuesModel)
-from app.db.requests import (ATTRIBUTE_VALUES_QUERY, EQUIPMENT_ADD_QUERY, EQUIPMENT_ATTRIBUTE_ADD_QUERY, EQUIPMENT_BY_ID_QUERY, EQUIPMENT_INFINITE_QUERY, EQUIPMENT_LENGTH_ATTRIBUTS_QUERY, EQUIPMENT_SPEC_ADD_QUERY, EQUIPMENT_T_SPECIFICATION_CODE_QUERY, FEEDER_QUERY, UPDATE_EQUIPMENT_ATTRIBUTE_QUERY)
-from app.core.cache import cache
+from app.db.requests import (ATTRIBUTE_VALUES_QUERY, CHECK_ATTRIBUTE_EXISTS_QUERY, EQUIPMENT_ADD_QUERY, EQUIPMENT_ATTRIBUTE_ADD_QUERY, EQUIPMENT_BY_ID_QUERY, EQUIPMENT_INFINITE_QUERY, EQUIPMENT_LENGTH_ATTRIBUTS_QUERY, EQUIPMENT_LENGTH_ATTRIBUTS_QUERY_DISTINCT, EQUIPMENT_SPEC_ADD_QUERY, EQUIPMENT_T_SPECIFICATION_CODE_QUERY, FEEDER_QUERY, UPDATE_EQUIPMENT_ATTRIBUTE_QUERY)
+from app.core.cache import cache, invalidate_equipment_insertion_cache
 from typing import Dict, Any, List, Optional
 import logging
 from datetime import datetime
@@ -372,7 +372,6 @@ def update_equipment_attributes(equipment_code: str, attributes: List[Dict[str, 
         if db_conn is None:
             logger.error("Impossible d'obtenir une connexion à la base de données")
             raise Exception("Connexion DB manquante")
-        
         with db_conn as db:
             success_count = 0
             
@@ -506,9 +505,6 @@ def get_equipment_attributes_by_code_without_value(equipment_code: str) -> List[
 def validate_equipment_for_insertion(equipment: EquipmentModel) -> tuple[bool, str]:
     """
     Valide un équipement avant insertion
-    
-    Returns:
-        Tuple (is_valid, error_message)
     """
     try:
         # Vérifications obligatoires
@@ -524,20 +520,40 @@ def validate_equipment_for_insertion(equipment: EquipmentModel) -> tuple[bool, s
         if not equipment.zone:
             return False, "Zone obligatoire"
         
-        db_conn = get_database_connection()
-        if db_conn is None:
-            logger.error("Impossible d'obtenir une connexion à la base de données")
-            raise Exception("Connexion DB manquante")
+        # ✅ CORRECTION : Vérifier dans les DEUX bases de données
         
-        # Vérifier que l'équipement n'existe pas déjà
-        with db_conn as db:
-            existing_check = db.execute_query(
-                "SELECT COUNT(*) FROM coswin.t_equipment WHERE ereq_code = :code", 
-                params={'code': equipment.code}
-            )
-            
-            if existing_check and existing_check[0][0] > 0:
-                return False, f"Un équipement avec le code {equipment.code} existe déjà"
+        # 1. Vérifier dans la DB principale
+        main_exists = False
+        try:
+            main_db_conn = get_database_connection()
+            if main_db_conn is not None:
+                with main_db_conn as db:
+                    main_check = db.execute_query(
+                        "SELECT COUNT(*) FROM coswin.t_equipment WHERE ereq_code = :code", 
+                        params={'code': equipment.code}
+                    )
+                    main_exists = main_check and main_check[0][0] > 0
+        except Exception as e:
+            logger.warning(f"Erreur vérification DB principale: {e}")
+        
+        # 2. Vérifier dans la DB temporaire
+        temp_exists = False
+        try:
+            temp_db_conn = get_database_connection_temp()
+            if temp_db_conn is not None:
+                with temp_db_conn as db:
+                    temp_check = db.execute_query(
+                        "SELECT COUNT(*) FROM coswin.t_equipment WHERE ereq_code = :code", 
+                        params={'code': equipment.code}
+                    )
+                    temp_exists = temp_check and temp_check[0][0] > 0
+        except Exception as e:
+            logger.warning(f"Erreur vérification DB temporaire: {e}")
+        
+        # ✅ Rejeter si l'équipement existe dans l'une ou l'autre des bases
+        if main_exists or temp_exists:
+            db_location = "principale" if main_exists else "temporaire"
+            return False, f"Un équipement avec le code {equipment.code} existe déjà (DB {db_location})"
         
         return True, "Validation réussie"
         
@@ -545,22 +561,19 @@ def validate_equipment_for_insertion(equipment: EquipmentModel) -> tuple[bool, s
         logger.error(f"Erreur validation équipement: {e}")
         return False, f"Erreur validation: {str(e)}"
 
-def insert_equipment(equipment: EquipmentModel) -> bool:
+def insert_equipment(equipment: EquipmentModel) -> tuple[bool, Optional[int]]:
     """
     Insère un nouvel équipement en utilisant les méthodes existantes de la couche DB.
-    Utilise désormais la gestion transactionnelle de la couche DB :
-    - execute_update(..., commit=False) pour les opérations intermédiaires
-    - commit_transaction() / rollback_transaction() à la fin selon le résultat
     """
-    print("Insertion équipement:", equipment)
+    logger.info(f"🔧 Insertion équipement: {equipment.code}")
     
     try:
-        # validation préalable
+        # Validation préalable
         is_valid, msg = validate_equipment_for_insertion(equipment)
         logger.info(f"Validation équipement avant insertion: {msg}")
         if not is_valid:
             logger.error(f"Validation échouée: {msg}")
-            return False
+            return (False, None)
 
         db_conn = get_database_connection_temp()
         if db_conn is None:
@@ -569,7 +582,7 @@ def insert_equipment(equipment: EquipmentModel) -> bool:
 
         with db_conn as db:
             try:
-                # démarrer transaction si disponible
+                # Démarrer transaction si disponible
                 if hasattr(db, "begin_transaction"):
                     try:
                         logger.info("Démarrage d'une transaction explicite")
@@ -577,20 +590,9 @@ def insert_equipment(equipment: EquipmentModel) -> bool:
                     except Exception:
                         logger.debug("begin_transaction non opérationnel, continuation sans appel explicite")
 
-                # 1) Insert équipement (commit différé)
-                # 1a) Récupérer pk_equipment fraîchement créé (même session)
-                pk_rows = db.execute_query(
-                    "SELECT COUNT(pk_equipment) FROM coswin.t_equipment",
-                )
-                if not pk_rows:
-                    logger.error("Impossible de récupérer pk_equipment après INSERT")
-                    # rollback si possible
-                    if hasattr(db, "rollback_transaction"):
-                        db.rollback_transaction()
-                    return False
-                else:
-                    logger.info(f"1a) pk_equipment récupéré: {pk_rows}")
-                equipment_pk = pk_rows[0][0] + 1 # supposition que le prochain ID est +1
+                # 1) ✅ CORRECTION: Utiliser une séquence Oracle au lieu de COUNT
+                equipment_pk = _get_index(db, "SELECT coswin_seq.NEXTVAL FROM DUAL", "SELECT COALESCE(MAX(pk_equipment), 0) + 1 FROM coswin.t_equipment")[1]
+                
                 equipment.id = str(equipment_pk)
                 
                 db.execute_update(EQUIPMENT_ADD_QUERY, params={
@@ -609,41 +611,26 @@ def insert_equipment(equipment: EquipmentModel) -> bool:
                     'creation_date': datetime.now()
                 }, commit=False)
                 logger.info(f"1) Équipement {equipment.id} inséré en base (commit différé)")
-                
 
                 # 2) Récupérer cwsp_code (spec) pour la catégorie
                 spec_rows = db.execute_query(EQUIPMENT_T_SPECIFICATION_CODE_QUERY, params={'category': equipment.famille})
-                logger.info(f"Spécifications trouvées pour la catégorie {equipment.famille}: {len(spec_rows)}")
+                logger.info(f"2) Spécifications trouvées pour la catégorie {equipment.famille}: {len(spec_rows) if spec_rows else 0}")
+                
                 if not spec_rows:
                     logger.info(f"2) Aucune specification trouvée pour la catégorie {equipment.famille} -> insertion terminée sans specs")
-                    # commit partiel et invalider cache
                     if hasattr(db, "commit_transaction"):
                         db.commit_transaction()
-                    else:
-                        logger.debug("commit_transaction non disponible, la couche DB peut avoir commit automatique")
-                    for pattern in (f"mobile_eq_*", f"equipment_*", f"feeders_list_*"):
-                        cache.clear_pattern(pattern)
-                    return True
+                    # ✅ CORRECTION: Invalider le cache après insertion
+                    invalidate_equipment_insertion_cache(equipment.code, equipment.entity, equipment.famille)
+                    return (True, equipment_pk)
+                
                 cwsp_code = spec_rows[0][0]
 
-                # 3) INSERT equipment_specs (commit différé)
-                # 3b) Récupérer pk_equipment_specs
-                es_rows = db.execute_query(
-                    "SELECT COUNT(pk_equipment_specs) FROM coswin.equipment_specs"
-                )
-                if not es_rows:
-                    logger.warning("Impossible de récupérer pk_equipment_specs après INSERT -> commit et fin sans création d'attributs")
-                    if hasattr(db, "commit_transaction"):
-                        db.commit_transaction()
-                    for pattern in (f"mobile_eq_*", f"equipment_*", f"feeders_list_*"):
-                        cache.clear_pattern(pattern)
-                    return True
-                else:
-                    logger.info(f"3b) pk_equipment_specs récupéré: {es_rows[0][0]}")
-                equipment_specs_pk = es_rows[0][0] + 1
+                # 3) INSERT equipment_specs avec PK fiable
+                equipment_specs_pk = _get_index(db, "SELECT coswin_eq_specs_seq.NEXTVAL FROM DUAL", "SELECT COALESCE(MAX(pk_equipment_specs), 0) + 1 FROM coswin.equipment_specs")[1]
                 
                 db.execute_update(EQUIPMENT_SPEC_ADD_QUERY, params={
-                    'id': equipment_specs_pk,  # pk_equipment_specs
+                    'id': equipment_specs_pk,
                     'specification': cwsp_code,
                     'equipment': equipment.code,
                     'release_date': datetime.now(),
@@ -651,57 +638,126 @@ def insert_equipment(equipment: EquipmentModel) -> bool:
                 }, commit=False)
                 logger.info(f"3) equipment_specs inséré pour {equipment.code} et specification {cwsp_code} (commit différé)")
 
-                # 4) Récupérer les index d'attributs pour la famille et créer les equipment_attribute (commit différé)
-                attr_rows = db.execute_query(EQUIPMENT_LENGTH_ATTRIBUTS_QUERY, params={'category': equipment.famille})
-                logger.info(f"4) Attributs trouvés pour la catégorie {equipment.famille}: {len(attr_rows)}")
-                created = 0
-                index_val = None
+                # 4) ✅ CORRECTION: Création d'attributs avec dédoublonnage
+                attributes = equipment.attributes or []
+                logger.info(f"4) Attributs fournis pour insertion: {len(attributes)}")
+                
+                # ✅ Requête corrigée pour éviter les doublons d'index
+                attr_rows = db.execute_query(EQUIPMENT_LENGTH_ATTRIBUTS_QUERY_DISTINCT, params={'category': equipment.famille})
+                
+                logger.info(f"Index d'attributs disponibles pour la famille {equipment.famille}: {len(attr_rows) if attr_rows else 0}")
+                
                 if attr_rows:
-                    for r in attr_rows:
+                    # ✅ Créer un mapping strict des valeurs fournies par index
+                    provided_values = {}
+                    seen_indexes = set()
+                    
+                    for attr in attributes:
                         try:
-                            index_val = r[0]
+                            # Gérer les deux formats possibles (dict ou object)
+                            if isinstance(attr, dict):
+                                idx = str(attr.get("index", "")).strip()
+                                value = attr.get("value")
+                            else:
+                                idx = str(getattr(attr, "index", "")).strip()
+                                value = getattr(attr, "value", None)
+                            
+                            if idx and idx not in seen_indexes:
+                                provided_values[idx] = value
+                                seen_indexes.add(idx)
+                                logger.debug(f"Valeur mappée pour index {idx}: {value}")
+                            elif idx in seen_indexes:
+                                logger.warning(f"Index {idx} en doublon ignoré")
+                                
+                        except Exception as e:
+                            logger.error(f"Erreur traitement attribut: {e}")
+                            continue
+                    
+                    # ✅ Créer UNE SEULE ligne par index de famille (dédoublonné)
+                    created = 0
+                    created_indexes = set()
+                    
+                    for attr_row in attr_rows:
+                        try:
+                            index_val = str(attr_row[0]).strip()
+                            
+                            # ✅ Vérifier qu'on ne crée pas de doublon
+                            if index_val in created_indexes:
+                                logger.warning(f"Index {index_val} déjà créé, ignoré")
+                                continue
+                            
+                            # Récupérer la valeur fournie ou None
+                            value = provided_values.get(index_val)
+                            
+                            # ✅ Vérifier que l'attribut n'existe pas déjà
+                            existing_check = db.execute_query(CHECK_ATTRIBUTE_EXISTS_QUERY, params={'commonkey': equipment_specs_pk, 'indx': index_val})
+                            
+                            if existing_check and existing_check[0][0] > 0:
+                                logger.warning(f"Attribut index {index_val} existe déjà pour commonkey {equipment_specs_pk}")
+                                continue
+                            
                             db.execute_update(EQUIPMENT_ATTRIBUTE_ADD_QUERY, params={
                                 'commonkey': equipment_specs_pk,
-                                'indx': index_val
+                                'indx': index_val,
+                                'etat_value': value
                             }, commit=False)
+                            
                             created += 1
+                            created_indexes.add(index_val)
+                            logger.debug(f"Attribut créé: index={index_val}, value={value}")
+                            
                         except Exception as e:
-                            logger.debug(f"Impossible de créer attribute index={index_val} : {e}")
+                            logger.error(f"Erreur création attribut index {attr_row[0]}: {e}")
                             continue
-                logger.info(f"{created}/{len(attr_rows) if attr_rows else 0} attributs créés pour {equipment.code}")
-
-                # 5) Ajout des attributs éventuels
-                attributes = equipment.attributes
-                if attributes is not None and len(attributes) > 0:
-                    logger.info(f"5) Attributs supplémentaires mis à jour pour {equipment.code} - {len(attributes)} à traiter")
-                    update_equipment_attributes(equipment.code, [attr.model_dump() for attr in attributes])
+                    
+                    logger.info(f"✅ {created}/{len(attr_rows)} attributs créés pour {equipment.code}")
+                else:
+                    logger.info(f"Aucun attribut disponible pour la famille {equipment.famille}")
                 
-                # commit de la transaction
+                # Commit de la transaction
                 if hasattr(db, "commit_transaction"):
                     db.commit_transaction()
                     logger.info("Transaction commitée avec succès")
-                else:
-                    logger.debug("commit_transaction non disponible, verifier comportement de commit de la couche DB")
 
-                # invalider caches
-                for pattern in (f"mobile_eq_*", f"equipment_*", f"feeders_list_*"):
-                    cache.clear_pattern(pattern)
+                # ✅ CORRECTION: Invalider le cache après insertion réussie
+                invalidate_equipment_insertion_cache(equipment.code, equipment.entity, equipment.famille)
 
-                logger.info(f"Équipement {equipment.code} inséré avec succès")
-                return True
+                logger.info(f"✅ Équipement ID: {equipment_pk} - Code: {equipment.code} inséré avec succès")
+                return (True, equipment_pk)
 
             except Exception as e:
                 logger.error(f"Erreur lors de l'insertion équipement: {e}")
-                # rollback si possible
                 try:
                     if hasattr(db, "rollback_transaction"):
                         db.rollback_transaction()
                 except Exception:
                     logger.debug("Rollback non disponible ou a échoué")
-                return False
+                return (False, None)
 
     except Exception as e:
         logger.error(f"insert_equipment fatal error: {e}")
-        return False
+        return (False, None)
 
+def _get_index(db: OracleDatabase, seq_oracle: str, seq_fallback: str) -> tuple[bool, Optional[int]]:
+    """Récupère le prochain index d'équipement en utilisant une séquence ou MAX + 1"""
+    equipment_pk = None
+    try:
+        # Essayer d'utiliser une séquence Oracle (plus fiable)
+        pk_rows = db.execute_query(seq_oracle)
+        if pk_rows:
+            equipment_pk = pk_rows[0][0]
+        else:
+            # Fallback avec MAX + 1 (plus fiable que COUNT)
+            pk_rows = db.execute_query(seq_fallback)
+            equipment_pk = pk_rows[0][0]
+    except Exception:
+        # Si séquence n'existe pas, utiliser MAX + 1
+        pk_rows = db.execute_query(seq_fallback)
+        if not pk_rows:
+            logger.error("Impossible de récupérer pk_equipment")
+            if hasattr(db, "rollback_transaction"):
+                db.rollback_transaction()
+            return (False, None)
+        equipment_pk = pk_rows[0][0]
 
+    return (True, equipment_pk)

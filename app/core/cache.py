@@ -325,6 +325,27 @@ def cache_equipment_list(data: List[Dict], filters: Dict[str, Any] | None = None
     key = cache._create_key("equipment_list", **filters or {})
     return cache.set(key, data, ttl)
 
+def invalidate_equipment_insertion_cache(equipment_code: str, entity: str, famille: str):
+    """Invalide spécifiquement le cache après insertion d'équipement"""
+    patterns_to_clear = [
+        f"mobile_eq_{entity}*",
+        f"equipment_attributes_{equipment_code}",
+        f"equipment_attributes_{famille}*", 
+        f"attribute_values_*",
+        "feeders_list_*",
+        "zones_list",
+        "familles_list"
+    ]
+    
+    total_cleared = 0
+    for pattern in patterns_to_clear:
+        cleared = cache.clear_pattern(pattern)
+        total_cleared += cleared
+        logger.debug(f"Pattern {pattern}: {cleared} clés supprimées")
+    
+    logger.info(f"🧹 Cache insertion invalidé: {total_cleared} clés supprimées")
+    return total_cleared
+
 def get_cached_equipment_list(filters: Dict[str, Any] | None = None) -> Optional[List[Dict]]:
     """
     Récupère une liste d'équipements mise en cache.

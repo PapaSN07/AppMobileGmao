@@ -101,12 +101,12 @@ async def add_equipment_mobile(request: AddEquipmentRequest) -> Dict[str, Any]:
             attributes = attributes_converted
         )
 
-        success = insert_equipment(equipment)
+        success, equipment_id = insert_equipment(equipment)
         if success:
             return {
                 "status": "success",
                 "message": "Équipement ajouté avec succès",
-                "equipment_id": getattr(equipment, "id", None),
+                "equipment_id": str(equipment_id),
                 "attributes_count": len(attributes_converted)
             }
         else:

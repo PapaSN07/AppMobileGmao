@@ -188,10 +188,20 @@ SELECT
     e.ereq_longitude, 
     e.ereq_latitude,
     f.pk_equipment as feeder,
-    f.ereq_description as feeder_description
+    f.ereq_description as feeder_description,
+    -- Attributs (peuvent être NULL si pas d'attributs)
+    a.pk_attribute as attr_id,
+    a.cwat_specification as attr_specification,
+    a.cwat_index as attr_index,
+    a.cwat_name as attr_name,
+    ea.etat_value as attr_value
 FROM coswin.t_equipment e
 LEFT JOIN coswin.t_costcentre cc ON e.ereq_costcentre = cc.mdcc_code
 LEFT JOIN coswin.t_equipment f ON e.ereq_string2 = f.ereq_code
+LEFT JOIN coswin.equipment_specs es ON e.ereq_code = es.etes_equipment
+LEFT JOIN coswin.equipment_attribute ea ON es.pk_equipment_specs = ea.commonkey
+LEFT JOIN coswin.t_specification s ON es.etes_specification = s.cwsp_code
+LEFT JOIN coswin.attribute a ON (s.pk_specification = a.cwat_specification AND ea.INDX = a.CWAT_INDEX)
 WHERE e.pk_equipment = :equipment_id
 """
 # --- Modification d'équipement
@@ -317,10 +327,12 @@ ORDER BY a.cwat_index
 EQUIPMENT_ATTRIBUTE_ADD_QUERY = """
 INSERT INTO coswin.equipment_attribute (
     commonkey,
-    indx
+    indx,
+    etat_value
 ) VALUES (
     :commonkey, -- pk_equipment (equipment_specs)
-    :indx -- CWAT_INDEX (attribute)
+    :indx, -- CWAT_INDEX (attribute)
+    :etat_value -- Valeur de l'attribut (NULL par défaut)
 )
 """
 # Pour récupérer le cwsp_code(t_specification) d'un équipement pour la création d'une ligne dans equipment_specs
@@ -332,6 +344,21 @@ FROM coswin.t_equipment e
 WHERE 
     e.ereq_category LIKE :category 
     AND ROWNUM <= 1
+"""
+# Vérification d'existence d'attribut
+CHECK_ATTRIBUTE_EXISTS_QUERY = """
+SELECT COUNT(*) FROM coswin.equipment_attribute 
+WHERE commonkey = :commonkey AND indx = :indx
+"""
+# Requête corrigée pour les index d'attributs (sans doublons)
+EQUIPMENT_LENGTH_ATTRIBUTS_QUERY_DISTINCT = """
+SELECT DISTINCT a.cwat_index
+FROM coswin.t_specification s
+JOIN coswin.category_specification cs ON s.cwsp_code = cs.mdcs_specification  
+JOIN coswin.t_category r ON cs.mdcs_category = r.mdct_code
+JOIN coswin.attribute a ON s.pk_specification = a.cwat_specification
+WHERE r.mdct_code LIKE :category
+ORDER BY a.cwat_index
 """
 
 #   ================================================================================
