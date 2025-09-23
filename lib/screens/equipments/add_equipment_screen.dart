@@ -35,10 +35,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
   final _formKey = GlobalKey<FormState>();
   final FocusNode _descriptionFocusNode = FocusNode();
   final TextEditingController _descriptionController = TextEditingController();
-  final generatedCode = DateTime.now().millisecondsSinceEpoch
-      .toString()
-      .padRight(15, '0')
-      .substring(0, 15);
+  late String generatedCode;
 
   // Attributs dynamiques
   List<EquipmentAttribute> availableAttributes = [];
@@ -57,6 +54,9 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
   List<Map<String, dynamic>> unites = [];
   List<Map<String, dynamic>> centreCharges = [];
 
+  // ✅ Compteur statique au niveau de la classe
+  static int _globalCounter = 0;
+
   // État de chargement
   bool _isLoading = true;
   bool _hasError = false;
@@ -67,6 +67,13 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
   @override
   void initState() {
     super.initState();
+
+    // ✅ Nettoyer les données précédentes
+    _clearPreviousData();
+
+    // ✅ Générer le code unique dès l'initialisation
+    generatedCode = _generateUniqueEquipmentCode();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadValuesEquipmentsWithUserInfo();
     });
@@ -83,6 +90,72 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
   void deactivate() {
     FocusScope.of(context).unfocus();
     super.deactivate();
+  }
+
+  // ✅ CORRIGÉ: Générateur de code unique de 15 caractères maximum
+  String _generateUniqueEquipmentCode() {
+    // 1. Base temporelle précise
+    final now = DateTime.now();
+    final microTime = now.microsecondsSinceEpoch;
+
+    // 2. Compteur global incrémenté
+    _globalCounter = (_globalCounter + 1) % 999;
+
+    // 3. Hash unique basé sur l'instance
+    final instanceHash = hashCode.abs() % 999;
+
+    // 4. Timestamp court (6 derniers chiffres des microsecondes)
+    final shortTimestamp = microTime.toString().substring(
+      microTime.toString().length - 6,
+    );
+
+    // 5. UUID très court (4 caractères)
+    final shortUuid = microTime.toRadixString(36).toUpperCase();
+    final uuid =
+        shortUuid.length >= 4
+            ? shortUuid.substring(0, 4)
+            : shortUuid.padRight(4, 'X');
+
+    // 6. Format final : EQ + 6digits + 4chars + 3digits = 15 caractères
+    final counter = _globalCounter.toString().padLeft(3, '0');
+    final uniqueCode = 'EQ$shortTimestamp$uuid$counter';
+
+    if (kDebugMode) {
+      print(
+        '🔢 $__logName Code unique généré: $uniqueCode (${uniqueCode.length} chars)',
+      );
+      print('   - MicroTime: $microTime');
+      print('   - Timestamp: $shortTimestamp (6 chars)');
+      print('   - UUID: $uuid (4 chars)');
+      print('   - Compteur global: $counter (3 chars)');
+      print('   - Instance hash: $instanceHash');
+    }
+
+    return uniqueCode;
+  }
+
+  // ✅ NOUVEAU: Méthode pour nettoyer les données précédentes
+  void _clearPreviousData() {
+    // Nettoyer les attributs
+    availableAttributes.clear();
+    attributeValuesBySpec.clear();
+    selectedAttributeValues.clear();
+
+    // Nettoyer les sélections
+    selectedCodeParent = null;
+    selectedFeeder = null;
+    selectedFamille = null;
+    selectedZone = null;
+    selectedEntity = null;
+    selectedUnite = null;
+    selectedCentreCharge = null;
+
+    // Nettoyer les contrôleurs
+    _descriptionController.clear();
+
+    if (kDebugMode) {
+      print('🧹 $__logName Données précédentes nettoyées');
+    }
   }
 
   void _loadValuesEquipmentsWithUserInfo() async {

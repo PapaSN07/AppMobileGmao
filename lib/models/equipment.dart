@@ -140,7 +140,7 @@ class Equipment extends HiveObject {
       'longitude': longitude,
       'latitude': latitude,
       'cached_at': cachedAt.toIso8601String(),
-      'attributes': attributes?.map((attr) => attr.toJsonComplete()).toList(),
+      'attributes': attributes?.map((attr) => attr.toJson()).toList(),
     };
   }
 

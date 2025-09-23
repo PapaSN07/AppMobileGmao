@@ -223,9 +223,7 @@ class EquipmentService {
   }) async {
     try {
       if (kDebugMode) {
-        print(
-          '🔧 $__logName Récupération des sélecteurs pour entité: $entity',
-        );
+        print('🔧 $__logName Récupération des sélecteurs pour entité: $entity');
       }
 
       final data = await _apiService.get('/api/v1/equipments/values/$entity');
@@ -274,9 +272,7 @@ class EquipmentService {
       };
 
       if (kDebugMode) {
-        print(
-          '✅ $__logName Sélecteurs traités: ${selectors.keys.join(', ')}',
-        );
+        print('✅ $__logName Sélecteurs traités: ${selectors.keys.join(', ')}');
       }
 
       return selectors;
@@ -324,13 +320,12 @@ class EquipmentService {
           print('   - Attributs: ${attributs.length} éléments');
           for (final attr in attributs) {
             print(
-              '     • ${attr['name']}: "${attr['value']}" (${attr['type']})',
+              '     • ${attr['name']}: "${attr['value']}" (${attr['type']} - ${attr['specification']}/${attr['index']})',
             );
           }
         }
       }
 
-      // ✅ CORRIGÉ: Utiliser l'URL sans slash final pour éviter la redirection 307
       final data = await _apiService.post(
         '/api/v1/equipments',
         data: equipmentData,
@@ -342,44 +337,13 @@ class EquipmentService {
       }
 
       // ✅ NOUVEAU: Gestion des différents types de réponse de l'API
-      if (data is String) {
-        // ✅ Cas 1: L'API renvoie juste un ID ou un message de succès
-        if (kDebugMode) {
-          print('📋 $__logName API a renvoyé une chaîne: "$data"');
-        }
-
-        // Créer un équipement minimal avec les données envoyées + ID de l'API
-        return Equipment(
-          id: data, // Utiliser la réponse comme ID
-          code: equipment.code,
-          description: equipment.description,
-          famille: equipment.famille,
-          zone: equipment.zone,
-          entity: equipment.entity,
-          unite: equipment.unite,
-          centreCharge: equipment.centreCharge,
-          codeParent: equipment.codeParent,
-          feeder: equipment.feeder,
-          feederDescription: equipment.feederDescription,
-          longitude: equipment.longitude,
-          latitude: equipment.latitude,
-          attributes: equipment.attributes,
-          cachedAt: DateTime.now(),
-        );
-      } else if (data is Map<String, dynamic>) {
-        // ✅ Cas 2: L'API renvoie un objet JSON complet
+      if (data is Map<String, dynamic>) {
+        // ✅ Cas 1: L'API renvoie un objet JSON complet
         if (kDebugMode) {
           print('📋 $__logName API a renvoyé un objet JSON');
         }
-        return Equipment.fromJson(data);
-      } else if (data is int) {
-        // ✅ Cas 3: L'API renvoie juste un ID numérique
-        if (kDebugMode) {
-          print('📋 $__logName API a renvoyé un ID numérique: $data');
-        }
-
         return Equipment(
-          id: data.toString(),
+          id: data['equipment_id'].toString(), // Utiliser la réponse comme ID
           code: equipment.code,
           description: equipment.description,
           famille: equipment.famille,
@@ -396,11 +360,9 @@ class EquipmentService {
           cachedAt: DateTime.now(),
         );
       } else {
-        // ✅ Cas 4: Type de réponse inattendu
+        // ✅ Cas 2: Type de réponse inattendu
         if (kDebugMode) {
-          print(
-            '⚠️ $__logName Type de réponse inattendu: ${data.runtimeType}',
-          );
+          print('⚠️ $__logName Type de réponse inattendu: ${data.runtimeType}');
           print('⚠️ $__logName Contenu: $data');
         }
 
@@ -458,7 +420,7 @@ class EquipmentService {
       );
 
       if (kDebugMode) {
-        print('✅ $__logName Équipement mis à jour avec succès');
+        print('✅ $__logName Équipement mis à jour avec succès : $data');
       }
 
       return Equipment.fromJson(data['equipment']);

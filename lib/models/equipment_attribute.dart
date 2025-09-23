@@ -44,17 +44,13 @@ class EquipmentAttribute extends HiveObject {
   }
 
   Map<String, dynamic> toJson() {
-    return {'name': name ?? '', 'value': value ?? '', 'type': type ?? 'string'};
-  }
-
-  Map<String, dynamic> toJsonComplete() {
     return {
-      'id': id,
-      'specification': specification,
-      'index': index,
-      'name': name,
-      'value': value,
-      'type': type,
+      'id': id ?? '',
+      'name': name ?? '',
+      'value': value ?? '',
+      'type': type ?? 'string',
+      'specification': specification ?? '',
+      'index': index ?? '',
     };
   }
 
@@ -70,6 +66,6 @@ class EquipmentAttribute extends HiveObject {
 
   @override
   String toString() {
-    return 'EquipmentAttribute{id: $id, name: $name, value: $value, type: $type, index: $index}';
+    return 'EquipmentAttribute{id: $id, name: $name, value: $value, spécification: $specification, type: $type, index: $index}';
   }
 }

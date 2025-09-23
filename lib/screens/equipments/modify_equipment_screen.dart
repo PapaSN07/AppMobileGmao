@@ -450,64 +450,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
         : cleanDesc;
   }
 
-  /// ✅ MODIFIÉ: Récupérer le CODE au lieu de la description pour l'API
-  String? _getSelectedCode(String? selectedValue) {
-    if (selectedValue == null || selectedValue.isEmpty) return null;
-
-    // ✅ NOUVEAU: Fonction helper pour trouver le code depuis la description
-    String? findCodeFromDescription(
-      List<Map<String, dynamic>> items,
-      String description,
-    ) {
-      for (final item in items) {
-        final itemDescription = item['description']?.toString() ?? '';
-        final itemCode = item['code']?.toString() ?? '';
-
-        // Si la description correspond, retourner le CODE
-        if (itemDescription == description) {
-          return itemCode; // ✅ Retourner le code au lieu de la description
-        }
-
-        // Aussi vérifier si c'est déjà un code
-        if (itemCode == description) {
-          return itemCode;
-        }
-      }
-      return null;
-    }
-
-    // ✅ Vérifier dans chaque liste et retourner le CODE correspondant
-    String? code;
-
-    // Famille
-    code = findCodeFromDescription(familles, selectedValue);
-    if (code != null) return code;
-
-    // Zone
-    code = findCodeFromDescription(zones, selectedValue);
-    if (code != null) return code;
-
-    // Entity
-    code = findCodeFromDescription(entities, selectedValue);
-    if (code != null) return code;
-
-    // Unite
-    code = findCodeFromDescription(unites, selectedValue);
-    if (code != null) return code;
-
-    // Centre Charge
-    code = findCodeFromDescription(centreCharges, selectedValue);
-    if (code != null) return code;
-
-    // Feeder
-    code = findCodeFromDescription(feeders, selectedValue);
-    if (code != null) return code;
-
-    // Si aucun code trouvé, retourner la valeur telle quelle (peut-être que c'est déjà un code)
-    return selectedValue;
-  }
-
-  // ✅ MODIFIÉ : Widget ComboBox personnalisé avec validation optionnelle et détection de changement
+  // ✅ Widget ComboBox personnalisé avec validation optionnelle et détection de changement
   Widget _buildComboBoxField({
     required String label,
     required String msgError,
@@ -1475,12 +1418,13 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     }
   }
 
-  /// ✅ CORRIGÉ: Widget pour afficher une ligne d'attribut avec indication de la valeur actuelle
+  /// ✅ Widget pour afficher une ligne d'attribut avec gestion des null
   Widget _buildAttributeRow(
     EquipmentAttribute attribute,
     StateSetter setModalState,
   ) {
-    final specKey = '${attribute.specification}_${attribute.index}';
+    final specKey =
+        '${attribute.specification ?? 'no_spec'}_${attribute.index ?? 'no_index'}';
     final availableValues = attributeValuesBySpec[specKey] ?? [];
 
     // ✅ NOUVEAU: Créer la liste des options UNIQUES à partir des valeurs de l'API
@@ -1507,12 +1451,18 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
           ..sort()
           ..add(''); // Ajouter l'option vide à la fin
 
+    // ✅ Générer un ID sûr pour l'attribut
+    final safeAttributeId =
+        attribute.id ??
+        '${attribute.name}_${attribute.specification}_${attribute.index}';
+
     // ✅ IMPORTANT: Valeur actuellement sélectionnée (priorité aux modifications utilisateur)
     final currentValue =
-        selectedAttributeValues[attribute.id ?? ''] ?? attribute.value;
+        selectedAttributeValues[safeAttributeId] ?? attribute.value;
 
     if (kDebugMode) {
       print('🔍 $__logName Attribut ${attribute.name}:');
+      print('   - ID: $safeAttributeId');
       print('   - Valeur originale: "${attribute.value}"');
       print('   - Valeur sélectionnée: "$currentValue"');
       print(
@@ -1548,11 +1498,21 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
               items: options,
               selectedItem: currentValue,
               onChanged: (value) {
+                if (kDebugMode) {
+                  print(
+                    '🔄 $__logName Changement attribut ${attribute.name}: "$currentValue" -> "$value"',
+                  );
+                }
+
                 setModalState(() {
-                  if (attribute.id != null) {
-                    selectedAttributeValues[attribute.id!] = value ?? '';
-                  }
+                  selectedAttributeValues[safeAttributeId] = value ?? '';
                 });
+
+                // ✅ Mettre à jour aussi l'état principal
+                setState(() {
+                  selectedAttributeValues[safeAttributeId] = value ?? '';
+                });
+
                 _onFieldChanged();
               },
 
@@ -1713,7 +1673,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     );
   }
 
-  /// ✅ MODIFIÉ: Améliorer l'initialisation des attributs depuis les paramètres
+  /// ✅ Initialisation des attributs avec ID sécurisé
   Future<void> _initializeAttributesFromParams() async {
     if (widget.equipmentAttributes == null ||
         widget.equipmentAttributes!.isEmpty) {
@@ -1746,12 +1706,12 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
         setState(() {
           availableAttributes = convertedAttributes;
 
-          // ✅ IMPORTANT: Initialiser les valeurs sélectionnées avec les valeurs actuelles
+          // ✅ IMPORTANT: Initialiser les valeurs sélectionnées avec des ID sécurisés
           selectedAttributeValues.clear();
           for (final attr in convertedAttributes) {
-            if (attr.id != null) {
-              selectedAttributeValues[attr.id!] = attr.value ?? '';
-            }
+            final safeId =
+                attr.id ?? '${attr.name}_${attr.specification}_${attr.index}';
+            selectedAttributeValues[safeId] = attr.value ?? '';
           }
 
           _loadingAttributes = false;
@@ -1776,7 +1736,9 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
           '✅ $__logName ${convertedAttributes.length} attributs initialisés depuis les paramètres:',
         );
         for (final attr in convertedAttributes) {
-          print('   - ${attr.name}: "${attr.value}" (ID: ${attr.id})');
+          final safeId =
+              attr.id ?? '${attr.name}_${attr.specification}_${attr.index}';
+          print('   - ${attr.name}: "${attr.value}" (ID: $safeId)');
         }
       }
     } catch (e) {
@@ -1790,7 +1752,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     }
   }
 
-  /// ✅ CORRIGÉ: Charger les attributs de l'équipement ET les spécifications
+  /// ✅ Charger les attributs avec ID sécurisé
   Future<void> _loadEquipmentAttributes() async {
     if (widget.equipmentData == null) return;
 
@@ -1823,11 +1785,13 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
           setState(() {
             availableAttributes = attributes;
 
-            // ✅ Initialiser les valeurs sélectionnées avec les valeurs actuelles
+            // ✅ Initialiser les valeurs sélectionnées avec des ID sécurisés
             selectedAttributeValues.clear();
             for (final attr in attributes) {
-              if (attr.id != null && attr.value != null) {
-                selectedAttributeValues[attr.id!] = attr.value!;
+              final safeId =
+                  attr.id ?? '${attr.name}_${attr.specification}_${attr.index}';
+              if (attr.value != null) {
+                selectedAttributeValues[safeId] = attr.value!;
               }
             }
           });
@@ -1887,12 +1851,39 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     }
   }
 
-  /// ✅ AMÉLIORÉ: Gérer la modification avec mise à jour immédiate du cache
+  // ✅ Méthode universelle pour extraire le CODE depuis une description
+  String? _getCodeFromDescription(
+    String? description,
+    List<Map<String, dynamic>> dataList,
+  ) {
+    if (description == null || description.isEmpty) return null;
+
+    // Chercher dans la liste des données
+    for (final item in dataList) {
+      final itemDescription = item['description']?.toString() ?? '';
+      final itemCode = item['code']?.toString() ?? '';
+
+      // Si la description correspond, retourner le CODE
+      if (itemDescription == description) {
+        if (kDebugMode) {
+          print('✓ $__logName Code trouvé: "$description" -> "$itemCode"');
+        }
+        return itemCode;
+      }
+    }
+
+    if (kDebugMode) {
+      print('⚠️ $__logName Code non trouvé pour: "$description"');
+    }
+    return description; // ✅ Fallback: retourner la description si pas de code trouvé
+  }
+
+  /// ✅ Gérer la modification avec la même logique que add_equipment_screen.dart
   Future<void> _handleUpdate() async {
     // Vérifier si une mise à jour est déjà en cours
     if (_isUpdating) {
       if (kDebugMode) {
-        print('⚠️ ModifyEquipmentScreen - Mise à jour déjà en cours, abandon');
+        print('⚠️ $__logName Mise à jour déjà en cours, abandon');
       }
       return;
     }
@@ -1904,30 +1895,47 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
       });
 
       if (kDebugMode) {
-        print('🔄 ModifyEquipmentScreen - Début de la mise à jour');
+        print('🔄 $__logName Début de la mise à jour');
       }
 
-      // Préparer les attributs modifiés au format requis
+      // ✅ IMPORTANT: Préparer les attributs AVANT de créer les données
       final attributs = _prepareAttributesForUpdate();
 
-      // Préparer les données selon le schéma requis
+      // ✅ CRUCIAL: Convertir CHAQUE description sélectionnée en CODE (comme add_equipment_screen.dart)
+      final familleCode = _getCodeFromDescription(selectedFamille, familles);
+      final zoneCode = _getCodeFromDescription(selectedZone, zones);
+      final entityCode = _getCodeFromDescription(selectedEntity, entities);
+      final uniteCode = _getCodeFromDescription(selectedUnite, unites);
+      final centreChargeCode = _getCodeFromDescription(
+        selectedCentreCharge,
+        centreCharges,
+      );
+      final feederCode = _getCodeFromDescription(selectedFeeder, feeders);
+      final codeParentCode = _getCodeFromDescription(
+        selectedCodeParent,
+        feeders,
+      );
+
+      // ✅ IMPORTANT: Utiliser les CODES au lieu des descriptions (comme add_equipment_screen.dart)
       final updatedData = {
-        'code_parent': selectedCodeParent ?? '',
-        'feeder': _getSelectedCode(selectedFeeder) ?? '',
-        'feeder_description': selectedFeeder ?? '',
+        'codeParent': codeParentCode, // ✅ CODE du parent
         'code':
             widget.equipmentData!['Code'] ??
             widget.equipmentData!['code'] ??
             '',
-        'famille': _getSelectedCode(selectedFamille) ?? '',
-        'zone': _getSelectedCode(selectedZone) ?? '',
-        'entity': _getSelectedCode(selectedEntity) ?? '',
-        'unite': _getSelectedCode(selectedUnite) ?? '',
-        'centre_charge': _getSelectedCode(selectedCentreCharge) ?? '',
-        'description': _descriptionController.text.trim(),
-        'longitude': valueLongitude ?? '',
-        'latitude': valueLatitude ?? '',
-        'attributs': attributs, // Inclure les attributs modifiés
+        'feeder': feederCode, // ✅ CODE du feeder
+        'infoFeeder': selectedFeeder, // ✅ Description du feeder pour info
+        'famille': familleCode, // ✅ CODE de la famille
+        'zone': zoneCode, // ✅ CODE de la zone
+        'entity': entityCode, // ✅ CODE de l'entité
+        'unite': uniteCode, // ✅ CODE de l'unité
+        'centreCharge': centreChargeCode, // ✅ CODE du centre de charge
+        'description':
+            _descriptionController.text
+                .trim(), // ✅ Description libre (pas de conversion)
+        'longitude': valueLongitude ?? '12311231', // ✅ Valeur par défaut
+        'latitude': valueLatitude ?? '12311231', // ✅ Valeur par défaut
+        'attributs': attributs, // ✅ TOUS les attributs modifiés
       };
 
       final equipmentId =
@@ -1938,12 +1946,23 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
       }
 
       if (kDebugMode) {
-        print('📊 ModifyEquipmentScreen - Envoi des données au provider');
-        print('   - ID équipement: $equipmentId');
+        print('📊 $__logName CONVERSION DESCRIPTION → CODE:');
+        print('   - CodeParent: "$selectedCodeParent" → "$codeParentCode"');
+        print('   - Feeder: "$selectedFeeder" → "$feederCode"');
+        print('   - Famille: "$selectedFamille" → "$familleCode"');
+        print('   - Zone: "$selectedZone" → "$zoneCode"');
+        print('   - Entity: "$selectedEntity" → "$entityCode"');
+        print('   - Unite: "$selectedUnite" → "$uniteCode"');
+        print(
+          '   - Centre Charge: "$selectedCentreCharge" → "$centreChargeCode"',
+        );
+        print(
+          '   - Description: "${_descriptionController.text.trim()}" (AUCUNE CONVERSION)',
+        );
         print('   - Attributs: ${attributs.length} éléments');
       }
 
-      // ✅ Envoyer les données au provider (qui gère le cache automatiquement)
+      // ✅ Envoyer les données au provider avec les codes corrects
       await context.read<EquipmentProvider>().updateEquipment(
         equipmentId,
         updatedData,
@@ -1955,13 +1974,11 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
       // ✅ NOUVEAU: Forcer un rechargement depuis le cache pour vérifier
       if (mounted) {
         final equipmentProvider = context.read<EquipmentProvider>();
-        await equipmentProvider.fetchEquipments(
-          forceRefresh: false,
-        ); // ✅ Charger depuis le cache mis à jour
+        await equipmentProvider.fetchEquipments(forceRefresh: false);
 
         if (kDebugMode) {
           print(
-            '✅ ModifyEquipmentScreen - Liste des équipements rechargée depuis le cache mis à jour',
+            '✅ $__logName Liste des équipements rechargée depuis le cache mis à jour',
           );
         }
       }
@@ -1985,7 +2002,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ ModifyEquipmentScreen - Erreur lors de la modification: $e');
+        print('❌ $__logName Erreur lors de la modification: $e');
       }
 
       if (mounted) {
@@ -2009,36 +2026,39 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     }
   }
 
-  /// ✅ MODIFIÉ: Préparer les attributs en tenant compte des nouvelles valeurs sélectionnées
+  /// ✅ Préparer les attributs avec vérification des null
   List<Map<String, String>> _prepareAttributesForUpdate() {
     final attributs = <Map<String, String>>[];
 
-    // ✅ MODIFIÉ: Seulement si des attributs existent
+    // ✅ IMPORTANT: Toujours inclure TOUS les attributs de l'équipement, même sans valeur
     if (availableAttributes.isNotEmpty) {
       for (final attribute in availableAttributes) {
-        if (attribute.id != null && attribute.name != null) {
-          // ✅ IMPORTANT: Prioriser la valeur sélectionnée par l'utilisateur
-          final selectedValue = selectedAttributeValues[attribute.id!];
+        if (attribute.name != null) {
+          // ✅ CORRIGÉ: Vérifier si l'ID existe avant de l'utiliser
+          final attributeId =
+              attribute.id ??
+              '${attribute.name}_${DateTime.now().millisecondsSinceEpoch}';
+
+          // ✅ Récupérer la valeur sélectionnée ou utiliser la valeur par défaut
+          final selectedValue = selectedAttributeValues[attributeId];
           final finalValue = selectedValue ?? attribute.value ?? '';
 
-          // ✅ AJOUTÉ: Debug pour voir quelle valeur est utilisée
-          if (kDebugMode) {
-            print('🔍 $__logName Attribut ${attribute.name}:');
-            print('   - Valeur originale: "${attribute.value}"');
-            print('   - Valeur sélectionnée: "$selectedValue"');
-            print('   - Valeur finale: "$finalValue"');
-          }
+          // ✅ Déterminer le type intelligent de l'attribut
+          final attributeType = _determineAttributeType(attribute);
 
-          // ✅ Inclure l'attribut même s'il est vide (pour permettre la suppression)
+          // ✅ IMPORTANT: Inclure TOUS les attributs avec la même structure que add_equipment_screen.dart
           attributs.add({
+            'id': attributeId,
             'name': attribute.name!,
+            'specification': attribute.specification ?? '',
+            'index': attribute.index ?? '',
             'value': finalValue,
-            'type': _determineAttributeType(attribute),
+            'type': attributeType,
           });
 
           if (kDebugMode) {
             print(
-              '✓  $__logName Attribut préparé: ${attribute.name} = "$finalValue" (${_determineAttributeType(attribute)})',
+              '✓ $__logName Attribut préparé: ${attribute.name} = "$finalValue" ($attributeType)',
             );
           }
         }

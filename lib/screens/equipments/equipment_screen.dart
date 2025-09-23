@@ -52,7 +52,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     super.deactivate();
   }
 
-  // Optimisation du chargement initial
+  /// ✅ AMÉLIORÉ: Optimisation du chargement initial avec préservation d'état
   void _loadEquipmentsWithUserInfo() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final equipmentProvider = Provider.of<EquipmentProvider>(
@@ -73,6 +73,11 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
 
         // ✅ 2. Charger les équipements normalement
         await equipmentProvider.fetchEquipments(entity: user.entity);
+
+        // ✅ 3. NOUVEAU: Restaurer l'état de recherche si nécessaire
+        if (_searchController.text.isNotEmpty) {
+          _performSearch(_searchController.text);
+        }
       } catch (e) {
         if (kDebugMode) {
           print('❌ $__logName Erreur chargement initial: $e');
@@ -100,9 +105,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
       }
     } catch (e) {
       if (kDebugMode) {
-        print(
-          '❌ $__logName Erreur chargement sélecteurs en arrière-plan: $e',
-        );
+        print('❌ $__logName Erreur chargement sélecteurs en arrière-plan: $e');
       }
     }
   }
@@ -184,7 +187,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     );
   }
 
-  // Méthode pour effectuer une recherche filtrée par type
+  /// ✅ AMÉLIORÉ: Debug des filtres lors de la recherche
   void _performSearch(String value) {
     final equipmentProvider = Provider.of<EquipmentProvider>(
       context,
@@ -193,8 +196,15 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
 
     if (value.isEmpty) {
       equipmentProvider.filterEquipments('');
+      if (kDebugMode) {
+        print(
+          '🔍 $__logName Filtre effacé: ${equipmentProvider.equipments.length} résultats',
+        );
+      }
       return;
     }
+
+    final totalBefore = equipmentProvider.equipments.length;
 
     // Filtrer selon le type de recherche sélectionné
     switch (_searchType) {
@@ -214,6 +224,14 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
       default:
         equipmentProvider.filterEquipments(value);
         break;
+    }
+
+    final resultsAfter = equipmentProvider.equipments.length;
+
+    if (kDebugMode) {
+      print(
+        '🔍 $__logName Recherche "$value" ($_searchType): $resultsAfter/$totalBefore résultats',
+      );
     }
   }
 
@@ -495,7 +513,8 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     return equipmentProvider.isLoading
         ? const LoadingIndicator()
         : RefreshIndicator(
-          onRefresh: () => equipmentProvider.fetchEquipments(),
+          // ✅ CORRIGÉ: Préserver les filtres lors du refresh
+          onRefresh: () => _refreshWithFilters(equipmentProvider),
           child:
               hasResults
                   ? ListView.builder(
@@ -514,7 +533,103 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
         );
   }
 
-  // Amélioration de l'état vide avec suggestions selon le type de recherche
+  /// ✅ NOUVEAU: Méthode pour rafraîchir en préservant les filtres
+  Future<void> _refreshWithFilters(EquipmentProvider equipmentProvider) async {
+    try {
+      if (kDebugMode) {
+        print('🔄 $__logName Début du refresh avec préservation des filtres');
+      }
+
+      // ✅ 1. Sauvegarder l'état actuel des filtres
+      final currentSearchText = _searchController.text;
+      final currentSearchType = _searchType;
+      final hasActiveFilter = currentSearchText.isNotEmpty;
+
+      if (kDebugMode) {
+        print('📊 $__logName État actuel:');
+        print('   - Recherche: "$currentSearchText"');
+        print('   - Type: $currentSearchType');
+        print(
+          '   - Résultats affichés: ${equipmentProvider.equipments.length}',
+        );
+        print('   - Filtre actif: $hasActiveFilter');
+      }
+
+      // ✅ 2. Recharger toutes les données depuis le backend/cache
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final user = authProvider.currentUser;
+
+      if (user != null) {
+        await equipmentProvider.fetchEquipments(
+          entity: user.entity,
+          forceRefresh: true, // ✅ Forcer le refresh depuis l'API
+        );
+      } else {
+        await equipmentProvider.fetchEquipments(forceRefresh: true);
+      }
+
+      // ✅ 3. Réappliquer les filtres si ils étaient actifs
+      if (hasActiveFilter) {
+        if (kDebugMode) {
+          print(
+            '🔍 $__logName Réapplication du filtre: "$currentSearchText" ($currentSearchType)',
+          );
+        }
+
+        // Réappliquer le même type de recherche
+        switch (currentSearchType) {
+          case 'code':
+            equipmentProvider.filterEquipmentsByField(
+              currentSearchText,
+              'code',
+            );
+            break;
+          case 'description':
+            equipmentProvider.filterEquipmentsByField(
+              currentSearchText,
+              'description',
+            );
+            break;
+          case 'zone':
+            equipmentProvider.filterEquipmentsByField(
+              currentSearchText,
+              'zone',
+            );
+            break;
+          case 'famille':
+            equipmentProvider.filterEquipmentsByField(
+              currentSearchText,
+              'famille',
+            );
+            break;
+          case 'all':
+          default:
+            equipmentProvider.filterEquipments(currentSearchText);
+            break;
+        }
+
+        if (kDebugMode) {
+          print(
+            '✅ $__logName Filtre réappliqué: ${equipmentProvider.equipments.length} résultats',
+          );
+        }
+      } else {
+        if (kDebugMode) {
+          print(
+            '✅ $__logName Refresh terminé: ${equipmentProvider.equipments.length} équipements totaux',
+          );
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ $__logName Erreur lors du refresh: $e');
+      }
+      // L'erreur sera gérée par le RefreshIndicator automatiquement
+      rethrow;
+    }
+  }
+
+  /// ✅ AMÉLIORÉ: Gestion améliorée de l'état vide avec contexte de filtre
   Widget _buildEmptyState(EquipmentProvider equipmentProvider) {
     final bool isSearching = _searchController.text.isNotEmpty;
     final String searchTerm = _searchController.text.trim();
@@ -528,9 +643,12 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
             'Tapez au moins 3 caractères pour une recherche plus précise.';
         suggestions = '';
       } else {
-        message = 'Aucun équipement ne correspond à "$searchTerm"';
+        // ✅ AMÉLIORÉ: Afficher le nombre total d'équipements pour contextualiser
+        final totalEquipments = equipmentProvider.equipments.length;
+        message =
+            'Aucun équipement ne correspond à "$searchTerm"\n($totalEquipments équipements au total)';
 
-        // ✅ NOUVEAU: Suggestions spécifiques selon le type de recherche
+        // Suggestions spécifiques selon le type de recherche
         switch (_searchType) {
           case 'code':
             suggestions =
@@ -594,40 +712,43 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
       if (equipment['attributes'] != null) {
         if (equipment['attributes'] is List) {
           final attributesList = equipment['attributes'] as List;
-          equipmentAttributes = attributesList
-              .map((attr) {
-                if (attr is Map<String, dynamic>) {
-                  return attr;
-                } else if (attr is Map) {
-                  return Map<String, dynamic>.from(attr);
-                } else {
-                  // Si c'est un objet EquipmentAttribute, le convertir
-                  try {
-                    final dynamic attrObj = attr;
-                    return <String, dynamic>{
-                      'id': attrObj.id?.toString(),
-                      'name': attrObj.name?.toString(),
-                      'value': attrObj.value?.toString(),
-                      'type': attrObj.type?.toString(),
-                      'specification': attrObj.specification?.toString(),
-                      'index': attrObj.index?.toString(),
-                    };
-                  } catch (e) {
-                    if (kDebugMode) {
-                      print('⚠️ $__logName Erreur conversion attribut: $e');
+          equipmentAttributes =
+              attributesList
+                  .map((attr) {
+                    if (attr is Map<String, dynamic>) {
+                      return attr;
+                    } else if (attr is Map) {
+                      return Map<String, dynamic>.from(attr);
+                    } else {
+                      // Si c'est un objet EquipmentAttribute, le convertir
+                      try {
+                        final dynamic attrObj = attr;
+                        return <String, dynamic>{
+                          'id': attrObj.id?.toString(),
+                          'name': attrObj.name?.toString(),
+                          'value': attrObj.value?.toString(),
+                          'type': attrObj.type?.toString(),
+                          'specification': attrObj.specification?.toString(),
+                          'index': attrObj.index?.toString(),
+                        };
+                      } catch (e) {
+                        if (kDebugMode) {
+                          print('⚠️ $__logName Erreur conversion attribut: $e');
+                        }
+                        return <String, dynamic>{};
+                      }
                     }
-                    return <String, dynamic>{};
-                  }
-                }
-              })
-              .where((attr) => attr.isNotEmpty)
-              .toList();
+                  })
+                  .where((attr) => attr.isNotEmpty)
+                  .toList();
         }
       }
 
       if (equipmentAttributes != null && equipmentAttributes.isNotEmpty) {
         if (kDebugMode) {
-          print('📋 $__logName Attributs trouvés pour ${equipment['code']}: ${equipmentAttributes.length} éléments');
+          print(
+            '📋 $__logName Attributs trouvés pour ${equipment['code']}: ${equipmentAttributes.length} éléments',
+          );
         }
       }
     } catch (e) {
