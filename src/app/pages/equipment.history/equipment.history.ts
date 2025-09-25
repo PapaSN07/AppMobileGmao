@@ -48,6 +48,7 @@ interface expandedRows {
 
 @Component({
   selector: 'app-equipment.history',
+  standalone: true,
   imports: [CommonModule,
         TableModule,
         FormsModule,

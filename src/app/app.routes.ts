@@ -15,6 +15,10 @@ export const routes: Routes = [
             { path: 'history-equipment', component: EquipmentHistory }
         ]
     },
-    { path: 'notfound', component: Notfound }, // route explicite
+
+    // lazy load du module auth
+    { path: 'auth', loadChildren: () => import('./pages/auth/auth.module').then((m) => m.AuthModule) },
+
+    { path: 'notfound', component: Notfound },
     { path: '**', redirectTo: 'notfound' }
 ];
