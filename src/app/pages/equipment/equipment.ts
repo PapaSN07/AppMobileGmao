@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, signal, ViewChild } from '@angular/core';
+import { Component, inject, OnInit, signal, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { InputNumberModule } from 'primeng/inputnumber';
@@ -8,6 +8,7 @@ import { RadioButtonModule } from 'primeng/radiobutton';
 import { RippleModule } from 'primeng/ripple';
 import { SelectModule } from 'primeng/select';
 import { Table, TableModule } from 'primeng/table';
+import { TabsModule } from 'primeng/tabs';
 import { ToastModule } from 'primeng/toast';
 import { ToolbarModule } from 'primeng/toolbar';
 import { RatingModule } from 'primeng/rating';
@@ -17,9 +18,18 @@ import { TagModule } from 'primeng/tag';
 import { InputIconModule } from 'primeng/inputicon';
 import { IconFieldModule } from 'primeng/iconfield';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { MultiSelectModule } from 'primeng/multiselect';
+import { SliderModule } from 'primeng/slider';
+import { ProgressBarModule } from 'primeng/progressbar';
+import { ToggleButtonModule } from 'primeng/togglebutton';
+import { AutoCompleteCompleteEvent, AutoCompleteModule } from 'primeng/autocomplete';
 
 import { Product, ProductService } from '../service/product.service';
-import { ConfirmationService, MessageService } from 'primeng/api';
+import { ConfirmationService, MessageService, TreeNode } from 'primeng/api';
+import { ObjectUtils } from 'primeng/utils';
+import { CountryService } from '../service/country.service';
+import { NodeService } from '../service/node.service';
+import { Country } from '../service/customer.service';
 
 interface Column {
     field: string;
@@ -30,6 +40,10 @@ interface Column {
 interface ExportColumn {
     title: string;
     dataKey: string;
+}
+
+interface expandedRows {
+    [key: string]: boolean;
 }
 
 @Component({
@@ -53,13 +67,20 @@ interface ExportColumn {
         TagModule,
         InputIconModule,
         IconFieldModule,
-        ConfirmDialogModule
+        ConfirmDialogModule,
+        MultiSelectModule,
+        SliderModule,
+        ProgressBarModule,
+        ToggleButtonModule,
+        AutoCompleteModule,
+        TabsModule
     ],
     templateUrl: './equipment.html',
-    providers: [MessageService, ProductService, ConfirmationService]
+    styleUrls: ['equipment.scss'],
+    providers: [MessageService, ProductService, ConfirmationService, CountryService, NodeService]
 })
 export class Equipment implements OnInit {
-  productDialog: boolean = false;
+    productDialog: boolean = false;
 
     products = signal<Product[]>([]);
 
@@ -71,17 +92,92 @@ export class Equipment implements OnInit {
 
     statuses!: any[];
 
+    // AutoComplete
+    selectedAutoValue: any = null;
+    autoFilteredValue: any[] = [];
+    autoValue: any[] | undefined;
+    floatValue: any = null;
+
+    calendarValue: any = null;
+
+    inputNumberValue: any = null;
+
+    sliderValue: number = 50;
+
+    ratingValue: any = null;
+
+    colorValue: string = '#1976D2';
+
+    radioValue: any = null;
+
+    checkboxValue: any[] = [];
+
+    switchValue: boolean = false;
+
+    listboxValues: any[] = [
+        { name: 'New York', code: 'NY' },
+        { name: 'Rome', code: 'RM' },
+        { name: 'London', code: 'LDN' },
+        { name: 'Istanbul', code: 'IST' },
+        { name: 'Paris', code: 'PRS' }
+    ];
+
+    listboxValue: any = null;
+
+    dropdownValues = [
+        { name: 'New York', code: 'NY' },
+        { name: 'Rome', code: 'RM' },
+        { name: 'London', code: 'LDN' },
+        { name: 'Istanbul', code: 'IST' },
+        { name: 'Paris', code: 'PRS' }
+    ];
+
+    dropdownValue: any = null;
+
+    multiselectCountries: Country[] = [
+        { name: 'Australia', code: 'AU' },
+        { name: 'Brazil', code: 'BR' },
+        { name: 'China', code: 'CN' },
+        { name: 'Egypt', code: 'EG' },
+        { name: 'France', code: 'FR' },
+        { name: 'Germany', code: 'DE' },
+        { name: 'India', code: 'IN' },
+        { name: 'Japan', code: 'JP' },
+        { name: 'Spain', code: 'ES' },
+        { name: 'United States', code: 'US' }
+    ];
+
+    multiselectSelectedCountries!: Country[];
+
+    toggleValue: boolean = false;
+
+    selectButtonValue: any = null;
+
+    selectButtonValues: any = [{ name: 'Option 1' }, { name: 'Option 2' }, { name: 'Option 3' }];
+
+    knobValue: number = 50;
+
+    inputGroupValue: boolean = false;
+
+    treeSelectNodes!: TreeNode[];
+
+    selectedNode: any = null;
+
+    countryService = inject(CountryService);
+
+    nodeService = inject(NodeService);
+
     @ViewChild('dt') dt!: Table;
 
     exportColumns!: ExportColumn[];
 
+    expandedRows: expandedRows = {};
+
+    isExpanded: boolean = false;
+
     cols!: Column[];
 
-    constructor(
-        private productService: ProductService,
-        private messageService: MessageService,
-        private confirmationService: ConfirmationService
-    ) {}
+    constructor(private productService: ProductService, private messageService: MessageService, private confirmationService: ConfirmationService) {}
 
     exportCSV() {
         this.dt.exportCSV();
@@ -89,6 +185,12 @@ export class Equipment implements OnInit {
 
     ngOnInit() {
         this.loadDemoData();
+        
+        this.countryService.getCountries().then((countries) => {
+            this.autoValue = countries;
+        });
+
+        this.nodeService.getFiles().then((data) => (this.treeSelectNodes = data));
     }
 
     loadDemoData() {
@@ -115,6 +217,25 @@ export class Equipment implements OnInit {
 
     onGlobalFilter(table: Table, event: Event) {
         table.filterGlobal((event.target as HTMLInputElement).value, 'contains');
+    }
+
+    expandAll() {
+        if (ObjectUtils.isEmpty(this.expandedRows)) {
+            this.expandedRows = this.products().reduce((acc, p) => {
+                if (p.id) {
+                    acc[p.id] = true;
+                }
+                return acc;
+            }, {} as { [key: string]: boolean });
+            this.isExpanded = true;
+        } else {
+            this.collapseAll();
+        }
+    }
+
+    collapseAll() {
+        this.expandedRows = {};
+        this.isExpanded = false;
     }
 
     openNew() {
@@ -201,6 +322,20 @@ export class Equipment implements OnInit {
             default:
                 return 'info';
         }
+    }
+
+    filterCountry(event: AutoCompleteCompleteEvent) {
+        const filtered: any[] = [];
+        const query = event.query;
+
+        for (let i = 0; i < (this.autoValue as any[]).length; i++) {
+            const country = (this.autoValue as any[])[i];
+            if (country.name.toLowerCase().indexOf(query.toLowerCase()) == 0) {
+                filtered.push(country);
+            }
+        }
+
+        this.autoFilteredValue = filtered;
     }
 
     saveProduct() {
