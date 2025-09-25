@@ -6,11 +6,11 @@ import { CheckboxModule } from 'primeng/checkbox';
 import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';
 import { RippleModule } from 'primeng/ripple';
-import { AppFloatingConfigurator } from '../../../core/layout/component/app.floatingconfigurator';
+import { ImageModule } from 'primeng/image';
 
 @Component({
     selector: 'app-login',
-    imports: [ButtonModule, CheckboxModule, InputTextModule, PasswordModule, FormsModule, RouterModule, RippleModule, AppFloatingConfigurator],
+    imports: [ButtonModule, CheckboxModule, InputTextModule, PasswordModule, FormsModule, RouterModule, RippleModule, ImageModule],
     standalone: true,
     templateUrl: './login.html'
 })

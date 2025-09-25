@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { ButtonModule } from 'primeng/button';
-import { AppFloatingConfigurator } from '../../core/layout/component/app.floatingconfigurator';
+import { AppFloatingConfigurator } from '../../layout/component/app.floatingconfigurator';
 import { RouterModule } from '@angular/router';
 
 @Component({
