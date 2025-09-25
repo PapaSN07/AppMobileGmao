@@ -3,6 +3,7 @@ import { AppLayout } from './core/layout/component/app.layout';
 import { Notfound } from './pages/notfound/notfound';
 import { Dashboard } from './pages/dashboard/dashboard';
 import { Equipment } from './pages/equipment/equipment';
+import { EquipmentHistory } from './pages/equipment.history/equipment.history';
 
 export const routes: Routes = [
     {
@@ -10,7 +11,8 @@ export const routes: Routes = [
         component: AppLayout,
         children: [
             { path: '', component: Dashboard },
-            { path: 'list-equipment', component: Equipment }
+            { path: 'list-equipment', component: Equipment },
+            { path: 'history-equipment', component: EquipmentHistory }
         ]
     },
     { path: 'notfound', component: Notfound }, // route explicite

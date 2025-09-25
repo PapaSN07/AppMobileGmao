@@ -18,7 +18,15 @@ export class Menu {
                 label: 'Accueil',
                 items: [
                     { label: 'Dashboard', icon: 'pi pi-fw pi-home', routerLink: ['/'] },
-                    { label: 'Liste Équipement', icon: 'pi pi-fw pi-list', routerLink: ['/list-equipment'] }
+                    // Sous menu avec des éléments imbriqués (Équipements)
+                    {
+                        label: 'Équipements',
+                        icon: 'pi pi-fw pi-circle',
+                        items: [
+                            { label: 'Liste Équipement', icon: 'pi pi-fw pi-list', routerLink: ['/list-equipment'] },
+                            { label: 'Historique Équipement', icon: 'pi pi-fw pi-history', routerLink: ['/history-equipment'] }
+                        ]
+                    }
                 ]
             }
         ];
