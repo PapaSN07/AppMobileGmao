@@ -31,8 +31,9 @@ def create_main_engine():
     return engine
 
 def create_temp_engine():
-    """Crée l'engine pour la DB temporaire"""
-    url = f"oracle+cx_oracle://{TEMP_DB_USERNAME}:{TEMP_DB_PASSWORD}@{TEMP_DB_HOST}:{TEMP_DB_PORT}/?service_name={TEMP_DB_SERVICE_NAME}"
+    """Crée l'engine pour la DB temporaire (MSSQL)"""
+    # ✅ CORRECTION: Ajouter les paramètres SSL pour Docker
+    url = f"mssql+pyodbc://{TEMP_DB_USERNAME}:{TEMP_DB_PASSWORD}@{TEMP_DB_HOST}:{TEMP_DB_PORT}/{TEMP_DB_SERVICE_NAME}?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes&Encrypt=no"
     
     engine = create_engine(
         url,
@@ -44,7 +45,7 @@ def create_temp_engine():
         future=True
     )
     
-    logger.info("✅ Engine temporaire créé")
+    logger.info("✅ Engine temporaire MSSQL créé")
     return engine
 
 # Engines globaux

@@ -79,8 +79,14 @@ class SQLAlchemyQueryExecutor:
 def test_connection(session: Session) -> bool:
     """Teste la connexion à la base de données"""
     try:
-        session.execute(text("SELECT 1 FROM dual"))
+        # Essayer d'abord pour MSSQL
+        session.execute(text("SELECT 1"))
         return True
-    except Exception as e:
-        logger.error(f"❌ Erreur test connexion: {e}")
-        return False
+    except Exception:
+        try:
+            # Fallback pour Oracle
+            session.execute(text("SELECT 1 FROM dual"))
+            return True
+        except Exception as e:
+            logger.error(f"❌ Erreur test connexion: {e}")
+            return False

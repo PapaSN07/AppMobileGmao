@@ -8,7 +8,7 @@ import os
 
 from fastapi.staticfiles import StaticFiles
 
-from app.db.sqlalchemy.session import SQLAlchemyQueryExecutor, get_main_session, test_connection
+from app.db.sqlalchemy.session import SQLAlchemyQueryExecutor, get_main_session, get_temp_session, test_connection
 from app.routers.equipment_router import equipment_router
 from app.routers.user_router import authenticate_user_router
 from app.routers.centre_charge_router import centre_charge_router
@@ -29,9 +29,19 @@ async def lifespan(app: FastAPI):
     try:
         with get_main_session() as session:
             db_connected = test_connection(session)
+            if db_connected:
+                logger.info(f"✅ DB Principale Oracle: {'OK' if db_connected else 'KO'}")
+            else:
+                logger.error("❌ Connexion à la DB Principale Oracle échouée")
+                raise Exception("Connexion à la DB Principale Oracle échouée")
+        with get_temp_session() as session:
+            db_connected = test_connection(session)
+            if not db_connected:
+                logger.error("❌ Connexion à la DB Temporaire MSSQL échouée")
+                raise Exception("Connexion à la DB Temporaire MSSQL échouée")
+            logger.info(f"✅ DB Temporaire MSSQL: {'OK' if db_connected else 'KO'}")
     except Exception:
         db_connected = False
-    logger.info(f"✅ DB: {'OK' if db_connected else 'KO'}")
     logger.info(f"✅ Redis: {'OK' if cache.is_available else 'KO'}")
     
     yield
