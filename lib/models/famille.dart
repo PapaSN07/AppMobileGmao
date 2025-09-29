@@ -31,7 +31,7 @@ class Famille extends HiveObject {
 
   factory Famille.fromJson(Map<String, dynamic> json) {
     return Famille(
-      id: json['id'] ?? '',
+      id: json['id'].toString(),
       code: json['code'] ?? '',
       description: json['description'] ?? '',
       parentCategory: json['parent_category'] ?? '',

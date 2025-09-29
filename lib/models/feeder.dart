@@ -22,7 +22,7 @@ class Feeder extends HiveObject {
 
   factory Feeder.fromJson(Map<String, dynamic> json) {
     return Feeder(
-      id: json['id'] ?? '',
+      id: json['id'].toString(),
       code: json['code'] ?? '',
       description: json['description'] ?? '',
       entity: json['entity'] ?? '',

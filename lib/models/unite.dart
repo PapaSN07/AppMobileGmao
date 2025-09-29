@@ -22,7 +22,7 @@ class Unite extends HiveObject {
 
   factory Unite.fromJson(Map<String, dynamic> json) {
     return Unite(
-      id: json['id'] ?? '',
+      id: json['id'].toString(),
       code: json['code'] ?? '',
       description: json['description'] ?? '',
       entity: json['entity'] ?? '',

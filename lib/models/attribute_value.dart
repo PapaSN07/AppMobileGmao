@@ -13,7 +13,7 @@ class AttributeValue {
 
   factory AttributeValue.fromJson(Map<String, dynamic> json) {
     return AttributeValue(
-      id: json['id'],
+      id: json['id']?.toString(),
       value: json['value'],
     );
   }

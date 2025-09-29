@@ -22,7 +22,7 @@ class CentreCharge extends HiveObject {
 
   factory CentreCharge.fromJson(Map<String, dynamic> json) {
     return CentreCharge(
-      id: json['id'] ?? '',
+      id: json['id'].toString(),
       code: json['code'] ?? '',
       description: json['description'] ?? '',
       entity: json['entity'] ?? '',

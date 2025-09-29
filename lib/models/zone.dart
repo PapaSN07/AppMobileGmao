@@ -22,7 +22,7 @@ class Zone extends HiveObject {
 
   factory Zone.fromJson(Map<String, dynamic> json) {
     return Zone(
-      id: json['id'] ?? '',
+      id: json['id'].toString(),
       code: json['code'] ?? '',
       description: json['description'] ?? '',
       entity: json['entity'] ?? '',

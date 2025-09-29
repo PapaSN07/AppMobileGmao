@@ -37,7 +37,7 @@ class User extends HiveObject {
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      id: json['id'] ?? '',
+      id: json['id'].toString(),
       code: json['code'] ?? '',
       username: json['username'] ?? '',
       password: json['password'] ?? '',

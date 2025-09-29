@@ -31,7 +31,7 @@ class Entity extends HiveObject {
 
   factory Entity.fromJson(Map<String, dynamic> json) {
     return Entity(
-      id: json['id'] ?? '',
+      id: json['id'].toString(),
       code: json['code'] ?? '',
       description: json['description'] ?? '',
       parentCategory: json['parent_category'] ?? '',
