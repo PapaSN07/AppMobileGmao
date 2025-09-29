@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, OnInit, signal, ViewChild } from '@angular/core';
+import { Component, ElementRef, inject, OnInit, signal, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { InputNumberModule } from 'primeng/inputnumber';
@@ -167,7 +167,11 @@ export class Equipment implements OnInit {
 
     nodeService = inject(NodeService);
 
+    loading: boolean = true;
+
     @ViewChild('dt') dt!: Table;
+
+    @ViewChild('filter') filter!: ElementRef;
 
     exportColumns!: ExportColumn[];
 
@@ -177,7 +181,11 @@ export class Equipment implements OnInit {
 
     cols!: Column[];
 
-    constructor(private productService: ProductService, private messageService: MessageService, private confirmationService: ConfirmationService) {}
+    constructor(
+        private productService: ProductService, 
+        private messageService: MessageService, 
+        private confirmationService: ConfirmationService
+    ) {}
 
     exportCSV() {
         this.dt.exportCSV();
@@ -194,7 +202,7 @@ export class Equipment implements OnInit {
     }
 
     loadDemoData() {
-        this.productService.getProducts().then((data) => {
+        this.productService.getProductsWithOrdersSmall().then((data) => {
             this.products.set(data);
         });
 
@@ -236,6 +244,11 @@ export class Equipment implements OnInit {
     collapseAll() {
         this.expandedRows = {};
         this.isExpanded = false;
+    }
+
+    clear(table: Table) {
+        table.clear();
+        this.filter.nativeElement.value = '';
     }
 
     openNew() {
