@@ -1273,7 +1273,7 @@ export class ProductService {
         return Promise.resolve(this.getProductsWithOrdersData().slice(0, 10));
     }
 
-    generatePrduct(): Product {
+    generateProduct(): Product {
         const product: Product = {
             id: this.generateId(),
             name: this.generateName(),
