@@ -1,7 +1,11 @@
-from app.db.database import OracleDatabase, get_database_connection, get_database_connection_temp
+from app.db.sqlalchemy.session import get_main_session, get_temp_session, SQLAlchemyQueryExecutor
 from app.core.config import CACHE_TTL_SHORT
-from app.models.models import (EquipmentModel, FeederModel, EquipmentAttributeValueModel, AttributeValuesModel)
-from app.db.requests import (ATTRIBUTE_VALUES_QUERY, CHECK_ATTRIBUTE_EXISTS_QUERY, EQUIPMENT_ADD_QUERY, EQUIPMENT_ATTRIBUTE_ADD_QUERY, EQUIPMENT_BY_ID_QUERY, EQUIPMENT_INFINITE_QUERY, EQUIPMENT_LENGTH_ATTRIBUTS_QUERY, EQUIPMENT_LENGTH_ATTRIBUTS_QUERY_DISTINCT, EQUIPMENT_SPEC_ADD_QUERY, EQUIPMENT_T_SPECIFICATION_CODE_QUERY, FEEDER_QUERY, UPDATE_EQUIPMENT_ATTRIBUTE_QUERY)
+from app.models.models import (EquipmentModel, EquipmentWithAttributesBuilder, AttributeValues)
+from app.db.requests import (ATTRIBUTE_VALUES_QUERY, CHECK_ATTRIBUTE_EXISTS_QUERY, EQUIPMENT_ADD_QUERY, 
+                            EQUIPMENT_ATTRIBUTE_ADD_QUERY, EQUIPMENT_BY_ID_QUERY, EQUIPMENT_INFINITE_QUERY, 
+                            EQUIPMENT_LENGTH_ATTRIBUTS_QUERY_DISTINCT, 
+                            EQUIPMENT_SPEC_ADD_QUERY, EQUIPMENT_T_SPECIFICATION_CODE_QUERY, FEEDER_QUERY, 
+                            UPDATE_EQUIPMENT_ATTRIBUTE_QUERY, EQUIPMENT_ATTRIBUTS_VALUES_QUERY)
 from app.core.cache import cache, invalidate_equipment_insertion_cache
 from typing import Dict, Any, List, Optional
 import logging
@@ -63,58 +67,24 @@ def get_equipments_infinite(
         base_query += " AND (LOWER(e.ereq_code) LIKE LOWER(:search) OR LOWER(e.ereq_description) LIKE LOWER(:search))"
         params['search'] = f"%{search_term}%"
     
-    # CORRECTION : ORDER BY avec les bonnes colonnes
+    # ORDER BY avec les bonnes colonnes
     base_query += " ORDER BY e.pk_equipment DESC"
     
     try:
-        db_conn = get_database_connection()
-        if db_conn is None:
-            logger.error("Impossible d'obtenir une connexion à la base de données")
-            raise Exception("Connexion DB manquante")
-        
-        with db_conn as db:
-            results = db.execute_query(base_query, params=params)
+        # ✅ CORRECTION: Utiliser SQLAlchemy session au lieu de l'ancienne DB
+        with get_main_session() as session:
+            executor = SQLAlchemyQueryExecutor(session)
+            results = executor.execute_query(base_query, params=params)
             
-            # CORRECTION : Traitement optimisé avec gestion des 19 colonnes
-            equipments_dict = {}
+            # ✅ CORRECTION: Utiliser le builder pour construire les équipements
+            equipments = EquipmentWithAttributesBuilder.build_from_query_results(results)
             
-            for row in results:
-                try:
-                    # CORRECTION : Vérifier la longueur de la row
-                    if len(row) < 13:
-                        logger.warning(f"Row incomplète: {len(row)} colonnes au lieu de 19 minimum")
-                        continue
-                    
-                    # Les 13 premières colonnes sont pour l'équipement
-                    equipment_row = row[:13]
-                    equipment_id = str(row[0])
-                    
-                    # Si l'équipement n'existe pas encore, le créer
-                    if equipment_id not in equipments_dict:
-                        equipment = EquipmentModel.from_db_row(equipment_row)
-                        equipment.attributes = []
-                        equipments_dict[equipment_id] = equipment
-                    
-                    # CORRECTION : Ajouter l'attribut si il existe (colonnes 13-17)
-                    # Vérifier qu'on a assez de colonnes et que attr_id n'est pas NULL
-                    if len(row) >= 18 and row[13] is not None:  # attr_id
-                        attr_row = (row[13], row[14], row[15], row[16], row[17])  # id, spec, index, name, value
-                        try:
-                            attribute = EquipmentAttributeValueModel.from_db_row(attr_row)
-                            equipments_dict[equipment_id].attributes.append(attribute)
-                        except Exception as e:
-                            logger.debug(f"Erreur création attribut pour équipement {equipment_id}: {e}")
-                    
-                except Exception as e:
-                    logger.error(f"❌ Erreur mapping row: {e}")
-                    continue
-            
-            # Convertir en liste et sérialiser
-            equipments = [eq.to_api_response() for eq in equipments_dict.values()]
+            # Convertir en format API
+            equipments_api = [eq.to_dict() for eq in equipments]
             
             response = {
-                'equipments': equipments,
-                'count': len(equipments),
+                'equipments': equipments_api,
+                'count': len(equipments_api),
                 'entity_hierarchy': {
                     'requested_entity': entity,
                     'hierarchy_used': hierarchy_entities,
@@ -123,14 +93,15 @@ def get_equipments_infinite(
             }
             
             cache.set(cache_key, response, CACHE_TTL_SHORT)
-            logger.info(f"✅ Méthode optimisée: {len(equipments)} équipements récupérés en une requête")
+            logger.info(f"✅ SQLAlchemy méthode: {len(equipments_api)} équipements récupérés en une requête")
             return response
             
     except Exception as e:
-        logger.error(f"❌ Erreur méthode optimisée pour {entity}: {e}")
+        logger.error(f"❌ Erreur SQLAlchemy pour {entity}: {e}")
         raise
 
-def get_attribute_values(specification: str, attribute_index: str) -> List[AttributeValuesModel]:
+
+def get_attribute_values(specification: str, attribute_index: str) -> List[AttributeValues]:
     """Récupère les valeurs des attributs pour un équipement donné."""
     if not specification or not attribute_index:
         return []
@@ -140,37 +111,36 @@ def get_attribute_values(specification: str, attribute_index: str) -> List[Attri
     
     if cached:
         try:
-            # Reconstruire les objets AttributeValuesModel depuis le cache
-            return [AttributeValuesModel(**item) for item in cached]
+            # ✅ CORRECTION: Utiliser le bon modèle
+            return [AttributeValues(**item) for item in cached]
         except Exception as e:
             logger.debug(f"Erreur reconstruction cache pour {specification}_{attribute_index}: {e}")
-            # Si erreur de reconstruction, continuer avec la DB
 
     try:
-        db_conn = get_database_connection()
-        if db_conn is None:
-            logger.error("Impossible d'obtenir une connexion à la base de données")
-            raise Exception("Connexion DB manquante")
-        with db_conn as db:
-            results = db.execute_query(ATTRIBUTE_VALUES_QUERY, params={'specification': specification, 'attribute_index': attribute_index})
+        # ✅ CORRECTION: Utiliser SQLAlchemy session
+        with get_main_session() as session:
+            executor = SQLAlchemyQueryExecutor(session)
+            results = executor.execute_query(ATTRIBUTE_VALUES_QUERY, params={
+                'specification': specification, 
+                'attribute_index': attribute_index
+            })
 
             if not results:
-                # Mettre en cache une liste vide pour éviter les requêtes répétées
                 cache.set(cache_key, [], CACHE_TTL_SHORT)
                 return []
 
-            # Créer les objets EquipmentAttributeValueModel
+            # ✅ CORRECTION: Créer les objets AttributeValues
             attributes = []
             for r in results:
                 try:
-                    attr = AttributeValuesModel.from_db_row(r)
+                    attr = AttributeValues.from_db_row(r)
                     attributes.append(attr)
                 except Exception as e:
                     logger.debug(f"Erreur création attribut depuis DB: {e}")
                     continue
             
             # Sérialiser pour le cache
-            attributes_serialized = [attr.model_dump() for attr in attributes]
+            attributes_serialized = [attr.to_dict() for attr in attributes]
             cache.set(cache_key, attributes_serialized, CACHE_TTL_SHORT)
             
             return attributes
@@ -178,6 +148,7 @@ def get_attribute_values(specification: str, attribute_index: str) -> List[Attri
     except Exception as e:
         logger.error(f"❌ Erreur récupération attributs pour {specification}_{attribute_index}: {e}")
         return []
+
 
 def get_feeders(entity: str, hierarchy_result: Dict[str, Any]) -> Dict[str, Any]:
     """Récupère la liste des feeders."""
@@ -192,7 +163,6 @@ def get_feeders(entity: str, hierarchy_result: Dict[str, Any]) -> Dict[str, Any]
         hierarchy_entities = hierarchy_result.get('hierarchy', [])
         
         if not hierarchy_entities:
-            # Si pas de hiérarchie, utiliser seulement l'entité fournie
             hierarchy_entities = [entity]
             logger.warning(f"Aucune hiérarchie trouvée pour {entity}, utilisation de l'entité seule")
         
@@ -200,18 +170,16 @@ def get_feeders(entity: str, hierarchy_result: Dict[str, Any]) -> Dict[str, Any]
         
     except Exception as e:
         logger.error(f"Erreur récupération hiérarchie pour {entity}: {e}")
-        # En cas d'erreur, utiliser seulement l'entité fournie
         hierarchy_entities = [entity]
 
     query = FEEDER_QUERY
     params = {}
 
     try:
-        db_conn = get_database_connection()
-        if db_conn is None:
-            logger.error("Impossible d'obtenir une connexion à la base de données")
-            raise Exception("Connexion DB manquante")
-        with db_conn as db:
+        # ✅ CORRECTION: Utiliser SQLAlchemy session
+        with get_main_session() as session:
+            executor = SQLAlchemyQueryExecutor(session)
+            
             # Filtre par hiérarchie d'entités (OBLIGATOIRE)
             placeholders = ','.join([f':entity_{i}' for i in range(len(hierarchy_entities))])
             query += f" WHERE ereq_entity IN ({placeholders})"
@@ -222,14 +190,14 @@ def get_feeders(entity: str, hierarchy_result: Dict[str, Any]) -> Dict[str, Any]
             query += f" AND EREQ_CATEGORY IN ('DEPART30KV', 'DEPART6,6KV')"
             query += f" ORDER BY ereq_code"
             
-            results = db.execute_query(query, params=params)
+            results = executor.execute_query(query, params=params)
 
             feeders = []
             for row in results:
                 try:
-                    feeder = FeederModel.from_db_row(row)
-                    # Convertir en dictionnaire pour la sérialisation
-                    feeders.append(feeder.to_api_response())
+                    # ✅ CORRECTION: Les feeders sont des équipements normaux
+                    feeder = EquipmentModel.from_db_row(row)
+                    feeders.append(feeder.to_dict())
                 except Exception as e:
                     logger.error(f"❌ Erreur mapping feeder: {e}")
                     continue
@@ -237,28 +205,25 @@ def get_feeders(entity: str, hierarchy_result: Dict[str, Any]) -> Dict[str, Any]
             response = {"feeders": feeders, "count": len(feeders)}
             cache.set(cache_key, response, CACHE_TTL_SHORT)
             return response
+            
     except Exception as e:
         logger.error(f"❌ Erreur récupération feeders: {e}")
         raise
 
+
 def get_equipment_by_id(equipment_id: str) -> Optional[EquipmentModel]:
     """Récupère un équipement par son ID"""
     try:
-        db_conn = get_database_connection()
-        if db_conn is None:
-            logger.error("Impossible d'obtenir une connexion à la base de données")
-            raise Exception("Connexion DB manquante")
-        with db_conn as db:
-            results = db.execute_query(EQUIPMENT_BY_ID_QUERY, params={'equipment_id': equipment_id})
+        # ✅ CORRECTION: Utiliser SQLAlchemy session
+        with get_main_session() as session:
+            executor = SQLAlchemyQueryExecutor(session)
+            results = executor.execute_query(EQUIPMENT_BY_ID_QUERY, params={'equipment_id': equipment_id})
             
             if not results:
                 return None
                 
-            # Créer l'équipement depuis la première row
-            equipment = EquipmentModel.from_db_row(results[0])
-            
-            # Récupérer les attributs séparément
-            equipment.attributes = get_equipment_attributes_by_code(equipment.code)
+            # ✅ CORRECTION: Utiliser le builder pour un seul équipement
+            equipment = EquipmentWithAttributesBuilder.build_single_from_query_results(results)
             
             return equipment
             
@@ -266,16 +231,10 @@ def get_equipment_by_id(equipment_id: str) -> Optional[EquipmentModel]:
         logger.error(f"❌ Erreur récupération équipement {equipment_id}: {e}")
         return None
 
+
 def update_equipment_partial(equipment_id: str, updates: Dict[str, Any]) -> bool:
     """
     Met à jour partiellement un équipement et ses attributs
-    
-    Args:
-        equipment_id: ID de l'équipement à modifier
-        updates: Dictionnaire des champs à mettre à jour
-        
-    Returns:
-        True si succès, False sinon
     """
     try:
         # Vérifier que l'équipement existe
@@ -284,11 +243,10 @@ def update_equipment_partial(equipment_id: str, updates: Dict[str, Any]) -> bool
             logger.error(f"Équipement {equipment_id} non trouvé")
             return False
         
-        db_conn = get_database_connection()
-        if db_conn is None:
-            logger.error("Impossible d'obtenir une connexion à la base de données")
-            raise Exception("Connexion DB manquante")
-        with db_conn as db:
+        # ✅ CORRECTION: Utiliser SQLAlchemy session
+        with get_main_session() as session:
+            executor = SQLAlchemyQueryExecutor(session)
+            
             # 1. Mise à jour des champs de base de l'équipement
             equipment_fields = {
                 'code_parent', 'code', 'famille', 'zone', 'entity', 
@@ -330,12 +288,12 @@ def update_equipment_partial(equipment_id: str, updates: Dict[str, Any]) -> bool
                         WHERE pk_equipment = :equipment_id
                     """
                     
-                    db.execute_update(update_query, params=params)
+                    executor.execute_update(update_query, params=params)
                     logger.info(f"✅ Équipement {equipment_id} mis à jour: {list(equipment_updates.keys())}")
             
             # 2. Mise à jour des attributs si fournis
             if 'attributs' in updates and updates['attributs']:
-                success = update_equipment_attributes(existing_equipment.code, updates['attributs'])
+                success = update_equipment_attributes(getattr(existing_equipment, 'code', ''), updates['attributs'])
                 if not success:
                     logger.warning(f"Erreur partielle lors de la mise à jour des attributs pour {equipment_id}")
             
@@ -356,23 +314,15 @@ def update_equipment_partial(equipment_id: str, updates: Dict[str, Any]) -> bool
         logger.error(f"❌ Erreur mise à jour équipement {equipment_id}: {e}")
         return False
 
+
 def update_equipment_attributes(equipment_code: str, attributes: List[Dict[str, Any]]) -> bool:
     """
     Met à jour les attributs d'un équipement
-    
-    Args:
-        equipment_code: Code de l'équipement
-        attributes: Liste des attributs à mettre à jour
-        
-    Returns:
-        True si succès, False sinon
     """
     try:
-        db_conn = get_database_connection()
-        if db_conn is None:
-            logger.error("Impossible d'obtenir une connexion à la base de données")
-            raise Exception("Connexion DB manquante")
-        with db_conn as db:
+        # ✅ CORRECTION: Utiliser SQLAlchemy session
+        with get_main_session() as session:
+            executor = SQLAlchemyQueryExecutor(session)
             success_count = 0
             
             for attr in attributes:
@@ -391,8 +341,7 @@ def update_equipment_attributes(equipment_code: str, attributes: List[Dict[str, 
                         'value': attr_value
                     }
                     
-                    db.execute_update(UPDATE_EQUIPMENT_ATTRIBUTE_QUERY, params=update_params)
-                    
+                    executor.execute_update(UPDATE_EQUIPMENT_ATTRIBUTE_QUERY, params=update_params)
                     success_count += 1
                     
                 except Exception as e:
@@ -406,7 +355,8 @@ def update_equipment_attributes(equipment_code: str, attributes: List[Dict[str, 
         logger.error(f"❌ Erreur mise à jour attributs pour {equipment_code}: {e}")
         return False
 
-def get_equipment_attributes_by_code(equipment_code: str) -> List[EquipmentAttributeValueModel]:
+
+def get_equipment_attributes_by_code(equipment_code: str) -> List[Dict[str, Any]]:
     """Récupère les attributs d'un équipement par son code"""
     if not equipment_code:
         return []
@@ -415,20 +365,13 @@ def get_equipment_attributes_by_code(equipment_code: str) -> List[EquipmentAttri
     cached = cache.get_data_only(cache_key)
     
     if cached:
-        try:
-            return [EquipmentAttributeValueModel(**item) for item in cached]
-        except Exception as e:
-            logger.debug(f"Erreur reconstruction cache pour {equipment_code}: {e}")
+        return cached
 
     try:
-        from app.db.requests import EQUIPMENT_ATTRIBUTS_VALUES_QUERY
-        
-        db_conn = get_database_connection()
-        if db_conn is None:
-            logger.error("Impossible d'obtenir une connexion à la base de données")
-            raise Exception("Connexion DB manquante")
-        with db_conn as db:
-            results = db.execute_query(EQUIPMENT_ATTRIBUTS_VALUES_QUERY, params={'code': equipment_code})
+        # ✅ CORRECTION: Utiliser SQLAlchemy session
+        with get_main_session() as session:
+            executor = SQLAlchemyQueryExecutor(session)
+            results = executor.execute_query(EQUIPMENT_ATTRIBUTS_VALUES_QUERY, params={'code': equipment_code})
 
             if not results:
                 cache.set(cache_key, [], CACHE_TTL_SHORT)
@@ -438,69 +381,26 @@ def get_equipment_attributes_by_code(equipment_code: str) -> List[EquipmentAttri
             for r in results:
                 try:
                     if len(r) >= 5:
-                        attr = EquipmentAttributeValueModel.from_db_row(r)
-                        attributes.append(attr)
+                        # ✅ CORRECTION: Créer des dictionnaires simples au lieu d'objets
+                        attr_dict = {
+                            'id': str(r[0]) if r[0] else None,
+                            'specification': r[1],
+                            'index': r[2],
+                            'name': r[3],
+                            'value': r[4]
+                        }
+                        attributes.append(attr_dict)
                 except Exception as e:
                     logger.debug(f"Erreur création attribut: {e}")
                     continue
             
-            attributes_serialized = [attr.model_dump() for attr in attributes]
-            cache.set(cache_key, attributes_serialized, CACHE_TTL_SHORT)
-            
+            cache.set(cache_key, attributes, CACHE_TTL_SHORT)
             return attributes
 
     except Exception as e:
         logger.error(f"❌ Erreur récupération attributs pour équipement {equipment_code}: {e}")
         return []
 
-def get_equipment_attributes_by_code_without_value(equipment_code: str) -> List[EquipmentAttributeValueModel]:
-    """Récupère les attributs d'un équipement par son code"""
-    if not equipment_code:
-        return []
-        
-    cache_key = f"equipment_attributes_{equipment_code}"
-    cached = cache.get_data_only(cache_key)
-
-
-    if cached:
-        try:
-            return [EquipmentAttributeValueModel(**item) for item in cached]
-        except Exception as e:
-            logger.debug(f"Erreur reconstruction cache pour {equipment_code}: {e}")
-
-    try:
-        from app.db.requests import EQUIPMENT_CLASSE_ATTRIBUTS_QUERY
-        
-        db_conn = get_database_connection()
-        if db_conn is None:
-            logger.error("Impossible d'obtenir une connexion à la base de données")
-            raise Exception("Connexion DB manquante")
-
-        with db_conn as db:
-            results = db.execute_query(EQUIPMENT_CLASSE_ATTRIBUTS_QUERY, params={'code': equipment_code})
-                        
-            if not results:
-                cache.set(cache_key, [], CACHE_TTL_SHORT)
-                return []
-
-            attributes = []
-            for r in results:
-                try:
-                    if len(r) >= 5:
-                        attr = EquipmentAttributeValueModel.from_db_row(r)
-                        attributes.append(attr)
-                except Exception as e:
-                    logger.debug(f"Erreur création attribut: {e}")
-                    continue
-            
-            attributes_serialized = [attr.model_dump() for attr in attributes]
-            cache.set(cache_key, attributes_serialized, CACHE_TTL_SHORT)
-            
-            return attributes
-
-    except Exception as e:
-        logger.error(f"❌ Erreur récupération attributs pour équipement {equipment_code}: {e}")
-        return []
 
 def validate_equipment_for_insertion(equipment: EquipmentModel) -> tuple[bool, str]:
     """
@@ -508,45 +408,43 @@ def validate_equipment_for_insertion(equipment: EquipmentModel) -> tuple[bool, s
     """
     try:
         # Vérifications obligatoires
-        if not equipment.code or len(equipment.code.strip()) == 0:
+        if not equipment.code is not None or len(equipment.code.strip()) == 0:
             return False, "Code équipement obligatoire"
         
-        if not equipment.famille:
+        if not equipment.famille is not None:
             return False, "Famille équipement obligatoire"
             
-        if not equipment.entity:
+        if not equipment.entity is not None:
             return False, "Entité obligatoire"
             
-        if not equipment.zone:
+        if not equipment.zone is not None:
             return False, "Zone obligatoire"
         
-        # ✅ CORRECTION : Vérifier dans les DEUX bases de données
+        # ✅ CORRECTION: Vérifier dans les DEUX bases avec SQLAlchemy
         
         # 1. Vérifier dans la DB principale
         main_exists = False
         try:
-            main_db_conn = get_database_connection()
-            if main_db_conn is not None:
-                with main_db_conn as db:
-                    main_check = db.execute_query(
-                        "SELECT COUNT(*) FROM coswin.t_equipment WHERE ereq_code = :code", 
-                        params={'code': equipment.code}
-                    )
-                    main_exists = main_check and main_check[0][0] > 0
+            with get_main_session() as session:
+                executor = SQLAlchemyQueryExecutor(session)
+                main_check = executor.execute_query(
+                    "SELECT COUNT(*) FROM coswin.t_equipment WHERE ereq_code = :code", 
+                    params={'code': equipment.code}
+                )
+                main_exists = main_check and main_check[0][0] > 0
         except Exception as e:
             logger.warning(f"Erreur vérification DB principale: {e}")
         
         # 2. Vérifier dans la DB temporaire
         temp_exists = False
         try:
-            temp_db_conn = get_database_connection_temp()
-            if temp_db_conn is not None:
-                with temp_db_conn as db:
-                    temp_check = db.execute_query(
-                        "SELECT COUNT(*) FROM coswin.t_equipment WHERE ereq_code = :code", 
-                        params={'code': equipment.code}
-                    )
-                    temp_exists = temp_check and temp_check[0][0] > 0
+            with get_temp_session() as session:
+                executor = SQLAlchemyQueryExecutor(session)
+                temp_check = executor.execute_query(
+                    "SELECT COUNT(*) FROM coswin.t_equipment WHERE ereq_code = :code", 
+                    params={'code': equipment.code}
+                )
+                temp_exists = temp_check and temp_check[0][0] > 0
         except Exception as e:
             logger.warning(f"Erreur vérification DB temporaire: {e}")
         
@@ -561,11 +459,12 @@ def validate_equipment_for_insertion(equipment: EquipmentModel) -> tuple[bool, s
         logger.error(f"Erreur validation équipement: {e}")
         return False, f"Erreur validation: {str(e)}"
 
+
 def insert_equipment(equipment: EquipmentModel) -> tuple[bool, Optional[int]]:
     """
-    Insère un nouvel équipement en utilisant les méthodes existantes de la couche DB.
+    Insère un nouvel équipement en utilisant SQLAlchemy avec requêtes SQL brutes.
     """
-    logger.info(f"🔧 Insertion équipement: {equipment.code}")
+    logger.info(f"🔧 Insertion équipement SQLAlchemy: {equipment.code}")
     
     try:
         # Validation préalable
@@ -575,27 +474,24 @@ def insert_equipment(equipment: EquipmentModel) -> tuple[bool, Optional[int]]:
             logger.error(f"Validation échouée: {msg}")
             return (False, None)
 
-        db_conn = get_database_connection_temp()
-        if db_conn is None:
-            logger.error("Impossible d'obtenir une connexion à la base de données")
-            raise Exception("Connexion DB manquante")
-
-        with db_conn as db:
+        # ✅ CORRECTION: Utiliser SQLAlchemy session temporaire
+        with get_temp_session() as session:
+            executor = SQLAlchemyQueryExecutor(session)
+            
             try:
-                # Démarrer transaction si disponible
-                if hasattr(db, "begin_transaction"):
-                    try:
-                        logger.info("Démarrage d'une transaction explicite")
-                        db.begin_transaction()
-                    except Exception:
-                        logger.debug("begin_transaction non opérationnel, continuation sans appel explicite")
-
-                # 1) ✅ CORRECTION: Utiliser une séquence Oracle au lieu de COUNT
-                equipment_pk = _get_index(db, "SELECT coswin_seq.NEXTVAL FROM DUAL", "SELECT COALESCE(MAX(pk_equipment), 0) + 1 FROM coswin.t_equipment")[1]
+                # 1) Utiliser une séquence Oracle au lieu de COUNT
+                equipment_pk = _get_index_sqlalchemy(executor, 
+                    "SELECT coswin_seq.NEXTVAL FROM DUAL", 
+                    "SELECT COALESCE(MAX(pk_equipment), 0) + 1 FROM coswin.t_equipment"
+                )
                 
-                equipment.id = str(equipment_pk)
+                if equipment_pk is None:
+                    return (False, None)
                 
-                db.execute_update(EQUIPMENT_ADD_QUERY, params={
+                setattr(equipment, 'id', equipment_pk)
+                
+                # ✅ CORRECTION: Utiliser executor.execute_update au lieu de db.execute_update
+                executor.execute_update(EQUIPMENT_ADD_QUERY, params={
                     'id': equipment.id,
                     'code': equipment.code,
                     'bar_code': equipment.code,
@@ -610,45 +506,53 @@ def insert_equipment(equipment: EquipmentModel) -> tuple[bool, Optional[int]]:
                     'feeder': getattr(equipment, 'feeder', None),
                     'creation_date': datetime.now()
                 }, commit=False)
+                
                 logger.info(f"1) Équipement {equipment.id} inséré en base (commit différé)")
 
                 # 2) Récupérer cwsp_code (spec) pour la catégorie
-                spec_rows = db.execute_query(EQUIPMENT_T_SPECIFICATION_CODE_QUERY, params={'category': equipment.famille})
+                spec_rows = executor.execute_query(EQUIPMENT_T_SPECIFICATION_CODE_QUERY, 
+                                                params={'category': equipment.famille})
                 logger.info(f"2) Spécifications trouvées pour la catégorie {equipment.famille}: {len(spec_rows) if spec_rows else 0}")
                 
                 if not spec_rows:
                     logger.info(f"2) Aucune specification trouvée pour la catégorie {equipment.famille} -> insertion terminée sans specs")
-                    if hasattr(db, "commit_transaction"):
-                        db.commit_transaction()
-                    # ✅ CORRECTION: Invalider le cache après insertion
-                    invalidate_equipment_insertion_cache(equipment.code, equipment.entity, equipment.famille)
+                    # ✅ CORRECTION: commit automatique avec SQLAlchemy session
+                    invalidate_equipment_insertion_cache(str(equipment.code), str(equipment.entity), str(equipment.famille))
                     return (True, equipment_pk)
                 
                 cwsp_code = spec_rows[0][0]
 
                 # 3) INSERT equipment_specs avec PK fiable
-                equipment_specs_pk = _get_index(db, "SELECT coswin_eq_specs_seq.NEXTVAL FROM DUAL", "SELECT COALESCE(MAX(pk_equipment_specs), 0) + 1 FROM coswin.equipment_specs")[1]
+                equipment_specs_pk = _get_index_sqlalchemy(executor,
+                    "SELECT coswin_eq_specs_seq.NEXTVAL FROM DUAL", 
+                    "SELECT COALESCE(MAX(pk_equipment_specs), 0) + 1 FROM coswin.equipment_specs"
+                )
                 
-                db.execute_update(EQUIPMENT_SPEC_ADD_QUERY, params={
+                if equipment_specs_pk is None:
+                    return (False, None)
+                
+                executor.execute_update(EQUIPMENT_SPEC_ADD_QUERY, params={
                     'id': equipment_specs_pk,
                     'specification': cwsp_code,
                     'equipment': equipment.code,
                     'release_date': datetime.now(),
                     'release_number': 1
                 }, commit=False)
+                
                 logger.info(f"3) equipment_specs inséré pour {equipment.code} et specification {cwsp_code} (commit différé)")
 
-                # 4) ✅ CORRECTION: Création d'attributs avec dédoublonnage
+                # 4) Création d'attributs avec dédoublonnage
                 attributes = equipment.attributes or []
                 logger.info(f"4) Attributs fournis pour insertion: {len(attributes)}")
                 
-                # ✅ Requête corrigée pour éviter les doublons d'index
-                attr_rows = db.execute_query(EQUIPMENT_LENGTH_ATTRIBUTS_QUERY_DISTINCT, params={'category': equipment.famille})
+                # Requête corrigée pour éviter les doublons d'index
+                attr_rows = executor.execute_query(EQUIPMENT_LENGTH_ATTRIBUTS_QUERY_DISTINCT, 
+                                                    params={'category': equipment.famille})
                 
                 logger.info(f"Index d'attributs disponibles pour la famille {equipment.famille}: {len(attr_rows) if attr_rows else 0}")
                 
                 if attr_rows:
-                    # ✅ Créer un mapping strict des valeurs fournies par index
+                    # Créer un mapping strict des valeurs fournies par index
                     provided_values = {}
                     seen_indexes = set()
                     
@@ -673,7 +577,7 @@ def insert_equipment(equipment: EquipmentModel) -> tuple[bool, Optional[int]]:
                             logger.error(f"Erreur traitement attribut: {e}")
                             continue
                     
-                    # ✅ Créer UNE SEULE ligne par index de famille (dédoublonné)
+                    # Créer UNE SEULE ligne par index de famille (dédoublonné)
                     created = 0
                     created_indexes = set()
                     
@@ -681,7 +585,7 @@ def insert_equipment(equipment: EquipmentModel) -> tuple[bool, Optional[int]]:
                         try:
                             index_val = str(attr_row[0]).strip()
                             
-                            # ✅ Vérifier qu'on ne crée pas de doublon
+                            # Vérifier qu'on ne crée pas de doublon
                             if index_val in created_indexes:
                                 logger.warning(f"Index {index_val} déjà créé, ignoré")
                                 continue
@@ -689,14 +593,15 @@ def insert_equipment(equipment: EquipmentModel) -> tuple[bool, Optional[int]]:
                             # Récupérer la valeur fournie ou None
                             value = provided_values.get(index_val)
                             
-                            # ✅ Vérifier que l'attribut n'existe pas déjà
-                            existing_check = db.execute_query(CHECK_ATTRIBUTE_EXISTS_QUERY, params={'commonkey': equipment_specs_pk, 'indx': index_val})
+                            # Vérifier que l'attribut n'existe pas déjà
+                            existing_check = executor.execute_query(CHECK_ATTRIBUTE_EXISTS_QUERY, 
+                                                                    params={'commonkey': equipment_specs_pk, 'indx': index_val})
                             
                             if existing_check and existing_check[0][0] > 0:
                                 logger.warning(f"Attribut index {index_val} existe déjà pour commonkey {equipment_specs_pk}")
                                 continue
                             
-                            db.execute_update(EQUIPMENT_ATTRIBUTE_ADD_QUERY, params={
+                            executor.execute_update(EQUIPMENT_ATTRIBUTE_ADD_QUERY, params={
                                 'commonkey': equipment_specs_pk,
                                 'indx': index_val,
                                 'etat_value': value
@@ -714,50 +619,40 @@ def insert_equipment(equipment: EquipmentModel) -> tuple[bool, Optional[int]]:
                 else:
                     logger.info(f"Aucun attribut disponible pour la famille {equipment.famille}")
                 
-                # Commit de la transaction
-                if hasattr(db, "commit_transaction"):
-                    db.commit_transaction()
-                    logger.info("Transaction commitée avec succès")
+                # ✅ CORRECTION: Le commit se fait automatiquement à la fin du context manager
 
-                # ✅ CORRECTION: Invalider le cache après insertion réussie
-                invalidate_equipment_insertion_cache(equipment.code, equipment.entity, equipment.famille)
+                # Invalider le cache après insertion réussie
+                invalidate_equipment_insertion_cache(str(equipment.code), str(equipment.entity), str(equipment.famille))
 
-                logger.info(f"✅ Équipement ID: {equipment_pk} - Code: {equipment.code} inséré avec succès")
+                logger.info(f"✅ Équipement ID: {equipment_pk} - Code: {equipment.code} inséré avec succès SQLAlchemy")
                 return (True, equipment_pk)
 
             except Exception as e:
-                logger.error(f"Erreur lors de l'insertion équipement: {e}")
-                try:
-                    if hasattr(db, "rollback_transaction"):
-                        db.rollback_transaction()
-                except Exception:
-                    logger.debug("Rollback non disponible ou a échoué")
+                logger.error(f"Erreur lors de l'insertion équipement SQLAlchemy: {e}")
+                # ✅ Le rollback se fait automatiquement avec SQLAlchemy session
                 return (False, None)
 
     except Exception as e:
-        logger.error(f"insert_equipment fatal error: {e}")
+        logger.error(f"insert_equipment SQLAlchemy fatal error: {e}")
         return (False, None)
 
-def _get_index(db: OracleDatabase, seq_oracle: str, seq_fallback: str) -> tuple[bool, Optional[int]]:
-    """Récupère le prochain index d'équipement en utilisant une séquence ou MAX + 1"""
-    equipment_pk = None
+
+def _get_index_sqlalchemy(executor: SQLAlchemyQueryExecutor, seq_oracle: str, seq_fallback: str) -> Optional[int]:
+    """Récupère le prochain index d'équipement en utilisant SQLAlchemy"""
     try:
         # Essayer d'utiliser une séquence Oracle (plus fiable)
-        pk_rows = db.execute_query(seq_oracle)
-        if pk_rows:
-            equipment_pk = pk_rows[0][0]
+        equipment_pk = executor.execute_scalar(seq_oracle)
+        if equipment_pk:
+            return int(equipment_pk)
         else:
             # Fallback avec MAX + 1 (plus fiable que COUNT)
-            pk_rows = db.execute_query(seq_fallback)
-            equipment_pk = pk_rows[0][0]
+            equipment_pk = executor.execute_scalar(seq_fallback)
+            return int(equipment_pk) if equipment_pk else None
     except Exception:
         # Si séquence n'existe pas, utiliser MAX + 1
-        pk_rows = db.execute_query(seq_fallback)
-        if not pk_rows:
-            logger.error("Impossible de récupérer pk_equipment")
-            if hasattr(db, "rollback_transaction"):
-                db.rollback_transaction()
-            return (False, None)
-        equipment_pk = pk_rows[0][0]
-
-    return (True, equipment_pk)
+        try:
+            equipment_pk = executor.execute_scalar(seq_fallback)
+            return int(equipment_pk) if equipment_pk else None
+        except Exception as e:
+            logger.error(f"Impossible de récupérer pk_equipment: {e}")
+            return None

@@ -1,4 +1,4 @@
-from app.db.database import get_database_connection
+from app.db.sqlalchemy.session import SQLAlchemyQueryExecutor, get_main_session
 from app.models.models import UserModel
 from app.core.config import CACHE_TTL_SHORT
 from app.core.cache import cache
@@ -17,11 +17,9 @@ def authenticate_user(username: str, password: str) -> UserModel | None:
         raise ValueError("Username et mot de passe requis")
 
     try:
-        db_conn = get_database_connection()
-        if db_conn is None:
-            logger.error("Impossible d'obtenir une connexion à la base de données")
-            raise Exception("Connexion DB manquante")
-        with db_conn as db:
+        with get_main_session() as session:
+            db = SQLAlchemyQueryExecutor(session)
+            
             query = GET_USER_AUTHENTICATION_QUERY
             params = {'username': username, 'password': password}
             results = db.execute_query(query, params=params)
@@ -53,7 +51,7 @@ def logout_user(username: str) -> bool:
     
     user = get_user_connect(username)
     if user:
-        user.is_absent = True  # Marquer comme absent
+        # user.is_absent = True  # Marquer comme absent
         success = update_user(user)  # Mettre à jour l'utilisateur
         if success:
             cache_key = f"mobile_eq_{username}_auth"
@@ -76,16 +74,14 @@ def update_user(user: UserModel) -> bool:
     Returns:
         True si la mise à jour réussit, sinon False
     """
-    if not user or not user.id:
+    if not user or not user.id is not None:
         logger.warning("Utilisateur invalide pour la mise à jour.")
         return False
     
     try:
-        db_conn = get_database_connection()
-        if db_conn is None:
-            logger.error("Impossible d'obtenir une connexion à la base de données")
-            raise Exception("Connexion DB manquante")
-        with db_conn as db:
+        with get_main_session() as session:
+            db = SQLAlchemyQueryExecutor(session)
+            
             query = UPDATE_USER_QUERY
             params = {
                 'code': user.code,
@@ -94,7 +90,7 @@ def update_user(user: UserModel) -> bool:
                 'entity': user.entity,
                 'preferred_group': user.group,
                 'url_image': user.url_image,
-                'is_absent': 1 if user.is_absent else 0,  # Convertir booléen en entier pour Oracle
+                'is_absent': 1 if user.is_absent is not None else 0,  # Convertir booléen en entier pour Oracle
                 'pk': user.id
             }
             db.execute_update(query, params=params)
@@ -122,11 +118,9 @@ def get_user_connect(username: str) -> UserModel | None:
         return None
     
     try:
-        db_conn = get_database_connection()
-        if db_conn is None:
-            logger.error("Impossible d'obtenir une connexion à la base de données")
-            raise Exception("Connexion DB manquante")
-        with db_conn as db:
+        with get_main_session() as session:
+            db = SQLAlchemyQueryExecutor(session)
+            
             query = GET_USER_CONNECT_QUERY
             params = {'username': username}
             results = db.execute_query(query, params=params)

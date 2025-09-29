@@ -20,11 +20,12 @@ zone_router = APIRouter(
 )
 async def get_zone_mobile(
     entity: str = Query(..., description="Entité obligatoire (hiérarchie automatique)"),
+    hierarchy_result: Dict[str, Any] = Query(..., description="Résultat de la hiérarchie de l'entité")
 ) -> Dict[str, Any]:
     """Liste des zones pour mobile"""
     try:
-        result = get_zones(entity=entity)
-        
+        result = get_zones(entity=entity, hierarchy_result=hierarchy_result)
+
         return {
             "status": "success",
             "message": "Zones récupérées avec succès",

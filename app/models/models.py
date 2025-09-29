@@ -1,174 +1,129 @@
-from pydantic import BaseModel, Field, validator
-from typing import List, Optional, Dict, Any
+from sqlalchemy import Column, String, Integer, DateTime, Float, Text, Boolean, ForeignKey
+from sqlalchemy.sql import func
+from sqlalchemy.orm import declarative_base
+from typing import Dict, Any, List, Optional
 
-class EquipmentModel(BaseModel):
-    """
-    Modèle de données pour les équipements Coswin.
-    """
-    id: str = Field(..., description="Identifiant unique de l'équipement")
-    codeParent: Optional[str] = Field(None, description="Code de l'équipement parent")
-    code: str = Field(..., description="Code de l'équipement")
-    famille: str = Field(..., description="Famille d'équipement")
-    zone: str = Field(..., description="Zone géographique")
-    entity: str = Field(..., description="Entité responsable")
-    unite: str = Field(..., description="Unité organisationnelle")
-    centreCharge: str = Field(..., description="Centre de charge")
-    description: str = Field(..., description="Description de l'équipement")
-    longitude: Optional[str] = Field(None, description="Coordonnée longitude")
-    latitude: Optional[str] = Field(None, description="Coordonnée latitude")
-    feeder: Optional[str] = Field(None, description="Identifiant du feeder")
-    feederDescription: Optional[str] = Field(None, description="Description du feeder")
-    attributes: List['EquipmentAttributeValueModel'] = Field(default_factory=list, description="Liste des attributs de l'équipement")
+# Base SQLAlchemy
+Base = declarative_base()
+
+class EquipmentModel(Base):
+    """Modèle SQLAlchemy pour les équipements Coswin."""
+    __tablename__ = 't_equipment'
+    __table_args__ = {'schema': 'coswin'}
+    
+    # ✅ CORRECTION: Colonnes selon EQUIPMENT_INFINITE_QUERY
+    id = Column('pk_equipment', Integer, primary_key=True, autoincrement=True)
+    codeParent = Column('ereq_parent_equipment', String(50), nullable=True)
+    code = Column('ereq_code', String(50), nullable=False, unique=True, index=True)
+    famille = Column('ereq_category', String(50), nullable=False)
+    zone = Column('ereq_zone', String(50), nullable=False)
+    entity = Column('ereq_entity', String(50), nullable=False)
+    unite = Column('ereq_function', String(50), nullable=False)
+    centreCharge = Column('ereq_costcentre', String(50), nullable=False)
+    description = Column('ereq_description', Text, nullable=False)
+    longitude = Column('ereq_longitude', Float, nullable=True)
+    latitude = Column('ereq_latitude', Float, nullable=True)
+    feeder = Column('ereq_string2', String(255), nullable=True)
+    barCode = Column('ereq_bar_code', String(50), nullable=True)  # ✅ AJOUTÉ
+    creation_date = Column('ereq_creation_date', DateTime, default=func.now())
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # Attributs Python pour données jointes (pas des colonnes DB)
+        self.attributes: List[Dict[str, Any]] = []
+        self.centreChargeDescription: Optional[str] = None
+        self.feederDescription: Optional[str] = None
 
     @classmethod
     def from_db_row(cls, row: tuple) -> 'EquipmentModel':
         """
-        Crée une instance EquipmentModel à partir d'une ligne de base de données.
-        
-        Args:
-            row: Tuple contenant les données de la base de données Oracle
-            
-        Returns:
-            Instance EquipmentModel
-            
-        Raises:
-            ValueError: Si les données sont invalides
+        Crée une instance depuis EQUIPMENT_INFINITE_QUERY ou EQUIPMENT_BY_ID_QUERY
+        Structure attendue: pk_equipment, ereq_parent_equipment, ereq_code, ereq_category,
+        ereq_zone, ereq_entity, ereq_function, ereq_costcentre, ereq_description,
+        ereq_longitude, ereq_latitude, feeder, feeder_description, [attributs...]
         """
         try:
-            return cls(
-                id=str(row[0]) if row[0] is not None else "",
-                codeParent=str(row[1]) if row[1] is not None else None,
-                code=str(row[2]) if row[2] is not None else "",
-                famille=str(row[3]) if row[3] is not None else "",
-                zone=str(row[4]) if row[4] is not None else "",
-                entity=str(row[5]) if row[5] is not None else "",
-                unite=str(row[6]) if row[6] is not None else "",
-                centreCharge=str(row[7]) if row[7] is not None else "",
-                description=str(row[8]) if row[8] is not None else "",
-                longitude=str(row[9]) if row[9] is not None and str(row[9]).strip() else None,
-                latitude=str(row[10]) if row[10] is not None and str(row[10]).strip() else None,
-                feeder=str(row[11]) if len(row) > 11 and row[11] is not None else None,
-                feederDescription=str(row[12]) if len(row) > 12 and row[12] is not None else None
-            )
-        except IndexError as e:
-            raise ValueError(f"Ligne de base de données incomplète: {e}")
-        except Exception as e:
+            equipment = cls()
+            # ✅ CORRECTION: Garder ID comme Integer
+            equipment.id = int(row[0]) if row[0] is not None else None
+            equipment.codeParent = str(row[1]) if row[1] is not None else None
+            equipment.code = str(row[2]) if row[2] is not None else ""
+            equipment.famille = str(row[3]) if row[3] is not None else ""
+            equipment.zone = str(row[4]) if row[4] is not None else ""
+            equipment.entity = str(row[5]) if row[5] is not None else ""
+            equipment.unite = str(row[6]) if row[6] is not None else ""
+            # ✅ CORRECTION: ereq_costcentre est déjà la description via JOIN
+            equipment.centreCharge = str(row[7]) if row[7] is not None else ""
+            equipment.centreChargeDescription = str(row[7]) if row[7] is not None else ""
+            equipment.description = str(row[8]) if row[8] is not None else ""
+            equipment.longitude = float(row[9]) if row[9] is not None and str(row[9]).strip() else None
+            equipment.latitude = float(row[10]) if row[10] is not None and str(row[10]).strip() else None
+            equipment.feeder = str(row[11]) if len(row) > 11 and row[11] is not None else None
+            equipment.feederDescription = str(row[12]) if len(row) > 12 and row[12] is not None else None
+            return equipment
+        except (IndexError, ValueError) as e:
             raise ValueError(f"Erreur lors de la création du modèle: {e}")
 
     def to_dict(self) -> Dict[str, Any]:
-        """
-        Convertit le modèle en dictionnaire.
-        
-        Returns:
-            Dictionnaire représentant l'équipement
-        """
-        return self.model_dump(exclude_none=False)
+        """Convertit le modèle en dictionnaire."""
+        return {
+            'id': str(self.id) if self.id is not None else None,  # ✅ String pour API
+            'codeParent': self.codeParent,
+            'code': self.code,
+            'famille': self.famille,
+            'zone': self.zone,
+            'entity': self.entity,
+            'unite': self.unite,
+            'centreCharge': self.centreChargeDescription or self.centreCharge,
+            'description': self.description,
+            'longitude': str(self.longitude) if self.longitude is not None else None,
+            'latitude': str(self.latitude) if self.latitude is not None else None,
+            'feeder': self.feeder,
+            'feederDescription': self.feederDescription,
+            'attributes': self.attributes
+        }
 
-    def to_api_response(self) -> Dict[str, Any]:
-        """
-        Convertit le modèle en format de réponse API.
-        
-        Returns:
-            Dictionnaire formaté pour l'API
-        """
-        data = self.to_dict()
-        # Ajouter des métadonnées utiles
-        data['attributes'] = [attr.to_api_response() for attr in self.attributes]
-        data['has_coordinates'] = bool(self.longitude and self.latitude)
-        data['has_feeder'] = bool(self.feeder)
-        return data
 
-    def __str__(self) -> str:
-        """Représentation string de l'équipement"""
-        return f"Equipment({self.code} - {self.description} - {self.zone} - {self.entity} - {self.unite} - {self.centreCharge} - {self.longitude} - {self.latitude})"
-
-    def __repr__(self) -> str:
-        """Représentation détaillée de l'équipement"""
-        return f"EquipmentModel(id={self.id}, code={self.code}, zone={self.zone}, entity={self.entity}, unite={self.unite}, centreCharge={self.centreCharge}, longitude={self.longitude}, latitude={self.latitude})"
-
-class UserModel(BaseModel):
-    """
-    Modèle de données pour les utilisateurs.
-    """
-    id: str = Field(..., description="Identifiant unique de l'utilisateur")
-    code: str = Field(..., description="Code de l'utilisateur")
-    username: str = Field(..., description="Nom d'utilisateur")
-    password: Optional[str] = Field(None, description="Mot de passe de l'utilisateur")
-    email: Optional[str] = Field(None, description="Adresse e-mail de l'utilisateur")
-    entity: Optional[str] = Field(None, description="Nom de l'entité de l'utilisateur")
-    group: Optional[str] = Field(None, description="Groupe de l'utilisateur")
-    url_image: Optional[str] = Field(None, description="URL de l'image de profil")
-    is_absent: bool = Field(True, description="Indique si l'utilisateur est absent")
-
-    class Config:
-        """Configuration Pydantic"""
-        str_strip_whitespace = True  # Supprime les espaces en début/fin
-        validate_assignment = True   # Valide lors des assignations
-        use_enum_values = True      # Utilise les valeurs des enums
+class UserModel(Base):
+    """Modèle SQLAlchemy pour les utilisateurs."""
+    # ✅ CORRECTION: Table selon GET_USER_AUTHENTICATION_QUERY
+    __tablename__ = 'coswin_user'
+    __table_args__ = {'schema': 'coswin'}
+    
+    id = Column('pk_coswin_user', Integer, primary_key=True, autoincrement=True)
+    code = Column('cwcu_code', String(50), nullable=False)
+    username = Column('cwcu_signature', String(100), nullable=False)
+    password = Column('cwcu_password', String(255), nullable=True)
+    email = Column('cwcu_email', String(255), nullable=True)
+    entity = Column('cwcu_entity', String(50), nullable=True)
+    group = Column('cwcu_preferred_group', String(50), nullable=True)
+    url_image = Column('cwcu_url_image', String(500), nullable=True)
+    is_absent = Column('cwcu_is_absent', Boolean, default=True)
     
     @classmethod
     def from_db_row(cls, row: tuple) -> 'UserModel':
-        """
-        Crée une instance UserModel à partir d'une ligne de base de données.
-        
-        Args:
-            row: Tuple contenant les données de la base de données Oracle
-            
-        Returns:
-            Instance UserModel
-            
-        Raises:
-            ValueError: Si les données sont invalides
-        """
+        """Crée depuis GET_USER_AUTHENTICATION_QUERY"""
         try:
-            return cls(
-                id=str(row[0]) if row[0] is not None else "",
-                code=str(row[1]) if row[1] is not None else "",
-                username=str(row[2]) if row[2] is not None else "",
-                email=str(row[3]) if row[3] is not None else None,
-                entity=str(row[4]) if row[4] is not None else None,
-                group=str(row[5]) if row[5] is not None else None,
-                url_image=str(row[6]) if row[6] is not None else None,
-                is_absent=bool(row[7]) if len(row) > 7 and row[7] is not None else True,
-                password=str(row[8]) if len(row) > 8 and row[8] is not None else None
-            )
-        except IndexError as e:
-            raise ValueError(f"Ligne de base de données incomplète: {e}")
-        except Exception as e:
-            raise ValueError(f"Erreur lors de la création du modèle: {e}")
-        
+            user = cls()
+            user.id = int(row[0]) if row[0] is not None else None
+            user.code = str(row[1]) if row[1] is not None else ""
+            user.username = str(row[2]) if row[2] is not None else ""
+            user.email = str(row[3]) if row[3] is not None else None
+            user.entity = str(row[4]) if row[4] is not None else None
+            user.group = str(row[5]) if row[5] is not None else None
+            user.url_image = str(row[6]) if row[6] is not None else None
+            user.is_absent = bool(row[7]) if len(row) > 7 and row[7] is not None else True
+            user.password = str(row[8]) if len(row) > 8 and row[8] is not None else None
+            return user
+        except (IndexError, ValueError) as e:
+            raise ValueError(f"Erreur lors de la création du modèle utilisateur: {e}")
+
     def to_dict(self) -> Dict[str, Any]:
-        """
-        Convertit le modèle en dictionnaire.
-        
-        Returns:
-            Dictionnaire représentant l'utilisateur
-        """
-        return self.model_dump(exclude_none=False)
-    
-    def to_api_response(self) -> Dict[str, Any]:
-        """
-        Convertit le modèle en format de réponse API.
-        
-        Returns:
-            Dictionnaire formaté pour l'API
-        """
-        return self.to_dict()
-    
-    def __str__(self) -> str:
-        """Représentation string de l'utilisateur"""
-        return f"User({self.username} - {self.email})"
-    
-    def __repr__(self) -> str:
-        """Représentation détaillée de l'utilisateur"""
-        return f"UserModel(id={self.id}, username={self.username}, entity={self.entity})"
-    
-    def to_mobile_dict(self) -> Dict[str, Any]:
-        """Format optimisé pour liste mobile"""
+        """Convertit le modèle en dictionnaire."""
         return {
-            'id': self.id,
-            'username': self.username,
+            'id': str(self.id) if self.id is not None else None,
             'code': self.code,
+            'username': self.username,
             'email': self.email,
             'entity': self.entity,
             'group': self.group,
@@ -177,98 +132,66 @@ class UserModel(BaseModel):
         }
 
 
-class ZoneModel(BaseModel):
-    """
-    Modèle pour les zones géographiques.
-    """
-    id: str = Field(..., description="Identifiant unique de la zone")
-    code: str = Field(..., description="Code de la zone")
-    description: str = Field(..., description="Description de la zone")
-    entity: Optional[str] = Field(None, description="Entité associée à la zone")
+class ZoneModel(Base):
+    """Modèle SQLAlchemy pour les zones géographiques."""
+    # ✅ CORRECTION: Table selon ZONE_QUERY
+    __tablename__ = 't_zone'
+    __table_args__ = {'schema': 'coswin'}
+    
+    id = Column('pk_zone', Integer, primary_key=True, autoincrement=True)
+    code = Column('mdzo_code', String(50), nullable=False)
+    description = Column('mdzo_description', Text, nullable=False)
+    entity = Column('mdzo_entity', String(50), nullable=True)
     
     @classmethod
     def from_db_row(cls, row: tuple) -> 'ZoneModel':
-        """Crée une instance ZoneModel à partir d'une ligne de DB"""
-        return cls(
-            id=str(row[0]) if row[0] is not None else "",
-            code=str(row[1]) if row[1] is not None else "",
-            description=str(row[2]) if row[2] is not None else "",
-            entity=str(row[3]) if len(row) > 3 and row[3] is not None else None
-        )
-    
+        """Crée depuis ZONE_QUERY"""
+        zone = cls()
+        zone.id = int(row[0]) if row[0] is not None else None
+        zone.code = str(row[1]) if row[1] is not None else ""
+        zone.description = str(row[2]) if row[2] is not None else ""
+        zone.entity = str(row[3]) if len(row) > 3 and row[3] is not None else None
+        return zone
+
     def to_dict(self) -> Dict[str, Any]:
-        """Convertit en dictionnaire"""
-        return self.model_dump(exclude_none=True)
-    
-    def to_api_response(self) -> Dict[str, Any]:
-        """Convertit en format de réponse API"""
         return {
-            'id': self.id,
+            'id': str(self.id) if self.id is not None else None,
             'code': self.code,
             'description': self.description,
             'entity': self.entity
         }
-    
-    def __str__(self) -> str:
-        """Représentation string de la zone"""
-        return f"Zone({self.code} - {self.description})"
-    
-    def __repr__(self) -> str:
-        """Représentation détaillée de la zone"""
-        return f"ZoneModel(id={self.id}, code={self.code}, entity={self.entity})"
 
 
-class FamilleModel(BaseModel):
-    """
-    Modèle pour les familles d'équipements.
-    """
-    id: str = Field(..., description="Identifiant unique de la famille")
-    code: str = Field(..., description="Code de la famille")
-    description: str = Field(..., description="Description de la famille")
-    parent_category: Optional[str] = Field(None, description="Catégorie parent de la famille")
-    system_category: Optional[str] = Field(None, description="Catégorie système de la famille")
-    level: Optional[str] = Field(None, description="Niveau de la famille dans la hiérarchie")
-    entity: Optional[str] = Field(None, description="Entité associée à la famille")
+class FamilleModel(Base):
+    """Modèle SQLAlchemy pour les familles d'équipements."""
+    # ✅ CORRECTION: Table selon CATEGORY_QUERY
+    __tablename__ = 't_category'
+    __table_args__ = {'schema': 'coswin'}
     
+    id = Column('pk_category', Integer, primary_key=True, autoincrement=True)
+    code = Column('mdct_code', String(50), nullable=False)
+    description = Column('mdct_description', Text, nullable=False)
+    parent_category = Column('mdct_parent_category', String(50), nullable=True)
+    system_category = Column('mdct_system_category', String(50), nullable=True)
+    level = Column('mdct_level', String(10), nullable=True)
+    entity = Column('mdct_entity', String(50), nullable=True)
+
     @classmethod
     def from_db_row(cls, row: tuple) -> 'FamilleModel':
-        """Crée une instance FamilleModel à partir d'une ligne de DB"""
-        return cls(
-            id=str(row[0]) if row[0] is not None else "",
-            code=str(row[1]) if row[1] is not None else "",
-            description=str(row[2]) if row[2] is not None else "",
-            parent_category=str(row[3]) if len(row) > 3 and row[3] is not None else None,
-            system_category=str(row[4]) if len(row) > 4 and row[4] is not None else None,
-            level=str(row[5]) if len(row) > 5 and row[5] is not None else None,
-            entity=str(row[6]) if len(row) > 6 and row[6] is not None else None
-        )
-    
+        """Crée depuis CATEGORY_QUERY ou GET_FAMILLES_QUERY"""
+        famille = cls()
+        famille.id = int(row[0]) if row[0] is not None else None
+        famille.code = str(row[1]) if row[1] is not None else ""
+        famille.description = str(row[2]) if row[2] is not None else ""
+        famille.parent_category = str(row[3]) if len(row) > 3 and row[3] is not None else None
+        famille.system_category = str(row[4]) if len(row) > 4 and row[4] is not None else None
+        famille.level = str(row[5]) if len(row) > 5 and row[5] is not None else None
+        famille.entity = str(row[6]) if len(row) > 6 and row[6] is not None else None
+        return famille
+
     def to_dict(self) -> Dict[str, Any]:
-        """Convertit en dictionnaire"""
-        return self.model_dump(exclude_none=True)
-    
-    def to_api_response(self) -> Dict[str, Any]:
-        """Convertit en format de réponse API"""
         return {
-            'code': self.code,
-            'description': self.description,
-            'parent_category': self.parent_category,
-            'system_category': self.system_category,
-            'level': self.level,
-            'entity': self.entity
-        }
-    
-    def __str__(self) -> str:
-        """Représentation string de la famille"""
-        return f"Famille({self.code} - {self.description})"
-    
-    def __repr__(self) -> str:
-        """Représentation détaillée de la famille"""
-        return f"FamilleModel(code={self.code}, description={self.description}, entity={self.entity})"
-    
-    def to_mobile_dict(self) -> Dict[str, Any]:
-        """Format optimisé pour liste mobile"""
-        return {
+            'id': str(self.id) if self.id is not None else None,
             'code': self.code,
             'description': self.description,
             'parent_category': self.parent_category,
@@ -278,59 +201,36 @@ class FamilleModel(BaseModel):
         }
 
 
-class EntityModel(BaseModel):
-    """
-    Modèle pour les entités.
-    """
-    id: str = Field(..., description="Identifiant unique de l'entité")
-    code: str = Field(..., description="Code de l'entité")
-    description: str = Field(..., description="Description de l'entité")
-    entity_type: str = Field(..., description="Type d'entité")
-    level: str = Field(..., description="Niveau de l'entité dans la hiérarchie")
-    parent_entity: Optional[str] = Field(None, description="Entité parent")
-    system_entity: Optional[str] = Field(None, description="Entité système")
+class EntityModel(Base):
+    """Modèle SQLAlchemy pour les entités."""
+    # ✅ CORRECTION: Table selon ENTITY_QUERY
+    __tablename__ = 't_entity'
+    __table_args__ = {'schema': 'coswin'}
     
+    id = Column('pk_entity', Integer, primary_key=True, autoincrement=True)
+    code = Column('chen_code', String(50), nullable=False)
+    description = Column('chen_description', Text, nullable=False)
+    entity_type = Column('chen_entity_type', String(50), nullable=False)
+    level = Column('chen_level', String(10), nullable=False, default="0")
+    parent_entity = Column('chen_parent_entity', String(50), nullable=True)
+    system_entity = Column('chen_system_entity', String(50), nullable=True)
+
     @classmethod
     def from_db_row(cls, row: tuple) -> 'EntityModel':
-        """Crée une instance EntityModel à partir d'une ligne de DB"""
-        return cls(
-            id=str(row[0]) if row[0] is not None else "",
-            code=str(row[1]) if row[1] is not None else "",
-            description=str(row[2]) if row[2] is not None else "",
-            entity_type=str(row[3]) if row[3] is not None else "",
-            level=str(row[4]) if row[4] is not None else "0",
-            parent_entity=str(row[5]) if len(row) > 5 and row[5] is not None else None,
-            system_entity=str(row[6]) if len(row) > 6 and row[6] is not None else None
-        )
-    
+        """Crée depuis ENTITY_QUERY"""
+        entity = cls()
+        entity.id = int(row[0]) if row[0] is not None else None
+        entity.code = str(row[1]) if row[1] is not None else ""
+        entity.description = str(row[2]) if row[2] is not None else ""
+        entity.entity_type = str(row[3]) if row[3] is not None else ""
+        entity.level = str(row[4]) if row[4] is not None else "1"
+        entity.parent_entity = str(row[5]) if len(row) > 5 and row[5] is not None else None
+        entity.system_entity = str(row[6]) if len(row) > 6 and row[6] is not None else None
+        return entity
+
     def to_dict(self) -> Dict[str, Any]:
-        """Convertit en dictionnaire"""
-        return self.model_dump(exclude_none=True)
-    
-    def to_api_response(self) -> Dict[str, Any]:
-        """Convertit en format de réponse API"""
         return {
-            'id': self.id,
-            'code': self.code,
-            'description': self.description,
-            'entity_type': self.entity_type,
-            'level': self.level,
-            'parent_entity': self.parent_entity,
-            'system_entity': self.system_entity
-        }
-    
-    def __str__(self) -> str:
-        """Représentation string de l'entité"""
-        return f"Entity({self.code} - {self.description})"
-    
-    def __repr__(self) -> str:
-        """Représentation détaillée de l'entité"""
-        return f"EntityModel(id={self.id}, code={self.code}, entity_type={self.entity_type})"
-    
-    def to_mobile_dict(self) -> Dict[str, Any]:
-        """Format optimisé pour liste mobile"""
-        return {
-            'id': self.id,
+            'id': str(self.id) if self.id is not None else None,
             'code': self.code,
             'description': self.description,
             'entity_type': self.entity_type,
@@ -340,207 +240,223 @@ class EntityModel(BaseModel):
         }
 
 
-class CentreChargeModel(BaseModel):
-    """
-    Modèle pour les centres de charge.
-    """
-    id: str = Field(..., description="Identifiant unique du centre de charge")
-    code: str = Field(..., description="Code du centre de charge")
-    description: str = Field(..., description="Description du centre de charge")
-    entity: Optional[str] = Field(None, description="Entité associée au centre de charge")
+class CentreChargeModel(Base):
+    """Modèle SQLAlchemy pour les centres de charge."""
+    # ✅ CORRECTION: Table selon COSTCENTRE_QUERY
+    __tablename__ = 't_costcentre'
+    __table_args__ = {'schema': 'coswin'}
     
+    id = Column('pk_costcentre', Integer, primary_key=True, autoincrement=True)
+    code = Column('mdcc_code', String(50), nullable=False)
+    description = Column('mdcc_description', Text, nullable=False)
+    entity = Column('mdcc_entity', String(50), nullable=True)
+
     @classmethod
     def from_db_row(cls, row: tuple) -> 'CentreChargeModel':
-        """Crée une instance CentreChargeModel à partir d'une ligne de DB"""
-        return cls(
-            id=str(row[0]) if row[0] is not None else "",
-            code=str(row[1]) if row[1] is not None else "",
-            description=str(row[2]) if row[2] is not None else "",
-            entity=str(row[3]) if len(row) > 3 and row[3] is not None else None
-        )
-    
+        """Crée depuis COSTCENTRE_QUERY"""
+        centre = cls()
+        centre.id = int(row[0]) if row[0] is not None else None
+        centre.code = str(row[1]) if row[1] is not None else ""
+        centre.description = str(row[2]) if row[2] is not None else ""
+        centre.entity = str(row[3]) if len(row) > 3 and row[3] is not None else None
+        return centre
+
     def to_dict(self) -> Dict[str, Any]:
-        """Convertit en dictionnaire"""
-        return self.model_dump(exclude_none=True)
-    
-    def to_api_response(self) -> Dict[str, Any]:
-        """Convertit en format de réponse API"""
         return {
-            'id': self.id,
+            'id': str(self.id) if self.id is not None else None,
             'code': self.code,
             'description': self.description,
             'entity': self.entity
         }
+
+
+class UniteModel(Base):
+    """Modèle SQLAlchemy pour les unités organisationnelles."""
+    # ✅ CORRECTION: Table selon FUNCTION_QUERY
+    __tablename__ = 't_function_'
+    __table_args__ = {'schema': 'coswin'}
     
-    def __str__(self) -> str:
-        """Représentation string du centre de charge"""
-        return f"CentreCharge({self.code} - {self.description})"
+    id = Column('pk_function_', Integer, primary_key=True, autoincrement=True)
+    code = Column('mdfn_code', String(50), nullable=False)
+    description = Column('mdfn_description', Text, nullable=False)
+    entity = Column('mdfn_entity', String(50), nullable=True)
+    parent_function = Column('mdfn_parent_function', String(50), nullable=True)  # ✅ CORRECTION
+    system_function = Column('mdfn_system_function', String(50), nullable=True)  # ✅ CORRECTION
 
-    def __repr__(self) -> str:
-        """Représentation détaillée du centre de charge"""
-        return f"CentreChargeModel(id={self.id}, code={self.code}, entity={self.entity})"
-
-
-class UniteModel(BaseModel):
-    """Modèle pour les unités organisationnelles.
-    """
-    id: str = Field(..., description="Identifiant unique de l'unité")
-    code: str = Field(..., description="Code de l'unité")
-    description: str = Field(..., description="Description de l'unité")
-    entity: Optional[str] = Field(None, description="Entité associée à l'unité")
-    parent_entity: Optional[str] = Field(None, description="Entité parente de l'unité")
-    system_entity: Optional[str] = Field(None, description="Entité système de l'unité")
-    
     @classmethod
     def from_db_row(cls, row: tuple) -> 'UniteModel':
-        """Crée une instance UniteModel à partir d'une ligne de DB"""
-        return cls(
-            id=str(row[0]) if row[0] is not None else "",
-            code=str(row[1]) if row[1] is not None else "",
-            description=str(row[2]) if row[2] is not None else "",
-            entity=str(row[3]) if len(row) > 3 and row[3] is not None else None,
-            parent_entity=str(row[4]) if len(row) > 4 and row[4] is not None else None,
-            system_entity=str(row[5]) if len(row) > 5 and row[5] is not None else None
-        )
-    
+        """Crée depuis FUNCTION_QUERY"""
+        unite = cls()
+        unite.id = int(row[0]) if row[0] is not None else None
+        unite.code = str(row[1]) if row[1] is not None else ""
+        unite.description = str(row[2]) if row[2] is not None else ""
+        unite.entity = str(row[3]) if len(row) > 3 and row[3] is not None else None
+        unite.parent_function = str(row[4]) if len(row) > 4 and row[4] is not None else None
+        unite.system_function = str(row[5]) if len(row) > 5 and row[5] is not None else None
+        return unite
+
     def to_dict(self) -> Dict[str, Any]:
-        """Convertit en dictionnaire"""
-        return self.model_dump(exclude_none=True)
-    
-    def to_api_response(self) -> Dict[str, Any]:
-        """Convertit en format de réponse API"""
         return {
-            'id': self.id,
+            'id': str(self.id) if self.id is not None else None,
             'code': self.code,
             'description': self.description,
             'entity': self.entity,
-            'parent_entity': self.parent_entity,
-            'system_entity': self.system_entity
+            'parent_function': self.parent_function,
+            'system_function': self.system_function
         }
-    
-    def __str__(self) -> str:
-        """Représentation string de l'unité"""
-        return f"Unite({self.code} - {self.description})"
-    
-    def __repr__(self) -> str:
-        """Représentation détaillée de l'unité"""
-        return f"UniteModel(id={self.id}, code={self.code}, entity={self.entity}, parent_entity={self.parent_entity}, system_entity={self.system_entity})"
 
 
-class FeederModel(BaseModel):
-    """
-    Modèle pour les feeders.
-    """
-    id: str = Field(..., description="Identifiant unique du feeder")
-    code: str = Field(..., description="Code du feeder")
-    description: str = Field(..., description="Description du feeder")
-    entity: Optional[str] = Field(None, description="Entité associée au feeder")
+# ✅ SUPPRIMÉ: FeederModel (les feeders sont des équipements dans t_equipment)
+
+class EquipmentSpecs(Base):
+    """Modèle SQLAlchemy pour equipment_specs selon EQUIPMENT_SPEC_ADD_QUERY"""
+    __tablename__ = 'equipment_specs'
+    __table_args__ = {'schema': 'coswin'}
     
-    @classmethod
-    def from_db_row(cls, row: tuple) -> 'FeederModel':
-        """Crée une instance FeederModel à partir d'une ligne de DB"""
-        return cls(
-            id=str(row[0]) if row[0] is not None else "",
-            code=str(row[1]) if row[1] is not None else "",
-            description=str(row[2]) if row[2] is not None else "",
-            entity=str(row[3]) if len(row) > 3 and row[3] is not None else None
-        )
-    
+    id = Column('pk_equipment_specs', Integer, primary_key=True, autoincrement=True)
+    etes_specification = Column(String(50), nullable=False)  # cwsp_code
+    etes_equipment = Column(String(50), nullable=False)      # ereq_code
+    etes_release_date = Column(DateTime, default=func.now())
+    etes_release_number = Column(Integer, default=1)
+
     def to_dict(self) -> Dict[str, Any]:
-        """Convertit en dictionnaire"""
-        return self.model_dump(exclude_none=True)
-    
-    def to_api_response(self) -> Dict[str, Any]:
-        """Convertit en format de réponse API"""
         return {
-            'id': self.id,
-            'code': self.code,
-            'description': self.description,
-            'entity': self.entity
-        }
-    
-    def __str__(self) -> str:
-        """Représentation string du feeder"""
-        return f"Feeder({self.code} - {self.description})"
-    
-    def __repr__(self) -> str:
-        """Représentation détaillée du feeder"""
-        return f"FeederModel(id={self.id}, code={self.code}, entity={self.entity})"
-
-
-class EquipmentAttributeValueModel(BaseModel):
-    """
-    Modèle pour les valeurs d'attributs d'équipement.
-    """
-    id: str = Field(..., description="Identifiant unique de la valeur d'attribut")
-    specification: Optional[str] = Field(None, description="Spécification de l'attribut")
-    index: Optional[str] = Field(None, description="Index de l'attribut")
-    name: str = Field(..., description="Nom de l'attribut")
-    value: Optional[str] = Field(None, description="Valeur de l'attribut")
-    
-    @classmethod
-    def from_db_row(cls, row: tuple) -> 'EquipmentAttributeValueModel':
-        """Crée une instance EquipmentAttributeValueModel à partir d'une ligne de DB"""
-        return cls(
-            id=str(row[0]) if row[0] is not None else "",
-            specification=str(row[1]) if row[1] is not None else None,
-            index=str(row[2]) if row[2] is not None else None,
-            name=str(row[3]) if row[3] is not None else "",
-            value=str(row[4]) if row[4] is not None else ""
-        )
-    
-    def to_api_response(self) -> Dict[str, Any]:
-        """Format pour l'API mobile (compatible Flutter)"""
-        return {
-            'id': self.id,
-            'specification': self.specification,
-            'index': self.index,
-            'name': self.name,
-            'value': self.value
+            'id': str(self.id) if self.id is not None else None,
+            'specification': self.etes_specification,
+            'equipment': self.etes_equipment,
+            'release_date': self.etes_release_date.isoformat() if self.etes_release_date is not None else None,
+            'release_number': self.etes_release_number
         }
 
-    def __str__(self) -> str:
-        """Représentation string de la valeur d'attribut"""
-        return f"AttributeValue({self.id} - {self.specification} - {self.value} - {self.index} - {self.name})"
 
-    def __repr__(self) -> str:
-        """Représentation détaillée de la valeur d'attribut"""
-        return f"EquipmentAttributeValueModel(id={self.id}, specification={self.specification}, index={self.index}, name={self.name}, value={self.value})"
-
-
-class AttributeValuesModel(BaseModel):
-    """
-    Modèle pour les valeurs d'attributs d'équipement.
-    """
-    id: str = Field(..., description="Identifiant unique de la valeur d'attribut")
-    value: str = Field(..., description="Valeur de l'attribut")
-    name: str = Field(..., description="Nom de l'attribut")
+class EquipmentAttribute(Base):
+    """Modèle SQLAlchemy pour equipment_attribute selon EQUIPMENT_ATTRIBUTE_ADD_QUERY"""
+    __tablename__ = 'equipment_attribute'
+    __table_args__ = {'schema': 'coswin'}
     
-    @classmethod
-    def from_db_row(cls, row: tuple) -> 'AttributeValuesModel':
-        """Crée une instance AttributeValueModel à partir d'une ligne de DB"""
-        return cls(
-            id=str(row[0]) if row[0] is not None else "",
-            value=str(row[1]) if row[1] is not None else "",
-            name=str(row[2]) if len(row) > 2 and row[2] is not None else ""
-        )
-    
+    # ✅ Clés primaires composites
+    commonkey = Column(Integer, primary_key=True)  # pk_equipment_specs
+    indx = Column(String(10), primary_key=True)    # cwat_index
+    etat_value = Column(Text, nullable=True)       # Valeur de l'attribut
+
     def to_dict(self) -> Dict[str, Any]:
-        """Convertit en dictionnaire"""
-        return self.model_dump(exclude_none=True)
-    
-    def to_api_response(self) -> Dict[str, Any]:
-        """Convertit en format de réponse API"""
         return {
-            'id': self.id,
-            'value': self.value,
-            'name': self.name
+            'commonkey': self.commonkey,
+            'index': self.indx,
+            'value': self.etat_value
         }
-    
-    def __str__(self) -> str:
-        """Représentation string de la valeur d'attribut"""
-        return f"AttributeValues({self.id} - {self.value} - {self.name})"
 
-    def __repr__(self) -> str:
-        """Représentation détaillée de la valeur d'attribut"""
-        return f"AttributeValuesModel(id={self.id}, value={self.value}, name={self.name})"
+
+class Specification(Base):
+    """Modèle SQLAlchemy pour t_specification selon EQUIPMENT_T_SPECIFICATION_QUERY"""
+    __tablename__ = 't_specification'
+    __table_args__ = {'schema': 'coswin'}
+    
+    pk_specification = Column(Integer, primary_key=True, autoincrement=True)
+    cwsp_code = Column(String(50), nullable=False, unique=True)
+    cwsp_description = Column(Text, nullable=True)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'pk_specification': self.pk_specification,
+            'code': self.cwsp_code,
+            'description': self.cwsp_description
+        }
+
+
+class Attribute(Base):
+    """Modèle SQLAlchemy pour attribute selon EQUIPMENT_CLASSE_ATTRIBUTS_QUERY"""
+    __tablename__ = 'attribute'
+    __table_args__ = {'schema': 'coswin'}
+    
+    pk_attribute = Column(Integer, primary_key=True, autoincrement=True)
+    cwat_index = Column(String(10), nullable=False)
+    cwat_specification = Column(Integer, ForeignKey('coswin.t_specification.pk_specification'))
+    cwat_name = Column(String(255), nullable=False)
+    cwat_type = Column(String(50), default='string')
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'pk_attribute': self.pk_attribute,
+            'index': self.cwat_index,
+            'specification': self.cwat_specification,
+            'name': self.cwat_name,
+            'type': self.cwat_type
+        }
+
+
+class AttributeValues(Base):
+    """Modèle SQLAlchemy pour attribute_values selon ATTRIBUTE_VALUES_QUERY"""
+    __tablename__ = 'attribute_values'
+    __table_args__ = {'schema': 'coswin'}
+    
+    pk_attribute_values = Column(Integer, primary_key=True, autoincrement=True)
+    cwav_specification = Column(String(50), nullable=False)
+    cwav_attribute_index = Column(String(10), nullable=False)
+    cwav_value = Column(Text, nullable=False)
+
+    @classmethod
+    def from_db_row(cls, row: tuple) -> 'AttributeValues':
+        """Crée depuis ATTRIBUTE_VALUES_QUERY"""
+        attr_val = cls()
+        attr_val.pk_attribute_values = int(row[0]) if row[0] is not None else None
+        attr_val.cwav_value = str(row[1]) if row[1] is not None else ""
+        return attr_val
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'id': str(self.pk_attribute_values) if self.pk_attribute_values is not None else None,
+            'specification': self.cwav_specification,
+            'attribute_index': self.cwav_attribute_index,
+            'value': self.cwav_value
+        }
+
+
+# ✅ NOUVEAU: Builder pour construire les équipements avec attributs
+class EquipmentWithAttributesBuilder:
+    """
+    Utilitaire pour construire des équipements avec attributs depuis EQUIPMENT_INFINITE_QUERY
+    """
+    
+    @staticmethod
+    def build_from_query_results(results: List[tuple]) -> List[EquipmentModel]:
+        """
+        Construit une liste d'équipements avec leurs attributs depuis votre requête complexe
+        Structure: pk_equipment, ereq_parent_equipment, ereq_code, ereq_category, ereq_zone,
+        ereq_entity, ereq_function, ereq_costcentre, ereq_description, ereq_longitude,
+        ereq_latitude, feeder, feeder_description, attr_id, attr_specification, 
+        attr_index, attr_name, attr_value
+        """
+        equipment_dict = {}
+        
+        for row in results:
+            equipment_id = str(row[0])  # pk_equipment
+            
+            # Créer l'équipement s'il n'existe pas
+            if equipment_id not in equipment_dict:
+                equipment = EquipmentModel.from_db_row(row[:13])  # 13 premiers champs
+                equipment_dict[equipment_id] = equipment
+            else:
+                equipment = equipment_dict[equipment_id]
+            
+            # Ajouter l'attribut s'il existe (colonnes 13-17)
+            if len(row) > 13 and row[13] is not None:  # attr_id
+                attr_data = {
+                    'id': str(row[13]),        # attr_id
+                    'specification': row[14],   # attr_specification
+                    'index': row[15],          # attr_index
+                    'name': row[16],           # attr_name
+                    'value': row[17]           # attr_value
+                }
+                equipment.attributes.append(attr_data)
+        
+        return list(equipment_dict.values())
+
+    @staticmethod
+    def build_single_from_query_results(results: List[tuple]) -> Optional[EquipmentModel]:
+        """Construit un seul équipement avec ses attributs"""
+        if not results:
+            return None
+        
+        equipments = EquipmentWithAttributesBuilder.build_from_query_results(results)
+        return equipments[0] if equipments else None

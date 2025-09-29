@@ -1,4 +1,4 @@
-from app.db.database import get_database_connection
+from app.db.sqlalchemy.session import SQLAlchemyQueryExecutor, get_main_session
 from app.models.models import CentreChargeModel
 from app.core.config import CACHE_TTL_SHORT
 from app.db.requests import COSTCENTRE_QUERY
@@ -36,11 +36,9 @@ def get_centre_charges(entity: str, hierarchy_result: Dict[str, Any], limit: int
     params = {}
     
     try:
-        db_conn = get_database_connection()
-        if db_conn is None:
-            logger.error("Impossible d'obtenir une connexion à la base de données")
-            raise Exception("Connexion DB manquante")
-        with db_conn as db:
+        with get_main_session() as session:
+            executor = SQLAlchemyQueryExecutor(session)
+            
             # Filtre par hiérarchie d'entités (OBLIGATOIRE)
             placeholders = ','.join([f':entity_{i}' for i in range(len(hierarchy_entities))])
             query += f" WHERE mdcc_entity IN ({placeholders})"
@@ -49,15 +47,15 @@ def get_centre_charges(entity: str, hierarchy_result: Dict[str, Any], limit: int
                 params[f'entity_{i}'] = entity_code
 
             query += f" ORDER BY mdcc_entity, mdcc_code"
-            
-            results = db.execute_query(query, params=params, limit=limit)
+
+            results = executor.execute_query(query, params=params, limit=limit)
             centre_charges = []
             
             for row in results:
                 try:
                     centre_charge = CentreChargeModel.from_db_row(row)
                     
-                    centre_charges.append(centre_charge.to_api_response())
+                    centre_charges.append(centre_charge.to_dict())
                 except Exception as e:
                     logger.error(f"❌ Erreur mapping centre de charge: {e}")
                     continue

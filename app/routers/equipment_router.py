@@ -8,7 +8,7 @@ from app.models.models import EquipmentModel
 from app.schemas.responses.equipment_response import AttributeResponse, AttributeValueResponse
 from app.services.equipment_service import (
     get_attribute_values,
-    get_equipment_attributes_by_code_without_value,
+    get_equipment_attributes_by_code,
     get_equipment_by_id,
     get_equipments_infinite,
     get_feeders,
@@ -80,26 +80,25 @@ async def add_equipment_mobile(request: AddEquipmentRequest) -> Dict[str, Any]:
                 }
                 attributes_converted.append(attr_dict)
 
-        # Mapper les champs du DTO vers les attributs attendus par EquipmentModel
+        # ✅ CORRECTION: Créer EquipmentModel avec les bons attributs
         equipment = EquipmentModel(
-            id = "", 
-            code = data.get('code', ''),
-            description = data.get('description', ''),
-            codeParent = data.get('code_parent', ''),
-            famille = data.get('famille', ''),
-            zone = data.get('zone', ''),
-            entity = data.get('entity', ''),
-            unite = data.get('unite', ''),
-            # service insert_equipment attend centreCharge (camelCase) — on mappe depuis centre_charge
-            centreCharge = data.get('centre_charge', ''),
-            longitude = data.get('longitude', ''),
-            latitude = data.get('latitude', ''),
-            feeder = data.get('feeder', ''),
-            feederDescription = data.get('feeder', ''),
-            # conserver les attributs fournis (optionnel) — insert_equipment crée les lignes attribute templates,
-            # si tu veux des valeurs réelles, tu devras enrichir insert_equipment pour accepter 'attributs'
-            attributes = attributes_converted
+            # ✅ Les attributs correspondent aux colonnes SQLAlchemy
+            code=data.get('code', ''),
+            description=data.get('description', ''),
+            codeParent=data.get('code_parent', ''),
+            famille=data.get('famille', ''),
+            zone=data.get('zone', ''),
+            entity=data.get('entity', ''),
+            unite=data.get('unite', ''),
+            centreCharge=data.get('centre_charge', ''),
+            longitude=data.get('longitude'),
+            latitude=data.get('latitude'),
+            feeder=data.get('feeder', ''),
+            feederDescription=data.get('feeder', '')  # Peut être rempli depuis feeder
         )
+        
+        # ✅ CORRECTION: Affecter les attributs après création
+        equipment.attributes = attributes_converted
 
         success, equipment_id = insert_equipment(equipment)
         if success:
@@ -111,6 +110,7 @@ async def add_equipment_mobile(request: AddEquipmentRequest) -> Dict[str, Any]:
             }
         else:
             raise HTTPException(status_code=500, detail="Erreur lors de l'ajout de l'équipement")
+            
     except ValidationError as e:
         logger.error(f"❌ Erreur validation Pydantic: {e}")
         raise HTTPException(status_code=422, detail=f"Données invalides: {e}")
@@ -147,7 +147,7 @@ async def update_equipment_partial_endpoint(
                 "message": f"Équipement modifié avec succès ({len(updates)} champs)",
                 "method": "PATCH",
                 "updated_fields": list(updates.keys()),
-                "equipment": updated_equipment.to_api_response() if updated_equipment else None
+                "equipment": updated_equipment.to_dict() if updated_equipment else None
             }
         else:
             raise HTTPException(status_code=500, detail="Erreur lors de la modification")
@@ -201,52 +201,91 @@ async def get_equipment_values(entity: str) -> Dict[str, Any]:
 @equipment_router.get("/attributes",
     summary="Récupérer les attributs d'un équipement",
     description="Récupère la liste des attributs d'un équipement spécifique",
-    response_model=AttributeResponse
+    response_model=AttributeValueResponse  # ✅ CORRECTION: Type de réponse cohérent
 )
 async def get_equipment_attribute_values(
     specification: str = Query(..., description="Code de la spécification"),
     attribute_index: str = Query(..., description="Index de l'attribut")
     ) -> AttributeValueResponse:
-    """Récupération des attributs d'un équipement"""
+    """Récupération des valeurs d'attributs d'un équipement"""
     try:
         attributes = get_attribute_values(specification, attribute_index)
 
         if not attributes:
-            raise HTTPException(status_code=404, detail="Aucun attribut trouvé pour cet équipement")
+            raise HTTPException(status_code=404, detail="Aucun attribut trouvé pour cette spécification")
+        
+        # ✅ CORRECTION: Convertir AttributeValues en dictionnaires
+        attr_dicts = []
+        for attr in attributes:
+            if hasattr(attr, 'to_dict'):
+                attr_dicts.append(attr.to_dict())
+            else:
+                # Si c'est déjà un dictionnaire
+                attr_dicts.append(attr)
         
         return AttributeValueResponse(
-            attr=attributes,
+            attr=attr_dicts,
             status="success",
-            message="Attributs + Valeurs récupérés avec succès"
+            message="Valeurs d'attributs récupérées avec succès"
         )
+        
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"❌ Erreur récupération attributs: {e}")
-        raise HTTPException(status_code=500, detail="Erreur récupération attributs")
+        logger.error(f"❌ Erreur récupération valeurs attributs: {e}")
+        raise HTTPException(status_code=500, detail="Erreur récupération valeurs attributs")
 
 @equipment_router.get("/attributes/by-code",
-    summary="Récupérer les attributs d'un équipement par son code de la famille",
-    description="Récupère la liste des attributs d'un équipement spécifique par son code équipement qui est donnée par le code dans famille",
+    summary="Récupérer les attributs d'un équipement par son code",
+    description="Récupère la liste des attributs d'un équipement par son code équipement",
     response_model=AttributeResponse
 )
 async def get_equipment_attribute_values_by_code(
-    codeFamille: str = Query(..., description="Code de l'équipement")
+    equipment_code: str = Query(..., alias="codeFamille", description="Code de l'équipement")  # ✅ CORRECTION: Nom plus clair
     ) -> AttributeResponse:
-    """Récupération des attributs d'un équipement"""
+    """Récupération des attributs d'un équipement par son code"""
     try:
-        attributes = get_equipment_attributes_by_code_without_value(codeFamille)
+        # ✅ CORRECTION: Utiliser la fonction qui existe réellement
+        attributes = get_equipment_attributes_by_code(equipment_code)
+        
         if not attributes:
-            raise HTTPException(status_code=404, detail="Aucun attribut trouvé pour cet équipement")
+            raise HTTPException(status_code=404, detail=f"Aucun attribut trouvé pour l'équipement {equipment_code}")
         
         return AttributeResponse(
-            attr=attributes,
+            attr=attributes,  # ✅ Les attributs sont déjà des dictionnaires
             status="success",
-            message="Attributs récupérés avec succès"
+            message=f"Attributs récupérés avec succès pour l'équipement {equipment_code}"
         )
+        
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"❌ Erreur récupération attributs: {e}")
+        logger.error(f"❌ Erreur récupération attributs pour {equipment_code}: {e}")
         raise HTTPException(status_code=500, detail="Erreur récupération attributs")
+
+# ✅ NOUVEAU: Endpoint pour récupérer un équipement par ID
+@equipment_router.get("/{equipment_id}",
+    summary="Récupérer un équipement par ID",
+    description="Récupère un équipement spécifique par son ID avec ses attributs"
+)
+async def get_equipment_by_id_endpoint(equipment_id: str) -> Dict[str, Any]:
+    """Récupération d'un équipement par son ID"""
+    try:
+        equipment = get_equipment_by_id(equipment_id)
+        
+        if not equipment:
+            raise HTTPException(status_code=404, detail=f"Équipement {equipment_id} non trouvé")
+        
+        return {
+            "status": "success",
+            "message": f"Équipement {equipment_id} récupéré avec succès",
+            "equipment": equipment.to_dict()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Erreur récupération équipement {equipment_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Erreur récupération équipement: {str(e)}")
+
 # === FIN ENDPOINTS CORE POUR MOBILE ===

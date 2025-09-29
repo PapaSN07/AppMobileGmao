@@ -20,10 +20,11 @@ centre_charge_router = APIRouter(
 )
 async def get_centre_charge_mobile(
     entity: str = Query(..., description="Entité obligatoire (hiérarchie automatique)"),
+    hierarchy_result: Dict[str, Any] = Query(..., description="Résultat de la hiérarchie de l'entité")
 ) -> Dict[str, Any]:
     """Liste des centres de charge pour mobile"""
     try:
-        result = get_centre_charges(entity=entity)
+        result = get_centre_charges(entity=entity, hierarchy_result=hierarchy_result)
         
         return {
             "status": "success",

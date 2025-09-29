@@ -1,6 +1,6 @@
-from app.db.database import get_database_connection
 from app.core.config import CACHE_TTL_SHORT
 from app.core.cache import cache
+from app.db.sqlalchemy.session import SQLAlchemyQueryExecutor, get_main_session
 from app.models.models import UniteModel
 from app.db.requests import FUNCTION_QUERY
 from typing import Any, Dict
@@ -36,11 +36,9 @@ def get_unites(entity: str, hierarchy_result: Dict[str, Any]) -> Dict[str, Any]:
     params = {}
     
     try:
-        db_conn = get_database_connection()
-        if db_conn is None:
-            logger.error("Impossible d'obtenir une connexion à la base de données")
-            raise Exception("Connexion DB manquante")
-        with db_conn as db:
+        with get_main_session() as session:
+            db = SQLAlchemyQueryExecutor(session)
+            
             # Filtre par hiérarchie d'entités (OBLIGATOIRE)
             placeholders = ','.join([f':entity_{i}' for i in range(len(hierarchy_entities))])
             query += f" WHERE mdfn_entity IN ({placeholders})"
@@ -56,7 +54,7 @@ def get_unites(entity: str, hierarchy_result: Dict[str, Any]) -> Dict[str, Any]:
                 try:
                     unite = UniteModel.from_db_row(row)
                     # Convertir en dictionnaire pour la sérialisation
-                    unites.append(unite.to_api_response())
+                    unites.append(unite.to_dict())
                 except Exception as e:
                     logger.error(f"❌ Erreur mapping unité: {e}")
                     continue

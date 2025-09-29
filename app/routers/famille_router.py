@@ -19,12 +19,13 @@ famille_router = APIRouter(
     description="Récupère la liste des familles pour mobile"
 )
 async def get_familles_mobile(
-    entity: str = Query(..., description="Entité obligatoire (hiérarchie automatique)")
+    entity: str = Query(..., description="Entité obligatoire (hiérarchie automatique)"),
+    hierarchy_result: Dict[str, Any] = Query(..., description="Résultat de la hiérarchie de l'entité")
 ) -> Dict[str, Any]:
     """Liste des familles pour mobile"""
     try:
-        result = get_familles(entity=entity)
-        
+        result = get_familles(entity=entity, hierarchy_result=hierarchy_result)
+
         return {
             "status": "success",
             "message": "Familles récupérées avec succès",

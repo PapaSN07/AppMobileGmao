@@ -23,11 +23,12 @@ entity_router = APIRouter(
     description="Récupère la liste des entités pour mobile"
 )
 async def get_entity_mobile(
-    entity: str = Query(..., description="Entité de l'entité à récupérer")
+    entity: str = Query(..., description="Entité de l'entité à récupérer"),
+    hierarchy_result: Dict[str, Any] = Query(..., description="Résultat de la hiérarchie de l'entité")
 ) -> Dict[str, Any]:
     """Liste des entités pour mobile"""
     try:
-        result = get_entities(entity=entity)
+        result = get_entities(entity=entity, hierarchy_result=hierarchy_result)
 
         return {
             "status": "success",

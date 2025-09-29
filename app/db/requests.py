@@ -32,8 +32,8 @@ ORDER BY mdct_entity, mdct_description
 FEEDER_QUERY = """
 SELECT
     pk_equipment,
-    ereq_code AS Code_Equipment_GMAO_REFERENCE,
-    ereq_description AS Nom_Equipment,
+    ereq_code,
+    ereq_description,
     ereq_entity
 FROM coswin.t_equipment
 """
