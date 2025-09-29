@@ -19,11 +19,14 @@ unite_router = APIRouter(
     description="Récupère la liste des unités pour mobile"
 )
 async def get_unites_mobile(
-    entity: str = Query(..., description="Entité obligatoire (hiérarchie automatique)"),
-    hierarchy_result: Dict[str, Any] = Query(..., description="Résultat de la hiérarchie de l'entité")
+    entity: str = Query(..., description="Entité obligatoire (hiérarchie automatique)")
 ) -> Dict[str, Any]:
     """Liste des unités pour mobile"""
     try:
+        # Récupérer la hiérarchie dans la fonction
+        from app.services.entity_service import get_hierarchy
+        hierarchy_result = get_hierarchy(entity)
+        
         result = get_unites(entity=entity, hierarchy_result=hierarchy_result)
         
         return {

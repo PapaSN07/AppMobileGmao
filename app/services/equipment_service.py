@@ -2,10 +2,10 @@ from app.db.sqlalchemy.session import get_main_session, get_temp_session, SQLAlc
 from app.core.config import CACHE_TTL_SHORT
 from app.models.models import (EquipmentModel, EquipmentWithAttributesBuilder, AttributeValues)
 from app.db.requests import (ATTRIBUTE_VALUES_QUERY, CHECK_ATTRIBUTE_EXISTS_QUERY, EQUIPMENT_ADD_QUERY, 
-                            EQUIPMENT_ATTRIBUTE_ADD_QUERY, EQUIPMENT_BY_ID_QUERY, EQUIPMENT_INFINITE_QUERY, 
+                            EQUIPMENT_ATTRIBUTE_ADD_QUERY, EQUIPMENT_BY_ID_QUERY, EQUIPMENT_CLASSE_ATTRIBUTS_QUERY, EQUIPMENT_INFINITE_QUERY, 
                             EQUIPMENT_LENGTH_ATTRIBUTS_QUERY_DISTINCT, 
                             EQUIPMENT_SPEC_ADD_QUERY, EQUIPMENT_T_SPECIFICATION_CODE_QUERY, FEEDER_QUERY, 
-                            UPDATE_EQUIPMENT_ATTRIBUTE_QUERY, EQUIPMENT_ATTRIBUTS_VALUES_QUERY)
+                            UPDATE_EQUIPMENT_ATTRIBUTE_QUERY)
 from app.core.cache import cache, invalidate_equipment_insertion_cache
 from typing import Dict, Any, List, Optional
 import logging
@@ -193,11 +193,18 @@ def get_feeders(entity: str, hierarchy_result: Dict[str, Any]) -> Dict[str, Any]
             results = executor.execute_query(query, params=params)
 
             feeders = []
-            for row in results:
+            for feeder_row in results:
                 try:
-                    # ✅ CORRECTION: Les feeders sont des équipements normaux
-                    feeder = EquipmentModel.from_db_row(row)
-                    feeders.append(feeder.to_dict())
+                    # ✅ CORRECTION: Créer un dictionnaire au lieu d'un objet EquipmentModel
+                    feeder_dict = {
+                        'id': int(feeder_row[0]) if feeder_row[0] is not None else None,
+                        'code': str(feeder_row[1]) if feeder_row[1] is not None else "",
+                        'description': str(feeder_row[2]) if feeder_row[2] is not None else "",
+                        'entity': str(feeder_row[3]) if feeder_row[3] is not None else ""
+                    }
+                    
+                    feeders.append(feeder_dict)
+                    logger.debug(f"Feeder ajouté: {feeder_dict['code']}")
                 except Exception as e:
                     logger.error(f"❌ Erreur mapping feeder: {e}")
                     continue
@@ -371,7 +378,7 @@ def get_equipment_attributes_by_code(equipment_code: str) -> List[Dict[str, Any]
         # ✅ CORRECTION: Utiliser SQLAlchemy session
         with get_main_session() as session:
             executor = SQLAlchemyQueryExecutor(session)
-            results = executor.execute_query(EQUIPMENT_ATTRIBUTS_VALUES_QUERY, params={'code': equipment_code})
+            results = executor.execute_query(EQUIPMENT_CLASSE_ATTRIBUTS_QUERY, params={'code': equipment_code})
 
             if not results:
                 cache.set(cache_key, [], CACHE_TTL_SHORT)
@@ -619,7 +626,9 @@ def insert_equipment(equipment: EquipmentModel) -> tuple[bool, Optional[int]]:
                 else:
                     logger.info(f"Aucun attribut disponible pour la famille {equipment.famille}")
                 
-                # ✅ CORRECTION: Le commit se fait automatiquement à la fin du context manager
+                # ✅ CORRECTION: Ajouter le commit explicite à la fin
+                session.commit()
+                logger.info("✅ Commit effectué pour l'équipement inséré")
 
                 # Invalider le cache après insertion réussie
                 invalidate_equipment_insertion_cache(str(equipment.code), str(equipment.entity), str(equipment.famille))

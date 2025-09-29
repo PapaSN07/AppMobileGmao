@@ -1,9 +1,8 @@
 # Fonction utilitaire pour la pagination
 from typing import Any, Dict, List
-from app.db.database import PaginationResult
 
 
-def create_pagination_response(pagination_result: PaginationResult) -> Dict[str, Any]:
+def create_pagination_response(pagination_result: Dict[str, Any]) -> Dict[str, Any]:
     """
     Créer une réponse paginée standardisée à partir d'un PaginationResult
     
@@ -14,14 +13,14 @@ def create_pagination_response(pagination_result: PaginationResult) -> Dict[str,
         Réponse formatée pour l'API
     """
     return {
-        "data": pagination_result.data,
+        "data": pagination_result["data"],
         "pagination": {
-            "current_page": pagination_result.page,
-            "per_page": pagination_result.page_size,
-            "total_items": pagination_result.total_count,
-            "total_pages": pagination_result.total_pages,
-            "has_next": pagination_result.has_next,
-            "has_prev": pagination_result.has_prev
+            "current_page": pagination_result["page"],
+            "per_page": pagination_result["page_size"],
+            "total_items": pagination_result["total_count"],
+            "total_pages": pagination_result["total_pages"],
+            "has_next": pagination_result["has_next"],
+            "has_prev": pagination_result["has_prev"]
         }
     }
 

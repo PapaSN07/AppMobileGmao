@@ -5,7 +5,12 @@ import logging
 from pydantic import ValidationError
 
 from app.models.models import EquipmentModel
-from app.schemas.responses.equipment_response import AttributeResponse, AttributeValueResponse
+from app.schemas.responses.equipment_response import (
+    AttributeResponse, 
+    AttributeValueResponse, 
+    EquipmentResponse,
+    EquipmentListResponse
+)
 from app.services.equipment_service import (
     get_attribute_values,
     get_equipment_attributes_by_code,
@@ -34,14 +39,15 @@ equipment_router = APIRouter(
 
 @equipment_router.get("", 
     summary="Infinite scroll pour mobile avec hiérarchie",
-    description="Endpoint principal pour l'infinite scroll mobile avec hiérarchie d'entité obligatoire"
+    description="Endpoint principal pour l'infinite scroll mobile avec hiérarchie d'entité obligatoire",
+    response_model=EquipmentListResponse  # ✅ CORRECTION: Type de réponse cohérent
 )
 async def get_equipments_mobile(
     entity: str = Query(..., description="Entité obligatoire (hiérarchie automatique)"),
     zone: Optional[str] = Query(None, description="Filtre zone"),
     famille: Optional[str] = Query(None, description="Filtre famille"),
     search: Optional[str] = Query(None, description="Recherche textuelle")
-) -> Dict[str, Any]:
+) -> EquipmentListResponse:
     """Endpoint principal optimisé pour mobile avec infinite scroll et hiérarchie"""
     try:
         result = get_equipments_infinite(
@@ -51,7 +57,7 @@ async def get_equipments_mobile(
             search_term=search
         )
         
-        return result
+        return EquipmentListResponse(**result)
     except Exception as e:
         logger.error(f"❌ Erreur: {e}")
         raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
@@ -93,8 +99,7 @@ async def add_equipment_mobile(request: AddEquipmentRequest) -> Dict[str, Any]:
             centreCharge=data.get('centre_charge', ''),
             longitude=data.get('longitude'),
             latitude=data.get('latitude'),
-            feeder=data.get('feeder', ''),
-            feederDescription=data.get('feeder', '')  # Peut être rempli depuis feeder
+            feeder=data.get('feeder', '')
         )
         
         # ✅ CORRECTION: Affecter les attributs après création
@@ -201,7 +206,7 @@ async def get_equipment_values(entity: str) -> Dict[str, Any]:
 @equipment_router.get("/attributes",
     summary="Récupérer les attributs d'un équipement",
     description="Récupère la liste des attributs d'un équipement spécifique",
-    response_model=AttributeValueResponse  # ✅ CORRECTION: Type de réponse cohérent
+    response_model=AttributeValueResponse
 )
 async def get_equipment_attribute_values(
     specification: str = Query(..., description="Code de la spécification"),
@@ -214,7 +219,7 @@ async def get_equipment_attribute_values(
         if not attributes:
             raise HTTPException(status_code=404, detail="Aucun attribut trouvé pour cette spécification")
         
-        # ✅ CORRECTION: Convertir AttributeValues en dictionnaires
+        # ✅ CORRECTION: Convertir en dictionnaires
         attr_dicts = []
         for attr in attributes:
             if hasattr(attr, 'to_dict'):
@@ -241,7 +246,7 @@ async def get_equipment_attribute_values(
     response_model=AttributeResponse
 )
 async def get_equipment_attribute_values_by_code(
-    equipment_code: str = Query(..., alias="codeFamille", description="Code de l'équipement")  # ✅ CORRECTION: Nom plus clair
+    equipment_code: str = Query(..., alias="codeFamille", description="Code de l'équipement")
     ) -> AttributeResponse:
     """Récupération des attributs d'un équipement par son code"""
     try:
@@ -263,12 +268,12 @@ async def get_equipment_attribute_values_by_code(
         logger.error(f"❌ Erreur récupération attributs pour {equipment_code}: {e}")
         raise HTTPException(status_code=500, detail="Erreur récupération attributs")
 
-# ✅ NOUVEAU: Endpoint pour récupérer un équipement par ID
 @equipment_router.get("/{equipment_id}",
     summary="Récupérer un équipement par ID",
-    description="Récupère un équipement spécifique par son ID avec ses attributs"
+    description="Récupère un équipement spécifique par son ID avec ses attributs",
+    response_model=EquipmentResponse
 )
-async def get_equipment_by_id_endpoint(equipment_id: str) -> Dict[str, Any]:
+async def get_equipment_by_id_endpoint(equipment_id: str) -> EquipmentResponse:
     """Récupération d'un équipement par son ID"""
     try:
         equipment = get_equipment_by_id(equipment_id)
@@ -276,11 +281,9 @@ async def get_equipment_by_id_endpoint(equipment_id: str) -> Dict[str, Any]:
         if not equipment:
             raise HTTPException(status_code=404, detail=f"Équipement {equipment_id} non trouvé")
         
-        return {
-            "status": "success",
-            "message": f"Équipement {equipment_id} récupéré avec succès",
-            "equipment": equipment.to_dict()
-        }
+        # ✅ CORRECTION: Retourner directement l'objet EquipmentResponse
+        equipment_dict = equipment.to_dict()
+        return EquipmentResponse(**equipment_dict)
         
     except HTTPException:
         raise

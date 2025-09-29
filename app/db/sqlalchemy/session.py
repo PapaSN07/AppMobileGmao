@@ -39,11 +39,9 @@ class SQLAlchemyQueryExecutor:
     def __init__(self, session: Session):
         self.session = session
     
-    def execute_query(self, query: str, params: Optional[Dict[str, Any]] = None, limit: Optional[int] = None) -> List[tuple]:
+    def execute_query(self, query: str, params: Optional[Dict[str, Any]] = None) -> List[tuple]:
         """Exécute une requête SQL brute et retourne les résultats"""
         try:
-            if limit is not None:
-                query = f"{query} LIMIT {limit}"
             result = self.session.execute(text(query), params or {})
             return [tuple(row) for row in result.fetchall()]
         except Exception as e:
@@ -77,3 +75,12 @@ class SQLAlchemyQueryExecutor:
         except Exception as e:
             logger.error(f"❌ Erreur scalar: {e}")
             raise
+    
+def test_connection(session: Session) -> bool:
+    """Teste la connexion à la base de données"""
+    try:
+        session.execute(text("SELECT 1 FROM dual"))
+        return True
+    except Exception as e:
+        logger.error(f"❌ Erreur test connexion: {e}")
+        return False

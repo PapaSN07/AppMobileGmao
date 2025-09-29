@@ -48,7 +48,8 @@ def get_centre_charges(entity: str, hierarchy_result: Dict[str, Any], limit: int
 
             query += f" ORDER BY mdcc_entity, mdcc_code"
 
-            results = executor.execute_query(query, params=params, limit=limit)
+            results = executor.execute_query(query, params=params)
+            results = results[:limit] 
             centre_charges = []
             
             for row in results:

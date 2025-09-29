@@ -8,6 +8,7 @@ import os
 
 from fastapi.staticfiles import StaticFiles
 
+from app.db.sqlalchemy.session import SQLAlchemyQueryExecutor, get_main_session, test_connection
 from app.routers.equipment_router import equipment_router
 from app.routers.user_router import authenticate_user_router
 from app.routers.centre_charge_router import centre_charge_router
@@ -16,7 +17,6 @@ from app.routers.entity_router import entity_router
 from app.routers.unite_router import unite_router
 from app.routers.zone_router import zone_router
 from app.core.cache import cache
-from app.db.database import test_connection
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -26,7 +26,11 @@ async def lifespan(app: FastAPI):
     # Démarrage
     logger.info("🚀 Démarrage Equipment Mobile API")
     
-    db_connected = test_connection()
+    try:
+        with get_main_session() as session:
+            db_connected = test_connection(session)
+    except Exception:
+        db_connected = False
     logger.info(f"✅ DB: {'OK' if db_connected else 'KO'}")
     logger.info(f"✅ Redis: {'OK' if cache.is_available else 'KO'}")
     
@@ -115,17 +119,13 @@ async def root():
 async def health():
     """Health check global simple"""
     try:
-        from app.db.database import get_database_connection
         from app.core.cache import cache
         
         # Test DB simple
         db_ok = True
         try:
-            db_conn = get_database_connection()
-            if db_conn is None:
-                logger.error("Impossible d'obtenir une connexion à la base de données")
-                raise Exception("Connexion DB manquante")
-            with db_conn as db:
+            with get_main_session() as session:
+                db = SQLAlchemyQueryExecutor(session)
                 db.execute_query("SELECT 1 FROM DUAL")
         except Exception as e:
             logger.error(f"DB Health check failed: {e}")

@@ -44,7 +44,7 @@ async def login_user(
         
         return AuthResponse(
             success=True,
-            data=user.to_mobile_dict(),
+            data=user.to_dict(),
             count=1,
             message="Authentification réussie"
         )

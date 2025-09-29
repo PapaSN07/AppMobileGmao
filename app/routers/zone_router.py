@@ -19,11 +19,13 @@ zone_router = APIRouter(
     description="Récupère la liste des zones pour mobile"
 )
 async def get_zone_mobile(
-    entity: str = Query(..., description="Entité obligatoire (hiérarchie automatique)"),
-    hierarchy_result: Dict[str, Any] = Query(..., description="Résultat de la hiérarchie de l'entité")
+    entity: str = Query(..., description="Entité obligatoire (hiérarchie automatique)")
 ) -> Dict[str, Any]:
     """Liste des zones pour mobile"""
     try:
+        # Récupérer la hiérarchie dans la fonction
+        from app.services.entity_service import get_hierarchy
+        hierarchy_result = get_hierarchy(entity)
         result = get_zones(entity=entity, hierarchy_result=hierarchy_result)
 
         return {
