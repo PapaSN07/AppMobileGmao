@@ -36,6 +36,12 @@ CACHE_TTL_SHORT = 300    # 5 minutes
 CACHE_TTL_MEDIUM = 1800  # 30 minutes  
 CACHE_TTL_LONG = 3600    # 1 heure
 
+# Configuration JWT
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-prod")
+JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+JWT_ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", 30))
+JWT_REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("JWT_REFRESH_TOKEN_EXPIRE_DAYS", 7))
+
 # Vérification des variables obligatoires
 required_vars = [DB_USERNAME, DB_PASSWORD, DB_HOST, DB_SERVICE_NAME]
 if not all(required_vars):

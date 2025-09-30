@@ -1,4 +1,5 @@
-from fastapi import FastAPI, Request
+from typing import Any, Dict
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -6,6 +7,7 @@ import time
 import logging
 import os
 
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.staticfiles import StaticFiles
 
 from app.db.sqlalchemy.session import SQLAlchemyQueryExecutor, get_main_session, get_temp_session, test_connection
@@ -17,9 +19,20 @@ from app.routers.entity_router import entity_router
 from app.routers.unite_router import unite_router
 from app.routers.zone_router import zone_router
 from app.core.cache import cache
+from app.services.jwt_service import jwt_service
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+security = HTTPBearer()
+
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> Dict[str, Any]:
+    """Dépendances pour vérifier le token JWT"""
+    token = credentials.credentials
+    payload = jwt_service.verify_token(token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Token invalide")
+    return payload
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -54,8 +67,49 @@ app = FastAPI(
     title="GMAO Mobile API",
     description="API optimisée pour application mobile Flutter",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
+    # Configuration Swagger pour l'authentification
+    swagger_ui_parameters={
+        "persistAuthorization": True,  # Garde l'auth entre les rechargements
+    }
 )
+
+app.openapi_tags = [
+    {"name": "auth", "description": "Authentification"},
+]
+
+# Configuration OpenAPI pour les headers personnalisés
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    
+    from fastapi.openapi.utils import get_openapi
+    
+    openapi_schema = get_openapi(
+        title="GMAO - SENELEC API",
+        version="1.0.0",
+        description="API senelec pour application mobile Flutter + Web",
+        routes=app.routes,
+    )
+    
+    # Ajouter les schémas de sécurité
+    openapi_schema["components"]["securitySchemes"] = {
+        "BearerAuth": {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "JWT",
+        },
+    }
+    
+    # Appliquer la sécurité globalement
+    openapi_schema["security"] = [
+        {"BearerAuth": []},
+    ]
+    
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+app.openapi = custom_openapi
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
@@ -83,7 +137,7 @@ app.add_middleware(
         # "http://192.168.*.*:*"  # Pour réseaux locaux
     ],
     allow_credentials=True,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "PATCH"],
     allow_headers=["*"],
 )
 

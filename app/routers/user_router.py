@@ -1,6 +1,7 @@
 from typing import Any, Dict
 from fastapi import APIRouter, HTTPException
 from app.schemas.responses.auth_response import AuthResponse
+from app.services.jwt_service import jwt_service
 from app.services.user_service import (
     authenticate_user,
     logout_user
@@ -40,13 +41,24 @@ async def login_user(
         user = authenticate_user(username, password)
         if not user:
             raise HTTPException(status_code=401, detail="Identifiants invalides")
+        
+        # Créer les tokens
+        user_data = {"sub": user.code, "username": user.username}
+        access_token = jwt_service.create_access_token(user_data)
+        refresh_token = jwt_service.create_refresh_token(user_data)
+        
+        # Stocker le refresh token dans Redis
+        jwt_service.store_refresh_token(username, refresh_token)
+        
         logger.info(f"Utilisateur {username} authentifié avec succès")
         
         return AuthResponse(
             success=True,
             data=user.to_dict(),
             count=1,
-            message="Authentification réussie"
+            message="Authentification réussie",
+            access_token=access_token,
+            refresh_token=refresh_token
         )
         
     except oracledb.DatabaseError as e:
@@ -72,6 +84,9 @@ async def logout_user_endpoint(
             logger.warning("Login manquant ou invalide pour la déconnexion.")
             raise HTTPException(status_code=400, detail="Login requis pour la déconnexion")
         
+        # Révoquer le refresh token
+        jwt_service.revoke_refresh_token(username)
+        
         success = logout_user(username)
         if not success:
             logger.warning(f"Échec de la déconnexion pour {username}.")
@@ -82,3 +97,26 @@ async def logout_user_endpoint(
     except Exception as e:
         logger.error(f"❌ Erreur de déconnexion: {e}")
         raise HTTPException(status_code=500, detail="Erreur lors de la déconnexion")
+
+@authenticate_user_router.post("/refresh",
+    summary="Rafraîchir le token d'accès",
+    description="Utilise un refresh token pour obtenir un nouveau access token"
+)
+async def refresh_token_endpoint(refresh_request: Dict[str, str]) -> Dict[str, Any]:
+    """Rafraîchir le token d'accès"""
+    try:
+        refresh_token = refresh_request.get("refresh_token")
+        if not refresh_token:
+            raise HTTPException(status_code=400, detail="Refresh token requis")
+        
+        new_access_token = jwt_service.refresh_access_token(refresh_token)
+        if not new_access_token:
+            raise HTTPException(status_code=401, detail="Refresh token invalide")
+        
+        return {
+            "access_token": new_access_token,
+            "token_type": "bearer"
+        }
+    except Exception as e:
+        logger.error(f"❌ Erreur de rafraîchissement: {e}")
+        raise HTTPException(status_code=500, detail="Erreur lors du rafraîchissement")
