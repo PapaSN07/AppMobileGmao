@@ -51,6 +51,7 @@ class UpdateEquipmentRequest(BaseModel):
     description: Optional[str] = None
     longitude: Optional[str] = None
     latitude: Optional[str] = None
+    created_by: Optional[str] = Field(None, description="Utilisateur créant l'équipement")
     attributs: Optional[List[EquipmentAttribute]] = None
     
     class Config:

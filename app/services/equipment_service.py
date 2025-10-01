@@ -237,128 +237,118 @@ def get_equipment_by_id(equipment_id: str) -> Optional[EquipmentModel]:
         return None
 
 
-def update_equipment_partial(equipment_id: str, updates: Dict[str, Any]) -> bool:
+def update_equipment_partial(equipment_id: str, updates: Dict[str, Any]) -> tuple[bool, Optional[int]]:
     """
-    Met à jour partiellement un équipement et ses attributs
+    Crée un nouvel équipement dans la DB temporaire MSSQL (CliClac) avec les mises à jour fournies.
+    S'inspire de insert_equipment pour utiliser EquipmentCliClac et AttributeCliClac.
     """
+    logger.info(f"🔧 Création équipement mis à jour CliClac MSSQL depuis {equipment_id}")
+
+    # print(f"🔧 Création équipement mis à jour CliClac MSSQL depuis {equipment_id} : {updates}")  # Debug console
+
     try:
-        # Vérifier que l'équipement existe
-        existing_equipment = get_equipment_by_id(equipment_id)
-        if not existing_equipment:
-            logger.error(f"Équipement {equipment_id} non trouvé")
-            return False
+        # Validation préalable : vérifier que les champs essentiels sont présents dans updates
+        if not updates.get('code'):
+            logger.error("Code équipement obligatoire dans les mises à jour")
+            return (False, None)
         
-        # ✅ CORRECTION: Utiliser SQLAlchemy session
-        with get_main_session() as session:
-            executor = SQLAlchemyQueryExecutor(session)
-            
-            # 1. Mise à jour des champs de base de l'équipement
-            equipment_fields = {
-                'code_parent', 'code', 'famille', 'zone', 'entity', 
-                'unite', 'centre_charge', 'description', 'longitude', 
-                'latitude', 'feeder'
-            }
-            
-            # Filtrer les champs d'équipement à mettre à jour
-            equipment_updates = {k: v for k, v in updates.items() if k in equipment_fields and v is not None}
-            
-            if equipment_updates:
-                # Construire la requête de mise à jour dynamiquement
-                set_clauses = []
-                params = {'equipment_id': equipment_id}
-                
-                field_mapping = {
-                    'code_parent': 'ereq_parent_equipment',
-                    'code': 'ereq_code',
-                    'famille': 'ereq_category',
-                    'zone': 'ereq_zone',
-                    'entity': 'ereq_entity',
-                    'unite': 'ereq_function',
-                    'centre_charge': 'ereq_costcentre',
-                    'description': 'ereq_description',
-                    'longitude': 'ereq_longitude',
-                    'latitude': 'ereq_latitude',
-                    'feeder': 'ereq_string2'
-                }
-                
-                for field, value in equipment_updates.items():
-                    db_field = field_mapping.get(field, field)
-                    set_clauses.append(f"{db_field} = :{field}")
-                    params[field] = value
-                
-                if set_clauses:
-                    update_query = f"""
-                        UPDATE coswin.t_equipment 
-                        SET {', '.join(set_clauses)}
-                        WHERE pk_equipment = :equipment_id
-                    """
-                    
-                    executor.execute_update(update_query, params=params)
-                    logger.info(f"✅ Équipement {equipment_id} mis à jour: {list(equipment_updates.keys())}")
-            
-            # 2. Mise à jour des attributs si fournis
-            if 'attributs' in updates and updates['attributs']:
-                success = update_equipment_attributes(getattr(existing_equipment, 'code', ''), updates['attributs'])
-                if not success:
-                    logger.warning(f"Erreur partielle lors de la mise à jour des attributs pour {equipment_id}")
-            
-            # 3. Invalider le cache
-            cache_patterns = [
-                f"mobile_eq_*",
-                f"equipment_attributes_{existing_equipment.code}",
-                f"equipment_*_{equipment_id}"
-            ]
-            
-            for pattern in cache_patterns:
-                cache.clear_pattern(pattern)
-            
-            logger.info(f"✅ Mise à jour complète de l'équipement {equipment_id}")
-            return True
-            
-    except Exception as e:
-        logger.error(f"❌ Erreur mise à jour équipement {equipment_id}: {e}")
-        return False
+        if not updates.get('famille'):
+            logger.error("Famille équipement obligatoire dans les mises à jour")
+            return (False, None)
 
+        # Utiliser SQLAlchemy session temporaire (MSSQL)
+        with get_temp_session() as session:
+            try:
+                # 1) Vérifier que l'équipement n'existe pas déjà dans CliClac (par code)
+                existing_equipment = session.query(EquipmentCliClac).filter_by(
+                    code=updates['code']
+                ).first()
+                
+                if existing_equipment:
+                    logger.error(f"Équipement avec le code {updates['code']} existe déjà dans CliClac")
+                    return (False, None)
 
-def update_equipment_attributes(equipment_code: str, attributes: List[Dict[str, Any]]) -> bool:
-    """
-    Met à jour les attributs d'un équipement
-    """
-    try:
-        # ✅ CORRECTION: Utiliser SQLAlchemy session
-        with get_main_session() as session:
-            executor = SQLAlchemyQueryExecutor(session)
-            success_count = 0
-            
-            for attr in attributes:
-                attr_name = attr.get('name', '')
-                attr_value = str(attr.get('value', ''))
+                # 2) Créer l'équipement CliClac avec les données mises à jour
+                new_equipment = EquipmentCliClac(
+                    code=updates.get('code', ''),
+                    code_parent=updates.get('code_parent', ''),
+                    famille=updates.get('famille', ''),
+                    zone=updates.get('zone', ''),
+                    entity=updates.get('entity', ''),
+                    unite=updates.get('unite', ''),
+                    centre_charge=updates.get('centre_charge', ''),
+                    description=updates.get('description', ''),
+                    longitude=str(updates.get('longitude')) if updates.get('longitude') else None,
+                    latitude=str(updates.get('latitude')) if updates.get('latitude') else None,
+                    feeder=updates.get('feeder', ''),
+                    feeder_description=updates.get('feeder_description', ''),
+                    info=updates.get('info', ''),
+                    etat=updates.get('etat', 'NORMAL'),
+                    type=updates.get('type', '0. Technique'),
+                    localisation=updates.get('localisation', ''),
+                    niveau=updates.get('niveau', 1),
+                    n_serie=updates.get('n_serie', ''),
+                    created_by=updates.get('created_by', ''),
+                    judged_by=updates.get('judged_by', ''),
+                    is_update=True,  # Marquer comme mise à jour
+                    is_new=False,
+                    is_approved=updates.get('is_approved', False)
+                )
                 
-                if not attr_name:
-                    logger.warning(f"Attribut sans nom ignoré pour {equipment_code}")
-                    continue
+                session.add(new_equipment)
+                session.flush()  # Pour obtenir l'ID auto-généré
+
+                equipment_id_new = int(new_equipment.id) if new_equipment.id is not None else None # type: ignore
+                logger.info(f"1) Équipement mis à jour {equipment_id_new} - {new_equipment.code} créé dans CliClac")
+
+                # 3) Créer les attributs si fournis dans updates
+                attributes_data = updates.get('attributs', [])
+                created_attributes = 0
                 
-                try:
-                    # Essayer de mettre à jour l'attribut existant
-                    update_params = {
-                        'equipment_code': equipment_code,
-                        'attribute_name': attr_name,
-                        'value': attr_value
-                    }
-                    
-                    executor.execute_update(UPDATE_EQUIPMENT_ATTRIBUTE_QUERY, params=update_params)
-                    success_count += 1
-                    
-                except Exception as e:
-                    logger.error(f"Erreur mise à jour attribut {attr_name}: {e}")
-                    continue
-            
-            logger.info(f"✅ {success_count}/{len(attributes)} attributs mis à jour pour {equipment_code}")
-            return success_count > 0
-            
+                if attributes_data:
+                    for attr_data in attributes_data:
+                        try:
+                            new_attribute = AttributeCliClac(
+                                specification=attr_data.get('specification', ''),
+                                famille=updates['famille'],
+                                indx=int(attr_data.get('index', 0)),
+                                attribute_name=attr_data.get('name', ''),
+                                value=str(attr_data.get('value', '')) if attr_data.get('value') is not None else None,
+                                code=updates['code'],
+                                description=attr_data.get('description') or updates.get('description'),
+                                is_copy_ot=attr_data.get('is_copy_ot', False)
+                            )
+                            
+                            session.add(new_attribute)
+                            created_attributes += 1
+                            logger.debug(f"Attribut créé: {attr_data.get('name')} = {attr_data.get('value')}")
+                            
+                        except Exception as e:
+                            logger.error(f"Erreur création attribut {attr_data.get('name', 'N/A')}: {e}")
+                            continue
+
+                # 4) Commit final
+                session.commit()
+                logger.info(f"✅ Équipement mis à jour CliClac ID: {equipment_id_new} - Code: {updates['code']} créé avec succès")
+                logger.info(f"✅ {created_attributes} attributs créés")
+
+                # Invalider le cache (si applicable pour CliClac)
+                invalidate_equipment_insertion_cache(
+                    str(updates['code']), 
+                    str(updates.get('entity', '')), 
+                    str(updates.get('famille', ''))
+                )
+
+                return (True, equipment_id_new)
+
+            except Exception as e:
+                logger.error(f"Erreur lors de la création équipement mis à jour CliClac: {e}")
+                session.rollback()
+                return (False, None)
+
     except Exception as e:
-        logger.error(f"❌ Erreur mise à jour attributs pour {equipment_code}: {e}")
-        return False
+        logger.error(f"update_equipment_partial fatal error: {e}")
+        return (False, None)
 
 
 def get_equipment_attributes_by_code(equipment_code: str) -> List[Dict[str, Any]]:

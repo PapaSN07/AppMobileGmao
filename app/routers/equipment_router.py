@@ -146,8 +146,10 @@ async def update_equipment_partial_endpoint(
     """Modification partielle d'un équipement avec ses attributs"""
     
     try:
+        print("--------------Request: ",request)
         # Convertir la request en dictionnaire, en excluant les valeurs None
         updates = request.model_dump(exclude_none=True)
+        print("--------------Update : ", updates)
         
         if not updates:
             raise HTTPException(status_code=400, detail="Aucun champ à mettre à jour fourni")
