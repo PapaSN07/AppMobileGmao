@@ -1889,6 +1889,8 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
         print('🔄 $__logName Début de l\'ajout');
       }
 
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
       // ✅ IMPORTANT: Préparer les attributs AVANT de créer les données
       final attributs = _prepareAttributesForSave();
 
@@ -1922,6 +1924,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
         'longitude': valueLongitude ?? '12311231',
         'latitude': valueLatitude ?? '12311231',
         'attributs': attributs,
+        'createdBy': authProvider.currentUser?.email, // Champ requis par le backend
       };
 
       if (kDebugMode) {
@@ -1937,6 +1940,9 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
         print('   - Unite: ${equipmentData['unite']}');
         print('   - Centre Charge: ${equipmentData['centreCharge']}');
         print('   - Description: ${equipmentData['description']}');
+        print('   - Longitude: ${equipmentData['longitude']}');
+        print('   - Latitude: ${equipmentData['latitude']}');
+        print('   - Created By: ${equipmentData['createdBy']}');
         print('   - Attributs: ${attributs.length} éléments');
         for (final attr in attributs) {
           print('     • ${attr['name']}: "${attr['value']}" (${attr['type']})');

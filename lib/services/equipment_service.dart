@@ -12,8 +12,9 @@ import 'api_service.dart';
 
 class EquipmentService {
   late final ApiService _apiService;
-  // Logging
+  // Logging et constantes
   static const String __logName = 'EquipmentService -';
+  static const String __prefixURI = '/api/v1/equipments';
 
   EquipmentService({ApiService? apiService}) {
     _apiService = apiService ?? ApiService(port: 8000);
@@ -50,7 +51,7 @@ class EquipmentService {
       }
 
       final data = await _apiService.get(
-        '/api/v1/equipments',
+        __prefixURI,
         queryParameters: queryParams,
       );
       return ApiResponse.fromJson(
@@ -79,7 +80,7 @@ class EquipmentService {
       }
 
       final data = await _apiService.get(
-        '/api/v1/equipments/attributes?specification=$specification&attribute_index=$attributeIndex',
+        '$__prefixURI/attributes?specification=$specification&attribute_index=$attributeIndex',
       );
 
       if (kDebugMode) {
@@ -153,7 +154,7 @@ class EquipmentService {
       }
 
       final data = await _apiService.get(
-        '/api/v1/equipments/attributes/by-code?codeFamille=$codeFamille',
+        '$__prefixURI/attributes/by-code?codeFamille=$codeFamille',
       );
 
       if (kDebugMode) {
@@ -226,7 +227,7 @@ class EquipmentService {
         print('🔧 $__logName Récupération des sélecteurs pour entité: $entity');
       }
 
-      final data = await _apiService.get('/api/v1/equipments/values/$entity');
+      final data = await _apiService.get('$__prefixURI/values/$entity');
 
       if (kDebugMode) {
         print('📋 $__logName Données reçues: ${data['data']?.keys}');
@@ -315,6 +316,7 @@ class EquipmentService {
         );
         print('   - Longitude: ${equipmentData['longitude']}');
         print('   - Latitude: ${equipmentData['latitude']}');
+        print('   - Created By: ${equipmentData['createdBy']}');
         if (equipmentData['attributs'] != null) {
           final attributs = equipmentData['attributs'] as List;
           print('   - Attributs: ${attributs.length} éléments');
@@ -327,7 +329,7 @@ class EquipmentService {
       }
 
       final data = await _apiService.post(
-        '/api/v1/equipments',
+        __prefixURI,
         data: equipmentData,
       );
 
@@ -415,7 +417,7 @@ class EquipmentService {
       }
 
       final data = await _apiService.patch(
-        '/api/v1/equipments/$equipmentId',
+        '$__prefixURI/$equipmentId',
         data: updatedFields,
       );
 

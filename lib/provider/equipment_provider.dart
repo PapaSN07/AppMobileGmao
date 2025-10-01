@@ -327,6 +327,7 @@ class EquipmentProvider extends ChangeNotifier {
           feederDescription: processedData['feeder_description'],
           longitude: processedData['longitude'],
           latitude: processedData['latitude'],
+          createdBy: processedData['created_by'],
           attributes: finalAttributes, // ✅ Inclure tous les attributs
           cachedAt: DateTime.now(),
         );
@@ -414,6 +415,7 @@ class EquipmentProvider extends ChangeNotifier {
     data['feeder_description'] = equipmentData['infoFeeder'] ?? '';
     data['longitude'] = equipmentData['longitude'] ?? '';
     data['latitude'] = equipmentData['latitude'] ?? '';
+    data['created_by'] = equipmentData['createdBy'] ?? 'mobile_app';
 
     return data;
   }

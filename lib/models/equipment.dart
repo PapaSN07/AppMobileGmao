@@ -50,6 +50,8 @@ class Equipment extends HiveObject {
   @HiveField(15)
   List<EquipmentAttribute>? attributes;
 
+  String? createdBy;
+
   Equipment({
     this.id,
     this.codeParent,
@@ -66,6 +68,7 @@ class Equipment extends HiveObject {
     required this.latitude,
     DateTime? cachedAt,
     this.attributes,
+    this.createdBy = 'mobile_app',
   }) : cachedAt = cachedAt ?? DateTime.now();
 
   factory Equipment.fromJson(Map<String, dynamic> json) {
@@ -113,13 +116,13 @@ class Equipment extends HiveObject {
       'latitude': latitude.isNotEmpty ? latitude : null,
       'feeder': feeder?.isNotEmpty == true ? feeder : null,
       'feeder_description':
-          feederDescription?.isNotEmpty == true
-              ? feederDescription
-              : null,
-      'code_parent':
-          codeParent?.isNotEmpty == true ? codeParent : null,
+          feederDescription?.isNotEmpty == true ? feederDescription : null,
+      'code_parent': codeParent?.isNotEmpty == true ? codeParent : null,
       'attributs':
-          attributes?.map((attr) => attr.toJson()).toList(), // ✅ Seulement les attributs avec valeur
+          attributes
+              ?.map((attr) => attr.toJson())
+              .toList(), // ✅ Seulement les attributs avec valeur
+      'created_by': createdBy, // Champ requis par le backend
     };
   }
 

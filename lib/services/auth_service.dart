@@ -8,12 +8,14 @@ import 'package:flutter/foundation.dart';
 class AuthService {
   final ApiService apiClient;
 
+  static const String __prefixURI = '/api/v1/auth';
+
   AuthService({ApiService? apiClient}) : apiClient = apiClient ?? ApiService();
 
   Future<Map<String, dynamic>> login(String username, String password) async {
     try {
       final response = await apiClient.post(
-        '/api/v1/auth/login',
+        '$__prefixURI/login',
         data: {'username': username, 'password': password},
       );
 
@@ -90,7 +92,7 @@ class AuthService {
   Future<void> logout(String username) async {
     try {
       final response = await apiClient.post(
-        '/api/v1/auth/logout',
+        '$__prefixURI/logout',
         data: {'username': username},
       );
       if (response != null && response['status'] == 'success') {
@@ -112,7 +114,7 @@ class AuthService {
   Future<void> updateProfile(Map<String, dynamic> profileData) async {
     try {
       final response = await apiClient.patch(
-        '/api/v1/auth/profile',
+        '$__prefixURI/profile',
         data: profileData,
       );
       if (response != null && response['success'] == true) {
