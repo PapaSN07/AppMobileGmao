@@ -4,7 +4,7 @@ import logging
 
 from pydantic import ValidationError
 
-from app.models.models import EquipmentModel
+from app.models.models import EquipmentCliClac, EquipmentModel
 from app.schemas.responses.equipment_response import (
     AttributeResponse, 
     AttributeValueResponse, 
@@ -70,7 +70,7 @@ async def add_equipment_mobile(request: AddEquipmentRequest) -> Dict[str, Any]:
     """Ajout d'un équipement via insert_equipment"""
     try:
         data = request.model_dump(exclude_none=True)
-        
+                
         # Simplifier la conversion des attributs
         attributes_converted = []
         if data.get('attributs'):
@@ -85,27 +85,39 @@ async def add_equipment_mobile(request: AddEquipmentRequest) -> Dict[str, Any]:
                     'type': attr.get('type', 'string')
                 }
                 attributes_converted.append(attr_dict)
-
-        # ✅ CORRECTION: Créer EquipmentModel avec les bons attributs
-        equipment = EquipmentModel(
-            # ✅ Les attributs correspondent aux colonnes SQLAlchemy
+        
+        # Créer EquipmentModel avec les bons attributs
+        equipment = EquipmentCliClac(
+            # Les attributs correspondent aux colonnes SQLAlchemy
             code=data.get('code', ''),
-            description=data.get('description', ''),
-            codeParent=data.get('code_parent', ''),
+            code_parent=data.get('code_parent', ''),
             famille=data.get('famille', ''),
             zone=data.get('zone', ''),
             entity=data.get('entity', ''),
             unite=data.get('unite', ''),
-            centreCharge=data.get('centre_charge', ''),
+            centre_charge=data.get('centre_charge', ''),
+            description=data.get('description', ''),
             longitude=data.get('longitude'),
             latitude=data.get('latitude'),
-            feeder=data.get('feeder', '')
+            feeder=data.get('feeder', ''),
+            feeder_description=data.get('feeder_description', ''),
+            info=data.get('info', ''),
+            etat=data.get('etat', 'NORMAL'),
+            type=data.get('type', '0. Technique'),
+            localisation=data.get('localisation', ''),
+            niveau=data.get('niveau', 1),
+            n_serie=data.get('n_serie', ''),
+            created_by=data.get('created_by', 'mobile_user'),
+            judged_by=data.get('judged_by', ''),
+            is_update=data.get('is_update', False),
+            is_new=data.get('is_new', True),
+            is_approved=data.get('is_approved', False)
         )
         
-        # ✅ CORRECTION: Affecter les attributs après création
         equipment.attributes = attributes_converted
-
+        
         success, equipment_id = insert_equipment(equipment)
+        
         if success:
             return {
                 "status": "success",

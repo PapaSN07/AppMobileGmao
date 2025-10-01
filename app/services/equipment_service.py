@@ -1,10 +1,8 @@
+from sqlalchemy import cast
 from app.db.sqlalchemy.session import get_main_session, get_temp_session, SQLAlchemyQueryExecutor
 from app.core.config import CACHE_TTL_SHORT
-from app.models.models import (EquipmentModel, EquipmentWithAttributesBuilder, AttributeValues)
-from app.db.requests import (ATTRIBUTE_VALUES_QUERY, CHECK_ATTRIBUTE_EXISTS_QUERY, EQUIPMENT_ADD_QUERY, 
-                            EQUIPMENT_ATTRIBUTE_ADD_QUERY, EQUIPMENT_BY_ID_QUERY, EQUIPMENT_CLASSE_ATTRIBUTS_QUERY, EQUIPMENT_INFINITE_QUERY, 
-                            EQUIPMENT_LENGTH_ATTRIBUTS_QUERY_DISTINCT, 
-                            EQUIPMENT_SPEC_ADD_QUERY, EQUIPMENT_T_SPECIFICATION_CODE_QUERY, FEEDER_QUERY, 
+from app.models.models import (AttributeCliClac, EquipmentCliClac, EquipmentModel, EquipmentWithAttributesBuilder, AttributeValues)
+from app.db.requests import (ATTRIBUTE_VALUES_QUERY, EQUIPMENT_BY_ID_QUERY, EQUIPMENT_CLASSE_ATTRIBUTS_QUERY, EQUIPMENT_INFINITE_QUERY, FEEDER_QUERY, 
                             UPDATE_EQUIPMENT_ATTRIBUTE_QUERY)
 from app.core.cache import cache, invalidate_equipment_insertion_cache
 from typing import Dict, Any, List, Optional
@@ -409,259 +407,116 @@ def get_equipment_attributes_by_code(equipment_code: str) -> List[Dict[str, Any]
         return []
 
 
-def validate_equipment_for_insertion(equipment: EquipmentModel) -> tuple[bool, str]:
+def insert_equipment(equipment: EquipmentCliClac) -> tuple[bool, Optional[int]]:
     """
-    Valide un équipement avant insertion
+    Insère un nouvel équipement dans la DB temporaire MSSQL (CliClac).
+    Structure différente : utilise EquipmentCliClac et AttributeCliClac
     """
-    try:
-        # Vérifications obligatoires
-        if not equipment.code is not None or len(equipment.code.strip()) == 0:
-            return False, "Code équipement obligatoire"
-        
-        if not equipment.famille is not None:
-            return False, "Famille équipement obligatoire"
-            
-        if not equipment.entity is not None:
-            return False, "Entité obligatoire"
-            
-        if not equipment.zone is not None:
-            return False, "Zone obligatoire"
-        
-        # ✅ CORRECTION: Vérifier dans les DEUX bases avec SQLAlchemy
-        
-        # 1. Vérifier dans la DB principale
-        main_exists = False
-        try:
-            with get_main_session() as session:
-                executor = SQLAlchemyQueryExecutor(session)
-                main_check = executor.execute_query(
-                    "SELECT COUNT(*) FROM coswin.t_equipment WHERE ereq_code = :code", 
-                    params={'code': equipment.code}
-                )
-                main_exists = main_check and main_check[0][0] > 0
-        except Exception as e:
-            logger.warning(f"Erreur vérification DB principale: {e}")
-        
-        # 2. Vérifier dans la DB temporaire
-        temp_exists = False
-        try:
-            with get_temp_session() as session:
-                executor = SQLAlchemyQueryExecutor(session)
-                temp_check = executor.execute_query(
-                    "SELECT COUNT(*) FROM coswin.t_equipment WHERE ereq_code = :code", 
-                    params={'code': equipment.code}
-                )
-                temp_exists = temp_check and temp_check[0][0] > 0
-        except Exception as e:
-            logger.warning(f"Erreur vérification DB temporaire: {e}")
-        
-        # ✅ Rejeter si l'équipement existe dans l'une ou l'autre des bases
-        if main_exists or temp_exists:
-            db_location = "principale" if main_exists else "temporaire"
-            return False, f"Un équipement avec le code {equipment.code} existe déjà (DB {db_location})"
-        
-        return True, "Validation réussie"
-        
-    except Exception as e:
-        logger.error(f"Erreur validation équipement: {e}")
-        return False, f"Erreur validation: {str(e)}"
-
-
-def insert_equipment(equipment: EquipmentModel) -> tuple[bool, Optional[int]]:
-    """
-    Insère un nouvel équipement en utilisant SQLAlchemy avec requêtes SQL brutes.
-    """
-    logger.info(f"🔧 Insertion équipement SQLAlchemy: {equipment.code}")
+    logger.info(f"🔧 Insertion équipement CliClac MSSQL: {equipment.code}")
     
     try:
         # Validation préalable
-        is_valid, msg = validate_equipment_for_insertion(equipment)
-        logger.info(f"Validation équipement avant insertion: {msg}")
-        if not is_valid:
-            logger.error(f"Validation échouée: {msg}")
+        if equipment.code is None or equipment.code.strip() == "":
+            logger.error("Code équipement obligatoire")
+            return (False, None)
+        
+        if equipment.famille is None or equipment.famille.strip() == "":
+            logger.error("Famille équipement obligatoire")
             return (False, None)
 
-        # ✅ CORRECTION: Utiliser SQLAlchemy session temporaire
+        # Utiliser SQLAlchemy session temporaire (MSSQL)
         with get_temp_session() as session:
-            executor = SQLAlchemyQueryExecutor(session)
-            
             try:
-                # 1) Utiliser une séquence Oracle au lieu de COUNT
-                equipment_pk = _get_index_sqlalchemy(executor, 
-                    "SELECT coswin_seq.NEXTVAL FROM DUAL", 
-                    "SELECT COALESCE(MAX(pk_equipment), 0) + 1 FROM coswin.t_equipment"
+                # 1) Vérifier que l'équipement n'existe pas déjà
+                existing_equipment = session.query(EquipmentCliClac).filter_by(
+                    code=equipment.code
+                ).first()
+                
+                if existing_equipment:
+                    logger.error(f"Équipement avec le code {equipment.code} existe déjà")
+                    return (False, None)
+
+                # 2) Créer l'équipement CliClac
+                new_equipment = EquipmentCliClac(
+                    code=equipment.code,
+                    code_parent=equipment.code_parent,
+                    famille=equipment.famille,
+                    zone=equipment.zone,
+                    entity=equipment.entity,
+                    unite=equipment.unite,
+                    centre_charge=equipment.centre_charge,
+                    description=equipment.description,
+                    longitude=str(equipment.longitude),
+                    latitude=str(equipment.latitude),
+                    feeder=equipment.feeder,
+                    feeder_description=equipment.feeder_description,
+                    info=equipment.info,
+                    etat=equipment.etat,
+                    type=equipment.type,
+                    localisation=equipment.localisation,
+                    niveau=equipment.niveau,
+                    n_serie=equipment.n_serie,
+                    created_by=equipment.created_by,
+                    judged_by=equipment.judged_by,
+                    is_update=equipment.is_update,
+                    is_new=equipment.is_new,
+                    is_approved=equipment.is_approved
                 )
                 
-                if equipment_pk is None:
-                    return (False, None)
-                
-                setattr(equipment, 'id', equipment_pk)
-                
-                # ✅ CORRECTION: Utiliser executor.execute_update au lieu de db.execute_update
-                executor.execute_update(EQUIPMENT_ADD_QUERY, params={
-                    'id': equipment.id,
-                    'code': equipment.code,
-                    'bar_code': equipment.code,
-                    'description': equipment.description,
-                    'category': equipment.famille,
-                    'zone': equipment.zone,
-                    'entity': equipment.entity,
-                    'function': equipment.unite,
-                    'costcentre': equipment.centreCharge,
-                    'longitude': equipment.longitude,
-                    'latitude': equipment.latitude,
-                    'feeder': getattr(equipment, 'feeder', None),
-                    'creation_date': datetime.now()
-                }, commit=False)
-                
-                logger.info(f"1) Équipement {equipment.id} inséré en base (commit différé)")
+                session.add(new_equipment)
+                session.flush()  # Pour obtenir l'ID auto-généré
 
-                # 2) Récupérer cwsp_code (spec) pour la catégorie
-                spec_rows = executor.execute_query(EQUIPMENT_T_SPECIFICATION_CODE_QUERY, 
-                                                params={'category': equipment.famille})
-                logger.info(f"2) Spécifications trouvées pour la catégorie {equipment.famille}: {len(spec_rows) if spec_rows else 0}")
-                
-                if not spec_rows:
-                    logger.info(f"2) Aucune specification trouvée pour la catégorie {equipment.famille} -> insertion terminée sans specs")
-                    # ✅ CORRECTION: commit automatique avec SQLAlchemy session
-                    invalidate_equipment_insertion_cache(str(equipment.code), str(equipment.entity), str(equipment.famille))
-                    return (True, equipment_pk)
-                
-                cwsp_code = spec_rows[0][0]
+                # ✅ CORRECTION: Utiliser l'attribut .code au lieu de ['code']
+                equipment_id = int(new_equipment.id) if new_equipment.id is not None else None # type: ignore
+                logger.info(f"1) Équipement {equipment_id} - {new_equipment.code} inséré")
 
-                # 3) INSERT equipment_specs avec PK fiable
-                equipment_specs_pk = _get_index_sqlalchemy(executor,
-                    "SELECT coswin_eq_specs_seq.NEXTVAL FROM DUAL", 
-                    "SELECT COALESCE(MAX(pk_equipment_specs), 0) + 1 FROM coswin.equipment_specs"
-                )
+                # 3) Créer les attributs si fournis
+                attributes_data = equipment.attributes
+                created_attributes = 0
                 
-                if equipment_specs_pk is None:
-                    return (False, None)
-                
-                executor.execute_update(EQUIPMENT_SPEC_ADD_QUERY, params={
-                    'id': equipment_specs_pk,
-                    'specification': cwsp_code,
-                    'equipment': equipment.code,
-                    'release_date': datetime.now(),
-                    'release_number': 1
-                }, commit=False)
-                
-                logger.info(f"3) equipment_specs inséré pour {equipment.code} et specification {cwsp_code} (commit différé)")
-
-                # 4) Création d'attributs avec dédoublonnage
-                attributes = equipment.attributes or []
-                logger.info(f"4) Attributs fournis pour insertion: {len(attributes)}")
-                
-                # Requête corrigée pour éviter les doublons d'index
-                attr_rows = executor.execute_query(EQUIPMENT_LENGTH_ATTRIBUTS_QUERY_DISTINCT, 
-                                                    params={'category': equipment.famille})
-                
-                logger.info(f"Index d'attributs disponibles pour la famille {equipment.famille}: {len(attr_rows) if attr_rows else 0}")
-                
-                if attr_rows:
-                    # Créer un mapping strict des valeurs fournies par index
-                    provided_values = {}
-                    seen_indexes = set()
-                    
-                    for attr in attributes:
+                if attributes_data:
+                    for attr_data in attributes_data:
                         try:
-                            # Gérer les deux formats possibles (dict ou object)
-                            if isinstance(attr, dict):
-                                idx = str(attr.get("index", "")).strip()
-                                value = attr.get("value")
-                            else:
-                                idx = str(getattr(attr, "index", "")).strip()
-                                value = getattr(attr, "value", None)
+                            # ✅ CORRECTION: Utiliser 'attribute_name' au lieu de 'name'
+                            new_attribute = AttributeCliClac(
+                                specification=attr_data.get('specification', ''),
+                                famille=equipment.famille,
+                                indx=int(attr_data.get('index', 0)),  # ✅ 'index' depuis le request
+                                attribute_name=attr_data.get('name', ''),  # ✅ 'name' depuis le request
+                                value=str(attr_data.get('value', '')) if attr_data.get('value') is not None else None,
+                                code=equipment.code,
+                                description=attr_data.get('description') or equipment.description,
+                                is_copy_ot=attr_data.get('is_copy_ot', False)
+                            )
                             
-                            if idx and idx not in seen_indexes:
-                                provided_values[idx] = value
-                                seen_indexes.add(idx)
-                                logger.debug(f"Valeur mappée pour index {idx}: {value}")
-                            elif idx in seen_indexes:
-                                logger.warning(f"Index {idx} en doublon ignoré")
-                                
-                        except Exception as e:
-                            logger.error(f"Erreur traitement attribut: {e}")
-                            continue
-                    
-                    # Créer UNE SEULE ligne par index de famille (dédoublonné)
-                    created = 0
-                    created_indexes = set()
-                    
-                    for attr_row in attr_rows:
-                        try:
-                            index_val = str(attr_row[0]).strip()
-                            
-                            # Vérifier qu'on ne crée pas de doublon
-                            if index_val in created_indexes:
-                                logger.warning(f"Index {index_val} déjà créé, ignoré")
-                                continue
-                            
-                            # Récupérer la valeur fournie ou None
-                            value = provided_values.get(index_val)
-                            
-                            # Vérifier que l'attribut n'existe pas déjà
-                            existing_check = executor.execute_query(CHECK_ATTRIBUTE_EXISTS_QUERY, 
-                                                                    params={'commonkey': equipment_specs_pk, 'indx': index_val})
-                            
-                            if existing_check and existing_check[0][0] > 0:
-                                logger.warning(f"Attribut index {index_val} existe déjà pour commonkey {equipment_specs_pk}")
-                                continue
-                            
-                            executor.execute_update(EQUIPMENT_ATTRIBUTE_ADD_QUERY, params={
-                                'commonkey': equipment_specs_pk,
-                                'indx': index_val,
-                                'etat_value': value
-                            }, commit=False)
-                            
-                            created += 1
-                            created_indexes.add(index_val)
-                            logger.debug(f"Attribut créé: index={index_val}, value={value}")
+                            session.add(new_attribute)
+                            created_attributes += 1
+                            logger.debug(f"Attribut créé: {attr_data.get('name')} = {attr_data.get('value')}")
                             
                         except Exception as e:
-                            logger.error(f"Erreur création attribut index {attr_row[0]}: {e}")
+                            logger.error(f"Erreur création attribut {attr_data.get('name', 'N/A')}: {e}")
                             continue
-                    
-                    logger.info(f"✅ {created}/{len(attr_rows)} attributs créés pour {equipment.code}")
-                else:
-                    logger.info(f"Aucun attribut disponible pour la famille {equipment.famille}")
-                
-                # ✅ CORRECTION: Ajouter le commit explicite à la fin
+
+                # 4) Commit final
                 session.commit()
-                logger.info("✅ Commit effectué pour l'équipement inséré")
+                # ✅ CORRECTION: Utiliser equipment.code au lieu de equipment['code']
+                logger.info(f"✅ Équipement CliClac ID: {equipment_id} - Code: {equipment.code} inséré avec succès")
+                logger.info(f"✅ {created_attributes} attributs créés")
 
-                # Invalider le cache après insertion réussie
-                invalidate_equipment_insertion_cache(str(equipment.code), str(equipment.entity), str(equipment.famille))
+                # Invalider le cache
+                invalidate_equipment_insertion_cache(
+                    str(equipment.code), 
+                    str(equipment.entity), 
+                    str(equipment.famille)
+                )
 
-                logger.info(f"✅ Équipement ID: {equipment_pk} - Code: {equipment.code} inséré avec succès SQLAlchemy")
-                return (True, equipment_pk)
+                return (True, equipment_id)
 
             except Exception as e:
-                logger.error(f"Erreur lors de l'insertion équipement SQLAlchemy: {e}")
-                # ✅ Le rollback se fait automatiquement avec SQLAlchemy session
+                logger.error(f"Erreur lors de l'insertion équipement CliClac: {e}")
+                session.rollback()
                 return (False, None)
 
     except Exception as e:
-        logger.error(f"insert_equipment SQLAlchemy fatal error: {e}")
+        logger.error(f"insert_equipment fatal error: {e}")
         return (False, None)
-
-
-def _get_index_sqlalchemy(executor: SQLAlchemyQueryExecutor, seq_oracle: str, seq_fallback: str) -> Optional[int]:
-    """Récupère le prochain index d'équipement en utilisant SQLAlchemy"""
-    try:
-        # Essayer d'utiliser une séquence Oracle (plus fiable)
-        equipment_pk = executor.execute_scalar(seq_oracle)
-        if equipment_pk:
-            return int(equipment_pk)
-        else:
-            # Fallback avec MAX + 1 (plus fiable que COUNT)
-            equipment_pk = executor.execute_scalar(seq_fallback)
-            return int(equipment_pk) if equipment_pk else None
-    except Exception:
-        # Si séquence n'existe pas, utiliser MAX + 1
-        try:
-            equipment_pk = executor.execute_scalar(seq_fallback)
-            return int(equipment_pk) if equipment_pk else None
-        except Exception as e:
-            logger.error(f"Impossible de récupérer pk_equipment: {e}")
-            return None

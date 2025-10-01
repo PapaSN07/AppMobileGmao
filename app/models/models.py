@@ -460,3 +460,220 @@ class EquipmentWithAttributesBuilder:
         
         equipments = EquipmentWithAttributesBuilder.build_from_query_results(results)
         return equipments[0] if equipments else None
+
+# ✅ NOUVEAU: Modèles pour l'historique des modifications pour Clic Clac
+
+class AttributeCliClac(Base):
+    __tablename__ = "attribute"
+    __table_args__ = {'schema': 'dbo'}
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    specification = Column(String(255), nullable=False, index=True)
+    famille = Column(String(255), nullable=False, index=True)
+    indx = Column(Integer, nullable=False)
+    attribute_name = Column(String(255), nullable=False)
+    value = Column(String, nullable=True)
+    code = Column(String(255), nullable=False, index=True)
+    description = Column(String, nullable=True)
+    is_copy_ot = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'id': str(self.id) if self.id is not None else None,
+            'specification': self.specification,
+            'famille': self.famille,
+            'indx': self.indx,
+            'attribute_name': self.attribute_name,
+            'value': self.value,
+            'code': self.code,
+            'description': self.description,
+            'is_copy_ot': self.is_copy_ot,
+            'created_at': self.created_at.isoformat() if self.created_at is not None else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at is not None else None
+        }
+
+class EquipmentCliClac(Base):
+    __tablename__ = "equipment"
+    __table_args__ = {'schema': 'dbo'}
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    code_parent = Column(String(255), nullable=True)
+    code = Column(String(255), nullable=True, index=True)
+    famille = Column(String(255), nullable=True, index=True)
+    zone = Column(String(255), nullable=True)
+    entity = Column(String(255), nullable=True, index=True)
+    unite = Column(String(255), nullable=True)
+    centre_charge = Column(String(255), nullable=True, index=True)
+    description = Column(String(255), nullable=True)
+    longitude = Column(String(255), nullable=True)
+    latitude = Column(String(255), nullable=True)
+    feeder = Column(String(255), nullable=True, index=True)
+    feeder_description = Column(String(255), nullable=True)
+    info = Column(String(255), nullable=True)
+    etat = Column(String(255), nullable=True, default='NORMAL')
+    type = Column(String(255), nullable=True, default='0. Technique')
+    localisation = Column(String(255), nullable=True)
+    niveau = Column(Integer, nullable=True, default=1)
+    n_serie = Column(String(255), nullable=True, index=True)
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
+    created_by = Column(String(255), nullable=True)
+    judged_by = Column(String(255), nullable=True)
+    is_update = Column(Boolean, default=False)
+    is_new = Column(Boolean, default=False)
+    is_approved = Column(Boolean, default=False)
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # Attributs Python pour données jointes (pas des colonnes DB)
+        self.attributes: List[Dict[str, Any]] = []
+
+    def to_dict_SDDV(self) -> Dict[str, Any]:
+        return {
+            'id': str(self.id) if self.id is not None else None,
+            'famille': self.famille,
+            'unite': self.unite,
+            'centre_charge': self.centre_charge,
+            'zone': self.zone,
+            'entity': self.entity,
+            'feeder': self.feeder,
+            'feeder_description': self.feeder_description,
+            'localisation': self.localisation,
+            'code_parent': self.code_parent,
+            'code': self.code,
+            'description': self.description,
+            'created_at': self.created_at.isoformat() if self.created_at is not None else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at is not None else None,
+            'created_by': self.created_by,
+            'judged_by': self.judged_by,
+            'is_update': self.is_update,
+            'is_new': self.is_new,
+            'is_approved': self.is_approved
+        }
+    
+class HistoryCliClac(Base):
+    __tablename__ = "history"
+    __table_args__ = {'schema': 'dbo'}
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    commentaire = Column(String(255), nullable=True)
+    date_history_created_at = Column(DateTime, default=func.now(), nullable=False)
+    equipment_id = Column(Integer, ForeignKey('dbo.equipment.id', ondelete='CASCADE'), nullable=False, index=True)
+    code_parent = Column(String(255), nullable=True)
+    code = Column(String(255), nullable=True)
+    famille = Column(String(255), nullable=True)
+    zone = Column(String(255), nullable=True)
+    entity = Column(String(255), nullable=True)
+    unite = Column(String(255), nullable=True)
+    centre_charge = Column(String(255), nullable=True)
+    description = Column(String(255), nullable=True)
+    longitude = Column(String(255), nullable=True)
+    latitude = Column(String(255), nullable=True)
+    feeder = Column(String(255), nullable=True)
+    feeder_description = Column(String(255), nullable=True)
+    info = Column(String(255), nullable=True)
+    etat = Column(String(255), nullable=True, default='NORMAL')
+    type = Column(String(255), nullable=True, default='Technique')
+    localisation = Column(String(255), nullable=True)
+    niveau = Column(Integer, nullable=True, default=1)
+    n_serie = Column(String(255), nullable=True)
+    created_at = Column(DateTime, nullable=True)
+    updated_at = Column(DateTime, nullable=True)
+    created_by = Column(String(255), nullable=True)
+    judged_by = Column(String(255), nullable=True)
+    is_update = Column(Boolean, default=False)
+    is_new = Column(Boolean, default=False)
+    is_approved = Column(Boolean, default=False)
+    
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'id': str(self.id) if self.id is not None else None,
+            'commentaire': self.commentaire,
+            'date_history_created_at': self.date_history_created_at.isoformat() if self.date_history_created_at is not None else None,
+            'equipment_id': str(self.equipment_id) if self.equipment_id is not None else None,
+            'code_parent': self.code_parent,
+            'code': self.code,
+            'famille': self.famille,
+            'zone': self.zone,
+            'entity': self.entity,
+            'unite': self.unite,
+            'centre_charge': self.centre_charge,
+            'description': self.description,
+            'longitude': self.longitude,
+            'latitude': self.latitude,
+            'feeder': self.feeder,
+            'feeder_description': self.feeder_description,
+            'info': self.info,
+            'etat': self.etat,
+            'type': self.type,
+            'localisation': self.localisation,
+            'niveau': self.niveau,
+            'n_serie': self.n_serie,
+            'created_at': self.created_at.isoformat() if self.created_at is not None else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at is not None else None,
+            'created_by': self.created_by,
+            'judged_by': self.judged_by,
+            'is_update': self.is_update,
+            'is_new': self.is_new,
+            'is_approved': self.is_approved
+        }
+
+class HistoryAttributeCliClac(Base):
+    __tablename__ = "history_attribute"
+    __table_args__ = {'schema': 'dbo'}
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    history_id = Column(Integer, ForeignKey('dbo.history.id', ondelete='CASCADE'), nullable=False, index=True)
+    attribute_id = Column(Integer, ForeignKey('dbo.attribute.id', ondelete='NO ACTION'), nullable=False, index=True)
+    attribute_name = Column(String(255), nullable=True)
+    value = Column(Text, nullable=True)
+    code = Column(String(255), nullable=True)
+    description = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
+    
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'id': str(self.id) if self.id is not None else None,
+            'history_id': str(self.history_id) if self.history_id is not None else None,
+            'attribute_id': str(self.attribute_id) if self.attribute_id is not None else None,
+            'attribute_name': self.attribute_name,
+            'value': self.value,
+            'code': self.code,
+            'description': self.description,
+            'created_at': self.created_at.isoformat() if self.created_at is not None else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at is not None else None
+        }
+
+class UserCliClac(Base):
+    __tablename__ = "users"
+    __table_args__ = {'schema': 'dbo'}
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    username = Column(String(150), nullable=False, unique=True, index=True)
+    password = Column(String(255), nullable=False)  # stocke le hash bcrypt / argon2
+    email = Column(String(255), nullable=False, unique=True, index=True)
+    supervisor = Column(Integer, ForeignKey('dbo.users.id', ondelete='SET NULL'), nullable=True, index=True)
+    url_image = Column(String(512), nullable=True)
+    role = Column(String(100), nullable=False, default='user', index=True)
+    is_connected = Column(Boolean, default=False, nullable=True, index=True)
+    is_enabled = Column(Boolean, default=True, nullable=True, index=True)
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
+    
+    
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'id': str(self.id) if self.id is not None else None,
+            'username': self.username,
+            'email': self.email,
+            'supervisor': str(self.supervisor) if self.supervisor is not None else None,
+            'url_image': self.url_image,
+            'role': self.role,
+            'is_connected': self.is_connected,
+            'is_enabled': self.is_enabled,
+            'created_at': self.created_at.isoformat() if self.created_at is not None else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at is not None else None
+        }

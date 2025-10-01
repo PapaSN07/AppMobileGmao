@@ -34,6 +34,7 @@ class AddEquipmentRequest(BaseModel):
     feeder: Optional[str] = Field(None, description="Feeder code")
     feeder_description: Optional[str] = Field(None, description="Description du feeder")
     code_parent: Optional[str] = Field(None, description="Code de l'équipement parent")
+    created_by: Optional[str] = Field(None, description="Utilisateur créant l'équipement")
     attributs: Optional[List[EquipmentAttribute]] = Field(None, description="Valeurs d'attributs optionnelles")
 
 class UpdateEquipmentRequest(BaseModel):
