@@ -1924,7 +1924,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
         'longitude': valueLongitude ?? '12311231',
         'latitude': valueLatitude ?? '12311231',
         'attributs': attributs,
-        'createdBy': authProvider.currentUser?.email, // Champ requis par le backend
+        'createdBy': authProvider.currentUser?.username, // Champ requis par le backend
       };
 
       if (kDebugMode) {

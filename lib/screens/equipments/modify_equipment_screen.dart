@@ -1901,6 +1901,8 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
       // ✅ IMPORTANT: Préparer les attributs AVANT de créer les données
       final attributs = _prepareAttributesForUpdate();
 
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
       // ✅ CRUCIAL: Convertir CHAQUE description sélectionnée en CODE (comme add_equipment_screen.dart)
       final familleCode = _getCodeFromDescription(selectedFamille, familles);
       final zoneCode = _getCodeFromDescription(selectedZone, zones);
@@ -1916,25 +1918,26 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
         feeders,
       );
 
-      // ✅ IMPORTANT: Utiliser les CODES au lieu des descriptions (comme add_equipment_screen.dart)
+      // ✅ IMPORTANT: Utiliser les CODES au lieu des descriptions
       final updatedData = {
-        'codeParent': codeParentCode, // ✅ CODE du parent
         'code':
             widget.equipmentData!['Code'] ??
             widget.equipmentData!['code'] ??
             '',
-        'feeder': feederCode, // ✅ CODE du feeder
-        'infoFeeder': selectedFeeder, // ✅ Description du feeder pour info
+        'code_parent': codeParentCode, // ✅ CODE du parent
         'famille': familleCode, // ✅ CODE de la famille
         'zone': zoneCode, // ✅ CODE de la zone
         'entity': entityCode, // ✅ CODE de l'entité
         'unite': uniteCode, // ✅ CODE de l'unité
-        'centreCharge': centreChargeCode, // ✅ CODE du centre de charge
+        'centre_charge': centreChargeCode, // ✅ CODE du centre de charge
         'description':
             _descriptionController.text
                 .trim(), // ✅ Description libre (pas de conversion)
         'longitude': valueLongitude ?? '12311231', // ✅ Valeur par défaut
         'latitude': valueLatitude ?? '12311231', // ✅ Valeur par défaut
+        'feeder': feederCode, // ✅ CODE du feeder
+        'feeder_description': selectedFeeder, // ✅ Description du feeder pour info
+        'created_by': authProvider.currentUser?.username ?? 'mobile_app', // Champ requis par le backend
         'attributs': attributs, // ✅ TOUS les attributs modifiés
       };
 
