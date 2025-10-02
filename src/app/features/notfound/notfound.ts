@@ -1,13 +1,12 @@
 import { Component, inject } from '@angular/core';
 import { ButtonModule } from 'primeng/button';
 import { RouterModule } from '@angular/router';
-import { AppFloatingConfigurator } from '../../layout/app.floatingconfigurator';
 import { AuthService } from '../../core/services/api';
 
 @Component({
   selector: 'app-notfound',
   standalone: true,
-  imports: [RouterModule, ButtonModule, AppFloatingConfigurator],
+  imports: [RouterModule, ButtonModule],
   templateUrl: './notfound.html',
 })
 export class Notfound {

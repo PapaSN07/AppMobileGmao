@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, inject, OnInit, signal, ViewChild } from '@angular/core';
+import { Attribute, Component, ElementRef, inject, OnInit, signal, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { InputNumberModule } from 'primeng/inputnumber';
@@ -31,6 +31,7 @@ import { Country } from '../../../../core/services/utils/customer.service';
 import { NodeService } from '../../../../core/services/utils/node.service';
 import { ProductService, Product } from '../../../../core/services/utils/product.service';
 import { EquipmentService } from '../../../../core/services/api';
+import { Equipment } from '../../../../core/models';
 
 interface Column {
     field: string;
@@ -176,11 +177,15 @@ export class EquipmentList implements OnInit {
 
     exportColumns!: ExportColumn[];
 
-    expandedRows: expandedRows = {};
-
     isExpanded: boolean = false;
 
     cols!: Column[];
+
+    // Équipements
+    equipments = signal<Equipment[]>([]);
+    selectedEquipments!: Equipment[] | null;
+    @ViewChild('dt1') dt1!: Table;
+    expandedRows: expandedRows = {};
 
     constructor(
         private equipmentService: EquipmentService,
@@ -229,9 +234,9 @@ export class EquipmentList implements OnInit {
 
     loadData() {
         this.loading = true;
-        this.equipmentService.getAll().subscribe({
+        this.equipmentService.getAllNoApproved().subscribe({
             next: (data) => {
-                // this.products.set(data);
+                this.equipments.set(data);
                 console.log(data);
                 this.loading = false;
             },

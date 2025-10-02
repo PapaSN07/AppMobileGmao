@@ -1,3 +1,5 @@
+import { Attribute } from './attribute.model';
+
 export interface Equipment {
     id: string;
     famille: string;
@@ -15,7 +17,15 @@ export interface Equipment {
     updatedAt?: Date;
     createdBy?: string;
     validatedBy?: string;
-    isUpdate?: boolean;
+    isUpdated?: boolean;
     isNew?: boolean;
     isApproved?: boolean;
+    attributes?: Attribute[];
+}
+
+export interface EquipmentResponse {
+    success?: boolean;
+    data?: Equipment[];
+    count?: number;
+    message?: string;
 }

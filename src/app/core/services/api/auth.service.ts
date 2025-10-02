@@ -1,21 +1,21 @@
-import { HttpClient } from "@angular/common/http";
-import { Injectable } from "@angular/core";
-import { Router } from "@angular/router"; // Ajout de l'import pour Router
-import { environment } from "../../../../../environments/environment";
-import { Observable, tap } from "rxjs";
-import { AuthResponse, DecodedToken, User } from "../../models/user.model";
-import { jwtDecode } from "jwt-decode";
+import { HttpClient } from '@angular/common/http';
+import { Injectable } from '@angular/core';
+import { Router } from '@angular/router'; // Ajout de l'import pour Router
+import { environment } from '../../../../../environments/environment';
+import { Observable, tap } from 'rxjs';
+import { AuthResponse, DecodedToken, User } from '../../models/user.model';
+import { jwtDecode } from 'jwt-decode';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
     private apiUrl = environment.apiUrlAuth;
 
     constructor(private http: HttpClient, private router: Router) {}
-    
+
     login(username: string, password: string): Observable<AuthResponse> {
         const credentials = { username, password };
         return this.http.post<AuthResponse>(`${this.apiUrl}/login`, credentials).pipe(
-            tap(response => {
+            tap((response) => {
                 if (response.success) {
                     this.storeTokens(response);
                 }
@@ -27,7 +27,7 @@ export class AuthService {
         sessionStorage.setItem('access_token', response.access_token);
         sessionStorage.setItem('refresh_token', response.refresh_token);
         sessionStorage.setItem('user', JSON.stringify(response.data));
-        
+
         // Décoder le token pour obtenir la vraie date d'expiration
         const decoded = this.decodeToken(response.access_token);
         if (decoded?.exp) {
@@ -50,13 +50,22 @@ export class AuthService {
         if (!token) return false;
 
         const decoded = this.decodeToken(token);
-        if (!decoded) return false;
+        if (!decoded) {
+            this.logout(); // Nettoie si le token est invalide
+            return false;
+        }
 
-        // Vérifier si le token n'est pas expiré
         const currentTime = Date.now();
-        const expiryTime = decoded.exp * 1000; // Conversion en millisecondes
-        
-        return currentTime < expiryTime;
+        const expiryTime = decoded.exp * 1000;
+
+        console.log('Temps actuel :', currentTime, 'Expiration :', expiryTime, 'Est expiré :', currentTime >= expiryTime);
+
+        if (currentTime >= expiryTime) {
+            this.logout(); // Nettoie si expiré
+            return false;
+        }
+
+        return true;
     }
 
     isTokenExpired(): boolean {
@@ -92,10 +101,10 @@ export class AuthService {
     refreshToken(): Observable<AuthResponse> {
         const refreshToken = this.getRefreshToken();
         return this.http.post<AuthResponse>(`${this.apiUrl}/refresh`, { refresh_token: refreshToken }).pipe(
-            tap(response => {
+            tap((response) => {
                 if (response.success) {
                     sessionStorage.setItem('access_token', response.access_token);
-                    
+
                     // Mettre à jour l'expiration avec la vraie valeur du token
                     const decoded = this.decodeToken(response.access_token);
                     if (decoded?.exp) {
@@ -108,7 +117,7 @@ export class AuthService {
 
     logout(): void {
         let user = this.getUser();
-        
+
         // Appel au backend pour invalider le token avant la navigation
         this.http.post(`${this.apiUrl}/logout`, { username: user?.username }).subscribe({
             next: () => {
@@ -117,7 +126,7 @@ export class AuthService {
                 sessionStorage.removeItem('refresh_token');
                 sessionStorage.removeItem('user');
                 sessionStorage.removeItem('token_expiry');
-                
+
                 // Navigation Angular recommandée au lieu de window.location.href
                 this.router.navigate(['/auth/login']);
             },
