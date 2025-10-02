@@ -40,7 +40,7 @@ class ApiService {
   static const int defaultPort = 8000;
 
   // Adresse IP de l'ordinateur - MISE À JOUR
-  static const String _macIpAddress = '172.16.8.192';
+  static const String _macIpAddress = '172.16.11.48';
 
   ApiService({int? port, String? customBaseUrl}) {
     if (customBaseUrl != null) {

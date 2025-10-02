@@ -14,7 +14,7 @@ class EquipmentService {
   late final ApiService _apiService;
   // Logging et constantes
   static const String __logName = 'EquipmentService -';
-  static const String __prefixURI = '/api/v1/equipments';
+  static const String __prefixURI = '/api/v1/mobile/equipments';
 
   EquipmentService({ApiService? apiService}) {
     _apiService = apiService ?? ApiService(port: 8000);
