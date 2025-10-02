@@ -2,7 +2,7 @@ from typing import Any, Dict
 from fastapi import APIRouter, HTTPException
 from app.schemas.responses.auth_response import AuthResponse
 from app.services.jwt_service import jwt_service
-from app.services.user_service import (
+from app.services.auth_service import (
     authenticate_user,
     logout_user
 )
@@ -15,10 +15,10 @@ logger = logging.getLogger(__name__)
 # Routeur simplifié pour mobile
 authenticate_user_router = APIRouter(
     prefix="/auth",
-    tags=["Authentification GMAO - Mobile API"],
+    tags=["Authentification GMAO - WEB API"],
 )
 
-# === ENDPOINTS CORE POUR MOBILE ===
+# === ENDPOINTS CORE POUR WEB ===
 
 @authenticate_user_router.post("/login",
     summary="Authentification utilisateur",
@@ -39,6 +39,7 @@ async def login_user(
             raise HTTPException(status_code=400, detail="Username et mot de passe requis")
 
         user = authenticate_user(username, password)
+        
         if not user:
             raise HTTPException(status_code=401, detail="Identifiants invalides")
         
@@ -88,6 +89,7 @@ async def logout_user_endpoint(
         jwt_service.revoke_refresh_token(username)
         
         success = logout_user(username)
+        
         if not success:
             logger.warning(f"Échec de la déconnexion pour {username}.")
             raise HTTPException(status_code=500, detail="Erreur lors de la déconnexion")

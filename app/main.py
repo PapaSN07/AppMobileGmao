@@ -11,13 +11,13 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.staticfiles import StaticFiles
 
 from app.db.sqlalchemy.session import SQLAlchemyQueryExecutor, get_main_session, get_temp_session, test_connection
-from app.routers.equipment_router import equipment_router
-from app.routers.user_router import authenticate_user_router
-from app.routers.centre_charge_router import centre_charge_router
-from app.routers.famille_router import famille_router
-from app.routers.entity_router import entity_router
-from app.routers.unite_router import unite_router
-from app.routers.zone_router import zone_router
+from app.routers.auth_router import authenticate_user_router
+from app.routers.mobile.equipment_router import equipment_router
+from app.routers.mobile.centre_charge_router import centre_charge_router
+from app.routers.mobile.famille_router import famille_router
+from app.routers.mobile.entity_router import entity_router
+from app.routers.mobile.unite_router import unite_router
+from app.routers.mobile.zone_router import zone_router
 from app.core.cache import cache
 from app.services.jwt_service import jwt_service
 
@@ -210,15 +210,21 @@ async def health():
             "error": str(e)
         }
 
-# Inclusion du routeur
+# Inclusion du routeur pour le mobile & web
 PREFIX = "/api/v1"
 app.include_router(authenticate_user_router, prefix=PREFIX)
-app.include_router(equipment_router, prefix=PREFIX)
-app.include_router(entity_router, prefix=PREFIX)
-app.include_router(centre_charge_router, prefix=PREFIX)
-app.include_router(famille_router, prefix=PREFIX)
-app.include_router(unite_router, prefix=PREFIX)
-app.include_router(zone_router, prefix=PREFIX)
+
+# Inclusion du routeur pour le mobile
+PREFIX_MOBILE = "/api/v1/mobile"
+app.include_router(equipment_router, prefix=PREFIX_MOBILE)
+app.include_router(entity_router, prefix=PREFIX_MOBILE)
+app.include_router(centre_charge_router, prefix=PREFIX_MOBILE)
+app.include_router(famille_router, prefix=PREFIX_MOBILE)
+app.include_router(unite_router, prefix=PREFIX_MOBILE)
+app.include_router(zone_router, prefix=PREFIX_MOBILE)
+
+# Inclusion du routeur pour le web
+PREFIX_WEB = "/api/v1/web"
 
 if __name__ == "__main__":
     import uvicorn

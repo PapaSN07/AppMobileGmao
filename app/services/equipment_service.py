@@ -2,8 +2,7 @@ from sqlalchemy import cast
 from app.db.sqlalchemy.session import get_main_session, get_temp_session, SQLAlchemyQueryExecutor
 from app.core.config import CACHE_TTL_SHORT
 from app.models.models import (AttributeCliClac, EquipmentCliClac, EquipmentModel, EquipmentWithAttributesBuilder, AttributeValues)
-from app.db.requests import (ATTRIBUTE_VALUES_QUERY, EQUIPMENT_BY_ID_QUERY, EQUIPMENT_CLASSE_ATTRIBUTS_QUERY, EQUIPMENT_INFINITE_QUERY, FEEDER_QUERY, 
-                            UPDATE_EQUIPMENT_ATTRIBUTE_QUERY)
+from app.db.requests import (ATTRIBUTE_VALUES_QUERY, EQUIPMENT_BY_ID_QUERY, EQUIPMENT_CLASSE_ATTRIBUTS_QUERY, EQUIPMENT_INFINITE_QUERY, FEEDER_QUERY)
 from app.core.cache import cache, invalidate_equipment_insertion_cache
 from typing import Dict, Any, List, Optional
 import logging
@@ -243,8 +242,6 @@ def update_equipment_partial(equipment_id: str, updates: Dict[str, Any]) -> tupl
     S'inspire de insert_equipment pour utiliser EquipmentCliClac et AttributeCliClac.
     """
     logger.info(f"🔧 Création équipement mis à jour CliClac MSSQL depuis {equipment_id}")
-
-    # print(f"🔧 Création équipement mis à jour CliClac MSSQL depuis {equipment_id} : {updates}")  # Debug console
 
     try:
         # Validation préalable : vérifier que les champs essentiels sont présents dans updates
