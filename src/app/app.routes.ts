@@ -1,24 +1,37 @@
 import { Routes } from '@angular/router';
-import { AppLayout } from './layout/component/app.layout';
-import { Notfound } from './pages/notfound/notfound';
-import { Dashboard } from './pages/dashboard/dashboard';
-import { Equipment } from './pages/equipment/equipment';
-import { EquipmentHistory } from './pages/equipment.history/equipment.history';
+import { authGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
     {
         path: '',
-        component: AppLayout,
+        loadComponent: () => import('./layout/app.layout').then((m) => m.AppLayout),
+        canActivate: [authGuard],
         children: [
-            { path: '', component: Dashboard },
-            { path: 'list-equipment', component: Equipment },
-            { path: 'history-equipment', component: EquipmentHistory }
+            {
+                path: '',
+                redirectTo: 'dashboard',
+                pathMatch: 'full'
+            },
+            {
+                path: 'dashboard',
+                loadComponent: () => import('./features/dashboard/dashboard').then((m) => m.Dashboard)
+            },
+            {
+                path: 'equipment',
+                loadChildren: () => import('./features/equipment/equipment.routes').then((m) => m.EQUIPMENT_ROUTES)
+            }
         ]
     },
-
-    // lazy load du module auth
-    { path: 'auth', loadChildren: () => import('./pages/auth/auth.module').then((m) => m.AuthModule) },
-
-    { path: 'notfound', component: Notfound },
-    { path: '**', redirectTo: 'notfound' }
+    {
+        path: 'auth',
+        loadChildren: () => import('./features/auth/auth.routes').then((m) => m.AUTH_ROUTES)
+    },
+    {
+        path: 'not-found',
+        loadComponent: () => import('./features/notfound/notfound').then((m) => m.Notfound)
+    },
+    {
+        path: '**',
+        redirectTo: 'not-found'
+    }
 ];

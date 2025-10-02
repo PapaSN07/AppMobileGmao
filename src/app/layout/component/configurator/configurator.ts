@@ -1,7 +1,7 @@
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Component, computed, inject, PLATFORM_ID } from '@angular/core';
 import Aura from '@primeuix/themes/aura';
-import { LayoutService } from '../../service/layout.service';
+import { LayoutService } from '../../../core/services/state/layout.service';
 import { $t, updateSurfacePalette, updatePreset } from '@primeuix/themes';
 
 const PRESET = Aura;

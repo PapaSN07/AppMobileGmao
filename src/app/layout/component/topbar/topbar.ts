@@ -1,21 +1,47 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, inject, Inject } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { StyleClassModule } from 'primeng/styleclass';
 import { Configurator } from '../configurator/configurator';
 import { MenuItem } from 'primeng/api';
-import { LayoutService } from '../../service/layout.service';
+import { LayoutService } from '../../../core/services/state/layout.service';
+import { Menu } from "primeng/menu";
+import { AuthService } from '../../../core/services/api';
 
 @Component({
     selector: 'app-topbar',
     standalone: true,
-    imports: [RouterModule, CommonModule, StyleClassModule, Configurator],
+    imports: [RouterModule, CommonModule, StyleClassModule, Configurator, Menu],
     templateUrl: './topbar.html'
 })
 export class Topbar {
-    items!: MenuItem[];
+    authService = inject(AuthService);
 
     constructor(public layoutService: LayoutService) {}
+
+    items!: MenuItem[];
+    itemsProfile: MenuItem[] | undefined = [
+        {
+            label: 'Options',
+            items: [
+                {
+                    label: 'Mon profile',
+                    icon: 'pi pi-users'
+                },
+                {
+                    label: 'Paramètres',
+                    icon: 'pi pi-cog'
+                },
+                {
+                    label: 'Se déconnecter',
+                    icon: 'pi pi-sign-out',
+                    command: () => {
+                        this.authService.logout();
+                    }
+                }
+            ]
+        }
+    ];
 
     toggleDarkMode() {
         this.layoutService.layoutConfig.update((state) => ({ ...state, darkTheme: !state.darkTheme }));
