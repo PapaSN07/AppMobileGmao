@@ -1,16 +1,20 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Router } from '@angular/router'; // Ajout de l'import pour Router
+import { Router } from '@angular/router';
 import { environment } from '../../../../../environments/environment';
-import { Observable, tap } from 'rxjs';
+import { Observable, tap, interval, Subscription } from 'rxjs';
 import { AuthResponse, DecodedToken, User } from '../../models/user.model';
 import { jwtDecode } from 'jwt-decode';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
     private apiUrl = environment.apiUrlAuth;
+    private tokenRefreshSubscription?: Subscription;
 
-    constructor(private http: HttpClient, private router: Router) {}
+    constructor(private http: HttpClient, private router: Router) {
+        // Démarrer le rafraîchissement automatique au démarrage de l'app
+        this.startTokenRefreshTimer();
+    }
 
     login(username: string, password: string): Observable<AuthResponse> {
         const credentials = { username, password };
@@ -18,6 +22,7 @@ export class AuthService {
             tap((response) => {
                 if (response.success) {
                     this.storeTokens(response);
+                    this.startTokenRefreshTimer(); // Démarrer le timer après login
                 }
             })
         );
@@ -28,10 +33,8 @@ export class AuthService {
         sessionStorage.setItem('refresh_token', response.refresh_token);
         sessionStorage.setItem('user', JSON.stringify(response.data));
 
-        // Décoder le token pour obtenir la vraie date d'expiration
         const decoded = this.decodeToken(response.access_token);
         if (decoded?.exp) {
-            // exp est en secondes, on le convertit en millisecondes
             sessionStorage.setItem('token_expiry', (decoded.exp * 1000).toString());
         }
     }
@@ -51,17 +54,15 @@ export class AuthService {
 
         const decoded = this.decodeToken(token);
         if (!decoded) {
-            this.logout(); // Nettoie si le token est invalide
+            this.logout();
             return false;
         }
 
         const currentTime = Date.now();
         const expiryTime = decoded.exp * 1000;
 
-        console.log('Temps actuel :', currentTime, 'Expiration :', expiryTime, 'Est expiré :', currentTime >= expiryTime);
-
         if (currentTime >= expiryTime) {
-            this.logout(); // Nettoie si expiré
+            this.logout();
             return false;
         }
 
@@ -105,7 +106,6 @@ export class AuthService {
                 if (response.success) {
                     sessionStorage.setItem('access_token', response.access_token);
 
-                    // Mettre à jour l'expiration avec la vraie valeur du token
                     const decoded = this.decodeToken(response.access_token);
                     if (decoded?.exp) {
                         sessionStorage.setItem('token_expiry', (decoded.exp * 1000).toString());
@@ -115,24 +115,64 @@ export class AuthService {
         );
     }
 
+    /**
+     * Démarre un timer qui vérifie toutes les minutes si le token expire bientôt (dans les 5 prochaines minutes).
+     * Si oui, il rafraîchit automatiquement le token.
+     */
+    private startTokenRefreshTimer(): void {
+        // Arrêter le timer précédent s'il existe
+        this.stopTokenRefreshTimer();
+
+        // Vérifier toutes les minutes (60000 ms)
+        this.tokenRefreshSubscription = interval(60000).subscribe(() => {
+            const token = this.getAccessToken();
+            if (!token) return;
+
+            const decoded = this.decodeToken(token);
+            if (!decoded) return;
+
+            const currentTime = Math.floor(Date.now() / 1000);
+            const timeUntilExpiry = decoded.exp - currentTime;
+
+            // Si le token expire dans moins de 5 minutes (300 secondes), le rafraîchir
+            if (timeUntilExpiry > 0 && timeUntilExpiry < 300) {
+                console.log('Token expire bientôt, rafraîchissement automatique...');
+                this.refreshToken().subscribe({
+                    next: () => console.log('Token rafraîchi automatiquement'),
+                    error: (err) => {
+                        console.error('Erreur lors du rafraîchissement automatique', err);
+                        this.logout();
+                    }
+                });
+            }
+        });
+    }
+
+    /**
+     * Arrête le timer de rafraîchissement du token.
+     */
+    private stopTokenRefreshTimer(): void {
+        if (this.tokenRefreshSubscription) {
+            this.tokenRefreshSubscription.unsubscribe();
+        }
+    }
+
     logout(): void {
         let user = this.getUser();
 
-        // Appel au backend pour invalider le token avant la navigation
+        // Arrêter le timer de rafraîchissement
+        this.stopTokenRefreshTimer();
+
         this.http.post(`${this.apiUrl}/logout`, { username: user?.username }).subscribe({
             next: () => {
-                // Suppression des données de session après l'appel réussi
                 sessionStorage.removeItem('access_token');
                 sessionStorage.removeItem('refresh_token');
                 sessionStorage.removeItem('user');
                 sessionStorage.removeItem('token_expiry');
-
-                // Navigation Angular recommandée au lieu de window.location.href
                 this.router.navigate(['/auth/login']);
             },
             error: (err) => {
                 console.error('Erreur lors du logout', err);
-                // Même en cas d'erreur, nettoyer la session et naviguer
                 sessionStorage.removeItem('access_token');
                 sessionStorage.removeItem('refresh_token');
                 sessionStorage.removeItem('user');

@@ -175,17 +175,26 @@ export class EquipmentList implements OnInit {
 
     @ViewChild('filter') filter!: ElementRef;
 
+    
+    isExpanded: boolean = false;
+    
+    cols!: Column[];
+    
+    // Équipements
+    equipmentsNoApproved = signal<Equipment[]>([]);
+    equipmentsNoModified = signal<Equipment[]>([]);
+
+    selectedEquipmentsNoApproved!: Equipment[] | null;
+    selectedEquipmentsNoModified!: Equipment[] | null;
+
+    @ViewChild('dt1') dt1!: Table;
+    @ViewChild('dt2') dt2!: Table;
+
+    expandedRows: expandedRows = {};
     exportColumns!: ExportColumn[];
 
-    isExpanded: boolean = false;
-
-    cols!: Column[];
-
-    // Équipements
-    equipments = signal<Equipment[]>([]);
-    selectedEquipments!: Equipment[] | null;
-    @ViewChild('dt1') dt1!: Table;
-    expandedRows: expandedRows = {};
+    balanceFrozen: boolean = true;
+    // Fin équipements
 
     constructor(
         private equipmentService: EquipmentService,
@@ -194,14 +203,10 @@ export class EquipmentList implements OnInit {
         private confirmationService: ConfirmationService
     ) {}
 
-    exportCSV() {
-        this.dt.exportCSV();
-    }
-
     ngOnInit() {
         this.loadDemoData();
 
-        this.loadData();
+        this.loadDataNoApproved();
         
         this.countryService.getCountries().then((countries) => {
             this.autoValue = countries;
@@ -231,12 +236,12 @@ export class EquipmentList implements OnInit {
 
         this.exportColumns = this.cols.map((col) => ({ title: col.header, dataKey: col.field }));
     }
-
-    loadData() {
+    // Besoins spécifiques aux équipements
+    loadDataNoApproved() {
         this.loading = true;
         this.equipmentService.getAllNoApproved().subscribe({
             next: (data) => {
-                this.equipments.set(data);
+                this.equipmentsNoApproved.set(data);
                 console.log(data);
                 this.loading = false;
             },
@@ -245,30 +250,91 @@ export class EquipmentList implements OnInit {
                 this.loading = false;
             }
         });
+
+        this.exportColumns = this.cols.map((col) => ({ title: col.header, dataKey: col.field }));
+    }
+
+    loadDataNoModified() {
+        this.loading = true;
+        this.equipmentService.getAllNoModified().subscribe({
+            next: (data) => {
+                this.equipmentsNoModified.set(data);
+                console.log(data);
+                this.loading = false;
+            },
+            error: (err) => {
+                this.messageService.add({ severity: 'error', summary: 'Error', detail: 'Failed to load data', life: 3000 });
+                this.loading = false;
+            }
+        });
+
+        this.exportColumns = this.cols.map((col) => ({ title: col.header, dataKey: col.field }));
+    }
+
+    exportCSVTable1() {
+        this.dt1.exportCSV();
+    }
+
+    exportCSVTable2() {
+        this.dt2.exportCSV();
     }
 
     onGlobalFilter(table: Table, event: Event) {
         table.filterGlobal((event.target as HTMLInputElement).value, 'contains');
     }
 
-    expandAll() {
-        if (ObjectUtils.isEmpty(this.expandedRows)) {
-            this.expandedRows = this.products().reduce((acc, p) => {
-                if (p.id) {
-                    acc[p.id] = true;
-                }
-                return acc;
-            }, {} as { [key: string]: boolean });
-            this.isExpanded = true;
-        } else {
-            this.collapseAll();
-        }
+    approveEquipmentNoApproved(equipment: Equipment) {
+        const updatedEquipment = { ...equipment, isApproved: true, isNew: false };
+        this.equipmentService.update(equipment.id!, updatedEquipment).subscribe({
+            next: (data) => {
+                this.messageService.add({ severity: 'success', summary: 'Success', detail: `Equipment ${equipment.code} approved`, life: 3000 });
+                this.loadDataNoApproved();
+            },
+            error: (err) => {
+                this.messageService.add({ severity: 'error', summary: 'Error', detail: `Failed to approve equipment ${equipment.code}`, life: 3000 });
+            }
+        });
     }
 
-    collapseAll() {
-        this.expandedRows = {};
-        this.isExpanded = false;
+    deniedEquipmentNoApproved(equipment: Equipment) {
+        const updatedEquipment = { ...equipment, isNew: false };
+        this.equipmentService.update(equipment.id!, updatedEquipment).subscribe({
+            next: (data) => {
+                this.messageService.add({ severity: 'success', summary: 'Success', detail: `Equipment ${equipment.code} denied`, life: 3000 });
+                this.loadDataNoApproved();
+            },
+            error: (err) => {
+                this.messageService.add({ severity: 'error', summary: 'Error', detail: `Failed to deny equipment ${equipment.code}`, life: 3000 });
+            }
+        });
     }
+
+    approveEquipmentNoModified(equipment: Equipment) {
+        const updatedEquipment = { ...equipment, isApproved: true, isNew: false };
+        this.equipmentService.update(equipment.id!, updatedEquipment).subscribe({
+            next: (data) => {
+                this.messageService.add({ severity: 'success', summary: 'Success', detail: `Equipment ${equipment.code} approved`, life: 3000 });
+                this.loadDataNoModified();
+            },
+            error: (err) => {
+                this.messageService.add({ severity: 'error', summary: 'Error', detail: `Failed to approve equipment ${equipment.code}`, life: 3000 });
+            }
+        });
+    }
+
+    deniedEquipmentNoModified(equipment: Equipment) {
+        const updatedEquipment = { ...equipment, isNew: false };
+        this.equipmentService.update(equipment.id!, updatedEquipment).subscribe({
+            next: (data) => {
+                this.messageService.add({ severity: 'success', summary: 'Success', detail: `Equipment ${equipment.code} denied`, life: 3000 });
+                this.loadDataNoModified();
+            },
+            error: (err) => {
+                this.messageService.add({ severity: 'error', summary: 'Error', detail: `Failed to deny equipment ${equipment.code}`, life: 3000 });
+            }
+        });
+    }
+    // Fin besoins spécifiques aux équipements
 
     clear(table: Table) {
         table.clear();
