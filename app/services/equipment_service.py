@@ -507,3 +507,22 @@ def insert_equipment(equipment: EquipmentCliClac) -> tuple[bool, Optional[int]]:
     except Exception as e:
         logger.error(f"insert_equipment fatal error: {e}")
         return (False, None)
+
+def get_all_equipment_web() -> Dict[str, Any]:
+    """Récupère tous les équipements pour l'interface web (non paginé)"""
+    try:
+        # Utiliser SQLAlchemy session
+        with get_temp_session() as session:
+            equipments = session.query(EquipmentCliClac).all()
+            
+            equipments_formatted = []
+            for r in equipments:
+                attr = session.query(AttributeCliClac).filter_by(code=r.code).all()
+                setattr(r, 'attributes', attr)
+                equipments_formatted.append(r.to_dict_SDDV())
+
+            return {"equipments": equipments_formatted, "count": len(equipments_formatted)}
+
+    except Exception as e:
+        logger.error(f"❌ Erreur récupération tous équipements web: {e}")
+        return {"equipments": [], "count": 0}

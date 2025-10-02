@@ -4,7 +4,7 @@ import logging
 
 from pydantic import ValidationError
 
-from app.models.models import EquipmentCliClac, EquipmentModel
+from app.models.models import EquipmentCliClac
 from app.schemas.responses.equipment_response import (
     AttributeResponse, 
     AttributeValueResponse, 

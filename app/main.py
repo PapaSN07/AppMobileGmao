@@ -13,6 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from app.db.sqlalchemy.session import SQLAlchemyQueryExecutor, get_main_session, get_temp_session, test_connection
 from app.routers.auth_router import authenticate_user_router
 from app.routers.mobile.equipment_router import equipment_router
+from app.routers.web.equipment_router import equipment_router
 from app.routers.mobile.centre_charge_router import centre_charge_router
 from app.routers.mobile.famille_router import famille_router
 from app.routers.mobile.entity_router import entity_router
@@ -225,6 +226,7 @@ app.include_router(zone_router, prefix=PREFIX_MOBILE)
 
 # Inclusion du routeur pour le web
 PREFIX_WEB = "/api/v1/web"
+app.include_router(equipment_router, prefix=PREFIX_WEB)
 
 if __name__ == "__main__":
     import uvicorn

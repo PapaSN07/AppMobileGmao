@@ -528,7 +528,7 @@ class EquipmentCliClac(Base):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         # Attributs Python pour données jointes (pas des colonnes DB)
-        self.attributes: List[Dict[str, Any]] = []
+        self.attributes: List[AttributeCliClac] = []
 
     def to_dict_SDDV(self) -> Dict[str, Any]:
         return {
@@ -550,7 +550,8 @@ class EquipmentCliClac(Base):
             'judged_by': self.judged_by,
             'is_update': self.is_update,
             'is_new': self.is_new,
-            'is_approved': self.is_approved
+            'is_approved': self.is_approved,
+            'attributes': [attr.to_dict() for attr in self.attributes]
         }
     
 class HistoryCliClac(Base):

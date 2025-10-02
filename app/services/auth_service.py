@@ -20,35 +20,28 @@ def authenticate_user(username: str, password: str) -> Union[UserModel, UserCliC
         logger.warning("Login ou mot de passe manquant.")
         raise ValueError("Username et mot de passe requis")
     
-    # Validation supplémentaire : vérifier la longueur du mot de passe (limite bcrypt)
-    if len(password.encode('utf-8')) > 72:
-        logger.warning(f"Mot de passe trop long ({len(password.encode('utf-8'))} octets), troncature à 72 octets.")
-        password = password[:72]  # Tronquer à 72 octets (limite bcrypt)
-    
     try:
-        # 1) Vérifier d'abord dans la base temporaire (ClicClac)
+        # 1) Vérifier d'abord dans la base temporaire (CliClac)
         with get_temp_session() as session:
-            try:
-                # Hacher le mot de passe pour la comparaison (bcrypt comme indiqué dans le modèle)
-                hashed_password = bcrypt.hash(password)
-            except Exception as hash_error:
-                logger.error(f"Erreur lors du hachage bcrypt: {hash_error}")
-                # Fallback : utiliser une comparaison simple si hachage échoue (non recommandé en prod)
-                hashed_password = password  # ⚠️ À remplacer par une méthode sécurisée
-            
-            user_temp = session.query(UserCliClac).filter_by(
-                username=username, 
-                password=hashed_password
+            # Récupérer l'utilisateur par username OU email
+            user_temp = session.query(UserCliClac).filter(
+                (UserCliClac.username == username) | (UserCliClac.email == username)
             ).first()
             
             if user_temp:
-                cache_key = f"user_hierarchy_{user_temp.id}"
-                cache.set(cache_key, user_temp, CACHE_TTL_SHORT)
-
-                logger.info(f"Utilisateur {username} authentifié avec succès dans CliClac.")
-                return user_temp  # Retourner UserClicClac
+                try:
+                    if bcrypt.verify(password, str(user_temp.password)):
+                        cache_key = f"user_hierarchy_{user_temp.id}"
+                        cache.set(cache_key, user_temp, CACHE_TTL_SHORT)
+                        logger.info(f"Utilisateur {username} authentifié avec succès dans CliClac.")
+                        return user_temp  # Retourner UserCliClac
+                    else:
+                        logger.warning(f"Mot de passe incorrect pour {username} dans CliClac.")
+                except Exception as verify_error:
+                    logger.error(f"Erreur lors de la vérification bcrypt: {verify_error}")
+                    # Continuer vers Coswin si erreur de vérification
         
-        # 2) Si non trouvé dans ClicClac, vérifier dans la base principale (Coswin)
+        # 2) Si non trouvé dans CliClac ou mot de passe incorrect, vérifier dans Coswin (Oracle)
         with get_main_session() as session:
             db = SQLAlchemyQueryExecutor(session)
             
