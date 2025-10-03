@@ -17,7 +17,6 @@ TEMP_DB_NAME = os.getenv("TEMP_DB_NAME")
 TEMP_DB_USERNAME = os.getenv("TEMP_DB_USERNAME")
 TEMP_DB_PASSWORD = os.getenv("TEMP_DB_PASSWORD")
 TEMP_DB_HOST = os.getenv("TEMP_DB_HOST")
-TEMP_DB_SERVICE_NAME = os.getenv("TEMP_DB_SERVICE_NAME")
 TEMP_DB_PORT = os.getenv("TEMP_DB_PORT", "1521")
 
 # Configuration des limites

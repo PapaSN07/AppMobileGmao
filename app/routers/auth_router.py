@@ -116,6 +116,7 @@ async def refresh_token_endpoint(refresh_request: Dict[str, str]) -> Dict[str, A
             raise HTTPException(status_code=401, detail="Refresh token invalide")
         
         return {
+            "success": True,
             "access_token": new_access_token,
             "token_type": "bearer"
         }

@@ -3,8 +3,8 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.pool import QueuePool
 import logging
 from app.core.config import (
-    DB_USERNAME, DB_PASSWORD, DB_HOST, DB_PORT, DB_SERVICE_NAME,
-    TEMP_DB_USERNAME, TEMP_DB_PASSWORD, TEMP_DB_HOST, TEMP_DB_PORT, TEMP_DB_SERVICE_NAME
+    DB_USERNAME, DB_PASSWORD, DB_HOST, DB_PORT, DB_SERVICE_NAME, TEMP_DB_NAME,
+    TEMP_DB_USERNAME, TEMP_DB_PASSWORD, TEMP_DB_HOST, TEMP_DB_PORT
 )
 
 logger = logging.getLogger(__name__)
@@ -33,7 +33,7 @@ def create_main_engine():
 def create_temp_engine():
     """Crée l'engine pour la DB temporaire (MSSQL)"""
     # ✅ CORRECTION: Ajouter les paramètres SSL pour Docker
-    url = f"mssql+pyodbc://{TEMP_DB_USERNAME}:{TEMP_DB_PASSWORD}@{TEMP_DB_HOST}:{TEMP_DB_PORT}/{TEMP_DB_SERVICE_NAME}?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes&Encrypt=no"
+    url = f"mssql+pyodbc://{TEMP_DB_USERNAME}:{TEMP_DB_PASSWORD}@{TEMP_DB_HOST}:{TEMP_DB_PORT}/{TEMP_DB_NAME}?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes&Encrypt=no"
     
     engine = create_engine(
         url,
