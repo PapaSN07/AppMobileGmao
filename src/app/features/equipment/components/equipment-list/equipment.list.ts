@@ -18,6 +18,7 @@ import { TagModule } from 'primeng/tag';
 import { InputIconModule } from 'primeng/inputicon';
 import { IconFieldModule } from 'primeng/iconfield';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { ConfirmPopupModule } from 'primeng/confirmpopup';
 import { MultiSelectModule } from 'primeng/multiselect';
 import { SliderModule } from 'primeng/slider';
 import { ProgressBarModule } from 'primeng/progressbar';
@@ -70,7 +71,8 @@ interface expandedRows {
         SliderModule,
         ProgressBarModule,
         ToggleButtonModule,
-        TabsModule
+        TabsModule,
+        ConfirmPopupModule
     ],
     templateUrl: './equipment.list.html',
     styleUrls: ['equipment.list.scss'],
@@ -95,24 +97,19 @@ export class EquipmentList implements OnInit {
     balanceFrozen: boolean = true;
     // Fin équipements
 
-    constructor(
-        private equipmentService: EquipmentService,
-        private messageService: MessageService, 
-        private confirmationService: ConfirmationService
-    ) {}
+    constructor(private equipmentService: EquipmentService, private messageService: MessageService, private confirmationService: ConfirmationService) {}
 
     ngOnInit() {
-
         this.loadDataNoApproved();
         this.loadDataNoModified();
     }
 
-     // Méthode pour aplatir les données (équipement + attributs)
+    // Méthode pour aplatir les données (équipement + attributs)
     private flattenData(equipments: Equipment[]): any[] {
         const flattened: any[] = [];
-        equipments.forEach(equipment => {
+        equipments.forEach((equipment) => {
             if (equipment.attributes && equipment.attributes.length > 0) {
-                equipment.attributes.forEach(attribute => {
+                equipment.attributes.forEach((attribute) => {
                     flattened.push({
                         // Champs de l'équipement
                         id: equipment.id,
@@ -278,6 +275,101 @@ export class EquipmentList implements OnInit {
             },
             error: (err) => {
                 this.messageService.add({ severity: 'error', summary: 'Error', detail: `Failed to deny equipment ${equipment.code}`, life: 3000 });
+            }
+        });
+    }
+
+    confirm1(event: Event, equipment: Equipment) {
+        this.confirmationService.confirm({
+            target: event.currentTarget as EventTarget,
+            message: 'Êtes-vous sûr de vouloir continuer 🤔?',
+            icon: 'pi pi-exclamation-triangle',
+            rejectButtonProps: {
+                label: 'Annuler',
+                severity: 'secondary',
+                outlined: true
+            },
+            acceptButtonProps: {
+                label: 'Enregistrer'
+            },
+            accept: () => {
+                this.messageService.add({ severity: 'info', summary: 'Confirmé', detail: 'Vous avez accepté la validation de cet équipement 🥳🎉', life: 3000 });
+                this.approveEquipmentNoApproved(equipment);
+            },
+            reject: () => {
+                this.messageService.add({ severity: 'error', summary: 'Annulé', detail: 'Vous avez annulé la validation de cet équipement 🥲🥲🥲', life: 3000 });
+            }
+        });
+    }
+
+    confirm2(event: Event, equipment: Equipment) {
+        this.confirmationService.confirm({
+            target: event.currentTarget as EventTarget,
+            message: 'Voulez-vous rejeter cet équipement 🤔?',
+            icon: 'pi pi-info-circle',
+            rejectButtonProps: {
+                label: 'Annuler',
+                severity: 'secondary',
+                outlined: true
+            },
+            acceptButtonProps: {
+                label: 'Rejeter',
+                severity: 'danger'
+            },
+            accept: () => {
+                this.messageService.add({ severity: 'info', summary: 'Confirmé', detail: 'Équipement rejeté', life: 3000 });
+                this.deniedEquipmentNoApproved(equipment);
+            },
+            reject: () => {
+                this.messageService.add({ severity: 'error', summary: 'Annulé', detail: 'Vous avez annulé la validation de cet équipement', life: 3000 });
+            }
+        });
+    }
+
+    // Ajoutez ces nouvelles méthodes pour les confirmations de modifications
+    confirm3(event: Event, equipment: Equipment) {
+        this.confirmationService.confirm({
+            target: event.currentTarget as EventTarget,
+            message: 'Êtes-vous sûr de vouloir approuver cette modification 🤔?',
+            icon: 'pi pi-exclamation-triangle',
+            rejectButtonProps: {
+                label: 'Annuler',
+                severity: 'secondary',
+                outlined: true
+            },
+            acceptButtonProps: {
+                label: 'Approuver'
+            },
+            accept: () => {
+                this.messageService.add({ severity: 'info', summary: 'Confirmé', detail: 'Modification approuvée 🥳🎉', life: 3000 });
+                this.approveEquipmentNoModified(equipment);
+            },
+            reject: () => {
+                this.messageService.add({ severity: 'error', summary: 'Rejeté', detail: 'Vous avez rejeté la modification de cet équipement 🥲🥲🥲', life: 3000 });
+            }
+        });
+    }
+
+    confirm4(event: Event, equipment: Equipment) {
+        this.confirmationService.confirm({
+            target: event.currentTarget as EventTarget,
+            message: 'Voulez-vous refuser cette modification 🤔?',
+            icon: 'pi pi-info-circle',
+            rejectButtonProps: {
+                label: 'Annuler',
+                severity: 'secondary',
+                outlined: true
+            },
+            acceptButtonProps: {
+                label: 'Refuser',
+                severity: 'danger'
+            },
+            accept: () => {
+                this.messageService.add({ severity: 'info', summary: 'Confirmé', detail: 'Modification refusée 🥳🎉', life: 3000 });
+                this.deniedEquipmentNoModified(equipment);
+            },
+            reject: () => {
+                this.messageService.add({ severity: 'error', summary: 'Rejeté', detail: 'Vous avez rejeté la modification de cet équipement 🥲🥲🥲', life: 3000 });
             }
         });
     }
