@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Attribute, Component, ElementRef, inject, OnInit, signal, ViewChild } from '@angular/core';
+import { Component, OnInit, signal, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { InputNumberModule } from 'primeng/inputnumber';
@@ -22,16 +22,12 @@ import { MultiSelectModule } from 'primeng/multiselect';
 import { SliderModule } from 'primeng/slider';
 import { ProgressBarModule } from 'primeng/progressbar';
 import { ToggleButtonModule } from 'primeng/togglebutton';
-import { AutoCompleteCompleteEvent, AutoCompleteModule } from 'primeng/autocomplete';
 
-import { ConfirmationService, MessageService, TreeNode } from 'primeng/api';
-import { ObjectUtils } from 'primeng/utils';
-import { CountryService } from '../../../../core/services/utils/country.service';
-import { Country } from '../../../../core/services/utils/customer.service';
-import { NodeService } from '../../../../core/services/utils/node.service';
-import { ProductService, Product } from '../../../../core/services/utils/product.service';
+import { ConfirmationService, MessageService } from 'primeng/api';
 import { EquipmentService } from '../../../../core/services/api';
 import { Equipment } from '../../../../core/models';
+
+import * as XLSX from 'xlsx';
 
 interface Column {
     field: string;
@@ -74,112 +70,15 @@ interface expandedRows {
         SliderModule,
         ProgressBarModule,
         ToggleButtonModule,
-        AutoCompleteModule,
         TabsModule
     ],
     templateUrl: './equipment.list.html',
     styleUrls: ['equipment.list.scss'],
-    providers: [MessageService, ProductService, ConfirmationService, CountryService, NodeService]
+    providers: [MessageService, ConfirmationService]
 })
 export class EquipmentList implements OnInit {
-    productDialog: boolean = false;
-
-    products = signal<Product[]>([]);
-
-    product!: Product;
-
-    selectedProducts!: Product[] | null;
-
-    submitted: boolean = false;
-
-    statuses!: any[];
-
-    // AutoComplete
-    selectedAutoValue: any = null;
-    autoFilteredValue: any[] = [];
-    autoValue: any[] | undefined;
-    floatValue: any = null;
-
-    calendarValue: any = null;
-
-    inputNumberValue: any = null;
-
-    sliderValue: number = 50;
-
-    ratingValue: any = null;
-
-    colorValue: string = '#1976D2';
-
-    radioValue: any = null;
-
-    checkboxValue: any[] = [];
-
-    switchValue: boolean = false;
-
-    listboxValues: any[] = [
-        { name: 'New York', code: 'NY' },
-        { name: 'Rome', code: 'RM' },
-        { name: 'London', code: 'LDN' },
-        { name: 'Istanbul', code: 'IST' },
-        { name: 'Paris', code: 'PRS' }
-    ];
-
-    listboxValue: any = null;
-
-    dropdownValues = [
-        { name: 'New York', code: 'NY' },
-        { name: 'Rome', code: 'RM' },
-        { name: 'London', code: 'LDN' },
-        { name: 'Istanbul', code: 'IST' },
-        { name: 'Paris', code: 'PRS' }
-    ];
-
-    dropdownValue: any = null;
-
-    multiselectCountries: Country[] = [
-        { name: 'Australia', code: 'AU' },
-        { name: 'Brazil', code: 'BR' },
-        { name: 'China', code: 'CN' },
-        { name: 'Egypt', code: 'EG' },
-        { name: 'France', code: 'FR' },
-        { name: 'Germany', code: 'DE' },
-        { name: 'India', code: 'IN' },
-        { name: 'Japan', code: 'JP' },
-        { name: 'Spain', code: 'ES' },
-        { name: 'United States', code: 'US' }
-    ];
-
-    multiselectSelectedCountries!: Country[];
-
-    toggleValue: boolean = false;
-
-    selectButtonValue: any = null;
-
-    selectButtonValues: any = [{ name: 'Option 1' }, { name: 'Option 2' }, { name: 'Option 3' }];
-
-    knobValue: number = 50;
-
-    inputGroupValue: boolean = false;
-
-    treeSelectNodes!: TreeNode[];
-
-    selectedNode: any = null;
-
-    countryService = inject(CountryService);
-
-    nodeService = inject(NodeService);
-
     loading: boolean = true;
 
-    @ViewChild('dt') dt!: Table;
-
-    @ViewChild('filter') filter!: ElementRef;
-
-    
-    isExpanded: boolean = false;
-    
-    cols!: Column[];
-    
     // Équipements
     equipmentsNoApproved = signal<Equipment[]>([]);
     equipmentsNoModified = signal<Equipment[]>([]);
@@ -198,45 +97,105 @@ export class EquipmentList implements OnInit {
 
     constructor(
         private equipmentService: EquipmentService,
-        private productService: ProductService, 
         private messageService: MessageService, 
         private confirmationService: ConfirmationService
     ) {}
 
     ngOnInit() {
-        this.loadDemoData();
 
         this.loadDataNoApproved();
-        
-        this.countryService.getCountries().then((countries) => {
-            this.autoValue = countries;
-        });
-
-        this.nodeService.getFiles().then((data) => (this.treeSelectNodes = data));
+        this.loadDataNoModified();
     }
 
-    loadDemoData() {
-        this.productService.getProductsWithOrdersSmall().then((data) => {
-            this.products.set(data);
+     // Méthode pour aplatir les données (équipement + attributs)
+    private flattenData(equipments: Equipment[]): any[] {
+        const flattened: any[] = [];
+        equipments.forEach(equipment => {
+            if (equipment.attributes && equipment.attributes.length > 0) {
+                equipment.attributes.forEach(attribute => {
+                    flattened.push({
+                        // Champs de l'équipement
+                        id: equipment.id,
+                        centreCharge: equipment.centreCharge,
+                        code: equipment.code,
+                        codeParent: equipment.codeParent,
+                        createdAt: equipment.createdAt,
+                        createdBy: equipment.createdBy,
+                        description: equipment.description,
+                        localisation: equipment.localisation,
+                        entity: equipment.entity,
+                        famille: equipment.famille,
+                        feeder: equipment.feeder,
+                        feederDescription: equipment.feederDescription,
+                        unite: equipment.unite,
+                        zone: equipment.zone,
+                        isApproved: equipment.isApproved,
+                        isNew: equipment.isNew,
+                        isUpdate: equipment.isUpdate,
+                        // Champs de l'attribut
+                        attributeId: attribute.id,
+                        specification: attribute.specification,
+                        attributeName: attribute.attributeName,
+                        value: attribute.attributeValue,
+                        indx: attribute.index,
+                        isCopyOT: attribute.isCopyOT,
+                        attributeCreatedAt: attribute.createdAt,
+                        attributeUpdatedAt: attribute.updatedAt
+                    });
+                });
+            } else {
+                // Si pas d'attributs, ajouter une ligne vide pour l'équipement
+                flattened.push({
+                    id: equipment.id,
+                    centreCharge: equipment.centreCharge,
+                    code: equipment.code,
+                    codeParent: equipment.codeParent,
+                    createdAt: equipment.createdAt,
+                    createdBy: equipment.createdBy,
+                    description: equipment.description,
+                    entity: equipment.entity,
+                    famille: equipment.famille,
+                    feeder: equipment.feeder,
+                    feederDescription: equipment.feederDescription,
+                    localisation: equipment.localisation,
+                    unite: equipment.unite,
+                    zone: equipment.zone,
+                    isApproved: equipment.isApproved,
+                    isNew: equipment.isNew,
+                    isUpdate: equipment.isUpdate,
+                    attributeId: '',
+                    specification: '',
+                    attributeName: '',
+                    value: '',
+                    indx: '',
+                    isCopyOT: '',
+                    attributeCreatedAt: '',
+                    attributeUpdatedAt: ''
+                });
+            }
         });
-
-        this.statuses = [
-            { label: 'INSTOCK', value: 'instock' },
-            { label: 'LOWSTOCK', value: 'lowstock' },
-            { label: 'OUTOFSTOCK', value: 'outofstock' }
-        ];
-
-        this.cols = [
-            { field: 'code', header: 'Code', customExportHeader: 'Product Code' },
-            { field: 'name', header: 'Name' },
-            { field: 'image', header: 'Image' },
-            { field: 'price', header: 'Price' },
-            { field: 'category', header: 'Category' }
-        ];
-
-        this.exportColumns = this.cols.map((col) => ({ title: col.header, dataKey: col.field }));
+        return flattened;
     }
-    // Besoins spécifiques aux équipements
+
+    // Export vers Excel
+    exportToExcel(tableIndex: number): void {
+        const equipments = tableIndex === 1 ? this.equipmentsNoApproved() : this.equipmentsNoModified();
+        const flattenedData = this.flattenData(equipments);
+        const worksheet = XLSX.utils.json_to_sheet(flattenedData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Equipments');
+        XLSX.writeFile(workbook, `equipments_${tableIndex === 1 ? 'no_approved' : 'no_modified'}.xlsx`);
+    }
+
+    // Ajoutez des méthodes pour Excel si souhaité
+    exportExcelTable1(): void {
+        this.exportToExcel(1);
+    }
+
+    exportExcelTable2(): void {
+        this.exportToExcel(2);
+    }
+
     loadDataNoApproved() {
         this.loading = true;
         this.equipmentService.getAllNoApproved().subscribe({
@@ -250,8 +209,6 @@ export class EquipmentList implements OnInit {
                 this.loading = false;
             }
         });
-
-        this.exportColumns = this.cols.map((col) => ({ title: col.header, dataKey: col.field }));
     }
 
     loadDataNoModified() {
@@ -267,16 +224,6 @@ export class EquipmentList implements OnInit {
                 this.loading = false;
             }
         });
-
-        this.exportColumns = this.cols.map((col) => ({ title: col.header, dataKey: col.field }));
-    }
-
-    exportCSVTable1() {
-        this.dt1.exportCSV();
-    }
-
-    exportCSVTable2() {
-        this.dt2.exportCSV();
     }
 
     onGlobalFilter(table: Table, event: Event) {
@@ -323,7 +270,7 @@ export class EquipmentList implements OnInit {
     }
 
     deniedEquipmentNoModified(equipment: Equipment) {
-        const updatedEquipment = { ...equipment, isNew: false };
+        const updatedEquipment = { ...equipment, isUpdated: true, isNew: false };
         this.equipmentService.update(equipment.id!, updatedEquipment).subscribe({
             next: (data) => {
                 this.messageService.add({ severity: 'success', summary: 'Success', detail: `Equipment ${equipment.code} denied`, life: 3000 });
@@ -333,141 +280,5 @@ export class EquipmentList implements OnInit {
                 this.messageService.add({ severity: 'error', summary: 'Error', detail: `Failed to deny equipment ${equipment.code}`, life: 3000 });
             }
         });
-    }
-    // Fin besoins spécifiques aux équipements
-
-    clear(table: Table) {
-        table.clear();
-        this.filter.nativeElement.value = '';
-    }
-
-    openNew() {
-        this.product = {};
-        this.submitted = false;
-        this.productDialog = true;
-    }
-
-    editProduct(product: Product) {
-        this.product = { ...product };
-        this.productDialog = true;
-    }
-
-    deleteSelectedProducts() {
-        this.confirmationService.confirm({
-            message: 'Are you sure you want to delete the selected products?',
-            header: 'Confirm',
-            icon: 'pi pi-exclamation-triangle',
-            accept: () => {
-                this.products.set(this.products().filter((val) => !this.selectedProducts?.includes(val)));
-                this.selectedProducts = null;
-                this.messageService.add({
-                    severity: 'success',
-                    summary: 'Successful',
-                    detail: 'Products Deleted',
-                    life: 3000
-                });
-            }
-        });
-    }
-
-    hideDialog() {
-        this.productDialog = false;
-        this.submitted = false;
-    }
-
-    deleteProduct(product: Product) {
-        this.confirmationService.confirm({
-            message: 'Are you sure you want to delete ' + product.name + '?',
-            header: 'Confirm',
-            icon: 'pi pi-exclamation-triangle',
-            accept: () => {
-                this.products.set(this.products().filter((val) => val.id !== product.id));
-                this.product = {};
-                this.messageService.add({
-                    severity: 'success',
-                    summary: 'Successful',
-                    detail: 'Product Deleted',
-                    life: 3000
-                });
-            }
-        });
-    }
-
-    findIndexById(id: string): number {
-        let index = -1;
-        for (let i = 0; i < this.products().length; i++) {
-            if (this.products()[i].id === id) {
-                index = i;
-                break;
-            }
-        }
-
-        return index;
-    }
-
-    createId(): string {
-        let id = '';
-        var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-        for (var i = 0; i < 5; i++) {
-            id += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-        return id;
-    }
-
-    getSeverity(status: string) {
-        switch (status) {
-            case 'INSTOCK':
-                return 'success';
-            case 'LOWSTOCK':
-                return 'warn';
-            case 'OUTOFSTOCK':
-                return 'danger';
-            default:
-                return 'info';
-        }
-    }
-
-    filterCountry(event: AutoCompleteCompleteEvent) {
-        const filtered: any[] = [];
-        const query = event.query;
-
-        for (let i = 0; i < (this.autoValue as any[]).length; i++) {
-            const country = (this.autoValue as any[])[i];
-            if (country.name.toLowerCase().indexOf(query.toLowerCase()) == 0) {
-                filtered.push(country);
-            }
-        }
-
-        this.autoFilteredValue = filtered;
-    }
-
-    saveProduct() {
-        this.submitted = true;
-        let _products = this.products();
-        if (this.product.name?.trim()) {
-            if (this.product.id) {
-                _products[this.findIndexById(this.product.id)] = this.product;
-                this.products.set([..._products]);
-                this.messageService.add({
-                    severity: 'success',
-                    summary: 'Successful',
-                    detail: 'Product Updated',
-                    life: 3000
-                });
-            } else {
-                this.product.id = this.createId();
-                this.product.image = 'product-placeholder.svg';
-                this.messageService.add({
-                    severity: 'success',
-                    summary: 'Successful',
-                    detail: 'Product Created',
-                    life: 3000
-                });
-                this.products.set([..._products, this.product]);
-            }
-
-            this.productDialog = false;
-            this.product = {};
-        }
     }
 }

@@ -9,7 +9,7 @@ export interface Equipment {
     entity: string;
     feeder?: string;
     feederDescription?: string;
-    location?: string;
+    localisation?: string;
     code: string;
     codeParent?: string;
     description: string;
@@ -17,7 +17,7 @@ export interface Equipment {
     updatedAt?: Date;
     createdBy?: string;
     validatedBy?: string;
-    isUpdated?: boolean;
+    isUpdate?: boolean;
     isNew?: boolean;
     isApproved?: boolean;
     attributes?: Attribute[];

@@ -25,7 +25,7 @@ export class EquipmentService {
 
     getAllNoModified(): Observable<Equipment[]> {
         return this.getAll().pipe(
-            map(equipments => equipments.filter(equipment => !equipment.isUpdated && equipment.isNew))
+            map(equipments => equipments.filter(equipment => !equipment.isApproved && equipment.isUpdate))
         );
     }
 
