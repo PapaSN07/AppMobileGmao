@@ -9,12 +9,12 @@ from app.services.equipment_service import get_all_equipment_web
 logger = logging.getLogger(__name__)
 
 # Routeur simplifié pour mobile
-equipment_router = APIRouter(
+equipment_router_web = APIRouter(
     prefix="/equipments",
     tags=["Équipements GMAO - Web API"],
 )
 
-@equipment_router.get("",
+@equipment_router_web.get("",
     summary="Liste des équipements (web)",
     description="Récupère tous les équipements avec leurs attributs pour l'interface web",
 )
