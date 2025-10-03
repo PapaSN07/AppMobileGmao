@@ -24,6 +24,22 @@ class AuthService {
         if (kDebugMode) {
           print('Authentification réussie pour $username');
         }
+
+        // ✅ NOUVEAU: Sauvegarder les tokens JWT
+        final accessToken = response['access_token'];
+        final refreshToken = response['refresh_token'];
+
+        if (accessToken != null && refreshToken != null) {
+          await HiveService.saveTokens(accessToken, refreshToken);
+
+          // Configurer le token dans ApiService
+          apiClient.setAuthToken(accessToken);
+
+          if (kDebugMode) {
+            print('✅ Tokens JWT sauvegardés');
+          }
+        }
+
         return {
           'success': response['success'],
           'data': User.fromJson(response['data']),
@@ -95,6 +111,11 @@ class AuthService {
         '$__prefixURI/logout',
         data: {'username': username},
       );
+
+      // ✅ NOUVEAU: Supprimer les tokens
+      await HiveService.clearTokens();
+      apiClient.clearAuthToken();
+
       if (response != null && response['status'] == 'success') {
         if (kDebugMode) {
           print('Déconnexion réussie pour $username');
@@ -108,6 +129,43 @@ class AuthService {
       if (kDebugMode) {
         print('Erreur lors de la déconnexion : $e');
       }
+    }
+  }
+
+  // ✅ NOUVEAU: Rafraîchir le token JWT
+  Future<bool> refreshToken() async {
+    try {
+      final refreshToken = await HiveService.getRefreshToken();
+
+      if (refreshToken == null) {
+        if (kDebugMode) {
+          print('❌ Aucun refresh token disponible');
+        }
+        return false;
+      }
+
+      final response = await apiClient.post(
+        '$__prefixURI/refresh',
+        data: {'refresh_token': refreshToken},
+      );
+
+      if (response != null && response['access_token'] != null) {
+        final newAccessToken = response['access_token'];
+        await HiveService.saveAccessToken(newAccessToken);
+        apiClient.setAuthToken(newAccessToken);
+
+        if (kDebugMode) {
+          print('✅ Token JWT rafraîchi avec succès');
+        }
+        return true;
+      }
+
+      return false;
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Erreur lors du rafraîchissement du token: $e');
+      }
+      return false;
     }
   }
 

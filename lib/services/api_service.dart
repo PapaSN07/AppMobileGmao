@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:appmobilegmao/services/hive_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 
@@ -25,22 +26,15 @@ class ApiService {
   late final Dio _dio;
   late String baseUrl;
 
-  // Configuration par défaut - RÉDUIT pour Android physique
-  static const Duration connectTimeout = Duration(
-    seconds: 60,
-  );
-  static const Duration receiveTimeout = Duration(
-    seconds: 60,
-  );
-  static const Duration sendTimeout = Duration(
-    seconds: 60,
-  );
+  // ✅ NOUVEAU: Variable pour stocker le token
+  String? _authToken;
 
-  // Port par défaut du serveur
+  // Configuration par défaut
+  static const Duration connectTimeout = Duration(seconds: 60);
+  static const Duration receiveTimeout = Duration(seconds: 60);
+  static const Duration sendTimeout = Duration(seconds: 60);
   static const int defaultPort = 8000;
-
-  // Adresse IP de l'ordinateur - MISE À JOUR
-  static const String _macIpAddress = '172.16.11.48';
+  static const String _macIpAddress = '172.16.11.237';
 
   ApiService({int? port, String? customBaseUrl}) {
     if (customBaseUrl != null) {
@@ -49,6 +43,36 @@ class ApiService {
       _initializeBaseUrl(port ?? defaultPort);
     }
     _initializeDio();
+    _loadAuthToken(); // ✅ NOUVEAU: Charger le token au démarrage
+  }
+
+  // ✅ NOUVEAU: Charger le token depuis Hive
+  Future<void> _loadAuthToken() async {
+    _authToken = await HiveService.getAccessToken();
+    if (_authToken != null) {
+      _dio.options.headers['Authorization'] = 'Bearer $_authToken';
+      if (kDebugMode) {
+        print('🔑 Token JWT chargé depuis le cache');
+      }
+    }
+  }
+
+  // ✅ NOUVEAU: Définir le token d'authentification
+  void setAuthToken(String token) {
+    _authToken = token;
+    _dio.options.headers['Authorization'] = 'Bearer $token';
+    if (kDebugMode) {
+      print('🔑 Token JWT configuré dans les headers');
+    }
+  }
+
+  // ✅ NOUVEAU: Supprimer le token d'authentification
+  void clearAuthToken() {
+    _authToken = null;
+    _dio.options.headers.remove('Authorization');
+    if (kDebugMode) {
+      print('🔓 Token JWT supprimé des headers');
+    }
   }
 
   /// Initialise l'URL de base selon la plateforme
@@ -56,21 +80,17 @@ class ApiService {
     if (kIsWeb) {
       baseUrl = 'http://localhost:$port';
     } else if (Platform.isAndroid) {
-      // CORRECTION: Toujours utiliser l'IP Mac pour Android physique
       baseUrl = 'http://$_macIpAddress:$port';
-
       if (kDebugMode) {
         print('🤖 Android détecté - Utilisation IP Mac: $_macIpAddress');
       }
     } else if (Platform.isIOS) {
-      // Détecter si on est sur simulateur ou appareil physique
       if (_isSimulator()) {
         baseUrl = 'http://localhost:$port';
       } else {
         baseUrl = 'http://$_macIpAddress:$port';
       }
     } else {
-      // Fallback pour autres plateformes
       baseUrl = 'http://localhost:$port';
     }
 
@@ -94,7 +114,6 @@ class ApiService {
           'Accept': 'application/json',
           'User-Agent': 'Flutter-${_getPlatformName()}',
         },
-        // AJOUT: Configuration spécifique pour Android
         validateStatus: (status) {
           return status != null && status < 500;
         },
@@ -120,7 +139,6 @@ class ApiService {
       LogInterceptor(
         requestBody: true,
         responseBody: true,
-        // Message verbeux pour le logging
         logPrint: (obj) {
           if (kDebugMode) {
             print('🌐 ApiService: $obj');
@@ -129,10 +147,18 @@ class ApiService {
       ),
     );
 
-    // Intercepteur d'erreurs
+    // ✅ NOUVEAU: Intercepteur pour gérer l'expiration du token
     _dio.interceptors.add(
       InterceptorsWrapper(
-        onRequest: (options, handler) {
+        onRequest: (options, handler) async {
+          // Charger le token si absent
+          if (_authToken == null) {
+            _authToken = await HiveService.getAccessToken();
+            if (_authToken != null) {
+              options.headers['Authorization'] = 'Bearer $_authToken';
+            }
+          }
+
           if (kDebugMode) {
             print('🔍 ApiService Request: ${options.method} ${options.uri}');
             print(
@@ -149,17 +175,54 @@ class ApiService {
           }
           handler.next(response);
         },
-        onError: (error, handler) {
+        onError: (error, handler) async {
           if (kDebugMode) {
             print('❌ ApiService Error: ${error.message}');
             print('❌ Error Type: ${error.type}');
             print('❌ Request URL: ${error.requestOptions.uri}');
+          }
 
-            // AJOUT: Diagnostic réseau spécifique
-            if (error.type == DioExceptionType.connectionTimeout) {
-              _printNetworkDiagnostic();
+          // ✅ NOUVEAU: Gérer l'expiration du token (401)
+          if (error.response?.statusCode == 401) {
+            if (kDebugMode) {
+              print('🔄 Token expiré, tentative de rafraîchissement...');
+            }
+
+            // Tenter de rafraîchir le token
+            final refreshToken = await HiveService.getRefreshToken();
+            if (refreshToken != null) {
+              try {
+                final response = await _dio.post(
+                  '/api/v1/auth/refresh',
+                  data: {'refresh_token': refreshToken},
+                );
+
+                if (response.data['access_token'] != null) {
+                  final newToken = response.data['access_token'];
+                  await HiveService.saveAccessToken(newToken);
+                  setAuthToken(newToken);
+
+                  // Rejouer la requête avec le nouveau token
+                  error.requestOptions.headers['Authorization'] =
+                      'Bearer $newToken';
+                  final retryResponse = await _dio.fetch(error.requestOptions);
+                  return handler.resolve(retryResponse);
+                }
+              } catch (e) {
+                if (kDebugMode) {
+                  print('❌ Échec du rafraîchissement du token: $e');
+                }
+                // Rediriger vers login si le refresh échoue
+                await HiveService.clearAllCache();
+                clearAuthToken();
+              }
             }
           }
+
+          if (error.type == DioExceptionType.connectionTimeout) {
+            _printNetworkDiagnostic();
+          }
+
           handler.next(error);
         },
       ),
@@ -190,18 +253,6 @@ class ApiService {
       print('📱 IP utilisée: $_macIpAddress:$defaultPort');
       print('🌐 URL complète: $baseUrl');
       print('');
-      print('✅ VÉRIFICATIONS:');
-      print('1. Mac et Android sur le même WiFi ?');
-      print('2. Pare-feu Mac désactivé ?');
-      print(
-        '3. Serveur FastAPI démarré avec: uvicorn main:app --host 0.0.0.0 --port $defaultPort',
-      );
-      print('4. Test curl réussi: curl http://$_macIpAddress:$defaultPort');
-      print('');
-      print('🛠️  COMMANDES DE TEST:');
-      print('   - Sur Mac: ifconfig | grep "inet "');
-      print('   - Test serveur: curl http://$_macIpAddress:$defaultPort');
-      print('');
     }
   }
 
@@ -209,7 +260,6 @@ class ApiService {
   void setPort(int port) {
     _initializeBaseUrl(port);
     _dio.options.baseUrl = baseUrl;
-
     if (kDebugMode) {
       print('🔄 ApiService - Base URL mise à jour: $baseUrl');
     }
@@ -219,7 +269,6 @@ class ApiService {
   void setCustomBaseUrl(String url) {
     baseUrl = url;
     _dio.options.baseUrl = baseUrl;
-
     if (kDebugMode) {
       print('🔧 ApiService - URL personnalisée définie: $baseUrl');
     }
@@ -235,9 +284,7 @@ class ApiService {
       final response = await _dio.get(
         endpoint,
         options: Options(
-          sendTimeout: const Duration(
-            seconds: 10,
-          ), // Timeout réduit pour le test
+          sendTimeout: const Duration(seconds: 10),
           receiveTimeout: const Duration(seconds: 10),
         ),
       );
@@ -251,7 +298,6 @@ class ApiService {
     } catch (e) {
       if (kDebugMode) {
         print('❌ ApiService - Impossible de se connecter au serveur: $e');
-        _printConnectionHelp();
       }
     }
     return false;
@@ -376,7 +422,7 @@ class ApiService {
         } else if (statusCode == 404) {
           message = 'Ressource non trouvée (404)';
         } else if (statusCode == 401) {
-          message = 'Non autorisé (401)';
+          message = 'Non autorisé - Token expiré ou invalide (401)';
         } else if (statusCode == 403) {
           message = 'Accès interdit (403)';
         } else {
@@ -395,26 +441,6 @@ class ApiService {
       statusCode: e.response?.statusCode,
       endpoint: endpoint,
     );
-  }
-
-  /// Affiche des conseils de connexion en cas d'erreur
-  void _printConnectionHelp() {
-    if (kDebugMode) {
-      print('');
-      print('🛠️  AIDE À LA CONNEXION ApiService:');
-      print('📱 Plateforme détectée: ${_getPlatformName()}');
-      print('🌐 URL utilisée: $baseUrl');
-      print('');
-      print('📋 ÉTAPES DE DÉPANNAGE:');
-      print('1. Vérifiez que Mac et Android sont sur le même WiFi');
-      print(
-        '2. Démarrez le serveur: uvicorn main:app --host 0.0.0.0 --port $defaultPort --reload',
-      );
-      print('3. Testez depuis Mac: curl http://$_macIpAddress:$defaultPort');
-      print('4. Vérifiez le pare-feu Mac (Préférences Système > Sécurité)');
-      print('5. IP Mac actuelle: $_macIpAddress');
-      print('');
-    }
   }
 
   /// Getter pour accéder à l'instance Dio si nécessaire

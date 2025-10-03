@@ -112,30 +112,21 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Column(
                     children: [
                       SizedBox(
-                        width: 100,
-                        height: 100,
+                        width: 200,
+                        height: 200,
                         child: Image.asset(
                           'assets/images/logo.png',
-                          fit: BoxFit.cover,
+                          fit: BoxFit.contain,
                         ),
                       ),
                       const SizedBox(height: 24),
                       Text(
-                        'SENELEC',
-                        style: TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.secondaryColor,
-                          fontFamily: AppTheme.fontMontserrat,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
                         'GMAO Mobile',
                         style: TextStyle(
                           fontSize: 18,
-                          color: AppTheme.thirdColor,
-                          fontFamily: AppTheme.fontRoboto,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.secondaryColor,
+                          fontFamily: AppTheme.fontMontserrat,
                         ),
                       ),
                     ],

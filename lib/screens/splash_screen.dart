@@ -162,28 +162,6 @@ class _SplashScreenState extends State<SplashScreen>
 
               const SizedBox(height: 40),
 
-              // Titre principal
-              AnimatedBuilder(
-                animation: _fadeAnimation,
-                builder: (context, child) {
-                  return FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: Text(
-                      'SENELEC',
-                      style: TextStyle(
-                        fontSize: 36,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        fontFamily: AppTheme.fontMontserrat,
-                        letterSpacing: 2,
-                      ),
-                    ),
-                  );
-                },
-              ),
-
-              const SizedBox(height: 8),
-
               // Sous-titre
               AnimatedBuilder(
                 animation: _fadeAnimation,

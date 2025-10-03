@@ -105,7 +105,7 @@ class HiveService {
     attributeValuesBox = await Hive.openBox<Map<String, dynamic>>(
       'gmao_attribute_values',
     );
-  } 
+  }
 
   /// Affichage des statistiques du cache
   static void _printCacheStats() {
@@ -156,7 +156,9 @@ class HiveService {
       final data = box.get(key);
       if (data != null) {
         if (kDebugMode) {
-          print('📋 $__logName GMAO: Données récupérées du cache - ${box.name}:$key');
+          print(
+            '📋 $__logName GMAO: Données récupérées du cache - ${box.name}:$key',
+          );
         }
       }
       return data;
@@ -222,7 +224,9 @@ class HiveService {
       await _updateTimestamp('equipments');
 
       if (kDebugMode) {
-        print('💾 $__logName GMAO: ${equipments.length} équipements mis en cache');
+        print(
+          '💾 $__logName GMAO: ${equipments.length} équipements mis en cache',
+        );
       }
     } catch (e) {
       if (kDebugMode) {
@@ -242,7 +246,9 @@ class HiveService {
       if (filters == null || filters.isEmpty) {
         final result = cached.map(_hiveToEquipment).toList();
         if (kDebugMode) {
-          print('📋 $__logName GMAO: ${result.length} équipements récupérés du cache');
+          print(
+            '📋 $__logName GMAO: ${result.length} équipements récupérés du cache',
+          );
         }
         return result;
       }
@@ -321,7 +327,7 @@ class HiveService {
           );
         }
         return;
-      }              
+      }
 
       // Trouver l'équipement existant dans le cache par ID
       int? keyToUpdate;
@@ -544,7 +550,9 @@ class HiveService {
 
       if (kDebugMode) {
         final ageHours = ((now - timestamp) / (60 * 60 * 1000)).round();
-        print('⏰ $__logName GMAO: Cache selectors expiré: $isExpired (âge: ${ageHours}h)');
+        print(
+          '⏰ $__logName GMAO: Cache selectors expiré: $isExpired (âge: ${ageHours}h)',
+        );
       }
 
       if (isExpired) {
@@ -632,7 +640,9 @@ class HiveService {
       await pendingActionsBox.put(key, action);
 
       if (kDebugMode) {
-        print('📝 $__logName GMAO: Action en attente ajoutée: ${action['type']}');
+        print(
+          '📝 $__logName GMAO: Action en attente ajoutée: ${action['type']}',
+        );
       }
     } catch (e) {
       if (kDebugMode) {
@@ -688,7 +698,9 @@ class HiveService {
       await _updateTimestamp('work_orders');
 
       if (kDebugMode) {
-        print('💾 $__logName GMAO: ${workOrders.length} ordres de travail mis en cache');
+        print(
+          '💾 $__logName GMAO: ${workOrders.length} ordres de travail mis en cache',
+        );
       }
     } catch (e) {
       if (kDebugMode) {
@@ -857,7 +869,9 @@ class HiveService {
       // ✅ AJOUTÉ: Validation du code équipement
       if (equipmentCode.isEmpty) {
         if (kDebugMode) {
-          print('⚠️ $__logName GMAO: Code équipement vide, abandon récupération cache');
+          print(
+            '⚠️ $__logName GMAO: Code équipement vide, abandon récupération cache',
+          );
         }
         return null;
       }
@@ -913,7 +927,9 @@ class HiveService {
       return attributeValues;
     } catch (e) {
       if (kDebugMode) {
-        print('❌ $__logName GMAO: Erreur lecture cache valeurs d\'attributs: $e');
+        print(
+          '❌ $__logName GMAO: Erreur lecture cache valeurs d\'attributs: $e',
+        );
       }
       return null;
     }
@@ -966,7 +982,9 @@ class HiveService {
 
       if (cachedData == null) {
         if (kDebugMode) {
-          print('📋 $__logName GMAO: Aucune spécification en cache pour $specKey');
+          print(
+            '📋 $__logName GMAO: Aucune spécification en cache pour $specKey',
+          );
         }
         return null;
       }
@@ -979,7 +997,9 @@ class HiveService {
 
       if (isExpired) {
         if (kDebugMode) {
-          print('⏰ $__logName GMAO: Cache des spécifications expiré pour $specKey');
+          print(
+            '⏰ $__logName GMAO: Cache des spécifications expiré pour $specKey',
+          );
         }
         await attributeValuesBox.delete(specKey);
         return null;
@@ -1094,7 +1114,9 @@ class HiveService {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ $__logName GMAO: Erreur nettoyage complet cache attributs: $e');
+        print(
+          '❌ $__logName GMAO: Erreur nettoyage complet cache attributs: $e',
+        );
       }
     }
   }
@@ -1133,7 +1155,9 @@ class HiveService {
       };
     } catch (e) {
       if (kDebugMode) {
-        print('❌ $__logName GMAO: Erreur statistiques valeurs d\'attributs: $e');
+        print(
+          '❌ $__logName GMAO: Erreur statistiques valeurs d\'attributs: $e',
+        );
       }
       return {
         'equipments_with_attributes': 0,
@@ -1314,5 +1338,40 @@ class HiveService {
           (attributeValuesBox.toMap().toString().length / (1024 * 1024))
               .round(),
     };
+  }
+
+  // ✅ NOUVEAU: Sauvegarder les tokens JWT
+  static Future<void> saveTokens(
+    String accessToken,
+    String refreshToken,
+  ) async {
+    final box = await Hive.openBox('auth');
+    await box.put('access_token', accessToken);
+    await box.put('refresh_token', refreshToken);
+  }
+
+  // ✅ NOUVEAU: Récupérer l'access token
+  static Future<String?> getAccessToken() async {
+    final box = await Hive.openBox('auth');
+    return box.get('access_token');
+  }
+
+  // ✅ NOUVEAU: Récupérer le refresh token
+  static Future<String?> getRefreshToken() async {
+    final box = await Hive.openBox('auth');
+    return box.get('refresh_token');
+  }
+
+  // ✅ NOUVEAU: Sauvegarder uniquement l'access token (après refresh)
+  static Future<void> saveAccessToken(String accessToken) async {
+    final box = await Hive.openBox('auth');
+    await box.put('access_token', accessToken);
+  }
+
+  // ✅ NOUVEAU: Supprimer les tokens
+  static Future<void> clearTokens() async {
+    final box = await Hive.openBox('auth');
+    await box.delete('access_token');
+    await box.delete('refresh_token');
   }
 }
