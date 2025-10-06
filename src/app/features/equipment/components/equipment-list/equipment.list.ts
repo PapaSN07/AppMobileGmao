@@ -1,40 +1,18 @@
-import { CommonModule } from '@angular/common';
 import { Component, OnInit, signal, ViewChild } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
-import { InputNumberModule } from 'primeng/inputnumber';
-import { InputTextModule } from 'primeng/inputtext';
-import { RadioButtonModule } from 'primeng/radiobutton';
-import { RippleModule } from 'primeng/ripple';
-import { SelectModule } from 'primeng/select';
 import { Table, TableModule } from 'primeng/table';
 import { TabsModule } from 'primeng/tabs';
 import { ToastModule } from 'primeng/toast';
-import { ToolbarModule } from 'primeng/toolbar';
-import { RatingModule } from 'primeng/rating';
-import { TextareaModule } from 'primeng/textarea';
 import { DialogModule } from 'primeng/dialog';
-import { TagModule } from 'primeng/tag';
 import { InputIconModule } from 'primeng/inputicon';
 import { IconFieldModule } from 'primeng/iconfield';
-import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ConfirmPopupModule } from 'primeng/confirmpopup';
-import { MultiSelectModule } from 'primeng/multiselect';
-import { SliderModule } from 'primeng/slider';
-import { ProgressBarModule } from 'primeng/progressbar';
-import { ToggleButtonModule } from 'primeng/togglebutton';
 
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { EquipmentService } from '../../../../core/services/api';
 import { Equipment } from '../../../../core/models';
 
 import * as XLSX from 'xlsx';
-
-interface Column {
-    field: string;
-    header: string;
-    customExportHeader?: string;
-}
 
 interface ExportColumn {
     title: string;
@@ -49,28 +27,12 @@ interface expandedRows {
     selector: 'app-equipment',
     standalone: true,
     imports: [
-        CommonModule,
         TableModule,
-        FormsModule,
         ButtonModule,
-        RippleModule,
         ToastModule,
-        ToolbarModule,
-        RatingModule,
-        InputTextModule,
-        TextareaModule,
-        SelectModule,
-        RadioButtonModule,
-        InputNumberModule,
         DialogModule,
-        TagModule,
         InputIconModule,
         IconFieldModule,
-        ConfirmDialogModule,
-        MultiSelectModule,
-        SliderModule,
-        ProgressBarModule,
-        ToggleButtonModule,
         TabsModule,
         ConfirmPopupModule
     ],

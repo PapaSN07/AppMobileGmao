@@ -14,6 +14,7 @@ import { User } from '../../../../core/models';
 @Component({
     selector: 'app-configuration',
     imports: [InputTextModule, FluidModule, ButtonModule, SelectModule, FormsModule, TextareaModule, ToggleSwitch, Toast],
+    standalone: true,
     templateUrl: './parameter.configuration.html',
     providers: [MessageService]
 })

@@ -1,1 +1,99 @@
-<p>parameter.users works!</p>
+<div class="card">
+    <div class="font-semibold text-xl mb-4">Liste des équipements à approuver</div>
+
+    <div>
+        <p-table
+            #dt
+            [value]="users"
+            dataKey="id"
+            [rows]="5"
+            [rowsPerPageOptions]="[5, 10, 25, 50]"
+            [rowHover]="true"
+            [expandedRowKeys]="expandedRows"
+            [loading]="loading"
+            [paginator]="true"
+            [(selection)]="selection"
+            [globalFilterFields]="['username', 'email', 'company', 'urlName', 'isConnected', 'isEnabled', 'createdAt', 'address']"
+            [tableStyle]="{ 'min-width': '75rem' }"
+            [scrollable]="true"
+        >
+            <ng-template #caption>
+                <div class="flex justify-between md:flex-row flex-col gap-2">
+                    <p-iconfield iconPosition="left" class="ml-auto">
+                        <p-inputicon>
+                            <i class="pi pi-search"></i>
+                        </p-inputicon>
+                        <input pInputText type="text" (input)="dt.filterGlobal($event.target.value, 'contains')" placeholder="Recherche par mot-clé" />
+                    </p-iconfield>
+                </div>
+            </ng-template>
+            <ng-template #header>
+                <tr>
+                    <th>
+                        <p-columnFilter type="text" field="username" placeholder="Rechercher par ..." ariaLabel="Filtre Username" filterOn="input"></p-columnFilter>
+                    </th>
+                    <th>
+                        <p-columnFilter type="text" field="email" placeholder="Rechercher par ..." ariaLabel="Filtre Email" filterOn="input"></p-columnFilter>
+                    </th>
+                    <th>
+                        <p-columnFilter type="text" field="company" placeholder="Rechercher par ..." ariaLabel="Filtre Société" filterOn="input"></p-columnFilter>
+                    </th>
+                    <th>
+                        <p-columnFilter type="text" field="urlName" placeholder="Rechercher par ..." ariaLabel="Filtre URL image" filterOn="input"></p-columnFilter>
+                    </th>
+                    <th>
+                        <p-columnFilter type="text" field="isConnected" placeholder="Rechercher par ..." ariaLabel="Filtre Connecté" filterOn="input"></p-columnFilter>
+                    </th>
+                    <th>
+                        <p-columnFilter type="text" field="isEnabled" placeholder="Rechercher par ..." ariaLabel="Filtre Compte Activé" filterOn="input"></p-columnFilter>
+                    </th>
+                    <th>
+                        <p-columnFilter type="text" field="createdAt" placeholder="Rechercher par ..." ariaLabel="Filtre Créé Le" filterOn="input"></p-columnFilter>
+                    </th>
+                    <th>
+                        <p-columnFilter type="text" field="address" placeholder="Rechercher par ..." ariaLabel="Filtre Adresse" filterOn="input"></p-columnFilter>
+                    </th>
+                    <th style="width: auto; min-width: 7.5rem" pFrozenColumn alignFrozen="right" [frozen]="balanceFrozen"></th>
+                </tr>
+                <tr>
+                    <th style="width: 11%">Nom Utilisateur</th>
+                    <th style="width: 11%">Email</th>
+                    <th style="width: 11%">Société</th>
+                    <th style="width: 11%">URL(Photo)</th>
+                    <th style="width: 11%">Est Connecté</th>
+                    <th style="width: 11%">Compte Activé</th>
+                    <th style="width: 11%">Date de Création</th>
+                    <th style="width: 11%">Adresse</th>
+                    <th style="width: auto; min-width: 7.5rem" pFrozenColumn alignFrozen="right" [frozen]="balanceFrozen">Actions</th>
+                </tr>
+            </ng-template>
+            <ng-template #body let-user let-expanded="expanded">
+                <tr>
+                    <td>{{ user.username || 'N/A' }}</td>
+                    <td>{{ user.email || 'N/A' }}</td>
+                    <td>{{ user.company || 'N/A' }}</td>
+                    <td>{{ user.urlName || 'N/A' }}</td>
+                    <td>{{ user.isConnected ? 'Oui' : 'Non' }}</td>
+                    <td>{{ user.isEnabled ? 'Oui' : 'Non' }}</td>
+                    <td>{{ user.createdAt || 'N/A' }}</td>
+                    <td>{{ user.address || 'N/A' }}</td>
+                    <td alignFrozen="right" pFrozenColumn [frozen]="balanceFrozen" class="p-2">
+                        <p-confirmpopup />
+                        <p-button (onClick)="confirm1($event, user)" class="mr-2" icon="pi pi-check" [outlined]="true" [rounded]="true" />
+                        <p-button (onClick)="confirm2($event, user)" icon="pi pi-times" severity="danger" [outlined]="true" [rounded]="true" />
+                    </td>
+                </tr>
+            </ng-template>
+            <ng-template #loadingbody>
+                <tr>
+                    <td colspan="14">Chargement des données des Utilisateur. Veuillez patienter 🫸🏽🫸🏽🫸🏽.</td>
+                </tr>
+            </ng-template>
+            <ng-template #emptymessage>
+                <tr>
+                    <td colspan="9">Pas de données disponibles 😔😔😔.</td>
+                </tr>
+            </ng-template>
+        </p-table>
+    </div>
+</div>
