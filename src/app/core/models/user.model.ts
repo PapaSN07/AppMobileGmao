@@ -1,14 +1,16 @@
 export interface User {
-    id: string;
+    id?: string;
     username: string;
     email: string;
-    roles: string;
+    role: string;
     supervisor?: string;
     urlName?: string;
     isConnected?: boolean;
     isEnabled?: boolean;
     createdAt?: Date;
     updatedAt?: Date;
+    address?: string;
+    company?: string;
 }
 
 export interface AuthResponse {

@@ -1,0 +1,50 @@
+<p-fluid>
+    <p-toast></p-toast>
+    <div class="flex flex-col md:flex-row gap-8">
+        <div class="card flex flex-col gap-6 w-full">
+            <div class="font-semibold text-xl">Créer un compte au prestataire</div>
+            <div class="flex flex-col md:flex-row gap-6">
+                <div class="flex flex-wrap gap-2 w-full">
+                    <label for="username">Username</label>
+                    <input pInputText id="username" type="text" [(ngModel)]="username" />
+                </div>
+                <div class="flex flex-wrap gap-2 w-full">
+                    <label for="email">Email</label>
+                    <input pInputText id="email" type="text" [(ngModel)]="email" />
+                </div>
+            </div>
+
+            <div class="flex flex-col md:flex-row gap-6">
+                <div class="flex flex-wrap gap-2 w-full">
+                    <label for="company">Société</label>
+                    <input pInputText id="company" type="text" [(ngModel)]="company" />
+                </div>
+                <div class="flex flex-wrap gap-2 w-full">
+                    <label for="superviseur">Superviseur</label>
+                    <input pInputText id="superviseur" type="text" [value]="superviseur" [disabled]="true" />
+                </div>
+            </div>
+
+            <div class="flex flex-col md:flex-row gap-6">
+                <div class="flex flex-wrap gap-2 w-full">
+                    <label for="role">Rôle</label>
+                    <input pInputText id="role" type="text" [disabled]="true" [value]="role" />
+                </div>
+                <div class="flex flex-col flex-wrap gap-2 w-full ">
+                    <p>Active le compte</p>
+                    <p-toggleswitch [(ngModel)]="checked">
+                        <ng-template #handle let-checked="checked">
+                            <i class="!text-xs pi" [class.pi-check]="checked" [class.pi-times]="!checked"></i>
+                        </ng-template>
+                    </p-toggleswitch>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap">
+                <label for="address">Adresse</label>
+                <textarea pTextarea id="address" rows="4" [(ngModel)]="address"></textarea>
+            </div>
+            <p-button label="Enregistrer" icon="pi pi-check" iconPos="right" (click)="onSave()" />
+        </div>
+    </div>
+</p-fluid>

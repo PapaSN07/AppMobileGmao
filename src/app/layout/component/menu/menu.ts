@@ -28,6 +28,22 @@ export class Menu {
                         ]
                     }
                 ]
+            },
+            {
+                label: 'Configuration',
+                icon: 'pi pi-fw pi-cog',
+                items: [
+                    {
+                        label: 'Paramétrage Compte',
+                        icon: 'pi pi-fw pi-sliders-h',
+                        routerLink: ['/parameter/configuration']
+                    },
+                    {
+                        label: 'Liste Utilisateurs',
+                        icon: 'pi pi-fw pi-users',
+                        routerLink: ['/parameter/users']
+                    }
+                ]
             }
         ];
     }
