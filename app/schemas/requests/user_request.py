@@ -11,3 +11,14 @@ class AddUserRequest(BaseModel):
     url_image: Optional[str] = Field(None, description="URL de l'image de profil", max_length=512)
     role: str = Field("user", description="Rôle de l'utilisateur", max_length=100)
     is_enabled: bool = Field(True, description="Utilisateur activé par défaut")
+
+class UpdateUserRequest(BaseModel):
+    username: Optional[str] = Field(None, description="Nom d'utilisateur", min_length=3, max_length=150)
+    email: Optional[EmailStr] = Field(None, description="Adresse email")
+    role: Optional[str] = Field(None, description="Rôle de l'utilisateur", max_length=100)
+    supervisor: Optional[int] = Field(None, description="ID du superviseur")
+    url_image: Optional[str] = Field(None, description="URL de l'image de profil", max_length=512)
+    is_connected: Optional[bool] = Field(None, description="Statut de connexion")
+    is_enabled: Optional[bool] = Field(None, description="Utilisateur activé")
+    address: Optional[str] = Field(None, description="Adresse de l'utilisateur")
+    company: Optional[str] = Field(None, description="Entreprise de l'utilisateur")
