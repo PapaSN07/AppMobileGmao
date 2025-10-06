@@ -1,5 +1,6 @@
 from typing import Union
 from passlib.hash import bcrypt
+from app.core.exceptions import AuthenticationError, DatabaseError, InvalidPasswordError, UserNotFoundError
 from app.db.sqlalchemy.session import SQLAlchemyQueryExecutor, get_main_session, get_temp_session
 from app.models.models import UserCliClac, UserModel
 from app.core.config import CACHE_TTL_SHORT
@@ -37,9 +38,13 @@ def authenticate_user(username: str, password: str) -> Union[UserModel, UserCliC
                         return user_temp  # Retourner UserCliClac
                     else:
                         logger.warning(f"Mot de passe incorrect pour {username} dans CliClac.")
+                        raise InvalidPasswordError(username)  # Considérer comme mot de passe incorrect en cas d'erreur
                 except Exception as verify_error:
                     logger.error(f"Erreur lors de la vérification bcrypt: {verify_error}")
-                    # Continuer vers Coswin si erreur de vérification
+                    raise InvalidPasswordError(username)  # Considérer comme mot de passe incorrect en cas d'erreur
+            else:
+                # Utilisateur non trouvé dans CliClac, vérifier Coswin
+                pass
         
         # 2) Si non trouvé dans CliClac ou mot de passe incorrect, vérifier dans Coswin (Oracle)
         with get_main_session() as session:
@@ -57,15 +62,25 @@ def authenticate_user(username: str, password: str) -> Union[UserModel, UserCliC
                 logger.info(f"Utilisateur {username} authentifié avec succès dans Coswin.")
                 return user_main  # Retourner UserModel
             else:
-                logger.warning(f"Échec de l'authentification pour {username} dans les deux bases.")
-                return None
+                # Vérifier si l'utilisateur existe sans mot de passe (pour différencier)
+                query_check_user = "SELECT 1 FROM coswin.coswin_user WHERE cwcu_signature = :username OR cwcu_email = :username"
+                user_exists = db.execute_query(query_check_user, params={'username': username})
+                if user_exists:
+                    logger.warning(f"Échec de l'authentification pour {username} : Utilisateur existe, mot de passe faux")
+                    raise InvalidPasswordError(username)  # Utilisateur existe, mot de passe faux
+                else:
+                    logger.warning(f"Échec de l'authentification pour {username} : Utilisateur inexistant")
+                    raise UserNotFoundError(username)  # Utilisateur inexistant
                 
-    except oracledb.DatabaseError as e:
+    except DatabaseError as e:
         logger.error(f"❌ Erreur base de données principale: {e}")
-        raise
+        raise DatabaseError("Erreur de base de données lors de l'authentification.")
     except Exception as e:
+        # ✅ CORRECTION: Vérifier si c'est une exception d'authentification personnalisée
+        if isinstance(e, AuthenticationError):
+            raise  # Re-lancer les erreurs d'auth personnalisées (InvalidPasswordError, UserNotFoundError)
         logger.error(f"❌ Erreur inattendue: {e}")
-        raise
+        raise DatabaseError("Erreur inattendue lors de l'authentification.")
 
 def logout_user(username: str) -> bool:
     """

@@ -1,5 +1,6 @@
 from typing import Any, Dict
 from fastapi import APIRouter, HTTPException
+from app.core.exceptions import DatabaseError, InvalidPasswordError, UserNotFoundError
 from app.schemas.responses.auth_response import AuthResponse
 from app.services.jwt_service import jwt_service
 from app.services.auth_service import (
@@ -62,12 +63,20 @@ async def login_user(
             refresh_token=refresh_token
         )
         
-    except oracledb.DatabaseError as e:
-        logger.error(f"❌ Erreur base de données: {e}")
-        raise HTTPException(status_code=500, detail="Erreur base de données")
+    except UserNotFoundError as e:
+        logger.warning(f"Utilisateur non trouvé: {e.message}")
+        raise HTTPException(status_code=e.status_code, detail={"status": e.status_code, "error_code": e.error_code, "message": e.message})
+    except InvalidPasswordError as e:
+        logger.warning(f"Mot de passe incorrect: {e.message}")
+        raise HTTPException(status_code=e.status_code, detail={"status": e.status_code, "error_code": e.error_code, "message": e.message})
+    except DatabaseError as e:
+        logger.error(f"Erreur DB: {e.message}")
+        raise HTTPException(status_code=e.status_code, detail={"error_code": e.error_code, "message": e.message})
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail={"status": 400, "error_code": "VALIDATION_ERROR", "message": str(e)})
     except Exception as e:
         logger.error(f"❌ Erreur inattendue: {e}")
-        raise HTTPException(status_code=500, detail="Erreur lors de l'authentification")
+        raise HTTPException(status_code=500, detail={"status": 500, "error_code": "UNKNOWN_ERROR", "message": "Erreur lors de l'authentification"})
 
 @authenticate_user_router.post("/logout",
     summary="Déconnexion utilisateur",
