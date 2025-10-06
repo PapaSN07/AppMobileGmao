@@ -41,6 +41,9 @@ JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 JWT_ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", 30))
 JWT_REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("JWT_REFRESH_TOKEN_EXPIRE_DAYS", 7))
 
+# Configuration mot de passe par défaut pour les prestataires
+DEFAULT_PASSWORD_PRESTATAIRE = os.getenv("DEFAULT_PASSWORD_PRESTATAIRE", "changeMe123!")
+
 # Vérification des variables obligatoires
 required_vars = [DB_USERNAME, DB_PASSWORD, DB_HOST, DB_SERVICE_NAME]
 if not all(required_vars):

@@ -654,10 +654,12 @@ class UserCliClac(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     username = Column(String(150), nullable=False, unique=True, index=True)
-    password = Column(String(255), nullable=False)  # stocke le hash bcrypt / argon2
+    password = Column(String(512), nullable=False)  # stocke le hash bcrypt / argon2
     email = Column(String(255), nullable=False, unique=True, index=True)
     supervisor = Column(Integer, ForeignKey('dbo.users.id', ondelete='SET NULL'), nullable=True, index=True)
     url_image = Column(String(512), nullable=True)
+    address = Column(Text, nullable=True)
+    company = Column(String(255), nullable=True)
     role = Column(String(100), nullable=False, default='user', index=True)
     is_connected = Column(Boolean, default=False, nullable=True, index=True)
     is_enabled = Column(Boolean, default=True, nullable=True, index=True)
@@ -673,6 +675,8 @@ class UserCliClac(Base):
             'supervisor': str(self.supervisor) if self.supervisor is not None else None,
             'url_image': self.url_image,
             'role': self.role,
+            'address': self.address,
+            'company': self.company,
             'is_connected': self.is_connected,
             'is_enabled': self.is_enabled,
             'created_at': self.created_at.isoformat() if self.created_at is not None else None,
