@@ -139,7 +139,7 @@ app.add_middleware(
         # "http://192.168.*.*:*"  # Pour réseaux locaux
     ],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PATCH"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE"],
     allow_headers=["*"],
 )
 

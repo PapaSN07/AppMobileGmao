@@ -35,7 +35,7 @@ async def get_users(
         logger.error(f"❌ Erreur inattendue dans get_users: {e}")
         raise HTTPException(status_code=500, detail="Erreur interne du serveur")
 
-@user_router_web.put("/{user_id}",
+@user_router_web.patch("/{user_id}",
     summary="Mettre à jour un utilisateur",
     description="Met à jour un utilisateur par ID",
     response_model=UpdateUserResponse)
