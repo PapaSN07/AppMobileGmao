@@ -10,6 +10,12 @@ import { InputIconModule } from 'primeng/inputicon';
 import { InputTextModule } from 'primeng/inputtext';
 import { DatePipe } from '@angular/common';
 import { TagModule } from 'primeng/tag';
+import { Dialog } from 'primeng/dialog';
+import { ConfirmDialog } from 'primeng/confirmdialog';
+import { FormsModule } from '@angular/forms';
+import { SelectModule } from 'primeng/select';
+import { Toast } from "primeng/toast";
+import { TextareaModule } from 'primeng/textarea';
 
 interface expandedRows {
     [key: string]: boolean;
@@ -17,16 +23,7 @@ interface expandedRows {
 
 @Component({
     selector: 'app-parameter.users',
-    imports: [
-        TableModule,
-        ButtonModule,
-        InputIconModule,
-        IconFieldModule,
-        InputTextModule,
-        ConfirmPopupModule,
-        DatePipe,
-        TagModule
-    ],
+    imports: [TableModule, ButtonModule, InputIconModule, IconFieldModule, InputTextModule, ConfirmPopupModule, DatePipe, TagModule, Dialog, ConfirmDialog, FormsModule, SelectModule, Toast, TextareaModule],
     standalone: true,
     templateUrl: './parameter.users.html',
     providers: [MessageService, ConfirmationService]
@@ -37,13 +34,24 @@ export class ParameterUsers {
     messageService = inject(MessageService);
     confirmationService = inject(ConfirmationService);
 
-    @ViewChild('dt') dt1!: Table;
+    @ViewChild('dt') dt!: Table;
     users: User[] = [];
     loading: boolean = true;
     selection: User[] = [];
     expandedRows: expandedRows = {};
     balanceFrozen: boolean = true;
     searchValue: string = '';
+    userDialog: boolean = false;
+    user: User = {
+        username: '',
+        email: '',
+        role: ''
+    };
+    submitted: boolean = false;
+    enabledOptions = [
+        { label: 'Activé', value: true },
+        { label: 'Désactivé', value: false }
+    ];
 
     ngOnInit() {
         const currentUser = this.authService.getUser();
@@ -58,9 +66,9 @@ export class ParameterUsers {
             next: (response: { data: User[] } | User[]) => {
                 this.users = Array.isArray(response) ? response : response.data;
                 // Convertir createdAt en Date pour le filtre date
-                this.users.forEach(user => {
-                    if (user.createdAt) {
-                        user.createdAt = new Date(user.createdAt);
+                this.users.forEach((user) => {
+                    if (user.created_at) {
+                        user.created_at = new Date(user.created_at);
                     }
                 });
                 this.loading = false;
@@ -155,5 +163,28 @@ export class ParameterUsers {
     clear(table: Table) {
         table.clear();
         this.searchValue = '';
+    }
+
+    editUser(user: User) {
+        this.user = { ...user };
+        this.userDialog = true;
+    }
+
+    saveUser() {
+        this.submitted = true;
+        if (this.user.username?.trim()) {
+            this.updateUser(this.user);
+            this.userDialog = false;
+            this.user = {
+                username: '',
+                email: '',
+                role: ''
+            };
+        }
+    }
+
+    hideDialog() {
+        this.userDialog = false;
+        this.submitted = false;
     }
 }

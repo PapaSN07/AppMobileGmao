@@ -4,11 +4,11 @@ export interface User {
     email: string;
     role: string;
     supervisor?: string;
-    urlName?: string;
-    isConnected?: boolean;
-    isEnabled?: boolean;
-    createdAt?: Date;
-    updatedAt?: Date;
+    url_image?: string;
+    is_connected?: boolean;
+    is_enabled?: boolean;
+    created_at?: Date;
+    updated_at?: Date;
     address?: string;
     company?: string;
 }

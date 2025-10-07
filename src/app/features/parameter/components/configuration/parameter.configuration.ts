@@ -13,7 +13,16 @@ import { User } from '../../../../core/models';
 
 @Component({
     selector: 'app-configuration',
-    imports: [InputTextModule, FluidModule, ButtonModule, SelectModule, FormsModule, TextareaModule, ToggleSwitch, Toast],
+    imports: [
+        InputTextModule, 
+        FluidModule, 
+        ButtonModule, 
+        SelectModule, 
+        FormsModule, 
+        TextareaModule, 
+        ToggleSwitch, 
+        Toast
+    ],
     standalone: true,
     templateUrl: './parameter.configuration.html',
     providers: [MessageService]
@@ -77,7 +86,7 @@ export class ParameterConfiguration implements OnInit {
             address: this.address?.trim() || '',
             supervisor: this.authService.getUser()?.id || '',
             role: this.role,
-            isEnabled: this.checked,
+            is_enabled: this.checked,
         };
 
         // Envoyer au backend
