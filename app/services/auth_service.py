@@ -1,5 +1,5 @@
 from typing import Union
-from passlib.hash import bcrypt
+import bcrypt
 from app.core.exceptions import AuthenticationError, DatabaseError, InvalidPasswordError, UserNotFoundError
 from app.db.sqlalchemy.session import SQLAlchemyQueryExecutor, get_main_session, get_temp_session
 from app.models.models import UserCliClac, UserModel
@@ -24,24 +24,23 @@ def authenticate_user(username: str, password: str) -> Union[UserModel, UserCliC
     try:
         # 1) Vérifier d'abord dans la base temporaire (CliClac)
         with get_temp_session() as session:
-            # Récupérer l'utilisateur par username OU email
             user_temp = session.query(UserCliClac).filter(
                 (UserCliClac.username == username) | (UserCliClac.email == username)
             ).first()
             
             if user_temp:
                 try:
-                    if bcrypt.verify(password, str(user_temp.password)):
+                    if bcrypt.checkpw(password.encode('utf-8'), user_temp.password.encode('utf-8')):
                         cache_key = f"user_hierarchy_{user_temp.id}"
                         cache.set(cache_key, user_temp, CACHE_TTL_SHORT)
                         logger.info(f"Utilisateur {username} authentifié avec succès dans CliClac.")
-                        return user_temp  # Retourner UserCliClac
+                        return user_temp  # Retourner UserCliClac (rôle déjà défini dans le modèle)
                     else:
                         logger.warning(f"Mot de passe incorrect pour {username} dans CliClac.")
-                        raise InvalidPasswordError(username)  # Considérer comme mot de passe incorrect en cas d'erreur
+                        raise InvalidPasswordError(username)
                 except Exception as verify_error:
                     logger.error(f"Erreur lors de la vérification bcrypt: {verify_error}")
-                    raise InvalidPasswordError(username)  # Considérer comme mot de passe incorrect en cas d'erreur
+                    raise InvalidPasswordError(username)
             else:
                 # Utilisateur non trouvé dans CliClac, vérifier Coswin
                 pass
@@ -56,29 +55,34 @@ def authenticate_user(username: str, password: str) -> Union[UserModel, UserCliC
             
             if results:
                 user_main = UserModel.from_db_row(results[0])
+                
+                # ✅ NOUVEAU: Vérifier si l'utilisateur a le rôle ADMIN dans Coswin
+                admin_query = "SELECT 1 FROM coswin.coswin_user WHERE cwcu_code = :code AND cwcu_preferred_group LIKE '%ADMIN%'"
+                admin_result = db.execute_query(admin_query, params={'code': user_main.code})
+                user_main.role = 'ADMIN' if admin_result else 'USER'  # Assigner le rôle
+                
                 cache_key = f"user_hierarchy_{user_main.code}"
                 cache.set(cache_key, user_main, CACHE_TTL_SHORT)
                 
-                logger.info(f"Utilisateur {username} authentifié avec succès dans Coswin.")
-                return user_main  # Retourner UserModel
+                logger.info(f"Utilisateur {username} authentifié avec succès dans Coswin (rôle: {user_main.role}).")
+                return user_main  # Retourner UserModel avec rôle
             else:
                 # Vérifier si l'utilisateur existe sans mot de passe (pour différencier)
                 query_check_user = "SELECT 1 FROM coswin.coswin_user WHERE cwcu_signature = :username OR cwcu_email = :username"
                 user_exists = db.execute_query(query_check_user, params={'username': username})
                 if user_exists:
                     logger.warning(f"Échec de l'authentification pour {username} : Utilisateur existe, mot de passe faux")
-                    raise InvalidPasswordError(username)  # Utilisateur existe, mot de passe faux
+                    raise InvalidPasswordError(username)
                 else:
                     logger.warning(f"Échec de l'authentification pour {username} : Utilisateur inexistant")
-                    raise UserNotFoundError(username)  # Utilisateur inexistant
+                    raise UserNotFoundError(username)
                 
     except DatabaseError as e:
         logger.error(f"❌ Erreur base de données principale: {e}")
         raise DatabaseError("Erreur de base de données lors de l'authentification.")
     except Exception as e:
-        # ✅ CORRECTION: Vérifier si c'est une exception d'authentification personnalisée
         if isinstance(e, AuthenticationError):
-            raise  # Re-lancer les erreurs d'auth personnalisées (InvalidPasswordError, UserNotFoundError)
+            raise
         logger.error(f"❌ Erreur inattendue: {e}")
         raise DatabaseError("Erreur inattendue lors de l'authentification.")
 

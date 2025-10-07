@@ -100,6 +100,10 @@ class UserModel(Base):
     url_image = Column('cwcu_url_image', String(500), nullable=True)
     is_absent = Column('cwcu_is_absent', Boolean, default=True)
     
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.role = ''  # Rôle utilisateur (non stocké en DB)
+
     @classmethod
     def from_db_row(cls, row: tuple) -> 'UserModel':
         """Crée depuis GET_USER_AUTHENTICATION_QUERY"""
@@ -128,7 +132,8 @@ class UserModel(Base):
             'entity': self.entity,
             'group': self.group,
             'url_image': self.url_image,
-            'is_absent': self.is_absent
+            'is_absent': self.is_absent,
+            'role': self.role
         }
 
 

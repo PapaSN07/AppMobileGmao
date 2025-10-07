@@ -45,7 +45,7 @@ async def login_user(
             raise HTTPException(status_code=401, detail="Identifiants invalides")
         
         # Créer les tokens
-        user_data = {"sub": user.code, "username": user.username}
+        user_data = {"sub": user.id, "username": user.username, "role": user.role}
         access_token = jwt_service.create_access_token(user_data)
         refresh_token = jwt_service.create_refresh_token(user_data)
         
