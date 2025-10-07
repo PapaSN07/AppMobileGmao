@@ -17,7 +17,13 @@ import { AuthService } from '../../../core/services/api';
 export class Topbar {
     authService = inject(AuthService);
 
+    emailUserConnect: string = '';
+
     constructor(public layoutService: LayoutService) {}
+
+    ngOnInit() {
+        this.emailUserConnect = this.getEmailUser();
+    }
 
     items!: MenuItem[];
     itemsProfile: MenuItem[] | undefined = [
@@ -45,5 +51,10 @@ export class Topbar {
 
     toggleDarkMode() {
         this.layoutService.layoutConfig.update((state) => ({ ...state, darkTheme: !state.darkTheme }));
+    }
+
+    getEmailUser() {
+        const user = this.authService.getUser();
+        return user ? user.email : '';
     }
 }
