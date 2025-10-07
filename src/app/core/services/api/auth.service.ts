@@ -114,6 +114,19 @@ export class AuthService {
             })
         );
     }
+    
+    hasRole(roles: string[]): boolean {
+        const user = this.getUser();
+        return user ? roles.includes(user.role) : false;
+    }
+
+    isAdmin(): boolean {
+        return this.hasRole(['ADMIN']);
+    }
+
+    isPrestataire(): boolean {
+        return this.hasRole(['PRESTATAIRE']);
+    }
 
     /**
      * Démarre un timer qui vérifie toutes les minutes si le token expire bientôt (dans les 5 prochaines minutes).

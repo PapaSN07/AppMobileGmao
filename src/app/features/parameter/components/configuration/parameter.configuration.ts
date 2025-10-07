@@ -36,7 +36,7 @@ export class ParameterConfiguration implements OnInit {
     email: string = '';
     superviseur: string = '';
     company: string = '';
-    role: string = 'Prestataire';
+    role: string = 'PRESTATAIRE';
     checked: boolean = true;
     address: string = '';
 

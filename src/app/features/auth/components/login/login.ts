@@ -45,6 +45,17 @@ export class Login {
         this.authService.login(identifier, this.password).subscribe({
             next: (response) => {
                 if (response.success) {
+                    // Vérification du rôle
+                    const allowedRoles = ['ADMIN', 'PRESTATAIRE'];
+                    if (!allowedRoles.includes(response.data.role)) {
+                        this.messageService.add({
+                            severity: 'error',
+                            summary: 'Accès refusé',
+                            detail: 'Vous n\'avez pas les droits pour vous connecter.',
+                            life: 4000
+                        });
+                        return;
+                    }
                     this.router.navigate(['/dashboard']);
                 }
             },
