@@ -105,56 +105,11 @@
                         }
                     </td>
                     <td alignFrozen="right" pFrozenColumn [frozen]="balanceFrozen" class="p-2">
-                        <p-button icon="pi pi-pencil" class="mr-2" [rounded]="true" [outlined]="true" (click)="editUser(user)" />
-                        <p-button icon="pi pi-trash" severity="danger" [rounded]="true" [outlined]="true" (click)="deleteUser(user)" />
+                        <p-button icon="pi pi-pencil" class="mr-2" [rounded]="true" [outlined]="true" (click)="editUser(user)" pTooltip="Éditer" tooltipPosition="top" />
+                        <p-button icon="pi pi-trash" severity="danger" [rounded]="true" [outlined]="true" (click)="deleteUser(user)" pTooltip="Supprimer" tooltipPosition="top" />
                     </td>
                 </tr>
             </ng-template>
-
-            <p-dialog [(visible)]="userDialog" [style]="{ width: '450px' }" header="Détails de l'utilisateur" [modal]="true">
-                <ng-template #content>
-                    <div class="flex flex-col gap-6">
-                        @if (user.url_image) {
-                        <img [src]="user.url_image" alt="Photo" width="50" height="50" style="border-radius: 50%" />
-                        } @else {
-                        <img src="assets/images/profile.svg" alt="Default Photo" width="50" height="50" style="border-radius: 50%" />
-                        }
-                        <div>
-                            <label for="username" class="block font-bold mb-3">Username</label>
-                            <input type="text" pInputText id="username" [(ngModel)]="user.username" required autofocus fluid />
-                            @if (submitted && !user.username) {
-                            <small class="text-red-500">Username est obligatoire.</small>
-                            }
-                        </div>
-                        <div>
-                            <label for="email" class="block font-bold mb-3">Email</label>
-                            <input type="text" pInputText id="email" [(ngModel)]="user.email" required fluid />
-                            @if (submitted && !user.email) {
-                            <small class="text-red-500">Email est obligatoire.</small>
-                            }
-                        </div>
-                        <div>
-                            <label for="company" class="block font-bold mb-3">Company</label>
-                            <input type="text" pInputText id="company" [(ngModel)]="user.company" fluid />
-                        </div>
-                        <div>
-                            <label for="address" class="block font-bold mb-3">Address</label>
-                            <textarea id="address" pTextarea [(ngModel)]="user.address" rows="3" cols="20" fluid></textarea>
-                        </div>
-                        <div>
-                            <label for="is_enabled" class="block font-bold mb-3">Enabled</label>
-                            <p-select [(ngModel)]="user.is_enabled" [options]="enabledOptions" optionLabel="label" optionValue="value" placeholder="Select Status" fluid />
-                        </div>
-                    </div>
-                </ng-template>
-
-                <ng-template #footer>
-                    <p-button label="Cancel" icon="pi pi-times" text (click)="hideDialog()" />
-                    <p-button label="Save" icon="pi pi-check" (click)="saveUser()" />
-                </ng-template>
-            </p-dialog>
-
-            <p-confirmdialog [style]="{ width: '450px' }" />
 
             <ng-template #loadingbody>
                 <tr>
@@ -168,4 +123,54 @@
             </ng-template>
         </p-table>
     </div>
+
+    <!-- Déplacer le dialogue ICI, en dehors de p-table -->
+    <p-dialog [(visible)]="userDialog" [modal]="true" [style]="{ width: '450px' }" header="Détails de l'utilisateur" [draggable]="false" [resizable]="false">
+        <ng-template pTemplate="content">
+            <div class="flex flex-col gap-6">
+                @if (user.url_image) {
+                <img [src]="user.url_image" alt="Photo" width="50" height="50" style="border-radius: 50%" class="mx-auto" />
+                } @else {
+                <img src="assets/images/profile.svg" alt="Default Photo" width="50" height="50" style="border-radius: 50%" class="mx-auto" />
+                }
+                <div>
+                    <label for="username" class="block font-bold mb-3">Username</label>
+                    <input type="text" pInputText id="username" [(ngModel)]="user.username" required autofocus fluid />
+                    @if (submitted && !user.username) {
+                    <small class="text-red-500">Username est obligatoire.</small>
+                    }
+                </div>
+                <div>
+                    <label for="email" class="block font-bold mb-3">Email</label>
+                    <input type="text" pInputText id="email" [(ngModel)]="user.email" required fluid />
+                    @if (submitted && !user.email) {
+                    <small class="text-red-500">Email est obligatoire.</small>
+                    }
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="company" class="block font-bold mb-3">Société</label>
+                        <input type="text" pInputText id="company" [(ngModel)]="user.company" fluid />
+                    </div>
+                    <div>
+                        <label for="is_enabled" class="block font-bold mb-3">État du compte</label>
+                        <p-select [(ngModel)]="user.is_enabled" [options]="enabledOptions" optionLabel="label" optionValue="value" placeholder="Sélectionner un statut" fluid />
+                    </div>
+                </div>
+                <div>
+                    <label for="address" class="block font-bold mb-3">Adresse</label>
+                    <textarea id="address" pTextarea [(ngModel)]="user.address" rows="3" cols="20" fluid></textarea>
+                </div>
+            </div>
+        </ng-template>
+
+        <ng-template pTemplate="footer">
+            <input type="hidden" name="id" [(ngModel)]="user.id" />
+            <p-button label="Annuler" icon="pi pi-times" text (click)="hideDialog()" />
+            <p-button label="Enregistrer" icon="pi pi-check" (click)="saveUser()" />
+        </ng-template>
+    </p-dialog>
+
+    <!-- p-confirmdialog reste également en dehors de p-table -->
+    <p-confirmdialog [style]="{ width: '450px' }" />
 </div>

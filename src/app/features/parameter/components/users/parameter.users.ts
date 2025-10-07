@@ -80,7 +80,11 @@ export class ParameterUsers {
         });
     }
 
-    deleteUser(userId: string) {
+    deleteUser(user: User) {
+        const userId: string = user.id || '';
+
+        if (!userId) return;
+
         this.userService.deleteUser(userId).subscribe({
             next: () => {
                 this.users = this.users.filter((user) => user.id !== userId);
@@ -96,12 +100,15 @@ export class ParameterUsers {
         if (!user.id) return;
 
         this.userService.updateUser(user.id, user).subscribe({
-            next: (updatedUser) => {
-                const index = this.users.findIndex((u) => u.id === updatedUser.id);
+            next: (response: any) => {
+                const updatedUser = response.data;
+                const index = this.users.findIndex((u) => u.id === user.id);
+
                 if (index !== -1) {
                     this.users[index] = updatedUser;
                 }
-                this.messageService.add({ severity: 'success', summary: 'Succès', detail: 'Utilisateur mis à jour avec succès.', life: 4000 });
+                
+                this.messageService.add({ severity: 'success', summary: 'Succès', detail: response.message || 'Utilisateur mis à jour avec succès.', life: 4000 });
             },
             error: (error) => {
                 this.messageService.add({ severity: 'error', summary: 'Erreur', detail: "Erreur lors de la mise à jour de l'utilisateur.", life: 4000 });
@@ -113,53 +120,6 @@ export class ParameterUsers {
         table.filterGlobal((event.target as HTMLInputElement).value, 'contains');
     }
 
-    confirm1(event: Event, user: User) {
-        this.confirmationService.confirm({
-            target: event.currentTarget as EventTarget,
-            message: 'Êtes-vous sûr de vouloir continuer 🤔?',
-            icon: 'pi pi-exclamation-triangle',
-            rejectButtonProps: {
-                label: 'Annuler',
-                severity: 'secondary',
-                outlined: true
-            },
-            acceptButtonProps: {
-                label: 'Enregistrer'
-            },
-            accept: () => {
-                this.messageService.add({ severity: 'info', summary: 'Confirmé', detail: 'Vous avez accepté la validation de cet équipement 🥳🎉', life: 3000 });
-                // this.approveEquipmentNoApproved(user);
-            },
-            reject: () => {
-                this.messageService.add({ severity: 'error', summary: 'Annulé', detail: 'Vous avez annulé la validation de cet équipement 🥲🥲🥲', life: 3000 });
-            }
-        });
-    }
-
-    confirm2(event: Event, user: User) {
-        this.confirmationService.confirm({
-            target: event.currentTarget as EventTarget,
-            message: 'Voulez-vous rejeter cet équipement 🤔?',
-            icon: 'pi pi-info-circle',
-            rejectButtonProps: {
-                label: 'Annuler',
-                severity: 'secondary',
-                outlined: true
-            },
-            acceptButtonProps: {
-                label: 'Rejeter',
-                severity: 'danger'
-            },
-            accept: () => {
-                this.messageService.add({ severity: 'info', summary: 'Confirmé', detail: 'Équipement rejeté', life: 3000 });
-                // this.deniedEquipmentNoApproved(equipment);
-            },
-            reject: () => {
-                this.messageService.add({ severity: 'error', summary: 'Annulé', detail: 'Vous avez annulé la validation de cet équipement', life: 3000 });
-            }
-        });
-    }
-
     clear(table: Table) {
         table.clear();
         this.searchValue = '';
@@ -167,24 +127,37 @@ export class ParameterUsers {
 
     editUser(user: User) {
         this.user = { ...user };
+        this.submitted = false; // Réinitialiser l'état de soumission
         this.userDialog = true;
+        console.log('Editing user:', this.user); // Debug: vérifier que l'utilisateur est bien chargé
+        console.log('Dialog state:', this.userDialog); // Debug: vérifier l'état du dialogue
     }
 
     saveUser() {
         this.submitted = true;
-        if (this.user.username?.trim()) {
-            this.updateUser(this.user);
-            this.userDialog = false;
-            this.user = {
-                username: '',
-                email: '',
-                role: ''
-            };
+        // Validation: username et email requis
+        if (!this.user.username?.trim() || !this.user.email?.trim()) {
+            this.messageService.add({ 
+                severity: 'error', 
+                summary: 'Erreurs', 
+                detail: 'Username et Email sont obligatoires.', 
+                life: 4000 
+            });
+            return;
         }
+
+        this.updateUser(this.user);
+        this.hideDialog();
     }
 
     hideDialog() {
         this.userDialog = false;
         this.submitted = false;
+        // Réinitialiser l'utilisateur
+        this.user = {
+            username: '',
+            email: '',
+            role: ''
+        };
     }
 }

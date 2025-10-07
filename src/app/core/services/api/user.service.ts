@@ -2,7 +2,7 @@ import { Injectable } from "@angular/core";
 import { environment } from "../../../../../environments/environment";
 import { User } from "../../models";
 import { HttpClient } from "@angular/common/http";
-import { Observable } from "rxjs";
+import { map, Observable } from "rxjs";
 
 @Injectable({ providedIn: 'root' })
 export class UserService {
@@ -19,7 +19,7 @@ export class UserService {
     }
 
     updateUser(id: string, user: Partial<User>): Observable<User> {
-        return this.http.put<User>(`${this.apiUrl}/${id}`, user);
+        return this.http.patch<User>(`${this.apiUrl}/${id}`, user);
     }
 
     deleteUser(id: string): Observable<void> {
