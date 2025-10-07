@@ -10,7 +10,7 @@ class AddUserRequest(BaseModel):
     company: Optional[str] = Field(None, description="Entreprise de l'utilisateur", max_length=255)
     url_image: Optional[str] = Field(None, description="URL de l'image de profil", max_length=512)
     role: str = Field("user", description="Rôle de l'utilisateur", max_length=100)
-    is_enabled: bool = Field(True, description="Utilisateur activé par défaut")
+    is_enabled: bool = Field(..., description="Utilisateur activé par défaut")
 
 class UpdateUserRequest(BaseModel):
     username: Optional[str] = Field(None, description="Nom d'utilisateur", min_length=3, max_length=150)

@@ -1,9 +1,7 @@
 import logging
-from passlib.context import CryptContext
+from typing import Any
 import bcrypt as bcrypt_lib
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
-from typing import Any, List, Optional
 
 from app.core.config import DEFAULT_PASSWORD_PRESTATAIRE
 from app.db.sqlalchemy.session import get_temp_session
@@ -23,11 +21,11 @@ def _to_frontend_user(user: Any) -> UserResponse:
         email=user.email,
         role=user.role,
         supervisor=str(user.supervisor) if user.supervisor is not None else None,
-        urlName=user.url_image,
-        isConnected=user.is_connected,
-        isEnabled=user.is_enabled,
-        createdAt=user.created_at.isoformat() if user.created_at is not None else None,
-        updatedAt=user.updated_at.isoformat() if user.updated_at is not None else None,
+        url_image=user.url_image,
+        is_connected=user.is_connected,
+        is_enabled=user.is_enabled,
+        created_at=user.created_at.isoformat() if user.created_at is not None else None,
+        updated_at=user.updated_at.isoformat() if user.updated_at is not None else None,
         address=user.address,
         company=user.company
     )

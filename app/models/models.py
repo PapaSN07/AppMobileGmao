@@ -554,8 +554,8 @@ class EquipmentCliClac(Base):
             'attributes': [attr.to_dict() for attr in self.attributes]
         }
     
-class HistoryCliClac(Base):
-    __tablename__ = "history"
+class HistoryEquipmentCliClac(Base):
+    __tablename__ = "history_equipment"
     __table_args__ = {'schema': 'dbo'}
 
     id = Column(Integer, primary_key=True, autoincrement=True)

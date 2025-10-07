@@ -13,11 +13,11 @@ class UserResponse(BaseModel):
     email: str
     role: str
     supervisor: Optional[str] = None
-    urlName: Optional[str] = None  # Correspond à url_image
-    isConnected: Optional[bool] = None  # Correspond à is_connected
-    isEnabled: Optional[bool] = None
-    createdAt: Optional[str] = None  # Correspond à created_at (ISO format)
-    updatedAt: Optional[str] = None
+    url_image: Optional[str] = None  # Correspond à url_image
+    is_connected: Optional[bool] = None  # Correspond à is_connected
+    is_enabled: Optional[bool] = None
+    created_at: Optional[str] = None  # Correspond à created_at (ISO format)
+    updated_at: Optional[str] = None
     address: Optional[str] = None
     company: Optional[str] = None
 
