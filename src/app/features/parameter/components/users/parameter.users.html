@@ -1,5 +1,5 @@
 <div class="card">
-    <div class="font-semibold text-xl mb-4">Liste des équipements à approuver</div>
+    <div class="font-semibold text-xl mb-4">Liste des prestataires créés</div>
 
     <div>
         <p-table
@@ -19,6 +19,7 @@
         >
             <ng-template #caption>
                 <div class="flex justify-between md:flex-row flex-col gap-2">
+                    <p-button iconPosition="right" icon="pi pi-filter-slash" (click)="clear(dt)" label="Effacer" severity="secondary" />
                     <p-iconfield iconPosition="left" class="ml-auto">
                         <p-inputicon>
                             <i class="pi pi-search"></i>
@@ -30,6 +31,8 @@
             <ng-template #header>
                 <tr>
                     <th>
+                    </th>
+                    <th>
                         <p-columnFilter type="text" field="username" placeholder="Rechercher par ..." ariaLabel="Filtre Username" filterOn="input"></p-columnFilter>
                     </th>
                     <th>
@@ -39,44 +42,68 @@
                         <p-columnFilter type="text" field="company" placeholder="Rechercher par ..." ariaLabel="Filtre Société" filterOn="input"></p-columnFilter>
                     </th>
                     <th>
-                        <p-columnFilter type="text" field="urlName" placeholder="Rechercher par ..." ariaLabel="Filtre URL image" filterOn="input"></p-columnFilter>
-                    </th>
-                    <th>
-                        <p-columnFilter type="text" field="isConnected" placeholder="Rechercher par ..." ariaLabel="Filtre Connecté" filterOn="input"></p-columnFilter>
-                    </th>
-                    <th>
-                        <p-columnFilter type="text" field="isEnabled" placeholder="Rechercher par ..." ariaLabel="Filtre Compte Activé" filterOn="input"></p-columnFilter>
-                    </th>
-                    <th>
-                        <p-columnFilter type="text" field="createdAt" placeholder="Rechercher par ..." ariaLabel="Filtre Créé Le" filterOn="input"></p-columnFilter>
-                    </th>
-                    <th>
                         <p-columnFilter type="text" field="address" placeholder="Rechercher par ..." ariaLabel="Filtre Adresse" filterOn="input"></p-columnFilter>
+                    </th>
+                    <th style="width: auto; min-width: 10rem">
+                        <div class="flex items-center justify-between">
+                            Date
+                            <p-columnFilter type="date" field="createdAt" display="menu"></p-columnFilter>
+                        </div>
+                    </th>
+                    <th style="width: auto; min-width: 10rem">
+                        <div class="flex items-center justify-between">
+                            Statut
+                            <p-columnFilter type="boolean" field="isConnected" display="menu" />
+                        </div>
+                    </th>
+                    <th style="width: auto; min-width: 10rem">
+                        <div class="flex items-center justify-between">
+                            Statut
+                            <p-columnFilter type="boolean" field="isEnabled" display="menu" />
+                        </div>
                     </th>
                     <th style="width: auto; min-width: 7.5rem" pFrozenColumn alignFrozen="right" [frozen]="balanceFrozen"></th>
                 </tr>
                 <tr>
+                    <th style="width: 11%">Image</th>
                     <th style="width: 11%">Nom Utilisateur</th>
                     <th style="width: 11%">Email</th>
                     <th style="width: 11%">Société</th>
-                    <th style="width: 11%">URL(Photo)</th>
+                    <th style="width: 11%">Adresse</th>
+                    <th style="width: 11%">Date de Création</th>
                     <th style="width: 11%">Est Connecté</th>
                     <th style="width: 11%">Compte Activé</th>
-                    <th style="width: 11%">Date de Création</th>
-                    <th style="width: 11%">Adresse</th>
                     <th style="width: auto; min-width: 7.5rem" pFrozenColumn alignFrozen="right" [frozen]="balanceFrozen">Actions</th>
                 </tr>
             </ng-template>
             <ng-template #body let-user let-expanded="expanded">
                 <tr>
+                    <td>
+                        @if (user.urlName) {
+                            <img [src]="user.urlName" alt="Photo" width="50" height="50" style="border-radius: 50%;" />
+                        } @else {
+                            <img src="assets/images/profile.svg" alt="Default Photo" width="50" height="50" style="border-radius: 50%;" />
+                        }
+                    </td>
                     <td>{{ user.username || 'N/A' }}</td>
                     <td>{{ user.email || 'N/A' }}</td>
                     <td>{{ user.company || 'N/A' }}</td>
-                    <td>{{ user.urlName || 'N/A' }}</td>
-                    <td>{{ user.isConnected ? 'Oui' : 'Non' }}</td>
-                    <td>{{ user.isEnabled ? 'Oui' : 'Non' }}</td>
-                    <td>{{ user.createdAt || 'N/A' }}</td>
                     <td>{{ user.address || 'N/A' }}</td>
+                    <td>{{ (user.createdAt | date:'dd/MM/yyyy HH:mm') || 'N/A' }}</td>
+                    <td>
+                        @if(user.isConnected) {
+                            <p-tag icon="pi pi-check" severity="success" rounded="true" />
+                        } @else {
+                            <p-tag icon="pi pi-times" severity="danger" rounded="true" />
+                        }
+                    </td>
+                    <td>
+                        @if (user.isEnabled) {
+                            <p-tag icon="pi pi-check" severity="success" rounded="true" />
+                        } @else {
+                            <p-tag icon="pi pi-times" severity="danger" rounded="true" />
+                        }
+                    </td>
                     <td alignFrozen="right" pFrozenColumn [frozen]="balanceFrozen" class="p-2">
                         <p-confirmpopup />
                         <p-button (onClick)="confirm1($event, user)" class="mr-2" icon="pi pi-check" [outlined]="true" [rounded]="true" />

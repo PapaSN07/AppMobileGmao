@@ -5,27 +5,11 @@ import { UserService, AuthService } from '../../../../core/services/api';
 import { Table, TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
 import { ConfirmPopupModule } from 'primeng/confirmpopup';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { ConfirmDialogModule } from 'primeng/confirmdialog';
-import { DialogModule } from 'primeng/dialog';
 import { IconFieldModule } from 'primeng/iconfield';
 import { InputIconModule } from 'primeng/inputicon';
-import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
-import { MultiSelectModule } from 'primeng/multiselect';
-import { ProgressBarModule } from 'primeng/progressbar';
-import { RadioButtonModule } from 'primeng/radiobutton';
-import { RatingModule } from 'primeng/rating';
-import { RippleModule } from 'primeng/ripple';
-import { SelectModule } from 'primeng/select';
-import { SliderModule } from 'primeng/slider';
-import { TabsModule } from 'primeng/tabs';
+import { DatePipe } from '@angular/common';
 import { TagModule } from 'primeng/tag';
-import { TextareaModule } from 'primeng/textarea';
-import { ToastModule } from 'primeng/toast';
-import { ToggleButtonModule } from 'primeng/togglebutton';
-import { ToolbarModule } from 'primeng/toolbar';
 
 interface expandedRows {
     [key: string]: boolean;
@@ -38,7 +22,10 @@ interface expandedRows {
         ButtonModule,
         InputIconModule,
         IconFieldModule,
-        ConfirmPopupModule
+        InputTextModule,
+        ConfirmPopupModule,
+        DatePipe,
+        TagModule
     ],
     standalone: true,
     templateUrl: './parameter.users.html',
@@ -56,6 +43,7 @@ export class ParameterUsers {
     selection: User[] = [];
     expandedRows: expandedRows = {};
     balanceFrozen: boolean = true;
+    searchValue: string = '';
 
     ngOnInit() {
         const currentUser = this.authService.getUser();
@@ -69,6 +57,12 @@ export class ParameterUsers {
         this.userService.getAllUsers(supervisorId).subscribe({
             next: (response: { data: User[] } | User[]) => {
                 this.users = Array.isArray(response) ? response : response.data;
+                // Convertir createdAt en Date pour le filtre date
+                this.users.forEach(user => {
+                    if (user.createdAt) {
+                        user.createdAt = new Date(user.createdAt);
+                    }
+                });
                 this.loading = false;
             },
             error: (error) => {
@@ -156,5 +150,10 @@ export class ParameterUsers {
                 this.messageService.add({ severity: 'error', summary: 'Annulé', detail: 'Vous avez annulé la validation de cet équipement', life: 3000 });
             }
         });
+    }
+
+    clear(table: Table) {
+        table.clear();
+        this.searchValue = '';
     }
 }

@@ -31,6 +31,10 @@ export class ParameterConfiguration implements OnInit {
     checked: boolean = true;
     address: string = '';
 
+    usernameError: boolean = false;
+    emailError: boolean = false;
+    companyError: boolean = false;
+
     ngOnInit() {
         this.loadSupervisor();
     }
@@ -42,46 +46,26 @@ export class ParameterConfiguration implements OnInit {
         }
     }
 
+    validateField(field: string) {
+        switch (field) {
+            case 'username':
+                this.usernameError = !this.username?.trim();
+                break;
+            case 'email':
+                this.emailError = !this.email?.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.email);
+                break;
+            case 'company':
+                this.companyError = !this.company?.trim();
+                break;
+        }
+    }
+
     onSave() {
-        // Validations : username, email, company requis ; address facultative
-        if (!this.username?.trim()) {
-            this.messageService.add({
-                severity: 'error',
-                summary: 'Erreur',
-                detail: 'Le nom d\'utilisateur est requis.',
-                life: 4000
-            });
-            return;
-        }
-
-        if (!this.email?.trim()) {
-            this.messageService.add({
-                severity: 'error',
-                summary: 'Erreur',
-                detail: 'L\'email est requis.',
-                life: 4000
-            });
-            return;
-        }
-
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(this.email)) {
-            this.messageService.add({
-                severity: 'error',
-                summary: 'Erreur',
-                detail: 'Veuillez fournir une adresse email valide.',
-                life: 4000
-            });
-            return;
-        }
-
-        if (!this.company?.trim()) {
-            this.messageService.add({
-                severity: 'error',
-                summary: 'Erreur',
-                detail: 'La société est requise.',
-                life: 4000
-            });
+        this.validateField('username');
+        this.validateField('email');
+        this.validateField('company');
+        if (this.usernameError || this.emailError || this.companyError) {
+            this.messageService.add({ severity: 'error', summary: 'Erreurs', detail: 'Remplissez les champs obligatoires.', life: 4000 });
             return;
         }
 
@@ -94,10 +78,7 @@ export class ParameterConfiguration implements OnInit {
             supervisor: this.authService.getUser()?.id || '',
             role: this.role,
             isEnabled: this.checked,
-            
         };
-
-
 
         // Envoyer au backend
         this.userService.addUser(userData).subscribe({
@@ -129,6 +110,9 @@ export class ParameterConfiguration implements OnInit {
         this.company = '';
         this.address = '';
         this.checked = true;
+        this.usernameError = false;
+        this.emailError = false;
+        this.companyError = false;
     }
 }
 

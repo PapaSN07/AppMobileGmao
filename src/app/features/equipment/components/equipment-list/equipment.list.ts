@@ -13,6 +13,7 @@ import { EquipmentService } from '../../../../core/services/api';
 import { Equipment } from '../../../../core/models';
 
 import * as XLSX from 'xlsx';
+import { InputTextModule } from 'primeng/inputtext';
 
 interface ExportColumn {
     title: string;
@@ -30,6 +31,7 @@ interface expandedRows {
         TableModule,
         ButtonModule,
         ToastModule,
+        InputTextModule,
         DialogModule,
         InputIconModule,
         IconFieldModule,
