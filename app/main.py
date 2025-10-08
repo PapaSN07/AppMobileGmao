@@ -90,7 +90,7 @@ def custom_openapi():
     openapi_schema = get_openapi(
         title="GMAO - SENELEC API",
         version="1.0.0",
-        description="API senelec pour application mobile Flutter + Web",
+        description="API senelec pour application mobile Flutter + Angular Web",
         routes=app.routes,
     )
     

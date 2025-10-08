@@ -33,10 +33,13 @@ def authenticate_user(username: str, password: str) -> Union[UserModel, UserCliC
                     if bcrypt.checkpw(password.encode('utf-8'), user_temp.password.encode('utf-8')):
                         cache_key = f"user_hierarchy_{user_temp.id}"
                         cache.set(cache_key, user_temp, CACHE_TTL_SHORT)
-                        logger.info(f"Utilisateur {username} authentifié avec succès dans CliClac.")
-                        return user_temp  # Retourner UserCliClac (rôle déjà défini dans le modèle)
+                        logger.info(f"Utilisateur {username} authentifié avec succès dans ClicClac.")
+                        if isinstance(user_temp, UserCliClac):
+                            setattr(user_temp, 'is_connected', True)
+                            update_user(user_temp)  
+                        return user_temp  # Retourner UserClicClac (rôle déjà défini dans le modèle)
                     else:
-                        logger.warning(f"Mot de passe incorrect pour {username} dans CliClac.")
+                        logger.warning(f"Mot de passe incorrect pour {username} dans ClicClac.")
                         raise InvalidPasswordError(username)
                 except Exception as verify_error:
                     logger.error(f"Erreur lors de la vérification bcrypt: {verify_error}")
