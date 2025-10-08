@@ -12,9 +12,11 @@ import { EquipmentService, AuthService } from '../../../../core/services/api';
 import { Equipment, User } from '../../../../core/models';
 
 import * as XLSX from 'xlsx';
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
 import { InputTextModule } from 'primeng/inputtext';
 import { firstValueFrom } from 'rxjs';
-import { Tag } from "primeng/tag";
+import { Tag } from 'primeng/tag';
 import { DatePipe } from '@angular/common';
 import { TextareaModule } from 'primeng/textarea';
 import { ConfirmDialog } from 'primeng/confirmdialog';
@@ -31,21 +33,7 @@ interface expandedRows {
 @Component({
     selector: 'app-equipment',
     standalone: true,
-    imports: [
-    TableModule,
-    ButtonModule,
-    ToastModule,
-    InputTextModule,
-    DialogModule,
-    InputIconModule,
-    IconFieldModule,
-    TabsModule,
-    Tag,
-    DatePipe,
-    TextareaModule,
-    Toast,
-    ConfirmDialog
-],
+    imports: [TableModule, ButtonModule, ToastModule, InputTextModule, DialogModule, InputIconModule, IconFieldModule, TabsModule, Tag, DatePipe, TextareaModule, Toast, ConfirmDialog],
     templateUrl: './equipment.list.html',
     styleUrls: ['equipment.list.scss'],
     providers: [MessageService, ConfirmationService]
@@ -87,89 +75,88 @@ export class EquipmentList implements OnInit {
         this.loadDataApproved();
     }
 
-    // Méthode pour aplatir les données (équipement + attributs)
-    private flattenData(equipments: Equipment[]): any[] {
-        const flattened: any[] = [];
-        equipments.forEach((equipment) => {
-            if (equipment.attributes && equipment.attributes.length > 0) {
-                equipment.attributes.forEach((attribute) => {
-                    flattened.push({
-                        // Champs de l'équipement
-                        id: equipment.id,
-                        centreCharge: equipment.centreCharge,
-                        code: equipment.code,
-                        codeParent: equipment.codeParent,
-                        createdAt: equipment.createdAt,
-                        createdBy: equipment.createdBy,
-                        description: equipment.description,
-                        localisation: equipment.localisation,
-                        entity: equipment.entity,
-                        famille: equipment.famille,
-                        feeder: equipment.feeder,
-                        feederDescription: equipment.feederDescription,
-                        unite: equipment.unite,
-                        zone: equipment.zone,
-                        isApproved: equipment.isApproved,
-                        isNew: equipment.isNew,
-                        isUpdate: equipment.isUpdate,
-                        // Champs de l'attribut
-                        attributeId: attribute.id,
-                        specification: attribute.specification,
-                        attributeName: attribute.attributeName,
-                        value: attribute.attributeValue,
-                        indx: attribute.index,
-                        isCopyOT: attribute.isCopyOT,
-                        attributeCreatedAt: attribute.createdAt,
-                        attributeUpdatedAt: attribute.updatedAt
+    // Export vers deux fichiers Excel : équipements ET attributs
+    private async exportEquipmentsAndAttributes(tableIndex: number): Promise<void> {
+        const equipments = tableIndex === 1 ? this.equipmentsNoApproved() : this.equipmentsNoModified();
+
+        // Préparer les lignes pour le fichier équipements (sans attributs)
+        const equipmentRows = equipments.map((e) => ({
+            id: e.id ?? '',
+            centreCharge: e.centreCharge ?? '',
+            code: e.code ?? '',
+            codeParent: e.codeParent ?? '',
+            description: e.description ?? '',
+            entity: e.entity ?? '',
+            famille: e.famille ?? '',
+            feeder: e.feeder ?? '',
+            localisation: e.localisation ?? '',
+            unite: e.unite ?? '',
+            zone: e.zone ?? '',
+            isApproved: e.isApproved ?? false,
+            isNew: e.isNew ?? false,
+            isUpdate: e.isUpdate ?? false,
+            createdAt: e.createdAt ? new Date(e.createdAt).toISOString() : '',
+            createdBy: e.createdBy ?? ''
+        }));
+
+        // Préparer les lignes pour le fichier attributs (chaque attribut sur une ligne, avec référence équipement)
+        const attributeRows: any[] = [];
+        equipments.forEach((e) => {
+            if (e.attributes && Array.isArray(e.attributes)) {
+                e.attributes.forEach((attr) => {
+                    attributeRows.push({
+                        equipmentId: e.id ?? '',
+                        equipmentCode: e.code ?? '',
+                        attributeId: attr.id ?? '',
+                        specification: attr.specification ?? '',
+                        attributeName: attr.attributeName ?? '',
+                        attributeValue: attr.attributeValue ?? '',
+                        index: attr.index ?? '',
+                        isCopyOT: attr.isCopyOT ?? false,
+                        attributeCreatedAt: attr.createdAt ? new Date(attr.createdAt).toISOString() : '',
+                        attributeUpdatedAt: attr.updatedAt ? new Date(attr.updatedAt).toISOString() : ''
                     });
-                });
-            } else {
-                // Si pas d'attributs, ajouter une ligne vide pour l'équipement
-                flattened.push({
-                    id: equipment.id,
-                    centreCharge: equipment.centreCharge,
-                    code: equipment.code,
-                    codeParent: equipment.codeParent,
-                    createdAt: equipment.createdAt,
-                    createdBy: equipment.createdBy,
-                    description: equipment.description,
-                    entity: equipment.entity,
-                    famille: equipment.famille,
-                    feeder: equipment.feeder,
-                    feederDescription: equipment.feederDescription,
-                    localisation: equipment.localisation,
-                    unite: equipment.unite,
-                    zone: equipment.zone,
-                    isApproved: equipment.isApproved,
-                    isNew: equipment.isNew,
-                    isUpdate: equipment.isUpdate,
-                    attributeId: '',
-                    specification: '',
-                    attributeName: '',
-                    value: '',
-                    indx: '',
-                    isCopyOT: '',
-                    attributeCreatedAt: '',
-                    attributeUpdatedAt: ''
                 });
             }
         });
-        return flattened;
+
+        // Générer et télécharger le fichier équipements
+        const filenameSuffix = this.getFormatDate();
+        // créer workbooks en ArrayBuffer
+        const wsEquip = XLSX.utils.json_to_sheet(equipmentRows);
+        const wbEquip = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wbEquip, wsEquip, 'Équipements');
+        const wbEquipArray = XLSX.write(wbEquip, { bookType: 'xlsx', type: 'array' });
+
+        const wsAttr = XLSX.utils.json_to_sheet(attributeRows);
+        const wbAttr = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wbAttr, wsAttr, 'Attributs');
+        const wbAttrArray = XLSX.write(wbAttr, { bookType: 'xlsx', type: 'array' });
+
+        // zipper
+        const zip = new JSZip();
+        zip.file(`equipments_${filenameSuffix}.xlsx`, new Uint8Array(wbEquipArray), { binary: true });
+        zip.file(`attributes_${filenameSuffix}.xlsx`, new Uint8Array(wbAttrArray), { binary: true });
+
+        const content = await zip.generateAsync({ type: 'blob' });
+        saveAs(content, `export_equipments_${filenameSuffix}.zip`);
     }
 
-    // Export vers Excel
-    exportToExcel(tableIndex: number): void {
-        const equipments = tableIndex === 1 ? this.equipmentsNoApproved() : this.equipmentsNoModified();
-        const flattenedData = this.flattenData(equipments);
-        const worksheet = XLSX.utils.json_to_sheet(flattenedData);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, 'Equipments');
-        XLSX.writeFile(workbook, `equipments_${tableIndex === 1 ? 'no_approved' : 'no_modified'}.xlsx`);
+    private getFormatDate(): string {
+        const now = new Date();
+        const pad = (n: number) => n.toString().padStart(2, '0');
+        const dd = pad(now.getDate());
+        const mm = pad(now.getMonth() + 1);
+        const yy = pad(now.getFullYear() % 100);
+        const hh = pad(now.getHours());
+        const min = pad(now.getMinutes());
+        const ss = pad(now.getSeconds());
+        return `${dd}${mm}${yy}${hh}${min}${ss}`;
     }
 
-    // Ajoutez des méthodes pour Excel si souhaité
+    // Méthode publique déjà utilisée par le template — la redirige vers la nouvelle implémentation
     exportExcelTable(): void {
-        this.exportToExcel(2);
+        this.exportEquipmentsAndAttributes(2);
     }
 
     loadDataNoApproved() {
@@ -177,7 +164,6 @@ export class EquipmentList implements OnInit {
         this.equipmentService.getAllNoApproved().subscribe({
             next: (data) => {
                 this.equipmentsNoApproved.set(data);
-                console.log(data);
                 this.loading = false;
             },
             error: (err) => {
@@ -192,7 +178,6 @@ export class EquipmentList implements OnInit {
         this.equipmentService.getAllNoModified().subscribe({
             next: (data) => {
                 this.equipmentsNoModified.set(data);
-                console.log(data);
                 this.loading = false;
             },
             error: (err) => {
@@ -207,7 +192,6 @@ export class EquipmentList implements OnInit {
         this.equipmentService.getAllApproved().subscribe({
             next: (data) => {
                 this.equipmentsApproved.set(data);
-                console.log(data);
                 this.loading = false;
             },
             error: (err) => {
@@ -392,7 +376,7 @@ export class EquipmentList implements OnInit {
 
         this.confirmationService.confirm({
             message: `Êtes-vous sûr de vouloir approuver ${this.selectedEquipmentsNoApproved.length} équipement(s) ajouté(s) ?`,
-            header: 'Confirmation d\'approbation en masse',
+            header: "Confirmation d'approbation en masse",
             icon: 'pi pi-exclamation-triangle',
             rejectButtonProps: {
                 label: 'Annuler',
@@ -420,7 +404,7 @@ export class EquipmentList implements OnInit {
 
         this.confirmationService.confirm({
             message: `Êtes-vous sûr de vouloir approuver ${this.selectedEquipmentsNoModified.length} modification(s) d'équipement(s) ?`,
-            header: 'Confirmation d\'approbation en masse',
+            header: "Confirmation d'approbation en masse",
             icon: 'pi pi-exclamation-triangle',
             rejectButtonProps: {
                 label: 'Annuler',
@@ -500,7 +484,7 @@ export class EquipmentList implements OnInit {
 
     // Implementation du rejet en masse (réutilise firstValueFrom)
     private rejectMultipleEquipments(equipments: Equipment[], type: 'add' | 'update') {
-        const updatePromises = equipments.map(equipment => {
+        const updatePromises = equipments.map((equipment) => {
             let updatedEquipment: any = { ...equipment, isNew: false, judgedBy: this.userConnected?.username || 'unknown' };
             if (type === 'update') {
                 // respecter la logique utilisée dans deniedEquipmentNoModified
@@ -526,7 +510,7 @@ export class EquipmentList implements OnInit {
     }
 
     private approveMultipleEquipments(equipments: Equipment[], type: 'add' | 'update') {
-        const updatePromises = equipments.map(equipment => {
+        const updatePromises = equipments.map((equipment) => {
             const updatedEquipment = { ...equipment, isApproved: true, isNew: false, judgedBy: this.userConnected?.username || 'unknown' };
             if (type === 'update') {
                 updatedEquipment.isUpdate = false;
@@ -545,7 +529,7 @@ export class EquipmentList implements OnInit {
                 this.loadDataNoModified();
             })
             .catch((err) => {
-                this.messageService.add({ severity: 'error', summary: 'Erreur', detail: 'Une erreur est survenue lors de l\'approbation en masse.', life: 3000 });
+                this.messageService.add({ severity: 'error', summary: 'Erreur', detail: "Une erreur est survenue lors de l'approbation en masse.", life: 3000 });
                 console.error(err);
             });
     }
