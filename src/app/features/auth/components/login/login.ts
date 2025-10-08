@@ -48,6 +48,7 @@ export class Login {
                     // Vérification du rôle
                     const allowedRoles = ['ADMIN', 'PRESTATAIRE'];
                     if (!allowedRoles.includes(response.data.role)) {
+                        this.authService.logout();
                         this.messageService.add({
                             severity: 'error',
                             summary: 'Accès refusé',

@@ -29,7 +29,7 @@
                     >
                         <ng-template #caption>
                             <div class="flex justify-between md:flex-row flex-col gap-2">
-                                <p-button label="Export" icon="pi pi-upload" severity="secondary" (onClick)="exportExcelTable1()" />
+                                <p-button label="Export" icon="pi pi-upload" severity="secondary" (onClick)="saveAllEquipmentAdd()" />
                                 <p-iconfield iconPosition="left" class="ml-auto">
                                     <p-inputicon>
                                         <i class="pi pi-search"></i>
@@ -210,7 +210,7 @@
                         <ng-template #caption>
                             <!-- Dans le #caption de la deuxième table, remplacez la div par : -->
                             <div class="flex justify-between md:flex-row flex-col gap-2">
-                                <p-button label="Export" icon="pi pi-upload" severity="secondary" (onClick)="exportExcelTable2()" />
+                                <p-button label="Export" icon="pi pi-upload" severity="secondary" (onClick)="saveAllEquipmentUpdate()" />
                                 <p-iconfield iconPosition="left" class="ml-auto">
                                     <p-inputicon>
                                         <i class="pi pi-search"></i>
@@ -383,7 +383,7 @@
                         [expandedRowKeys]="expandedRows"
                         [loading]="loading"
                         [paginator]="true"
-                        [(selection)]="selectedEquipmentsNoModified"
+                        [(selection)]="selectedEquipmentsExport"
                         [globalFilterFields]="['centreCharge', 'code', 'codeParent', 'createdAt', 'createdBy', 'description', 'entity', 'famille', 'feeder', 'feederDescription', 'localisation', 'unite', 'zone' ]"
                         [tableStyle]="{ 'min-width': '75rem' }"
                         [scrollable]="true"
@@ -391,7 +391,7 @@
                         <ng-template #caption>
                             <!-- Dans le #caption de la deuxième table, remplacez la div par : -->
                             <div class="flex justify-between md:flex-row flex-col gap-2">
-                                <p-button label="Export" icon="pi pi-upload" severity="secondary" (onClick)="exportExcelTable2()" />
+                                <p-button label="Export" icon="pi pi-upload" severity="secondary" (onClick)="exportExcelTable()" />
                                 <p-iconfield iconPosition="left" class="ml-auto">
                                     <p-inputicon>
                                         <i class="pi pi-search"></i>

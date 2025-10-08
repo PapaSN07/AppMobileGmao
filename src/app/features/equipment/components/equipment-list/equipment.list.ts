@@ -14,6 +14,7 @@ import { Equipment } from '../../../../core/models';
 
 import * as XLSX from 'xlsx';
 import { InputTextModule } from 'primeng/inputtext';
+import { firstValueFrom } from 'rxjs';
 
 interface ExportColumn {
     title: string;
@@ -51,9 +52,11 @@ export class EquipmentList implements OnInit {
 
     selectedEquipmentsNoApproved!: Equipment[] | null;
     selectedEquipmentsNoModified!: Equipment[] | null;
+    selectedEquipmentsExport!: Equipment[] | null;
 
     @ViewChild('dt1') dt1!: Table;
     @ViewChild('dt2') dt2!: Table;
+    @ViewChild('dt3') dt3!: Table;
 
     expandedRows: expandedRows = {};
     exportColumns!: ExportColumn[];
@@ -149,11 +152,7 @@ export class EquipmentList implements OnInit {
     }
 
     // Ajoutez des méthodes pour Excel si souhaité
-    exportExcelTable1(): void {
-        this.exportToExcel(1);
-    }
-
-    exportExcelTable2(): void {
+    exportExcelTable(): void {
         this.exportToExcel(2);
     }
 
@@ -166,7 +165,7 @@ export class EquipmentList implements OnInit {
                 this.loading = false;
             },
             error: (err) => {
-                this.messageService.add({ severity: 'error', summary: 'Error', detail: 'Failed to load data', life: 3000 });
+                this.messageService.add({ severity: 'error', summary: 'Erreur', detail: 'Erreur lors du chargement des données', life: 3000 });
                 this.loading = false;
             }
         });
@@ -181,7 +180,7 @@ export class EquipmentList implements OnInit {
                 this.loading = false;
             },
             error: (err) => {
-                this.messageService.add({ severity: 'error', summary: 'Error', detail: 'Failed to load data', life: 3000 });
+                this.messageService.add({ severity: 'error', summary: 'Erreur', detail: 'Erreur lors du chargement des données', life: 3000 });
                 this.loading = false;
             }
         });
@@ -195,11 +194,11 @@ export class EquipmentList implements OnInit {
         const updatedEquipment = { ...equipment, isApproved: true, isNew: false };
         this.equipmentService.update(equipment.id!, updatedEquipment).subscribe({
             next: (data) => {
-                this.messageService.add({ severity: 'success', summary: 'Success', detail: `Equipment ${equipment.code} approved`, life: 3000 });
+                this.messageService.add({ severity: 'success', summary: 'Succès', detail: `Équipement ${equipment.code} approuvé`, life: 3000 });
                 this.loadDataNoApproved();
             },
             error: (err) => {
-                this.messageService.add({ severity: 'error', summary: 'Error', detail: `Failed to approve equipment ${equipment.code}`, life: 3000 });
+                this.messageService.add({ severity: 'error', summary: 'Erreur', detail: `Échec de l'approbation de l'équipement ${equipment.code}`, life: 3000 });
             }
         });
     }
@@ -208,11 +207,11 @@ export class EquipmentList implements OnInit {
         const updatedEquipment = { ...equipment, isNew: false };
         this.equipmentService.update(equipment.id!, updatedEquipment).subscribe({
             next: (data) => {
-                this.messageService.add({ severity: 'success', summary: 'Success', detail: `Equipment ${equipment.code} denied`, life: 3000 });
+                this.messageService.add({ severity: 'success', summary: 'Succès', detail: `Équipement ${equipment.code} rejeté`, life: 3000 });
                 this.loadDataNoApproved();
             },
             error: (err) => {
-                this.messageService.add({ severity: 'error', summary: 'Error', detail: `Failed to deny equipment ${equipment.code}`, life: 3000 });
+                this.messageService.add({ severity: 'error', summary: 'Erreur', detail: `Échec du rejet de l'équipement ${equipment.code}`, life: 3000 });
             }
         });
     }
@@ -221,11 +220,11 @@ export class EquipmentList implements OnInit {
         const updatedEquipment = { ...equipment, isApproved: true, isNew: false };
         this.equipmentService.update(equipment.id!, updatedEquipment).subscribe({
             next: (data) => {
-                this.messageService.add({ severity: 'success', summary: 'Success', detail: `Equipment ${equipment.code} approved`, life: 3000 });
+                this.messageService.add({ severity: 'success', summary: 'Succès', detail: `Équipement ${equipment.code} approuvé`, life: 3000 });
                 this.loadDataNoModified();
             },
             error: (err) => {
-                this.messageService.add({ severity: 'error', summary: 'Error', detail: `Failed to approve equipment ${equipment.code}`, life: 3000 });
+                this.messageService.add({ severity: 'error', summary: 'Erreur', detail: `Échec de l'approbation de l'équipement ${equipment.code}`, life: 3000 });
             }
         });
     }
@@ -234,11 +233,11 @@ export class EquipmentList implements OnInit {
         const updatedEquipment = { ...equipment, isUpdated: true, isNew: false };
         this.equipmentService.update(equipment.id!, updatedEquipment).subscribe({
             next: (data) => {
-                this.messageService.add({ severity: 'success', summary: 'Success', detail: `Equipment ${equipment.code} denied`, life: 3000 });
+                this.messageService.add({ severity: 'success', summary: 'Succès', detail: `Équipement ${equipment.code} rejeté`, life: 3000 });
                 this.loadDataNoModified();
             },
             error: (err) => {
-                this.messageService.add({ severity: 'error', summary: 'Error', detail: `Failed to deny equipment ${equipment.code}`, life: 3000 });
+                this.messageService.add({ severity: 'error', summary: 'Erreur', detail: `Échec du rejet de l'équipement ${equipment.code}`, life: 3000 });
             }
         });
     }
@@ -336,5 +335,65 @@ export class EquipmentList implements OnInit {
                 this.messageService.add({ severity: 'error', summary: 'Rejeté', detail: 'Vous avez rejeté la modification de cet équipement 🥲🥲🥲', life: 3000 });
             }
         });
+    }
+
+    saveAllEquipmentAdd() {
+        if (!this.selectedEquipmentsNoApproved || this.selectedEquipmentsNoApproved.length === 0) {
+            this.messageService.add({ severity: 'warn', summary: 'Aucune sélection', detail: 'Veuillez sélectionner au moins un équipement à approuver.', life: 3000 });
+            return;
+        }
+
+        this.confirmationService.confirm({
+            message: `Êtes-vous sûr de vouloir approuver ${this.selectedEquipmentsNoApproved.length} équipement(s) ajouté(s) ?`,
+            header: 'Confirmation d\'approbation en masse',
+            icon: 'pi pi-exclamation-triangle',
+            accept: () => {
+                this.approveMultipleEquipments(this.selectedEquipmentsNoApproved!, 'add');
+            },
+            reject: () => {
+                this.messageService.add({ severity: 'info', summary: 'Annulé', detail: 'Approbation annulée.', life: 3000 });
+            }
+        });
+    }
+
+    saveAllEquipmentUpdate() {
+        if (!this.selectedEquipmentsNoModified || this.selectedEquipmentsNoModified.length === 0) {
+            this.messageService.add({ severity: 'warn', summary: 'Aucune sélection', detail: 'Veuillez sélectionner au moins un équipement à approuver.', life: 3000 });
+            return;
+        }
+
+        this.confirmationService.confirm({
+            message: `Êtes-vous sûr de vouloir approuver ${this.selectedEquipmentsNoModified.length} modification(s) d'équipement(s) ?`,
+            header: 'Confirmation d\'approbation en masse',
+            icon: 'pi pi-exclamation-triangle',
+            accept: () => {
+                this.approveMultipleEquipments(this.selectedEquipmentsNoModified!, 'update');
+            },
+            reject: () => {
+                this.messageService.add({ severity: 'info', summary: 'Annulé', detail: 'Approbation annulée.', life: 3000 });
+            }
+        });
+    }
+    private approveMultipleEquipments(equipments: Equipment[], type: 'add' | 'update') {
+        const updatePromises = equipments.map(equipment => {
+            const updatedEquipment = { ...equipment, isApproved: true, isNew: false };
+            if (type === 'update') {
+                updatedEquipment.isUpdate = false;
+            }
+            return firstValueFrom(this.equipmentService.update(equipment.id!, updatedEquipment));
+        });
+
+        Promise.all(updatePromises)
+            .then(() => {
+                this.messageService.add({ severity: 'success', summary: 'Succès', detail: `${equipments.length} équipement(s) approuvé(s) avec succès.`, life: 3000 });
+                this.selectedEquipmentsNoApproved = null;
+                this.selectedEquipmentsNoModified = null;
+                this.loadDataNoApproved();
+                this.loadDataNoModified();
+            })
+            .catch((err) => {
+                this.messageService.add({ severity: 'error', summary: 'Erreur', detail: 'Une erreur est survenue lors de l\'approbation en masse.', life: 3000 });
+                console.error(err);
+            });
     }
 }
