@@ -16,7 +16,7 @@ export interface Equipment {
     createdAt?: Date;
     updatedAt?: Date;
     createdBy?: string;
-    validatedBy?: string;
+    judgedBy?: string;
     isUpdate?: boolean;
     isNew?: boolean;
     isApproved?: boolean;

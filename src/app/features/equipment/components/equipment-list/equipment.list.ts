@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, ViewChild } from '@angular/core';
+import { Component, OnInit, signal, ViewChild, inject } from '@angular/core';
 import { ButtonModule } from 'primeng/button';
 import { Table, TableModule } from 'primeng/table';
 import { TabsModule } from 'primeng/tabs';
@@ -8,8 +8,8 @@ import { InputIconModule } from 'primeng/inputicon';
 import { IconFieldModule } from 'primeng/iconfield';
 
 import { ConfirmationService, MessageService } from 'primeng/api';
-import { EquipmentService } from '../../../../core/services/api';
-import { Equipment } from '../../../../core/models';
+import { EquipmentService, AuthService } from '../../../../core/services/api';
+import { Equipment, User } from '../../../../core/models';
 
 import * as XLSX from 'xlsx';
 import { InputTextModule } from 'primeng/inputtext';
@@ -51,11 +51,14 @@ interface expandedRows {
     providers: [MessageService, ConfirmationService]
 })
 export class EquipmentList implements OnInit {
+    private authService = inject(AuthService);
+
     loading: boolean = true;
 
     // Équipements
     equipmentsNoApproved = signal<Equipment[]>([]);
     equipmentsNoModified = signal<Equipment[]>([]);
+    equipmentsApproved = signal<Equipment[]>([]);
 
     selectedEquipmentsNoApproved!: Equipment[] | null;
     selectedEquipmentsNoModified!: Equipment[] | null;
@@ -72,6 +75,8 @@ export class EquipmentList implements OnInit {
 
     selectedEquipment: Equipment | null = null;
     detailsDialog: boolean = false;
+
+    userConnected: User | null = this.authService.getUser();
     // Fin équipements
 
     constructor(private equipmentService: EquipmentService, private messageService: MessageService, private confirmationService: ConfirmationService) {}
@@ -79,6 +84,7 @@ export class EquipmentList implements OnInit {
     ngOnInit() {
         this.loadDataNoApproved();
         this.loadDataNoModified();
+        this.loadDataApproved();
     }
 
     // Méthode pour aplatir les données (équipement + attributs)
@@ -196,12 +202,27 @@ export class EquipmentList implements OnInit {
         });
     }
 
+    loadDataApproved() {
+        this.loading = true;
+        this.equipmentService.getAllApproved().subscribe({
+            next: (data) => {
+                this.equipmentsApproved.set(data);
+                console.log(data);
+                this.loading = false;
+            },
+            error: (err) => {
+                this.messageService.add({ severity: 'error', summary: 'Erreur', detail: 'Erreur lors du chargement des données', life: 3000 });
+                this.loading = false;
+            }
+        });
+    }
+
     onGlobalFilter(table: Table, event: Event) {
         table.filterGlobal((event.target as HTMLInputElement).value, 'contains');
     }
 
     approveEquipmentNoApproved(equipment: Equipment) {
-        const updatedEquipment = { ...equipment, isApproved: true, isNew: false };
+        const updatedEquipment = { ...equipment, isApproved: true, isNew: false, judgedBy: this.userConnected?.username || 'unknown' };
         this.equipmentService.update(equipment.id!, updatedEquipment).subscribe({
             next: (data) => {
                 this.messageService.add({ severity: 'success', summary: 'Succès', detail: `Équipement ${equipment.code} approuvé`, life: 3000 });
@@ -214,7 +235,7 @@ export class EquipmentList implements OnInit {
     }
 
     deniedEquipmentNoApproved(equipment: Equipment) {
-        const updatedEquipment = { ...equipment, isNew: false };
+        const updatedEquipment = { ...equipment, isNew: false, judgedBy: this.userConnected?.username || 'unknown' };
         this.equipmentService.update(equipment.id!, updatedEquipment).subscribe({
             next: (data) => {
                 this.messageService.add({ severity: 'success', summary: 'Succès', detail: `Équipement ${equipment.code} rejeté`, life: 3000 });
@@ -227,7 +248,7 @@ export class EquipmentList implements OnInit {
     }
 
     approveEquipmentNoModified(equipment: Equipment) {
-        const updatedEquipment = { ...equipment, isApproved: true, isNew: false };
+        const updatedEquipment = { ...equipment, isApproved: true, isNew: false, judgedBy: this.userConnected?.username || 'unknown' };
         this.equipmentService.update(equipment.id!, updatedEquipment).subscribe({
             next: (data) => {
                 this.messageService.add({ severity: 'success', summary: 'Succès', detail: `Équipement ${equipment.code} approuvé`, life: 3000 });
@@ -240,7 +261,7 @@ export class EquipmentList implements OnInit {
     }
 
     deniedEquipmentNoModified(equipment: Equipment) {
-        const updatedEquipment = { ...equipment, isUpdated: true, isNew: false };
+        const updatedEquipment = { ...equipment, isUpdated: true, isNew: false, judgedBy: this.userConnected?.username || 'unknown' };
         this.equipmentService.update(equipment.id!, updatedEquipment).subscribe({
             next: (data) => {
                 this.messageService.add({ severity: 'success', summary: 'Succès', detail: `Équipement ${equipment.code} rejeté`, life: 3000 });
@@ -379,8 +400,8 @@ export class EquipmentList implements OnInit {
                 outlined: true
             },
             acceptButtonProps: {
-                label: 'Refuser',
-                severity: 'danger'
+                label: 'Enregistrer',
+                severity: 'info'
             },
             accept: () => {
                 this.approveMultipleEquipments(this.selectedEquipmentsNoApproved!, 'add');
@@ -407,8 +428,8 @@ export class EquipmentList implements OnInit {
                 outlined: true
             },
             acceptButtonProps: {
-                label: 'Refuser',
-                severity: 'danger'
+                label: 'Enregistrer',
+                severity: 'info'
             },
             accept: () => {
                 this.approveMultipleEquipments(this.selectedEquipmentsNoModified!, 'update');
@@ -436,7 +457,7 @@ export class EquipmentList implements OnInit {
                 outlined: true
             },
             acceptButtonProps: {
-                label: 'Refuser',
+                label: 'Enregistrer',
                 severity: 'danger'
             },
             accept: () => {
@@ -465,7 +486,7 @@ export class EquipmentList implements OnInit {
                 outlined: true
             },
             acceptButtonProps: {
-                label: 'Refuser',
+                label: 'Enregistrer',
                 severity: 'danger'
             },
             accept: () => {
@@ -480,7 +501,7 @@ export class EquipmentList implements OnInit {
     // Implementation du rejet en masse (réutilise firstValueFrom)
     private rejectMultipleEquipments(equipments: Equipment[], type: 'add' | 'update') {
         const updatePromises = equipments.map(equipment => {
-            let updatedEquipment: any = { ...equipment, isNew: false };
+            let updatedEquipment: any = { ...equipment, isNew: false, judgedBy: this.userConnected?.username || 'unknown' };
             if (type === 'update') {
                 // respecter la logique utilisée dans deniedEquipmentNoModified
                 updatedEquipment = { ...updatedEquipment, isUpdated: true };
@@ -506,7 +527,7 @@ export class EquipmentList implements OnInit {
 
     private approveMultipleEquipments(equipments: Equipment[], type: 'add' | 'update') {
         const updatePromises = equipments.map(equipment => {
-            const updatedEquipment = { ...equipment, isApproved: true, isNew: false };
+            const updatedEquipment = { ...equipment, isApproved: true, isNew: false, judgedBy: this.userConnected?.username || 'unknown' };
             if (type === 'update') {
                 updatedEquipment.isUpdate = false;
             }

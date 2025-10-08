@@ -29,6 +29,12 @@ export class EquipmentService {
         );
     }
 
+    getAllApproved(): Observable<Equipment[]> {
+        return this.getAll().pipe(
+            map(equipments => equipments.filter(equipment => equipment.isApproved))
+        );
+    }
+
     getById(id: string): Observable<Equipment> {
         return this.http.get<Equipment>(`${this.apiUrl}/${id}`);
     }

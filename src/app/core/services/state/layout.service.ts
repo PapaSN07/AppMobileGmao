@@ -62,7 +62,7 @@ export class LayoutService {
 
     overlayOpen$ = this.overlayOpen.asObservable();
 
-    theme = computed(() => (this.layoutConfig()?.darkTheme ? 'light' : 'dark'));
+    theme = computed(() => (this.layoutConfig()?.darkTheme ? 'dark' : 'light'));
 
     isSidebarActive = computed(() => this.layoutState().overlayMenuActive || this.layoutState().staticMenuMobileActive);
 
@@ -96,6 +96,13 @@ export class LayoutService {
 
             this.handleDarkModeTransition(config);
         });
+
+        // Appliquer immédiatement le thème par défaut au démarrage
+        // (assure que la classe 'app-dark' est présente si darkTheme est true)
+        const initialConfig = this.layoutConfig();
+        if (initialConfig) {
+            this.toggleDarkMode(initialConfig);
+        }
     }
 
     private handleDarkModeTransition(config: layoutConfig): void {
