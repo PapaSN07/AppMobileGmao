@@ -12,7 +12,7 @@ void main() async {
   // Initialiser le service Hive (qui gère l'init et les adaptateurs)
   await HiveService.init();
 
-  // HiveService.clearAllCache();  // Nettoyer le cache au démarrage
+  HiveService.clearAllCache();  // Nettoyer le cache au démarrage
 
   runApp(
     MultiProvider(

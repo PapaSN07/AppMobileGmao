@@ -34,7 +34,7 @@ class ApiService {
   static const Duration receiveTimeout = Duration(seconds: 60);
   static const Duration sendTimeout = Duration(seconds: 60);
   static const int defaultPort = 8000;
-  static const String _macIpAddress = '172.16.11.237';
+  static const String _macIpAddress = '172.16.11.71';
 
   ApiService({int? port, String? customBaseUrl}) {
     if (customBaseUrl != null) {
