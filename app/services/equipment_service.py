@@ -6,7 +6,6 @@ from app.db.requests import (ATTRIBUTE_VALUES_QUERY, EQUIPMENT_BY_ID_QUERY, EQUI
 from app.core.cache import cache, invalidate_equipment_insertion_cache
 from typing import Dict, Any, List, Optional
 import logging
-from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -348,6 +347,107 @@ def update_equipment_partial(equipment_id: str, updates: Dict[str, Any]) -> tupl
         return (False, None)
 
 
+def update_equipment_existing(equipment_id: str, updates: Dict[str, Any]) -> tuple[bool, Optional[str]]:
+    """
+    Met à jour un équipement existant dans la DB temporaire MSSQL (CliClac) avec PATCH.
+    Ne change que les champs qui ont réellement changé.
+    Met à jour les attributs fournis (liste complète supposée).
+    """
+    logger.info(f"🔧 Mise à jour PATCH équipement CliClac MSSQL ID: {equipment_id}")
+
+    try:
+        # Utiliser SQLAlchemy session temporaire (MSSQL)
+        with get_temp_session() as session:
+            # 1) Récupérer l'équipement existant
+            existing_equipment = session.query(EquipmentCliClac).filter(EquipmentCliClac.id == equipment_id).first()
+            
+            if not existing_equipment:
+                logger.error(f"Équipement avec ID {equipment_id} introuvable dans CliClac")
+                return (False, "Équipement introuvable")
+
+            # 2) Mapper les clés camelCase vers snake_case pour correspondre au modèle
+            field_mapping = {
+                'centreCharge': 'centre_charge',
+                'feederDescription': 'feeder_description',
+                'codeParent': 'code_parent',
+                'createdAt': 'created_at',
+                'updatedAt': 'updated_at',
+                'createdBy': 'created_by',
+                'judgedBy': 'judged_by',
+                'isUpdate': 'is_update',
+                'isNew': 'is_new',
+                'isApproved': 'is_approved'
+            }
+            
+            # 3) Mettre à jour seulement les champs qui ont changé
+            updated_fields = []
+            for camel_key, snake_key in field_mapping.items():
+                if camel_key in updates and hasattr(existing_equipment, snake_key):
+                    new_value = updates[camel_key]
+                    current_value = getattr(existing_equipment, snake_key)
+                    if current_value != new_value:  # Comparaison simple (None-safe)
+                        setattr(existing_equipment, snake_key, new_value)
+                        updated_fields.append(snake_key)
+                        logger.debug(f"Champ {snake_key} mis à jour: {current_value} -> {new_value}")
+            
+            # Champs sans mapping (famille, unite, etc.)
+            direct_fields = ['famille', 'unite', 'zone', 'entity', 'feeder', 'localisation', 'code', 'description']
+            for field in direct_fields:
+                if field in updates and hasattr(existing_equipment, field):
+                    new_value = updates[field]
+                    current_value = getattr(existing_equipment, field)
+                    if current_value != new_value:
+                        setattr(existing_equipment, field, new_value)
+                        updated_fields.append(field)
+                        logger.debug(f"Champ {field} mis à jour: {current_value} -> {new_value}")
+
+            # 4) Mettre à jour les attributs (supposer liste complète)
+            attributes_data = updates.get('attributes', [])
+            if attributes_data:
+                # Supprimer les anciens attributs pour cet équipement (pour simplifier, ou comparer IDs)
+                session.query(AttributeCliClac).filter(AttributeCliClac.code == existing_equipment.code).delete()
+                
+                # Ajouter les nouveaux attributs
+                for attr_data in attributes_data:
+                    try:
+                        new_attribute = AttributeCliClac(
+                            specification=attr_data.get('specification', ''),
+                            famille=existing_equipment.famille,
+                            indx=int(attr_data.get('indx', 0)),
+                            attribute_name=attr_data.get('attributeName', ''),  # Note: frontend envoie 'attributeName'
+                            value=str(attr_data.get('value', '')) if attr_data.get('value') is not None else None,
+                            code=existing_equipment.code,
+                            description=attr_data.get('description') or existing_equipment.description,
+                            is_copy_ot=attr_data.get('isCopyOt', False)  # Note: frontend envoie 'isCopyOt'
+                        )
+                        session.add(new_attribute)
+                        logger.debug(f"Attribut mis à jour: {attr_data.get('attributeName')} = {attr_data.get('value')}")
+                    except Exception as e:
+                        logger.error(f"Erreur création attribut {attr_data.get('attributeName', 'N/A')}: {e}")
+                        continue
+
+            # 5) Commit si des changements ont été faits
+            if updated_fields or attributes_data:
+                session.commit()
+                logger.info(f"✅ Équipement {equipment_id} mis à jour avec succès (champs: {updated_fields})")
+                
+                # Invalider le cache
+                invalidate_equipment_insertion_cache(
+                    str(existing_equipment.code), 
+                    str(existing_equipment.entity), 
+                    str(existing_equipment.famille)
+                )
+                
+                return (True, f"Mise à jour réussie pour {len(updated_fields)} champs et {len(attributes_data)} attributs")
+            else:
+                logger.info(f"Aucun changement détecté pour l'équipement {equipment_id}")
+                return (True, "Aucun changement")
+
+    except Exception as e:
+        logger.error(f"Erreur lors de la mise à jour PATCH équipement {equipment_id}: {e}")
+        return (False, f"Erreur: {str(e)}")
+
+
 def get_equipment_attributes_by_code(equipment_code: str) -> List[Dict[str, Any]]:
     """Récupère les attributs d'un équipement par son code"""
     if not equipment_code:
@@ -507,6 +607,7 @@ def insert_equipment(equipment: EquipmentCliClac) -> tuple[bool, Optional[int]]:
     except Exception as e:
         logger.error(f"insert_equipment fatal error: {e}")
         return (False, None)
+
 
 def get_all_equipment_web() -> Dict[str, Any]:
     """Récupère tous les équipements pour l'interface web (non paginé)"""

@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional, Any
+from typing import List, Optional, Any, Dict
 
 class EquipmentAttribute(BaseModel):
     id: Optional[str] = Field(None, description="ID de l'attribut (optionnel, utilisé pour les mises à jour)")
@@ -39,37 +39,22 @@ class AddEquipmentRequest(BaseModel):
 
 class UpdateEquipmentRequest(BaseModel):
     """Schéma pour la modification d'un équipement"""
-    code_parent: Optional[str] = None
-    feeder: Optional[str] = None
-    feeder_description: Optional[str] = None
-    code: Optional[str] = None
-    famille: Optional[str] = None
-    zone: Optional[str] = None
-    entity: Optional[str] = None
-    unite: Optional[str] = None
-    centre_charge: Optional[str] = None
-    description: Optional[str] = None
-    longitude: Optional[str] = None
-    latitude: Optional[str] = None
-    created_by: Optional[str] = Field(None, description="Utilisateur créant l'équipement")
-    attributs: Optional[List[EquipmentAttribute]] = None
-    
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "description": "Nouvelle description de l'équipement",
-                "zone": "Z2",
-                "attributs": [
-                    {
-                        "name": "Tension",
-                        "value": "230V",
-                        "type": "string"
-                    },
-                    {
-                        "name": "Puissance",
-                        "value": "100",
-                        "type": "number"
-                    }
-                ]
-            }
-        }
+    famille: Optional[str] = Field(None, description="Famille de l'équipement")
+    unite: Optional[str] = Field(None, description="Unité")
+    centreCharge: Optional[str] = Field(None, description="Centre de charge")  # Note: camelCase depuis frontend
+    zone: Optional[str] = Field(None, description="Zone")
+    entity: Optional[str] = Field(None, description="Entité")
+    feeder: Optional[str] = Field(None, description="Feeder")
+    feederDescription: Optional[str] = Field(None, description="Description du feeder")
+    localisation: Optional[str] = Field(None, description="Localisation")
+    codeParent: Optional[str] = Field(None, description="Code parent")
+    code: Optional[str] = Field(None, description="Code de l'équipement")
+    description: Optional[str] = Field(None, description="Description")
+    createdAt: Optional[str] = Field(None, description="Date de création (ISO)")
+    updatedAt: Optional[str] = Field(None, description="Date de mise à jour (ISO)")
+    createdBy: Optional[str] = Field(None, description="Créé par")
+    judgedBy: Optional[str] = Field(None, description="Juré par")
+    isUpdate: Optional[bool] = Field(None, description="Est une mise à jour")
+    isNew: Optional[bool] = Field(None, description="Est nouveau")
+    isApproved: Optional[bool] = Field(None, description="Est approuvé")
+    attributes: Optional[List[Dict[str, Any]]] = Field(None, description="Liste des attributs")

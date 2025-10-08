@@ -78,3 +78,14 @@ class EquipmentListResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class UpdateEquipmentResponse(BaseModel):
+    """Réponse pour la mise à jour d'un équipement"""
+    success: bool = Field(..., description="Indique si la mise à jour a réussi")
+    message: str = Field(..., description="Message de la réponse")
+    data: Optional[Dict[str, Any]] = Field(None, description="Données de l'équipement mis à jour (via to_dict_SDDV())")
+    error_code: Optional[str] = Field(None, description="Code d'erreur si échec (ex. 'EQUIPMENT_NOT_FOUND')")
+
+    class Config:
+        from_attributes = True
