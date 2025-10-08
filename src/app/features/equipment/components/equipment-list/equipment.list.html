@@ -1,5 +1,6 @@
 <p-tabs value="0">
     <p-toast />
+    <p-confirmdialog [style]="{ width: '450px' }" />
 
     <p-tablist>
         <p-tab value="0">Ajouter des équipements</p-tab>
@@ -29,7 +30,10 @@
                     >
                         <ng-template #caption>
                             <div class="flex justify-between md:flex-row flex-col gap-2">
-                                <p-button label="Export" icon="pi pi-upload" severity="secondary" (onClick)="saveAllEquipmentAdd()" />
+                                <div class="flex gap-2">
+                                    <p-button label="Approuver la sélection" icon="pi pi-check" severity="success" (onClick)="saveAllEquipmentAdd()" [disabled]="!selectedEquipmentsNoApproved || selectedEquipmentsNoApproved.length === 0" />
+                                    <p-button label="Rejeter la sélection" icon="pi pi-times" severity="danger" (onClick)="rejectAllEquipmentAdd()" [disabled]="!selectedEquipmentsNoApproved || selectedEquipmentsNoApproved.length === 0" />
+                                </div>
                                 <p-iconfield iconPosition="left" class="ml-auto">
                                     <p-inputicon>
                                         <i class="pi pi-search"></i>
@@ -38,6 +42,7 @@
                                 </p-iconfield>
                             </div>
                         </ng-template>
+
                         <ng-template #header>
                             <tr>
                                 <th style="width: 4rem"></th>
@@ -75,7 +80,7 @@
                                 <th>
                                     <p-columnFilter type="text" field="zone" placeholder="Rechercher par ..." ariaLabel="Filtre Zone" filterOn="input"></p-columnFilter>
                                 </th>
-                                <th style="width: auto; min-width: 7.5rem;" pFrozenColumn alignFrozen="right" [frozen]="balanceFrozen"></th>
+                                <th style="width: auto; min-width: 11.5rem" pFrozenColumn alignFrozen="right" [frozen]="balanceFrozen"></th>
                             </tr>
                             <tr>
                                 <th style="width: 4rem"></th>
@@ -91,7 +96,7 @@
                                 <th style="width: 11%">Localisation</th>
                                 <th style="width: 11%">Unité</th>
                                 <th style="width: 11%">Zone</th>
-                                <th style="width: auto; min-width: 7.5rem;" pFrozenColumn alignFrozen="right" [frozen]="balanceFrozen">Actions</th>
+                                <th style="width: auto; min-width: 11.5rem" pFrozenColumn alignFrozen="right" [frozen]="balanceFrozen">Actions</th>
                             </tr>
                         </ng-template>
                         <ng-template #body let-equipment let-expanded="expanded">
@@ -114,7 +119,7 @@
                                 <td>{{ equipment.unite || 'N/A' }}</td>
                                 <td>{{ equipment.zone || 'N/A' }}</td>
                                 <td alignFrozen="right" pFrozenColumn [frozen]="balanceFrozen" class="p-2">
-                                    <p-confirmpopup />
+                                    <p-button icon="pi pi-eye" severity="info" class="mr-2" [rounded]="true" [outlined]="true" (click)="viewDetails(equipment)" pTooltip="Voir" tooltipPosition="top" />
                                     <p-button (onClick)="confirm1($event, equipment)" class="mr-2" icon="pi pi-check" [outlined]="true" [rounded]="true" />
                                     <p-button (onClick)="confirm2($event, equipment)" icon="pi pi-times" severity="danger" [outlined]="true" [rounded]="true" />
                                 </td>
@@ -183,6 +188,71 @@
                             </tr>
                         </ng-template>
                     </p-table>
+
+                    <p-dialog [(visible)]="detailsDialog" [modal]="true" [style]="{ width: '600px' }" header="Détails de l'équipement" [draggable]="false" [resizable]="false">
+                        <ng-template pTemplate="content">
+                            <div class="flex flex-col gap-4">
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block font-bold mb-2">Code</label>
+                                        <input pInputText [value]="selectedEquipment?.code" disabled />
+                                    </div>
+                                    <div>
+                                        <label class="block font-bold mb-2">Centre Charge</label>
+                                        <input pInputText [value]="selectedEquipment?.centreCharge" disabled />
+                                    </div>
+                                    <div>
+                                        <label class="block font-bold mb-2">Localisation</label>
+                                        <input pInputText [value]="selectedEquipment?.localisation" disabled />
+                                    </div>
+                                    <div>
+                                        <label class="block font-bold mb-2">Famille</label>
+                                        <input pInputText [value]="selectedEquipment?.famille" disabled />
+                                    </div>
+                                    <div>
+                                        <label class="block font-bold mb-2">Créé le</label>
+                                        <input pInputText [value]="selectedEquipment?.createdAt | date:'dd/MM/yyyy HH:mm'" disabled />
+                                    </div>
+                                    <div>
+                                        <label class="block font-bold mb-2">Description</label>
+                                        <textarea pTextarea [value]="selectedEquipment?.description" rows="3" disabled></textarea>
+                                    </div>
+                                    <div>
+                                        <label class="block font-bold mb-2">Statut Approbation</label>
+                                        <p-tag [value]="selectedEquipment?.isApproved ? 'Approuvé' : 'Non approuvé'" [severity]="selectedEquipment?.isApproved ? 'success' : 'warn'" />
+                                    </div>
+                                </div>
+
+                                @if (selectedEquipment?.attributes?.length) {
+                                <div>
+                                    <h5>Attributs</h5>
+                                    <p-table [value]="selectedEquipment?.attributes || []" [tableStyle]="{ 'min-width': '40rem' }" dataKey="id">
+                                        <ng-template #header>
+                                            <tr>
+                                                <th>Index</th>
+                                                <th>Spécification</th>
+                                                <th>Nom</th>
+                                                <th>Valeur</th>
+                                            </tr>
+                                        </ng-template>
+                                        <ng-template #body let-attr>
+                                            <tr>
+                                                <td>{{ attr.indx }}</td>
+                                                <td>{{ attr.specification }}</td>
+                                                <td>{{ attr.attributeName }}</td>
+                                                <td>{{ attr.value }}</td>
+                                            </tr></ng-template
+                                        >
+                                    </p-table>
+                                </div>
+                                }
+                            </div>
+                        </ng-template>
+
+                        <ng-template pTemplate="footer">
+                            <p-button label="Fermer" icon="pi pi-times" text (click)="hideDetails()" />
+                        </ng-template>
+                    </p-dialog>
                 </div>
             </div>
         </p-tabpanel>
@@ -208,9 +278,11 @@
                         [scrollable]="true"
                     >
                         <ng-template #caption>
-                            <!-- Dans le #caption de la deuxième table, remplacez la div par : -->
                             <div class="flex justify-between md:flex-row flex-col gap-2">
-                                <p-button label="Export" icon="pi pi-upload" severity="secondary" (onClick)="saveAllEquipmentUpdate()" />
+                                <div class="flex gap-2">
+                                    <p-button label="Approuver la sélection" icon="pi pi-check" severity="success" (onClick)="saveAllEquipmentUpdate()" [disabled]="!selectedEquipmentsNoModified || selectedEquipmentsNoModified.length === 0" />
+                                    <p-button label="Rejeter la sélection" icon="pi pi-times" severity="danger" (onClick)="rejectAllEquipmentUpdate()" [disabled]="!selectedEquipmentsNoModified || selectedEquipmentsNoModified.length === 0" />
+                                </div>
                                 <p-iconfield iconPosition="left" class="ml-auto">
                                     <p-inputicon>
                                         <i class="pi pi-search"></i>
@@ -256,7 +328,7 @@
                                 <th>
                                     <p-columnFilter type="text" field="zone" placeholder="Rechercher par ..." ariaLabel="Filtre Zone" filterOn="input"></p-columnFilter>
                                 </th>
-                                <th style="width: auto; min-width: 7.5rem" pFrozenColumn alignFrozen="right" [frozen]="balanceFrozen"></th>
+                                <th style="width: auto; min-width: 11.5rem" pFrozenColumn alignFrozen="right" [frozen]="balanceFrozen"></th>
                             </tr>
                             <tr>
                                 <th style="width: 4rem"></th>
@@ -272,7 +344,7 @@
                                 <th style="width: 11%">Localisation</th>
                                 <th style="width: 11%">Unité</th>
                                 <th style="width: 11%">Zone</th>
-                                <th style="width: auto; min-width: 7.5rem" pFrozenColumn alignFrozen="right" [frozen]="balanceFrozen">Actions</th>
+                                <th style="width: auto; min-width: 11.5rem" pFrozenColumn alignFrozen="right" [frozen]="balanceFrozen">Actions</th>
                             </tr>
                         </ng-template>
                         <ng-template #body let-equipment let-expanded="expanded">
@@ -295,7 +367,7 @@
                                 <td>{{ equipment.unite || 'N/A' }}</td>
                                 <td>{{ equipment.zone || 'N/A' }}</td>
                                 <td alignFrozen="right" class="p-2" pFrozenColumn [frozen]="balanceFrozen">
-                                    <p-confirmpopup />
+                                    <p-button icon="pi pi-eye" severity="info" class="mr-2" [rounded]="true" [outlined]="true" (click)="viewDetails(equipment)" pTooltip="Voir" tooltipPosition="top" />
                                     <p-button (onClick)="confirm3($event, equipment)" class="mr-2" icon="pi pi-check" [outlined]="true" [rounded]="true" />
                                     <p-button (onClick)="confirm4($event, equipment)" icon="pi pi-times" severity="danger" [outlined]="true" [rounded]="true" />
                                 </td>
@@ -364,6 +436,71 @@
                             </tr>
                         </ng-template>
                     </p-table>
+
+                    <p-dialog [(visible)]="detailsDialog" [modal]="true" [style]="{ width: '600px' }" header="Détails de l'équipement" [draggable]="false" [resizable]="false">
+                        <ng-template pTemplate="content">
+                            <div class="flex flex-col gap-4">
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block font-bold mb-2">Code</label>
+                                        <input pInputText [value]="selectedEquipment?.code" disabled />
+                                    </div>
+                                    <div>
+                                        <label class="block font-bold mb-2">Centre Charge</label>
+                                        <input pInputText [value]="selectedEquipment?.centreCharge" disabled />
+                                    </div>
+                                    <div>
+                                        <label class="block font-bold mb-2">Localisation</label>
+                                        <input pInputText [value]="selectedEquipment?.localisation" disabled />
+                                    </div>
+                                    <div>
+                                        <label class="block font-bold mb-2">Famille</label>
+                                        <input pInputText [value]="selectedEquipment?.famille" disabled />
+                                    </div>
+                                    <div>
+                                        <label class="block font-bold mb-2">Créé le</label>
+                                        <input pInputText [value]="selectedEquipment?.createdAt | date:'dd/MM/yyyy HH:mm'" disabled />
+                                    </div>
+                                    <div>
+                                        <label class="block font-bold mb-2">Description</label>
+                                        <textarea pTextarea [value]="selectedEquipment?.description" rows="3" disabled></textarea>
+                                    </div>
+                                    <div>
+                                        <label class="block font-bold mb-2">Statut Approbation</label>
+                                        <p-tag [value]="selectedEquipment?.isApproved ? 'Approuvé' : 'Non approuvé'" [severity]="selectedEquipment?.isApproved ? 'success' : 'warn'" />
+                                    </div>
+                                </div>
+
+                                @if (selectedEquipment?.attributes?.length) {
+                                <div>
+                                    <h5>Attributs</h5>
+                                    <p-table [value]="selectedEquipment?.attributes || []" [tableStyle]="{ 'min-width': '40rem' }" dataKey="id">
+                                        <ng-template #header>
+                                            <tr>
+                                                <th>Index</th>
+                                                <th>Spécification</th>
+                                                <th>Nom</th>
+                                                <th>Valeur</th>
+                                            </tr>
+                                        </ng-template>
+                                        <ng-template #body let-attr>
+                                            <tr>
+                                                <td>{{ attr.indx }}</td>
+                                                <td>{{ attr.specification }}</td>
+                                                <td>{{ attr.attributeName }}</td>
+                                                <td>{{ attr.value }}</td>
+                                            </tr></ng-template
+                                        >
+                                    </p-table>
+                                </div>
+                                }
+                            </div>
+                        </ng-template>
+
+                        <ng-template pTemplate="footer">
+                            <p-button label="Fermer" icon="pi pi-times" text (click)="hideDetails()" />
+                        </ng-template>
+                    </p-dialog>
                 </div>
             </div>
         </p-tabpanel>
@@ -391,7 +528,7 @@
                         <ng-template #caption>
                             <!-- Dans le #caption de la deuxième table, remplacez la div par : -->
                             <div class="flex justify-between md:flex-row flex-col gap-2">
-                                <p-button label="Export" icon="pi pi-upload" severity="secondary" (onClick)="exportExcelTable()" />
+                                <p-button label="Exporter sélection" icon="pi pi-upload" severity="secondary" (onClick)="exportExcelTable()" [disabled]="!selectedEquipmentsExport || selectedEquipmentsExport.length === 0" />
                                 <p-iconfield iconPosition="left" class="ml-auto">
                                     <p-inputicon>
                                         <i class="pi pi-search"></i>

@@ -2,11 +2,10 @@ import { Component, OnInit, signal, ViewChild } from '@angular/core';
 import { ButtonModule } from 'primeng/button';
 import { Table, TableModule } from 'primeng/table';
 import { TabsModule } from 'primeng/tabs';
-import { ToastModule } from 'primeng/toast';
+import { Toast, ToastModule } from 'primeng/toast';
 import { DialogModule } from 'primeng/dialog';
 import { InputIconModule } from 'primeng/inputicon';
 import { IconFieldModule } from 'primeng/iconfield';
-import { ConfirmPopupModule } from 'primeng/confirmpopup';
 
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { EquipmentService } from '../../../../core/services/api';
@@ -15,6 +14,10 @@ import { Equipment } from '../../../../core/models';
 import * as XLSX from 'xlsx';
 import { InputTextModule } from 'primeng/inputtext';
 import { firstValueFrom } from 'rxjs';
+import { Tag } from "primeng/tag";
+import { DatePipe } from '@angular/common';
+import { TextareaModule } from 'primeng/textarea';
+import { ConfirmDialog } from 'primeng/confirmdialog';
 
 interface ExportColumn {
     title: string;
@@ -29,16 +32,20 @@ interface expandedRows {
     selector: 'app-equipment',
     standalone: true,
     imports: [
-        TableModule,
-        ButtonModule,
-        ToastModule,
-        InputTextModule,
-        DialogModule,
-        InputIconModule,
-        IconFieldModule,
-        TabsModule,
-        ConfirmPopupModule
-    ],
+    TableModule,
+    ButtonModule,
+    ToastModule,
+    InputTextModule,
+    DialogModule,
+    InputIconModule,
+    IconFieldModule,
+    TabsModule,
+    Tag,
+    DatePipe,
+    TextareaModule,
+    Toast,
+    ConfirmDialog
+],
     templateUrl: './equipment.list.html',
     styleUrls: ['equipment.list.scss'],
     providers: [MessageService, ConfirmationService]
@@ -62,6 +69,9 @@ export class EquipmentList implements OnInit {
     exportColumns!: ExportColumn[];
 
     balanceFrozen: boolean = true;
+
+    selectedEquipment: Equipment | null = null;
+    detailsDialog: boolean = false;
     // Fin équipements
 
     constructor(private equipmentService: EquipmentService, private messageService: MessageService, private confirmationService: ConfirmationService) {}
@@ -244,6 +254,7 @@ export class EquipmentList implements OnInit {
 
     confirm1(event: Event, equipment: Equipment) {
         this.confirmationService.confirm({
+            header: 'Confirmation',
             target: event.currentTarget as EventTarget,
             message: 'Êtes-vous sûr de vouloir continuer 🤔?',
             icon: 'pi pi-exclamation-triangle',
@@ -267,6 +278,7 @@ export class EquipmentList implements OnInit {
 
     confirm2(event: Event, equipment: Equipment) {
         this.confirmationService.confirm({
+            header: 'Confirmation',
             target: event.currentTarget as EventTarget,
             message: 'Voulez-vous rejeter cet équipement 🤔?',
             icon: 'pi pi-info-circle',
@@ -292,6 +304,7 @@ export class EquipmentList implements OnInit {
     // Ajoutez ces nouvelles méthodes pour les confirmations de modifications
     confirm3(event: Event, equipment: Equipment) {
         this.confirmationService.confirm({
+            header: 'Confirmation',
             target: event.currentTarget as EventTarget,
             message: 'Êtes-vous sûr de vouloir approuver cette modification 🤔?',
             icon: 'pi pi-exclamation-triangle',
@@ -315,6 +328,7 @@ export class EquipmentList implements OnInit {
 
     confirm4(event: Event, equipment: Equipment) {
         this.confirmationService.confirm({
+            header: 'Confirmation',
             target: event.currentTarget as EventTarget,
             message: 'Voulez-vous refuser cette modification 🤔?',
             icon: 'pi pi-info-circle',
@@ -337,6 +351,18 @@ export class EquipmentList implements OnInit {
         });
     }
 
+    // Ouvrir modal détails
+    viewDetails(equipment: Equipment) {
+        this.selectedEquipment = { ...equipment };
+        this.detailsDialog = true;
+    }
+
+    // Fermer modal détails
+    hideDetails() {
+        this.selectedEquipment = null;
+        this.detailsDialog = false;
+    }
+
     saveAllEquipmentAdd() {
         if (!this.selectedEquipmentsNoApproved || this.selectedEquipmentsNoApproved.length === 0) {
             this.messageService.add({ severity: 'warn', summary: 'Aucune sélection', detail: 'Veuillez sélectionner au moins un équipement à approuver.', life: 3000 });
@@ -347,6 +373,15 @@ export class EquipmentList implements OnInit {
             message: `Êtes-vous sûr de vouloir approuver ${this.selectedEquipmentsNoApproved.length} équipement(s) ajouté(s) ?`,
             header: 'Confirmation d\'approbation en masse',
             icon: 'pi pi-exclamation-triangle',
+            rejectButtonProps: {
+                label: 'Annuler',
+                severity: 'secondary',
+                outlined: true
+            },
+            acceptButtonProps: {
+                label: 'Refuser',
+                severity: 'danger'
+            },
             accept: () => {
                 this.approveMultipleEquipments(this.selectedEquipmentsNoApproved!, 'add');
             },
@@ -366,6 +401,15 @@ export class EquipmentList implements OnInit {
             message: `Êtes-vous sûr de vouloir approuver ${this.selectedEquipmentsNoModified.length} modification(s) d'équipement(s) ?`,
             header: 'Confirmation d\'approbation en masse',
             icon: 'pi pi-exclamation-triangle',
+            rejectButtonProps: {
+                label: 'Annuler',
+                severity: 'secondary',
+                outlined: true
+            },
+            acceptButtonProps: {
+                label: 'Refuser',
+                severity: 'danger'
+            },
             accept: () => {
                 this.approveMultipleEquipments(this.selectedEquipmentsNoModified!, 'update');
             },
@@ -374,6 +418,92 @@ export class EquipmentList implements OnInit {
             }
         });
     }
+
+    // Rejet en masse pour ajouts
+    rejectAllEquipmentAdd() {
+        if (!this.selectedEquipmentsNoApproved || this.selectedEquipmentsNoApproved.length === 0) {
+            this.messageService.add({ severity: 'warn', summary: 'Aucune sélection', detail: 'Veuillez sélectionner au moins un équipement à rejeter.', life: 3000 });
+            return;
+        }
+
+        this.confirmationService.confirm({
+            message: `Êtes-vous sûr de vouloir rejeter ${this.selectedEquipmentsNoApproved.length} équipement(s) ajouté(s) ?`,
+            header: 'Confirmation de rejet en masse',
+            icon: 'pi pi-exclamation-triangle',
+            rejectButtonProps: {
+                label: 'Annuler',
+                severity: 'secondary',
+                outlined: true
+            },
+            acceptButtonProps: {
+                label: 'Refuser',
+                severity: 'danger'
+            },
+            accept: () => {
+                this.rejectMultipleEquipments(this.selectedEquipmentsNoApproved!, 'add');
+            },
+            reject: () => {
+                this.messageService.add({ severity: 'info', summary: 'Annulé', detail: 'Rejet annulé.', life: 3000 });
+            }
+        });
+    }
+
+    // Rejet en masse pour modifications
+    rejectAllEquipmentUpdate() {
+        if (!this.selectedEquipmentsNoModified || this.selectedEquipmentsNoModified.length === 0) {
+            this.messageService.add({ severity: 'warn', summary: 'Aucune sélection', detail: 'Veuillez sélectionner au moins un équipement à rejeter.', life: 3000 });
+            return;
+        }
+
+        this.confirmationService.confirm({
+            message: `Êtes-vous sûr de vouloir rejeter ${this.selectedEquipmentsNoModified.length} modification(s) d'équipement(s) ?`,
+            header: 'Confirmation de rejet en masse',
+            icon: 'pi pi-exclamation-triangle',
+            rejectButtonProps: {
+                label: 'Annuler',
+                severity: 'secondary',
+                outlined: true
+            },
+            acceptButtonProps: {
+                label: 'Refuser',
+                severity: 'danger'
+            },
+            accept: () => {
+                this.rejectMultipleEquipments(this.selectedEquipmentsNoModified!, 'update');
+            },
+            reject: () => {
+                this.messageService.add({ severity: 'info', summary: 'Annulé', detail: 'Rejet annulé.', life: 3000 });
+            }
+        });
+    }
+
+    // Implementation du rejet en masse (réutilise firstValueFrom)
+    private rejectMultipleEquipments(equipments: Equipment[], type: 'add' | 'update') {
+        const updatePromises = equipments.map(equipment => {
+            let updatedEquipment: any = { ...equipment, isNew: false };
+            if (type === 'update') {
+                // respecter la logique utilisée dans deniedEquipmentNoModified
+                updatedEquipment = { ...updatedEquipment, isUpdated: true };
+            }
+            return firstValueFrom(this.equipmentService.update(equipment.id!, updatedEquipment));
+        });
+
+        Promise.all(updatePromises)
+            .then(() => {
+                this.messageService.add({ severity: 'success', summary: 'Succès', detail: `${equipments.length} équipement(s) rejeté(s) avec succès.`, life: 3000 });
+                // remettre à zéro les sélections
+                this.selectedEquipmentsNoApproved = [];
+                this.selectedEquipmentsNoModified = [];
+                this.selectedEquipmentsExport = [];
+                this.loadDataNoApproved();
+                this.loadDataNoModified();
+            })
+            .catch((err) => {
+                this.messageService.add({ severity: 'error', summary: 'Erreur', detail: 'Une erreur est survenue lors du rejet en masse.', life: 3000 });
+                console.error(err);
+            });
+    }
+
     private approveMultipleEquipments(equipments: Equipment[], type: 'add' | 'update') {
         const updatePromises = equipments.map(equipment => {
             const updatedEquipment = { ...equipment, isApproved: true, isNew: false };
@@ -386,8 +516,10 @@ export class EquipmentList implements OnInit {
         Promise.all(updatePromises)
             .then(() => {
                 this.messageService.add({ severity: 'success', summary: 'Succès', detail: `${equipments.length} équipement(s) approuvé(s) avec succès.`, life: 3000 });
-                this.selectedEquipmentsNoApproved = null;
-                this.selectedEquipmentsNoModified = null;
+                // remettre à zéro les sélections
+                this.selectedEquipmentsNoApproved = [];
+                this.selectedEquipmentsNoModified = [];
+                this.selectedEquipmentsExport = [];
                 this.loadDataNoApproved();
                 this.loadDataNoModified();
             })

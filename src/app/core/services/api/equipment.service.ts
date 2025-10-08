@@ -38,7 +38,7 @@ export class EquipmentService {
     }
 
     update(id: string, equipment: Equipment): Observable<Equipment> {
-        return this.http.put<Equipment>(`${this.apiUrl}/${id}`, equipment);
+        return this.http.patch<Equipment>(`${this.apiUrl}/${id}`, equipment);
     }
 
     delete(id: string): Observable<void> {
