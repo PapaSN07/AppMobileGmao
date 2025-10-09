@@ -75,71 +75,108 @@ export class EquipmentList implements OnInit {
         this.loadDataApproved();
     }
 
-    // Export vers deux fichiers Excel : équipements ET attributs
+    // Export vers deux fichiers Excel : équipements ET attributs (refactorisé)
     private async exportEquipmentsAndAttributes(tableIndex: number): Promise<void> {
         const equipments = tableIndex === 1 ? this.equipmentsNoApproved() : this.equipmentsNoModified();
 
-        // Préparer les lignes pour le fichier équipements (sans attributs)
-        const equipmentRows = equipments.map((e) => ({
-            id: e.id ?? '',
-            centreCharge: e.centreCharge ?? '',
-            code: e.code ?? '',
-            codeParent: e.codeParent ?? '',
-            description: e.description ?? '',
-            entity: e.entity ?? '',
-            famille: e.famille ?? '',
-            feeder: e.feeder ?? '',
-            localisation: e.localisation ?? '',
-            unite: e.unite ?? '',
-            zone: e.zone ?? '',
-            isApproved: e.isApproved ?? false,
-            isNew: e.isNew ?? false,
-            isUpdate: e.isUpdate ?? false,
-            createdAt: e.createdAt ? new Date(e.createdAt).toISOString() : '',
-            createdBy: e.createdBy ?? ''
-        }));
+        const equipmentRows = this.buildEquipmentRows(equipments);
+        const attributeRows = this.buildAttributeRows(equipments);
 
-        // Préparer les lignes pour le fichier attributs (chaque attribut sur une ligne, avec référence équipement)
+        const filenameSuffix = this.getFormatDate();
+
+        const wbEquipArray = this.createWorkbookArray(equipmentRows, 'Équipements');
+        const wbAttrArray = this.createWorkbookArray(attributeRows, 'Attributs');
+
+        await this.zipAndDownload(
+            [
+                { name: `equipments_${filenameSuffix}.xlsx`, data: wbEquipArray },
+                { name: `attributes_${filenameSuffix}.xlsx`, data: wbAttrArray }
+            ],
+            `export_equipments_${filenameSuffix}.zip`
+        );
+    }
+
+    // construit les lignes pour le fichier équipements
+    private buildEquipmentRows(equipments: Equipment[]) {
+        return equipments.map((e) => ({
+            Famille: e.famille,
+            Unité: e.unite,
+            CC: e.centreCharge,
+            Zone: e.zone,
+            Entité: e.entity,
+            'Code Feeder': e.feeder,
+            'Description Feeder': e.feederDescription,
+            Localisation: e.localisation,
+            'Code Parent': e.codeParent,
+            'Code Équipement': e.code,
+            'Description Équipement': e.description,
+            'Alimenté par': e.feeder
+        }));
+    }
+
+    // construit et trie les lignes des attributs ; retourne un tableau d'objets (colonnes lisibles)
+    private buildAttributeRows(equipments: Equipment[]) {
         const attributeRows: any[] = [];
+
         equipments.forEach((e) => {
-            if (e.attributes && Array.isArray(e.attributes)) {
-                e.attributes.forEach((attr) => {
-                    attributeRows.push({
-                        equipmentId: e.id ?? '',
-                        equipmentCode: e.code ?? '',
-                        attributeId: attr.id ?? '',
-                        specification: attr.specification ?? '',
-                        attributeName: attr.attributeName ?? '',
-                        attributeValue: attr.attributeValue ?? '',
-                        index: attr.index ?? '',
-                        isCopyOT: attr.isCopyOT ?? false,
-                        attributeCreatedAt: attr.createdAt ? new Date(attr.createdAt).toISOString() : '',
-                        attributeUpdatedAt: attr.updatedAt ? new Date(attr.updatedAt).toISOString() : ''
-                    });
+            if (!e.attributes || !Array.isArray(e.attributes) || e.attributes.length === 0) return;
+
+            // trier les attributs de cet équipement par indx (ordre croissant)
+            const sortedAttrs = [...e.attributes].sort((a: any, b: any) => (Number(a.indx) || 0) - (Number(b.indx) || 0));
+
+            sortedAttrs.forEach((attr) => {
+                attributeRows.push({
+                    'Classe Attribut': attr.specification ?? '',
+                    'Description Attribut': e.famille ?? '',
+                    Index: attr.indx ?? '',
+                    Attribut: attr.attributeName ?? '',
+                    Valeur: attr.value ?? '',
+                    'Code Équipement': e.code ?? '',
+                    'Description Équipement': e.description ?? '',
+                    "Copie sur l'OT": attr.isCopyOT ? 1 : 0
                 });
-            }
+            });
+
+            // optionnel : ajouter une ligne vide comme séparateur (si tu veux visual separator dans le XLSX)
+            attributeRows.push({
+                'Classe Attribut': '',
+                'Description Attribut': '',
+                Index: '',
+                Attribut: '',
+                Valeur: '',
+                'Code Équipement': '',
+                'Description Équipement': '',
+                "Copie sur l'OT": ''
+            });
         });
 
-        // Générer et télécharger le fichier équipements
-        const filenameSuffix = this.getFormatDate();
-        // créer workbooks en ArrayBuffer
-        const wsEquip = XLSX.utils.json_to_sheet(equipmentRows);
-        const wbEquip = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wbEquip, wsEquip, 'Équipements');
-        const wbEquipArray = XLSX.write(wbEquip, { bookType: 'xlsx', type: 'array' });
+        // tri global par 'Index' pour garantir ordre si nécessaire
+        // attributeRows.sort((a, b) => (Number(a['Index']) || 0) - (Number(b['Index']) || 0));
 
-        const wsAttr = XLSX.utils.json_to_sheet(attributeRows);
-        const wbAttr = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wbAttr, wsAttr, 'Attributs');
-        const wbAttrArray = XLSX.write(wbAttr, { bookType: 'xlsx', type: 'array' });
+        return attributeRows;
+    }
 
-        // zipper
-        const zip = new JSZip();
-        zip.file(`equipments_${filenameSuffix}.xlsx`, new Uint8Array(wbEquipArray), { binary: true });
-        zip.file(`attributes_${filenameSuffix}.xlsx`, new Uint8Array(wbAttrArray), { binary: true });
+    // crée un workbook et renvoie un ArrayBuffer (type 'array')
+    private createWorkbookArray(rows: any[], sheetName: string): ArrayBuffer {
+        const ws = XLSX.utils.json_to_sheet(rows);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, sheetName);
+        return XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    }
 
-        const content = await zip.generateAsync({ type: 'blob' });
-        saveAs(content, `export_equipments_${filenameSuffix}.zip`);
+    // zipper et télécharger (utilise JSZip + file-saver)
+    private async zipAndDownload(files: { name: string; data: ArrayBuffer }[], zipName: string) {
+        try {
+            const zip = new JSZip();
+            files.forEach((f) => {
+                zip.file(f.name, new Uint8Array(f.data), { binary: true });
+            });
+            const content = await zip.generateAsync({ type: 'blob' });
+            saveAs(content, zipName);
+        } catch (err) {
+            console.error('Erreur export ZIP:', err);
+            this.messageService.add({ severity: 'error', summary: 'Erreur', detail: "Impossible de générer l'export.", life: 4000 });
+        }
     }
 
     private getFormatDate(): string {

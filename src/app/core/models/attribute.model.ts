@@ -2,9 +2,9 @@ export interface Attribute {
     id: string;
     specification: string;
     famille: string;
-    index: string;
+    indx: string;
     attributeName: string;
-    attributeValue: string;
+    value: string;
     code: string;
     description?: string;
     isCopyOT?: boolean;
