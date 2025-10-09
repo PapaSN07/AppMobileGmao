@@ -20,6 +20,7 @@ import { Tag } from 'primeng/tag';
 import { DatePipe } from '@angular/common';
 import { TextareaModule } from 'primeng/textarea';
 import { ConfirmDialog } from 'primeng/confirmdialog';
+import { FormsModule } from '@angular/forms';
 
 interface ExportColumn {
     title: string;
@@ -33,7 +34,7 @@ interface expandedRows {
 @Component({
     selector: 'app-equipment',
     standalone: true,
-    imports: [TableModule, ButtonModule, ToastModule, InputTextModule, DialogModule, InputIconModule, IconFieldModule, TabsModule, Tag, DatePipe, TextareaModule, Toast, ConfirmDialog],
+    imports: [TableModule, ButtonModule, ToastModule, InputTextModule, DialogModule, InputIconModule, IconFieldModule, TabsModule, Tag, DatePipe, TextareaModule, Toast, ConfirmDialog, FormsModule],
     templateUrl: './equipment.list.html',
     styleUrls: ['equipment.list.scss'],
     providers: [MessageService, ConfirmationService]
@@ -65,6 +66,16 @@ export class EquipmentList implements OnInit {
     detailsDialog: boolean = false;
 
     userConnected: User | null = this.authService.getUser();
+
+    // Propriétés pour le dialogue de rejet en masse
+    bulkRejectDialog: boolean = false;
+    bulkRejectEquipments: { equipment: Equipment; comment: string }[] = [];
+    bulkRejectType: 'add' | 'update' = 'add';
+    // Propriétés pour le dialogue de rejet individuel
+    singleRejectDialog: boolean = false;
+    singleRejectEquipment: Equipment | null = null;
+    singleRejectComment: string = '';
+    singleRejectType: 'add' | 'update' = 'add';
     // Fin équipements
 
     constructor(private equipmentService: EquipmentService, private messageService: MessageService, private confirmationService: ConfirmationService) {}
@@ -150,7 +161,7 @@ export class EquipmentList implements OnInit {
     // crée un workbook et renvoie un ArrayBuffer (type 'array')
     private createWorkbookArray(rows: any[], sheetName: string): ArrayBuffer {
         // Filtrer 'isLast' des lignes pour éviter qu'il apparaisse comme colonne
-        const filteredRows = rows.map(row => {
+        const filteredRows = rows.map((row) => {
             const { isLast, ...rest } = row;
             return rest;
         });
@@ -342,11 +353,13 @@ export class EquipmentList implements OnInit {
     }
 
     approveEquipmentNoApproved(equipment: Equipment) {
-        const updatedEquipment = { ...equipment, isApproved: true, isNew: false, judgedBy: this.userConnected?.username || 'unknown' };
+        const now = new Date();
+        const updatedEquipment = { ...equipment, isApproved: true, judgedBy: this.userConnected?.username || 'unknown', updatedAt: now };
         this.equipmentService.update(equipment.id!, updatedEquipment).subscribe({
             next: (data) => {
                 this.messageService.add({ severity: 'success', summary: 'Succès', detail: `Équipement ${equipment.code} approuvé`, life: 3000 });
                 this.loadDataNoApproved();
+                this.loadDataApproved();
             },
             error: (err) => {
                 this.messageService.add({ severity: 'error', summary: 'Erreur', detail: `Échec de l'approbation de l'équipement ${equipment.code}`, life: 3000 });
@@ -354,12 +367,14 @@ export class EquipmentList implements OnInit {
         });
     }
 
-    deniedEquipmentNoApproved(equipment: Equipment) {
-        const updatedEquipment = { ...equipment, isNew: false, judgedBy: this.userConnected?.username || 'unknown' };
+    deniedEquipmentNoApproved(equipment: Equipment, comment: string = '') {
+        const now = new Date();
+        const updatedEquipment = { ...equipment, isRejected: true, commentaire: comment, judgedBy: this.userConnected?.username || 'unknown', updatedAt: now };
         this.equipmentService.update(equipment.id!, updatedEquipment).subscribe({
             next: (data) => {
                 this.messageService.add({ severity: 'success', summary: 'Succès', detail: `Équipement ${equipment.code} rejeté`, life: 3000 });
                 this.loadDataNoApproved();
+                this.loadDataApproved();
             },
             error: (err) => {
                 this.messageService.add({ severity: 'error', summary: 'Erreur', detail: `Échec du rejet de l'équipement ${equipment.code}`, life: 3000 });
@@ -368,11 +383,13 @@ export class EquipmentList implements OnInit {
     }
 
     approveEquipmentNoModified(equipment: Equipment) {
-        const updatedEquipment = { ...equipment, isApproved: true, isNew: false, judgedBy: this.userConnected?.username || 'unknown' };
+        const now = new Date();
+        const updatedEquipment = { ...equipment, isApproved: true, judgedBy: this.userConnected?.username || 'unknown', updatedAt: now };
         this.equipmentService.update(equipment.id!, updatedEquipment).subscribe({
             next: (data) => {
                 this.messageService.add({ severity: 'success', summary: 'Succès', detail: `Équipement ${equipment.code} approuvé`, life: 3000 });
                 this.loadDataNoModified();
+                this.loadDataApproved();
             },
             error: (err) => {
                 this.messageService.add({ severity: 'error', summary: 'Erreur', detail: `Échec de l'approbation de l'équipement ${equipment.code}`, life: 3000 });
@@ -380,12 +397,14 @@ export class EquipmentList implements OnInit {
         });
     }
 
-    deniedEquipmentNoModified(equipment: Equipment) {
-        const updatedEquipment = { ...equipment, isUpdated: true, isNew: false, judgedBy: this.userConnected?.username || 'unknown' };
+    deniedEquipmentNoModified(equipment: Equipment, comment: string = '') {
+        const now = new Date();
+        const updatedEquipment = { ...equipment, isRejected: true, commentaire: comment, judgedBy: this.userConnected?.username || 'unknown', updatedAt: now };
         this.equipmentService.update(equipment.id!, updatedEquipment).subscribe({
             next: (data) => {
                 this.messageService.add({ severity: 'success', summary: 'Succès', detail: `Équipement ${equipment.code} rejeté`, life: 3000 });
                 this.loadDataNoModified();
+                this.loadDataApproved();
             },
             error: (err) => {
                 this.messageService.add({ severity: 'error', summary: 'Erreur', detail: `Échec du rejet de l'équipement ${equipment.code}`, life: 3000 });
@@ -418,28 +437,7 @@ export class EquipmentList implements OnInit {
     }
 
     confirm2(event: Event, equipment: Equipment) {
-        this.confirmationService.confirm({
-            header: 'Confirmation',
-            target: event.currentTarget as EventTarget,
-            message: 'Voulez-vous rejeter cet équipement 🤔?',
-            icon: 'pi pi-info-circle',
-            rejectButtonProps: {
-                label: 'Annuler',
-                severity: 'secondary',
-                outlined: true
-            },
-            acceptButtonProps: {
-                label: 'Rejeter',
-                severity: 'danger'
-            },
-            accept: () => {
-                this.messageService.add({ severity: 'info', summary: 'Confirmé', detail: 'Équipement rejeté', life: 3000 });
-                this.deniedEquipmentNoApproved(equipment);
-            },
-            reject: () => {
-                this.messageService.add({ severity: 'error', summary: 'Annulé', detail: 'Vous avez annulé la validation de cet équipement', life: 3000 });
-            }
-        });
+        this.openSingleRejectDialog(equipment, 'add');
     }
 
     // Ajoutez ces nouvelles méthodes pour les confirmations de modifications
@@ -468,28 +466,39 @@ export class EquipmentList implements OnInit {
     }
 
     confirm4(event: Event, equipment: Equipment) {
-        this.confirmationService.confirm({
-            header: 'Confirmation',
-            target: event.currentTarget as EventTarget,
-            message: 'Voulez-vous refuser cette modification 🤔?',
-            icon: 'pi pi-info-circle',
-            rejectButtonProps: {
-                label: 'Annuler',
-                severity: 'secondary',
-                outlined: true
-            },
-            acceptButtonProps: {
-                label: 'Refuser',
-                severity: 'danger'
-            },
-            accept: () => {
-                this.messageService.add({ severity: 'info', summary: 'Confirmé', detail: 'Modification refusée 🥳🎉', life: 3000 });
-                this.deniedEquipmentNoModified(equipment);
-            },
-            reject: () => {
-                this.messageService.add({ severity: 'error', summary: 'Rejeté', detail: 'Vous avez rejeté la modification de cet équipement 🥲🥲🥲', life: 3000 });
-            }
-        });
+        this.openSingleRejectDialog(equipment, 'update');
+    }
+
+    // Ouvrir le dialogue de rejet individuel
+    private openSingleRejectDialog(equipment: Equipment, type: 'add' | 'update') {
+        this.singleRejectEquipment = equipment;
+        this.singleRejectType = type;
+        this.singleRejectComment = '';
+        this.singleRejectDialog = true;
+    }
+
+    // Soumettre le rejet individuel
+    submitSingleReject() {
+        if (!this.singleRejectEquipment) return;
+        const comment = this.singleRejectComment || '';
+        if (this.singleRejectType === 'add') {
+            this.messageService.add({ severity: 'info', summary: 'Rejet en cours', detail: `Rejet de l'équipement ${this.singleRejectEquipment.code} en cours...`, life: 3000 });
+            this.deniedEquipmentNoApproved(this.singleRejectEquipment, comment);
+        } else {
+            this.messageService.add({ severity: 'info', summary: 'Rejet en cours', detail: `Rejet de l'équipement ${this.singleRejectEquipment.code} en cours...`, life: 3000 });
+            this.deniedEquipmentNoModified(this.singleRejectEquipment, comment);
+        }
+        this.singleRejectDialog = false;
+        this.singleRejectEquipment = null;
+        this.singleRejectComment = '';
+    }
+
+    // Annuler le rejet individuel
+    cancelSingleReject() {
+        this.messageService.add({ severity: 'info', summary: 'Annulé', detail: 'Rejet annulé.', life: 3000 });
+        this.singleRejectDialog = false;
+        this.singleRejectEquipment = null;
+        this.singleRejectComment = '';
     }
 
     // Ouvrir modal détails
@@ -567,26 +576,10 @@ export class EquipmentList implements OnInit {
             return;
         }
 
-        this.confirmationService.confirm({
-            message: `Êtes-vous sûr de vouloir rejeter ${this.selectedEquipmentsNoApproved.length} équipement(s) ajouté(s) ?`,
-            header: 'Confirmation de rejet en masse',
-            icon: 'pi pi-exclamation-triangle',
-            rejectButtonProps: {
-                label: 'Annuler',
-                severity: 'secondary',
-                outlined: true
-            },
-            acceptButtonProps: {
-                label: 'Enregistrer',
-                severity: 'danger'
-            },
-            accept: () => {
-                this.rejectMultipleEquipments(this.selectedEquipmentsNoApproved!, 'add');
-            },
-            reject: () => {
-                this.messageService.add({ severity: 'info', summary: 'Annulé', detail: 'Rejet annulé.', life: 3000 });
-            }
-        });
+        // Ouvrir le dialogue de rejet en masse
+        this.bulkRejectEquipments = this.selectedEquipmentsNoApproved.map((e) => ({ equipment: e, comment: '' }));
+        this.bulkRejectType = 'add';
+        this.bulkRejectDialog = true;
     }
 
     // Rejet en masse pour modifications
@@ -596,36 +589,35 @@ export class EquipmentList implements OnInit {
             return;
         }
 
-        this.confirmationService.confirm({
-            message: `Êtes-vous sûr de vouloir rejeter ${this.selectedEquipmentsNoModified.length} modification(s) d'équipement(s) ?`,
-            header: 'Confirmation de rejet en masse',
-            icon: 'pi pi-exclamation-triangle',
-            rejectButtonProps: {
-                label: 'Annuler',
-                severity: 'secondary',
-                outlined: true
-            },
-            acceptButtonProps: {
-                label: 'Enregistrer',
-                severity: 'danger'
-            },
-            accept: () => {
-                this.rejectMultipleEquipments(this.selectedEquipmentsNoModified!, 'update');
-            },
-            reject: () => {
-                this.messageService.add({ severity: 'info', summary: 'Annulé', detail: 'Rejet annulé.', life: 3000 });
-            }
-        });
+        // Ouvrir le dialogue de rejet en masse
+        this.bulkRejectEquipments = this.selectedEquipmentsNoModified.map((e) => ({ equipment: e, comment: '' }));
+        this.bulkRejectType = 'update';
+        this.bulkRejectDialog = true;
+    }
+
+    // Soumettre le rejet en masse
+    submitBulkReject() {
+        this.rejectMultipleEquipments(
+            this.bulkRejectEquipments.map((item) => item.equipment),
+            this.bulkRejectType,
+            this.bulkRejectEquipments.map((item) => item.comment)
+        );
+        this.bulkRejectDialog = false;
+        this.bulkRejectEquipments = [];
+    }
+
+    // Annuler le rejet en masse
+    cancelBulkReject() {
+        this.messageService.add({ severity: 'info', summary: 'Annulé', detail: 'Rejet en masse annulé.', life: 3000 });
+        this.bulkRejectDialog = false;
+        this.bulkRejectEquipments = [];
     }
 
     // Implementation du rejet en masse (réutilise firstValueFrom)
-    private rejectMultipleEquipments(equipments: Equipment[], type: 'add' | 'update') {
-        const updatePromises = equipments.map((equipment) => {
-            let updatedEquipment: any = { ...equipment, isNew: false, judgedBy: this.userConnected?.username || 'unknown' };
-            if (type === 'update') {
-                // respecter la logique utilisée dans deniedEquipmentNoModified
-                updatedEquipment = { ...updatedEquipment, isUpdated: true };
-            }
+    private rejectMultipleEquipments(equipments: Equipment[], type: 'add' | 'update', comments: string[] = []) {
+        const now = new Date();
+        const updatePromises = equipments.map((equipment, index) => {
+            let updatedEquipment: any = { ...equipment, isRejected: true, commentaire: comments[index] || '', judgedBy: this.userConnected?.username || 'unknown', updatedAt: now };
             return firstValueFrom(this.equipmentService.update(equipment.id!, updatedEquipment));
         });
 
@@ -638,6 +630,7 @@ export class EquipmentList implements OnInit {
                 this.selectedEquipmentsExport = [];
                 this.loadDataNoApproved();
                 this.loadDataNoModified();
+                this.loadDataApproved();
             })
             .catch((err) => {
                 this.messageService.add({ severity: 'error', summary: 'Erreur', detail: 'Une erreur est survenue lors du rejet en masse.', life: 3000 });
@@ -646,11 +639,9 @@ export class EquipmentList implements OnInit {
     }
 
     private approveMultipleEquipments(equipments: Equipment[], type: 'add' | 'update') {
+        const now = new Date();
         const updatePromises = equipments.map((equipment) => {
-            const updatedEquipment = { ...equipment, isApproved: true, isNew: false, judgedBy: this.userConnected?.username || 'unknown' };
-            if (type === 'update') {
-                updatedEquipment.isUpdate = false;
-            }
+            const updatedEquipment = { ...equipment, isApproved: true, judgedBy: this.userConnected?.username || 'unknown', updatedAt: now };
             return firstValueFrom(this.equipmentService.update(equipment.id!, updatedEquipment));
         });
 
@@ -663,6 +654,7 @@ export class EquipmentList implements OnInit {
                 this.selectedEquipmentsExport = [];
                 this.loadDataNoApproved();
                 this.loadDataNoModified();
+                this.loadDataApproved();
             })
             .catch((err) => {
                 this.messageService.add({ severity: 'error', summary: 'Erreur', detail: "Une erreur est survenue lors de l'approbation en masse.", life: 3000 });

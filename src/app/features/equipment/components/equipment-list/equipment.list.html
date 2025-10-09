@@ -253,6 +253,50 @@
                             <p-button label="Fermer" icon="pi pi-times" text (click)="hideDetails()" />
                         </ng-template>
                     </p-dialog>
+
+                    <p-dialog [(visible)]="bulkRejectDialog" [modal]="true" [style]="{ width: '800px' }" header="Rejet en masse - Commentaires" [draggable]="false" [resizable]="false">
+                        <ng-template pTemplate="content">
+                            <div class="p-4">
+                                <p-table [value]="bulkRejectEquipments" dataKey="equipment.id" [tableStyle]="{ 'min-width': '60rem' }">
+                                    <ng-template #header>
+                                        <tr>
+                                            <th>Code Équipement</th>
+                                            <th>Description</th>
+                                            <th>Commentaire de rejet</th>
+                                        </tr>
+                                    </ng-template>
+                                    <ng-template #body let-item>
+                                        <tr>
+                                            <td>{{ item.equipment.code }}</td>
+                                            <td>{{ item.equipment.description }}</td>
+                                            <td>
+                                                <textarea pTextarea [(ngModel)]="item.comment" rows="2" placeholder="Motif du rejet (optionnel)"></textarea>
+                                            </td>
+                                        </tr>
+                                    </ng-template>
+                                </p-table>
+                            </div>
+                        </ng-template>
+
+                        <ng-template pTemplate="footer">
+                            <p-button label="Annuler" icon="pi pi-times" text (click)="cancelBulkReject()" />
+                            <p-button label="Rejeter" icon="pi pi-times" severity="danger" (click)="submitBulkReject()" />
+                        </ng-template>
+                    </p-dialog>
+
+                    <p-dialog [(visible)]="singleRejectDialog" [modal]="true" [style]="{ width: '500px' }" header="Motif du rejet" [draggable]="false" [resizable]="false">
+                        <ng-template pTemplate="content">
+                            <div class="p-4">
+                                <label for="singleRejectComment" class="block font-bold mb-2">Commentaire (optionnel)</label>
+                                <textarea pTextarea id="singleRejectComment" [(ngModel)]="singleRejectComment" rows="4" placeholder="Saisissez le motif du rejet..." class="w-full"></textarea>
+                            </div>
+                        </ng-template>
+
+                        <ng-template pTemplate="footer">
+                            <p-button label="Annuler" icon="pi pi-times" text (click)="cancelSingleReject()" />
+                            <p-button label="Rejeter" icon="pi pi-times" severity="danger" (click)="submitSingleReject()" />
+                        </ng-template>
+                    </p-dialog>
                 </div>
             </div>
         </p-tabpanel>
@@ -501,6 +545,50 @@
                             <p-button label="Fermer" icon="pi pi-times" text (click)="hideDetails()" />
                         </ng-template>
                     </p-dialog>
+
+                    <p-dialog [(visible)]="bulkRejectDialog" [modal]="true" [style]="{ width: '800px' }" header="Rejet en masse - Commentaires" [draggable]="false" [resizable]="false">
+                        <ng-template pTemplate="content">
+                            <div class="p-4">
+                                <p-table [value]="bulkRejectEquipments" dataKey="equipment.id" [tableStyle]="{ 'min-width': '60rem' }">
+                                    <ng-template #header>
+                                        <tr>
+                                            <th>Code Équipement</th>
+                                            <th>Description</th>
+                                            <th>Commentaire de rejet</th>
+                                        </tr>
+                                    </ng-template>
+                                    <ng-template #body let-item>
+                                        <tr>
+                                            <td>{{ item.equipment.code }}</td>
+                                            <td>{{ item.equipment.description }}</td>
+                                            <td>
+                                                <textarea pTextarea [(ngModel)]="item.comment" rows="2" placeholder="Motif du rejet (optionnel)"></textarea>
+                                            </td>
+                                        </tr>
+                                    </ng-template>
+                                </p-table>
+                            </div>
+                        </ng-template>
+
+                        <ng-template pTemplate="footer">
+                            <p-button label="Annuler" icon="pi pi-times" text (click)="cancelBulkReject()" />
+                            <p-button label="Rejeter" icon="pi pi-times" severity="danger" (click)="submitBulkReject()" />
+                        </ng-template>
+                    </p-dialog>
+
+                    <p-dialog [(visible)]="singleRejectDialog" [modal]="true" [style]="{ width: '500px' }" header="Motif du rejet" [draggable]="false" [resizable]="false">
+                        <ng-template pTemplate="content">
+                            <div class="p-4">
+                                <label for="singleRejectComment" class="block font-bold mb-2">Commentaire (optionnel)</label>
+                                <textarea pTextarea id="singleRejectComment" [(ngModel)]="singleRejectComment" rows="4" placeholder="Saisissez le motif du rejet..." class="w-full"></textarea>
+                            </div>
+                        </ng-template>
+
+                        <ng-template pTemplate="footer">
+                            <p-button label="Annuler" icon="pi pi-times" text (click)="cancelSingleReject()" />
+                            <p-button label="Rejeter" icon="pi pi-times" severity="danger" (click)="submitSingleReject()" />
+                        </ng-template>
+                    </p-dialog>
                 </div>
             </div>
         </p-tabpanel>
@@ -533,7 +621,7 @@
                                     <p-inputicon>
                                         <i class="pi pi-search"></i>
                                     </p-inputicon>
-                                    <input pInputText type="text" (input)="dt2.filterGlobal($event.target.value, 'contains')" placeholder="Search keyword" />
+                                    <input pInputText type="text" (input)="dt3.filterGlobal($event.target.value, 'contains')" placeholder="Search keyword" />
                                 </p-iconfield>
                             </div>
                         </ng-template>

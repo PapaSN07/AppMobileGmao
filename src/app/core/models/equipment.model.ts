@@ -20,7 +20,9 @@ export interface Equipment {
     isUpdate?: boolean;
     isNew?: boolean;
     isApproved?: boolean;
+    isRejected?: boolean;
     attributes?: Attribute[];
+    commentaire?: string;
 }
 
 export interface EquipmentResponse {

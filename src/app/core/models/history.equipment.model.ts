@@ -21,4 +21,5 @@ export interface EquipmentHistory {
     isUpdate?: boolean;
     isNew?: boolean;
     isApproved?: boolean;
+    isRejected?: boolean;
 }

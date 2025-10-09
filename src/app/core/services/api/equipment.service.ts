@@ -19,13 +19,13 @@ export class EquipmentService {
 
     getAllNoApproved(): Observable<Equipment[]> {
         return this.getAll().pipe(
-            map(equipments => equipments.filter(equipment => !equipment.isApproved && equipment.isNew))
+            map(equipments => equipments.filter(equipment => equipment.isNew && !equipment.isApproved && !equipment.isRejected))
         );
     }
 
     getAllNoModified(): Observable<Equipment[]> {
         return this.getAll().pipe(
-            map(equipments => equipments.filter(equipment => !equipment.isApproved && equipment.isUpdate))
+            map(equipments => equipments.filter(equipment => equipment.isUpdate && !equipment.isApproved && !equipment.isRejected))
         );
     }
 
