@@ -738,3 +738,45 @@ def archive_equipments(equipment_ids: List[str]) -> tuple[bool, str, int, List[s
     except Exception as e:
         logger.error(f"❌ Erreur globale archivage équipements: {e}", exc_info=True)
         return (False, f"Erreur interne: {str(e)}", archived_count, failed_ids)
+    
+
+def get_all_equipment_histories() -> List[Dict[str, Any]]:
+    """
+    Récupère tous les historiques d'équipements, y compris leurs attributs.
+    Retourne une liste de dictionnaires avec chaque historique et ses attributs associés.
+    """
+    logger.info("🔍 Récupération de tous les historiques d'équipements")
+
+    try:
+        with get_temp_session() as session:
+            # 1) Récupérer tous les historiques d'équipement
+            history_equipments = session.query(HistoryEquipmentClicClac).order_by(
+                HistoryEquipmentClicClac.date_history_created_at.desc()
+            ).all()
+            
+            if not history_equipments:
+                logger.info("Aucun historique trouvé")
+                return []
+            
+            history_list = []
+            
+            # 2) Pour chaque historique d'équipement, récupérer ses attributs
+            for hist_eq in history_equipments:
+                # Récupérer les attributs associés
+                attributes = session.query(HistoryAttributeClicClac).filter(
+                    HistoryAttributeClicClac.history_id == hist_eq.id
+                ).all()
+                
+                # Convertir en dict
+                hist_dict = hist_eq.to_dict()
+                hist_dict['attributes'] = [attr.to_dict() for attr in attributes]
+                
+                history_list.append(hist_dict)
+                logger.debug(f"Historique {hist_eq.id} récupéré avec {len(attributes)} attributs")
+            
+            logger.info(f"✅ {len(history_list)} historiques récupérés")
+            return history_list
+    
+    except Exception as e:
+        logger.error(f"❌ Erreur récupération tous les historiques: {e}")
+        return []

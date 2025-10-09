@@ -2,9 +2,9 @@ import logging
 
 from fastapi import APIRouter
 
-from app.services.equipment_service import archive_equipments, get_all_equipment_web, update_equipment_existing
+from app.services.equipment_service import archive_equipments, get_all_equipment_histories, get_all_equipment_web, update_equipment_existing
 from app.schemas.requests.equipment_request import ArchiveEquipmentRequest, UpdateEquipmentRequest 
-from app.schemas.responses.equipment_response import ArchiveEquipmentResponse, UpdateEquipmentResponse
+from app.schemas.responses.equipment_response import AllEquipmentHistoriesResponse, ArchiveEquipmentResponse, UpdateEquipmentResponse
 
 
 logger = logging.getLogger(__name__)
@@ -108,4 +108,28 @@ async def archive_equipments_endpoint(request: ArchiveEquipmentRequest):
             archived_count=0,
             error_code="INTERNAL_ERROR",
             failed_ids=None
+        )
+
+@equipment_router_web.get("/history",
+    summary="Liste des historiques d'équipements",
+    description="Récupère tous les historiques d'archivage d'équipements, y compris leurs attributs",
+)
+async def get_all_equipment_histories_endpoint():
+    """Récupère tous les historiques d'équipements"""
+    try:
+        histories = get_all_equipment_histories()
+        
+        return AllEquipmentHistoriesResponse(
+            data=histories,
+            count=len(histories),
+            status="success",
+            message=f"{len(histories)} historiques trouvés" if histories else "Aucun historique trouvé"
+        )
+    except Exception as e:
+        logger.error(f"❌ Erreur récupération tous les historiques: {e}")
+        return AllEquipmentHistoriesResponse(
+            data=[],
+            count=0,
+            status="error",
+            message=f"Erreur interne: {str(e)}"
         )

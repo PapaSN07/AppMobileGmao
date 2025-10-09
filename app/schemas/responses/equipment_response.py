@@ -96,3 +96,13 @@ class ArchiveEquipmentResponse(BaseModel):
     archived_count: int = Field(..., description="Nombre d'équipements archivés")
     error_code: Optional[str] = Field(None, description="Code d'erreur si échec")
     failed_ids: Optional[List[str]] = Field(None, description="Liste des IDs qui ont échoué (si partiellement réussi)")
+    
+class AllEquipmentHistoriesResponse(BaseModel):
+    """Réponse pour la liste de tous les historiques d'équipements"""
+    data: List[Dict[str, Any]] = Field(..., description="Liste de tous les historiques avec attributs")
+    count: int = Field(..., description="Nombre total d'historiques")
+    status: str = Field("success", description="Statut de la réponse")
+    message: str = Field("", description="Message de la réponse")
+
+    class Config:
+        from_attributes = True

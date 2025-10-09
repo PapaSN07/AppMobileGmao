@@ -638,25 +638,32 @@ class HistoryAttributeClicClac(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     history_id = Column(Integer, ForeignKey('dbo.history_equipment.id', ondelete='CASCADE'), nullable=False, index=True)
-    attribute_id = Column(Integer, nullable=True, index=True)
+    specification = Column(String(255), nullable=False, index=True)
+    famille = Column(String(255), nullable=False, index=True)
+    indx = Column(Integer, nullable=True, index=True)
     attribute_name = Column(String(255), nullable=True)
     value = Column(Text, nullable=True)
     code = Column(String(255), nullable=True)
     description = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=func.now(), nullable=False)
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
+    is_copy_ot = Column(Boolean, default=False)
+    created_at = Column(DateTime, nullable=False)
+    updated_at = Column(DateTime, nullable=False)
+    date_history_created_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
     
     def to_dict(self) -> Dict[str, Any]:
         return {
             'id': str(self.id) if self.id is not None else None,
             'history_id': str(self.history_id) if self.history_id is not None else None,
-            'attribute_id': str(self.attribute_id) if self.attribute_id is not None else None,
+            'specification': self.specification,
+            'famille': self.famille,
+            'indx': str(self.indx) if self.indx is not None else None,
             'attribute_name': self.attribute_name,
             'value': self.value,
             'code': self.code,
             'description': self.description,
             'created_at': self.created_at.isoformat() if self.created_at is not None else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at is not None else None
+            'updated_at': self.updated_at.isoformat() if self.updated_at is not None else None,
+            'date_history_created_at': self.date_history_created_at.isoformat() if self.date_history_created_at is not None else None
         }
 
 class UserClicClac(Base):
