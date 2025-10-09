@@ -4,7 +4,7 @@ import logging
 
 from pydantic import ValidationError
 
-from app.models.models import EquipmentCliClac
+from app.models.models import EquipmentClicClac
 from app.schemas.responses.equipment_response import (
     AttributeResponse, 
     AttributeValueResponse, 
@@ -87,7 +87,7 @@ async def add_equipment_mobile(request: AddEquipmentRequest) -> Dict[str, Any]:
                 attributes_converted.append(attr_dict)
         
         # Créer EquipmentModel avec les bons attributs
-        equipment = EquipmentCliClac(
+        equipment = EquipmentClicClac(
             # Les attributs correspondent aux colonnes SQLAlchemy
             code=data.get('code', ''),
             code_parent=data.get('code_parent', ''),

@@ -468,7 +468,7 @@ class EquipmentWithAttributesBuilder:
 
 # ✅ NOUVEAU: Modèles pour l'historique des modifications pour Clic Clac
 
-class AttributeCliClac(Base):
+class AttributeClicClac(Base):
     __tablename__ = "attribute"
     __table_args__ = {'schema': 'dbo'}
 
@@ -499,7 +499,7 @@ class AttributeCliClac(Base):
             'updated_at': self.updated_at.isoformat() if self.updated_at is not None else None
         }
 
-class EquipmentCliClac(Base):
+class EquipmentClicClac(Base):
     __tablename__ = "equipment"
     __table_args__ = {'schema': 'dbo'}
 
@@ -535,7 +535,7 @@ class EquipmentCliClac(Base):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         # Attributs Python pour données jointes (pas des colonnes DB)
-        self.attributes: List[AttributeCliClac] = []
+        self.attributes: List[AttributeClicClac] = []
 
     def to_dict_SDDV(self) -> Dict[str, Any]:
         return {
@@ -563,14 +563,14 @@ class EquipmentCliClac(Base):
             'commentaire': self.commentaire
         }
     
-class HistoryEquipmentCliClac(Base):
+class HistoryEquipmentClicClac(Base):
     __tablename__ = "history_equipment"
     __table_args__ = {'schema': 'dbo'}
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     commentaire = Column(String(255), nullable=True)
     date_history_created_at = Column(DateTime, default=func.now(), nullable=False)
-    equipment_id = Column(Integer, ForeignKey('dbo.equipment.id', ondelete='CASCADE'), nullable=False, index=True)
+    equipment_id = Column(Integer, nullable=True, index=True)
     code_parent = Column(String(255), nullable=True)
     code = Column(String(255), nullable=True)
     famille = Column(String(255), nullable=True)
@@ -632,13 +632,13 @@ class HistoryEquipmentCliClac(Base):
             'is_rejected': self.is_rejected
         }
 
-class HistoryAttributeCliClac(Base):
+class HistoryAttributeClicClac(Base):
     __tablename__ = "history_attribute"
     __table_args__ = {'schema': 'dbo'}
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    history_id = Column(Integer, ForeignKey('dbo.history.id', ondelete='CASCADE'), nullable=False, index=True)
-    attribute_id = Column(Integer, ForeignKey('dbo.attribute.id', ondelete='NO ACTION'), nullable=False, index=True)
+    history_id = Column(Integer, ForeignKey('dbo.history_equipment.id', ondelete='CASCADE'), nullable=False, index=True)
+    attribute_id = Column(Integer, nullable=True, index=True)
     attribute_name = Column(String(255), nullable=True)
     value = Column(Text, nullable=True)
     code = Column(String(255), nullable=True)
@@ -659,7 +659,7 @@ class HistoryAttributeCliClac(Base):
             'updated_at': self.updated_at.isoformat() if self.updated_at is not None else None
         }
 
-class UserCliClac(Base):
+class UserClicClac(Base):
     __tablename__ = "users"
     __table_args__ = {'schema': 'dbo'}
 

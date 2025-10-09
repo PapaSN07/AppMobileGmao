@@ -1,7 +1,7 @@
 from sqlalchemy import cast
 from app.db.sqlalchemy.session import get_main_session, get_temp_session, SQLAlchemyQueryExecutor
 from app.core.config import CACHE_TTL_SHORT
-from app.models.models import (AttributeCliClac, EquipmentCliClac, EquipmentModel, EquipmentWithAttributesBuilder, AttributeValues)
+from app.models.models import (AttributeClicClac, EquipmentClicClac, EquipmentModel, EquipmentWithAttributesBuilder, AttributeValues, HistoryAttributeClicClac, HistoryEquipmentClicClac)
 from app.db.requests import (ATTRIBUTE_VALUES_QUERY, EQUIPMENT_BY_ID_QUERY, EQUIPMENT_CLASSE_ATTRIBUTS_QUERY, EQUIPMENT_INFINITE_QUERY, FEEDER_QUERY)
 from app.core.cache import cache, invalidate_equipment_insertion_cache
 from typing import Dict, Any, List, Optional
@@ -237,10 +237,10 @@ def get_equipment_by_id(equipment_id: str) -> Optional[EquipmentModel]:
 
 def update_equipment_partial(equipment_id: str, updates: Dict[str, Any]) -> tuple[bool, Optional[int]]:
     """
-    Crée un nouvel équipement dans la DB temporaire MSSQL (CliClac) avec les mises à jour fournies.
-    S'inspire de insert_equipment pour utiliser EquipmentCliClac et AttributeCliClac.
+    Crée un nouvel équipement dans la DB temporaire MSSQL (ClicClac) avec les mises à jour fournies.
+    S'inspire de insert_equipment pour utiliser EquipmentClicClac et AttributeClicClac.
     """
-    logger.info(f"🔧 Création équipement mis à jour CliClac MSSQL depuis {equipment_id}")
+    logger.info(f"🔧 Création équipement mis à jour ClicClac MSSQL depuis {equipment_id}")
 
     try:
         # Validation préalable : vérifier que les champs essentiels sont présents dans updates
@@ -255,17 +255,17 @@ def update_equipment_partial(equipment_id: str, updates: Dict[str, Any]) -> tupl
         # Utiliser SQLAlchemy session temporaire (MSSQL)
         with get_temp_session() as session:
             try:
-                # 1) Vérifier que l'équipement n'existe pas déjà dans CliClac (par code)
-                existing_equipment = session.query(EquipmentCliClac).filter_by(
+                # 1) Vérifier que l'équipement n'existe pas déjà dans ClicClac (par code)
+                existing_equipment = session.query(EquipmentClicClac).filter_by(
                     code=updates['code']
                 ).first()
                 
                 if existing_equipment:
-                    logger.error(f"Équipement avec le code {updates['code']} existe déjà dans CliClac")
+                    logger.error(f"Équipement avec le code {updates['code']} existe déjà dans ClicClac")
                     return (False, None)
 
-                # 2) Créer l'équipement CliClac avec les données mises à jour
-                new_equipment = EquipmentCliClac(
+                # 2) Créer l'équipement ClicClac avec les données mises à jour
+                new_equipment = EquipmentClicClac(
                     code=updates.get('code', ''),
                     code_parent=updates.get('code_parent', ''),
                     famille=updates.get('famille', ''),
@@ -295,7 +295,7 @@ def update_equipment_partial(equipment_id: str, updates: Dict[str, Any]) -> tupl
                 session.flush()  # Pour obtenir l'ID auto-généré
 
                 equipment_id_new = int(new_equipment.id) if new_equipment.id is not None else None # type: ignore
-                logger.info(f"1) Équipement mis à jour {equipment_id_new} - {new_equipment.code} créé dans CliClac")
+                logger.info(f"1) Équipement mis à jour {equipment_id_new} - {new_equipment.code} créé dans ClicClac")
 
                 # 3) Créer les attributs si fournis dans updates
                 attributes_data = updates.get('attributs', [])
@@ -304,7 +304,7 @@ def update_equipment_partial(equipment_id: str, updates: Dict[str, Any]) -> tupl
                 if attributes_data:
                     for attr_data in attributes_data:
                         try:
-                            new_attribute = AttributeCliClac(
+                            new_attribute = AttributeClicClac(
                                 specification=attr_data.get('specification', ''),
                                 famille=updates['famille'],
                                 indx=int(attr_data.get('index', 0)),
@@ -325,10 +325,10 @@ def update_equipment_partial(equipment_id: str, updates: Dict[str, Any]) -> tupl
 
                 # 4) Commit final
                 session.commit()
-                logger.info(f"✅ Équipement mis à jour CliClac ID: {equipment_id_new} - Code: {updates['code']} créé avec succès")
+                logger.info(f"✅ Équipement mis à jour ClicClac ID: {equipment_id_new} - Code: {updates['code']} créé avec succès")
                 logger.info(f"✅ {created_attributes} attributs créés")
 
-                # Invalider le cache (si applicable pour CliClac)
+                # Invalider le cache (si applicable pour ClicClac)
                 invalidate_equipment_insertion_cache(
                     str(updates['code']), 
                     str(updates.get('entity', '')), 
@@ -338,7 +338,7 @@ def update_equipment_partial(equipment_id: str, updates: Dict[str, Any]) -> tupl
                 return (True, equipment_id_new)
 
             except Exception as e:
-                logger.error(f"Erreur lors de la création équipement mis à jour CliClac: {e}")
+                logger.error(f"Erreur lors de la création équipement mis à jour ClicClac: {e}")
                 session.rollback()
                 return (False, None)
 
@@ -349,20 +349,20 @@ def update_equipment_partial(equipment_id: str, updates: Dict[str, Any]) -> tupl
 
 def update_equipment_existing(equipment_id: str, updates: Dict[str, Any]) -> tuple[bool, Optional[str]]:
     """
-    Met à jour un équipement existant dans la DB temporaire MSSQL (CliClac) avec PATCH.
+    Met à jour un équipement existant dans la DB temporaire MSSQL (ClicClac) avec PATCH.
     Ne change que les champs qui ont réellement changé.
     Met à jour les attributs fournis (liste complète supposée).
     """
-    logger.info(f"🔧 Mise à jour PATCH équipement CliClac MSSQL ID: {equipment_id}")
+    logger.info(f"🔧 Mise à jour PATCH équipement ClicClac MSSQL ID: {equipment_id}")
 
     try:
         # Utiliser SQLAlchemy session temporaire (MSSQL)
         with get_temp_session() as session:
             # 1) Récupérer l'équipement existant
-            existing_equipment = session.query(EquipmentCliClac).filter(EquipmentCliClac.id == equipment_id).first()
+            existing_equipment = session.query(EquipmentClicClac).filter(EquipmentClicClac.id == equipment_id).first()
             
             if not existing_equipment:
-                logger.error(f"Équipement avec ID {equipment_id} introuvable dans CliClac")
+                logger.error(f"Équipement avec ID {equipment_id} introuvable dans ClicClac")
                 return (False, "Équipement introuvable")
 
             # 2) Mapper les clés camelCase vers snake_case pour correspondre au modèle
@@ -406,12 +406,12 @@ def update_equipment_existing(equipment_id: str, updates: Dict[str, Any]) -> tup
             attributes_data = updates.get('attributes', [])
             if attributes_data:
                 # Supprimer les anciens attributs pour cet équipement (pour simplifier, ou comparer IDs)
-                session.query(AttributeCliClac).filter(AttributeCliClac.code == existing_equipment.code).delete()
+                session.query(AttributeClicClac).filter(AttributeClicClac.code == existing_equipment.code).delete()
                 
                 # Ajouter les nouveaux attributs
                 for attr_data in attributes_data:
                     try:
-                        new_attribute = AttributeCliClac(
+                        new_attribute = AttributeClicClac(
                             specification=attr_data.get('specification', ''),
                             famille=existing_equipment.famille,
                             indx=int(attr_data.get('indx', 0)),
@@ -495,12 +495,12 @@ def get_equipment_attributes_by_code(equipment_code: str) -> List[Dict[str, Any]
         return []
 
 
-def insert_equipment(equipment: EquipmentCliClac) -> tuple[bool, Optional[int]]:
+def insert_equipment(equipment: EquipmentClicClac) -> tuple[bool, Optional[int]]:
     """
-    Insère un nouvel équipement dans la DB temporaire MSSQL (CliClac).
-    Structure différente : utilise EquipmentCliClac et AttributeCliClac
+    Insère un nouvel équipement dans la DB temporaire MSSQL (ClicClac).
+    Structure différente : utilise EquipmentClicClac et AttributeClicClac
     """
-    logger.info(f"🔧 Insertion équipement CliClac MSSQL: {equipment.code}")
+    logger.info(f"🔧 Insertion équipement ClicClac MSSQL: {equipment.code}")
     
     try:
         # Validation préalable
@@ -516,7 +516,7 @@ def insert_equipment(equipment: EquipmentCliClac) -> tuple[bool, Optional[int]]:
         with get_temp_session() as session:
             try:
                 # 1) Vérifier que l'équipement n'existe pas déjà
-                existing_equipment = session.query(EquipmentCliClac).filter_by(
+                existing_equipment = session.query(EquipmentClicClac).filter_by(
                     code=equipment.code
                 ).first()
                 
@@ -524,8 +524,8 @@ def insert_equipment(equipment: EquipmentCliClac) -> tuple[bool, Optional[int]]:
                     logger.error(f"Équipement avec le code {equipment.code} existe déjà")
                     return (False, None)
 
-                # 2) Créer l'équipement CliClac
-                new_equipment = EquipmentCliClac(
+                # 2) Créer l'équipement ClicClac
+                new_equipment = EquipmentClicClac(
                     code=equipment.code,
                     code_parent=equipment.code_parent,
                     famille=equipment.famille,
@@ -566,7 +566,7 @@ def insert_equipment(equipment: EquipmentCliClac) -> tuple[bool, Optional[int]]:
                     for attr_data in attributes_data:
                         try:
                             # ✅ CORRECTION: Utiliser 'attribute_name' au lieu de 'name'
-                            new_attribute = AttributeCliClac(
+                            new_attribute = AttributeClicClac(
                                 specification=attr_data.get('specification', ''),
                                 famille=equipment.famille,
                                 indx=int(attr_data.get('index', 0)),  # ✅ 'index' depuis le request
@@ -588,7 +588,7 @@ def insert_equipment(equipment: EquipmentCliClac) -> tuple[bool, Optional[int]]:
                 # 4) Commit final
                 session.commit()
                 # ✅ CORRECTION: Utiliser equipment.code au lieu de equipment['code']
-                logger.info(f"✅ Équipement CliClac ID: {equipment_id} - Code: {equipment.code} inséré avec succès")
+                logger.info(f"✅ Équipement ClicClac ID: {equipment_id} - Code: {equipment.code} inséré avec succès")
                 logger.info(f"✅ {created_attributes} attributs créés")
 
                 # Invalider le cache
@@ -601,7 +601,7 @@ def insert_equipment(equipment: EquipmentCliClac) -> tuple[bool, Optional[int]]:
                 return (True, equipment_id)
 
             except Exception as e:
-                logger.error(f"Erreur lors de l'insertion équipement CliClac: {e}")
+                logger.error(f"Erreur lors de l'insertion équipement ClicClac: {e}")
                 session.rollback()
                 return (False, None)
 
@@ -615,11 +615,11 @@ def get_all_equipment_web() -> Dict[str, Any]:
     try:
         # Utiliser SQLAlchemy session
         with get_temp_session() as session:
-            equipments = session.query(EquipmentCliClac).all()
+            equipments = session.query(EquipmentClicClac).all()
             
             equipments_formatted = []
             for r in equipments:
-                attr = session.query(AttributeCliClac).filter_by(code=r.code).all()
+                attr = session.query(AttributeClicClac).filter_by(code=r.code).all()
                 setattr(r, 'attributes', attr)
                 equipments_formatted.append(r.to_dict_SDDV())
 
@@ -628,3 +628,113 @@ def get_all_equipment_web() -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"❌ Erreur récupération tous équipements web: {e}")
         return {"equipments": [], "count": 0}
+
+
+def archive_equipments(equipment_ids: List[str]) -> tuple[bool, str, int, List[str]]:
+    """
+    Archive les équipements spécifiés de la DB temporaire MSSQL (ClicClac) vers l'historique.
+    Pour chaque équipement :
+    - Récupère l'équipement et ses attributs.
+    - Insère dans HistoryEquipmentClicClac et HistoryAttributeClicClac.
+    - Supprime de EquipmentClicClac et AttributeClicClac.
+    Retourne : (success, message, archived_count, failed_ids)
+    """
+    logger.info(f"🔧 Archivage équipements ClicClac MSSQL IDs: {equipment_ids}")
+
+    archived_count = 0
+    failed_ids = []
+
+    try:
+        with get_temp_session() as session:
+            for equipment_id in equipment_ids:
+                try:
+                    # 1) Récupérer l'équipement existant
+                    equipment = session.query(EquipmentClicClac).filter(EquipmentClicClac.id == equipment_id).first()
+                    
+                    if not equipment:
+                        logger.warning(f"Équipement ID {equipment_id} introuvable, ignoré")
+                        failed_ids.append(equipment_id)
+                        continue
+                    
+                    # 2) Récupérer les attributs associés (peut être vide)
+                    attributes = session.query(AttributeClicClac).filter(AttributeClicClac.code == equipment.code).all()
+                    
+                    # 3) Créer l'entrée historique pour l'équipement
+                    history_equipment = HistoryEquipmentClicClac(
+                        commentaire=equipment.commentaire,
+                        equipment_id=equipment.id,  # ✅ Plus de contrainte FK, juste une référence
+                        code_parent=equipment.code_parent,
+                        code=equipment.code,
+                        famille=equipment.famille,
+                        zone=equipment.zone,
+                        entity=equipment.entity,
+                        unite=equipment.unite,
+                        centre_charge=equipment.centre_charge,
+                        description=equipment.description,
+                        longitude=equipment.longitude,
+                        latitude=equipment.latitude,
+                        feeder=equipment.feeder,
+                        feeder_description=equipment.feeder_description,
+                        info=equipment.info,
+                        etat=equipment.etat,
+                        type=equipment.type,
+                        localisation=equipment.localisation,
+                        niveau=equipment.niveau,
+                        n_serie=equipment.n_serie,
+                        created_at=equipment.created_at,
+                        updated_at=equipment.updated_at,
+                        created_by=equipment.created_by,
+                        judged_by=equipment.judged_by,
+                        is_update=equipment.is_update,
+                        is_new=equipment.is_new,
+                        is_approved=equipment.is_approved,
+                        is_rejected=equipment.is_rejected
+                    )
+                    
+                    session.add(history_equipment)
+                    session.flush()  # Pour obtenir l'ID de l'historique
+                    
+                    logger.info(f"✅ Équipement historique créé avec ID: {history_equipment.id}")
+                    
+                    # 4) Créer les entrées historiques pour les attributs (si présents)
+                    for attr in attributes:
+                        history_attribute = HistoryAttributeClicClac(
+                            history_id=history_equipment.id,
+                            attribute_id=attr.id,  # ✅ Plus de contrainte FK, juste une référence
+                            attribute_name=attr.attribute_name,
+                            value=attr.value,
+                            code=attr.code,
+                            description=attr.description
+                        )
+                        session.add(history_attribute)
+                        logger.debug(f"Attribut historique créé: {attr.attribute_name}")
+                    
+                    # 5) Supprimer les attributs originaux
+                    session.query(AttributeClicClac).filter(AttributeClicClac.code == equipment.code).delete(synchronize_session='fetch')
+                    logger.debug(f"Attributs originaux supprimés pour {equipment.code}")
+                    
+                    # 6) Supprimer l'équipement original
+                    session.delete(equipment)
+                    logger.debug(f"Équipement original {equipment.code} supprimé")
+                    
+                    # 7) Commit final pour cet équipement (persistance atomique)
+                    session.commit()
+                    
+                    archived_count += 1
+                    logger.info(f"✅ Équipement {equipment_id} ({equipment.code}) archivé avec {len(attributes)} attributs")
+                    
+                except Exception as e:
+                    logger.error(f"❌ Erreur archivage équipement {equipment_id}: {e}", exc_info=True)
+                    session.rollback()
+                    failed_ids.append(equipment_id)
+                    continue
+            
+            message = f"{archived_count} équipements archivés avec succès"
+            if failed_ids:
+                message += f", {len(failed_ids)} échecs (IDs: {failed_ids})"
+            
+            return (True, message, archived_count, failed_ids)
+    
+    except Exception as e:
+        logger.error(f"❌ Erreur globale archivage équipements: {e}", exc_info=True)
+        return (False, f"Erreur interne: {str(e)}", archived_count, failed_ids)

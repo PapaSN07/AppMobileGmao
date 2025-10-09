@@ -2,9 +2,9 @@ import logging
 
 from fastapi import APIRouter
 
-from app.services.equipment_service import get_all_equipment_web, update_equipment_existing
-from app.schemas.requests.equipment_request import UpdateEquipmentRequest 
-from app.schemas.responses.equipment_response import UpdateEquipmentResponse
+from app.services.equipment_service import archive_equipments, get_all_equipment_web, update_equipment_existing
+from app.schemas.requests.equipment_request import ArchiveEquipmentRequest, UpdateEquipmentRequest 
+from app.schemas.responses.equipment_response import ArchiveEquipmentResponse, UpdateEquipmentResponse
 
 
 logger = logging.getLogger(__name__)
@@ -71,4 +71,41 @@ async def update_equipment(equipment_id: str, request: UpdateEquipmentRequest):
             message=f"Erreur interne: {str(e)}",
             error_code="INTERNAL_ERROR",
             data=None
+        )
+
+@equipment_router_web.post("/archive",
+    summary="Archiver des équipements",
+    description="Archive les équipements spécifiés de la DB temporaire vers l'historique",
+)
+async def archive_equipments_endpoint(request: ArchiveEquipmentRequest):
+    """Archive les équipements spécifiés"""
+    try:
+        success, message, archived_count, failed_ids = archive_equipments(
+            request.equipment_ids
+        )
+        
+        if success:
+            return ArchiveEquipmentResponse(
+                success=True,
+                message=message,
+                archived_count=archived_count,
+                failed_ids=failed_ids if failed_ids else None,
+                error_code=None
+            )
+        else:
+            return ArchiveEquipmentResponse(
+                success=False,
+                message=message,
+                archived_count=archived_count,
+                error_code="ARCHIVE_FAILED",
+                failed_ids=failed_ids if failed_ids else None
+            )
+    except Exception as e:
+        logger.error(f"❌ Erreur dans archive_equipments_endpoint: {e}")
+        return ArchiveEquipmentResponse(
+            success=False,
+            message=f"Erreur interne: {str(e)}",
+            archived_count=0,
+            error_code="INTERNAL_ERROR",
+            failed_ids=None
         )

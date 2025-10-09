@@ -2,7 +2,7 @@ from typing import Union
 import bcrypt
 from app.core.exceptions import AuthenticationError, DatabaseError, InvalidPasswordError, UserNotFoundError
 from app.db.sqlalchemy.session import SQLAlchemyQueryExecutor, get_main_session, get_temp_session
-from app.models.models import UserCliClac, UserModel
+from app.models.models import UserClicClac, UserModel
 from app.core.config import CACHE_TTL_SHORT
 from app.core.cache import cache
 from app.db.requests import (GET_USER_AUTHENTICATION_QUERY, UPDATE_USER_QUERY, GET_USER_CONNECT_QUERY)
@@ -11,10 +11,10 @@ import oracledb
 
 logger = logging.getLogger(__name__)
 
-def authenticate_user(username: str, password: str) -> Union[UserModel, UserCliClac] | None:
+def authenticate_user(username: str, password: str) -> Union[UserModel, UserClicClac] | None:
     """
     Authentifie un utilisateur avec son nom d'utilisateur et mot de passe.
-    Vérifie d'abord la base temporaire (CliClac, MSSQL) via UserCliClac,
+    Vérifie d'abord la base temporaire (ClicClac, MSSQL) via UserClicClac,
     puis la base principale (Coswin, Oracle) via UserModel si non trouvé.
     """
     if not username or not password:
@@ -22,10 +22,10 @@ def authenticate_user(username: str, password: str) -> Union[UserModel, UserCliC
         raise ValueError("Username et mot de passe requis")
     
     try:
-        # 1) Vérifier d'abord dans la base temporaire (CliClac)
+        # 1) Vérifier d'abord dans la base temporaire (ClicClac)
         with get_temp_session() as session:
-            user_temp = session.query(UserCliClac).filter(
-                (UserCliClac.username == username) | (UserCliClac.email == username)
+            user_temp = session.query(UserClicClac).filter(
+                (UserClicClac.username == username) | (UserClicClac.email == username)
             ).first()
             
             if user_temp:
@@ -34,7 +34,7 @@ def authenticate_user(username: str, password: str) -> Union[UserModel, UserCliC
                         cache_key = f"user_hierarchy_{user_temp.id}"
                         cache.set(cache_key, user_temp, CACHE_TTL_SHORT)
                         logger.info(f"Utilisateur {username} authentifié avec succès dans ClicClac.")
-                        if isinstance(user_temp, UserCliClac):
+                        if isinstance(user_temp, UserClicClac):
                             setattr(user_temp, 'is_connected', True)
                             update_user(user_temp)  
                         return user_temp  # Retourner UserClicClac (rôle déjà défini dans le modèle)
@@ -45,10 +45,10 @@ def authenticate_user(username: str, password: str) -> Union[UserModel, UserCliC
                     logger.error(f"Erreur lors de la vérification bcrypt: {verify_error}")
                     raise InvalidPasswordError(username)
             else:
-                # Utilisateur non trouvé dans CliClac, vérifier Coswin
+                # Utilisateur non trouvé dans ClicClac, vérifier Coswin
                 pass
         
-        # 2) Si non trouvé dans CliClac ou mot de passe incorrect, vérifier dans Coswin (Oracle)
+        # 2) Si non trouvé dans ClicClac ou mot de passe incorrect, vérifier dans Coswin (Oracle)
         with get_main_session() as session:
             db = SQLAlchemyQueryExecutor(session)
             
@@ -92,7 +92,7 @@ def authenticate_user(username: str, password: str) -> Union[UserModel, UserCliC
 def logout_user(username: str) -> bool:
     """
     Déconnecte un utilisateur en supprimant son cache et en le marquant comme inactif.
-    Vérifie d'abord CliClac, puis Coswin.
+    Vérifie d'abord ClicClac, puis Coswin.
     """
     if not username:
         logger.warning("Login manquant pour la déconnexion.")
@@ -102,7 +102,7 @@ def logout_user(username: str) -> bool:
     
     if user:
         # Marquer comme absent (logique commune)
-        if isinstance(user, UserCliClac):
+        if isinstance(user, UserClicClac):
             setattr(user, 'is_connected', False)
         elif isinstance(user, UserModel):
             setattr(user, 'is_absent', True)
@@ -121,12 +121,12 @@ def logout_user(username: str) -> bool:
         logger.warning(f"Utilisateur {username} introuvable pour la déconnexion.")
         return False
 
-def update_user(user: Union[UserModel, UserCliClac]) -> bool:
+def update_user(user: Union[UserModel, UserClicClac]) -> bool:
     """
     Met à jour les informations d'un utilisateur dans la DB appropriée.
     
     Args:
-        user: Instance de UserModel ou UserCliClac avec les nouvelles informations
+        user: Instance de UserModel ou UserClicClac avec les nouvelles informations
     Returns:
         True si la mise à jour réussit, sinon False
     """
@@ -135,12 +135,12 @@ def update_user(user: Union[UserModel, UserCliClac]) -> bool:
         return False
     
     try:
-        if isinstance(user, UserCliClac):
-            # Mise à jour dans CliClac (MSSQL) via SQLAlchemy
+        if isinstance(user, UserClicClac):
+            # Mise à jour dans ClicClac (MSSQL) via SQLAlchemy
             with get_temp_session() as session:
                 session.merge(user)
                 session.commit()
-                logger.info(f"Utilisateur CliClac {user.username} mis à jour avec succès.")
+                logger.info(f"Utilisateur ClicClac {user.username} mis à jour avec succès.")
                 return True
         
         elif isinstance(user, UserModel):
@@ -172,33 +172,33 @@ def update_user(user: Union[UserModel, UserCliClac]) -> bool:
         logger.error(f"❌ Erreur inattendue lors de la mise à jour: {e}")
         return False
 
-def get_user_connect(username: str) -> Union[UserModel, UserCliClac] | None:
+def get_user_connect(username: str) -> Union[UserModel, UserClicClac] | None:
     """
     Récupère un utilisateur connecté à partir de son username ou email.
-    Vérifie d'abord CliClac, puis Coswin.
+    Vérifie d'abord ClicClac, puis Coswin.
     
     Args:
         username: Nom d'utilisateur ou email
         
     Returns:
-        UserCliClac ou UserModel si l'utilisateur est trouvé, sinon None
+        UserClicClac ou UserModel si l'utilisateur est trouvé, sinon None
     """
     if not username:
         logger.warning("Login manquant pour la récupération de l'utilisateur.")
         return None
     
     try:
-        # 1) Vérifier d'abord dans CliClac (MSSQL)
+        # 1) Vérifier d'abord dans ClicClac (MSSQL)
         with get_temp_session() as session:
-            user_temp = session.query(UserCliClac).filter(
-                (UserCliClac.username == username) | (UserCliClac.email == username)
+            user_temp = session.query(UserClicClac).filter(
+                (UserClicClac.username == username) | (UserClicClac.email == username)
             ).first()
             
             if user_temp:
-                logger.info(f"Utilisateur {username} récupéré avec succès dans CliClac.")
-                return user_temp  # Retourner UserCliClac
+                logger.info(f"Utilisateur {username} récupéré avec succès dans ClicClac.")
+                return user_temp  # Retourner UserClicClac
         
-        # 2) Si non trouvé dans CliClac, vérifier dans Coswin (Oracle)
+        # 2) Si non trouvé dans ClicClac, vérifier dans Coswin (Oracle)
         with get_main_session() as session:
             db = SQLAlchemyQueryExecutor(session)
             

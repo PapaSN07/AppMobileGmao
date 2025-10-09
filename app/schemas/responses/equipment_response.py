@@ -89,3 +89,10 @@ class UpdateEquipmentResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class ArchiveEquipmentResponse(BaseModel):
+    success: bool = Field(..., description="Indique si l'archivage a réussi")
+    message: str = Field(..., description="Message de la réponse")
+    archived_count: int = Field(..., description="Nombre d'équipements archivés")
+    error_code: Optional[str] = Field(None, description="Code d'erreur si échec")
+    failed_ids: Optional[List[str]] = Field(None, description="Liste des IDs qui ont échoué (si partiellement réussi)")

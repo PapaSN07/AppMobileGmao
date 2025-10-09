@@ -5,7 +5,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.core.config import DEFAULT_PASSWORD_PRESTATAIRE
 from app.db.sqlalchemy.session import get_temp_session
-from app.models.models import UserCliClac
+from app.models.models import UserClicClac
 from app.schemas.requests.user_request import AddUserRequest, UpdateUserRequest
 from app.schemas.responses.user_response import (
     AddUserResponse, GetAllUsersResponse, UpdateUserResponse, DeleteUserResponse, UserResponse
@@ -14,7 +14,7 @@ from app.schemas.responses.user_response import (
 logger = logging.getLogger(__name__)
 
 def _to_frontend_user(user: Any) -> UserResponse:
-    """Convertit UserCliClac en UserResponse pour le frontend."""
+    """Convertit UserClicClac en UserResponse pour le frontend."""
     return UserResponse(
         id=str(user.id) if user.id is not None else None,
         username=user.username,
@@ -32,11 +32,11 @@ def _to_frontend_user(user: Any) -> UserResponse:
 
 def get_all_users(supervisor_id: int) -> GetAllUsersResponse:
     """
-    Récupère tous les utilisateurs depuis la DB temporaire MSSQL (CliClac).
+    Récupère tous les utilisateurs depuis la DB temporaire MSSQL (ClicClac).
     """
     try:
         with get_temp_session() as session:
-            users = session.query(UserCliClac).filter(UserCliClac.supervisor == supervisor_id).all()
+            users = session.query(UserClicClac).filter(UserClicClac.supervisor == supervisor_id).all()
             users_data = [_to_frontend_user(user) for user in users]
             
             return GetAllUsersResponse(
@@ -57,11 +57,11 @@ def get_all_users(supervisor_id: int) -> GetAllUsersResponse:
 
 def update_user(user_id: int, update_data: UpdateUserRequest) -> UpdateUserResponse:
     """
-    Met à jour un utilisateur dans la DB temporaire MSSQL (CliClac).
+    Met à jour un utilisateur dans la DB temporaire MSSQL (ClicClac).
     """
     try:
         with get_temp_session() as session:
-            user = session.query(UserCliClac).filter(UserCliClac.id == user_id).first()
+            user = session.query(UserClicClac).filter(UserClicClac.id == user_id).first()
             
             if not user:
                 return UpdateUserResponse(
@@ -101,11 +101,11 @@ def update_user(user_id: int, update_data: UpdateUserRequest) -> UpdateUserRespo
 
 def delete_user(user_id: int) -> DeleteUserResponse:
     """
-    Supprime un utilisateur dans la DB temporaire MSSQL (CliClac).
+    Supprime un utilisateur dans la DB temporaire MSSQL (ClicClac).
     """
     try:
         with get_temp_session() as session:
-            user = session.query(UserCliClac).filter(UserCliClac.id == user_id).first()
+            user = session.query(UserClicClac).filter(UserClicClac.id == user_id).first()
             
             if not user:
                 return DeleteUserResponse(
@@ -133,7 +133,7 @@ def delete_user(user_id: int) -> DeleteUserResponse:
 
 def add_user(user_data: AddUserRequest) -> AddUserResponse:
     """
-    Ajoute un nouvel utilisateur dans la DB temporaire MSSQL (CliClac).
+    Ajoute un nouvel utilisateur dans la DB temporaire MSSQL (ClicClac).
     Utilise un mot de passe par défaut pour les prestataires (à changer plus tard).
     Hache le mot de passe avec bcrypt et vérifie l'unicité.
     """
@@ -149,8 +149,8 @@ def add_user(user_data: AddUserRequest) -> AddUserResponse:
         # Utiliser la session temporaire MSSQL
         with get_temp_session() as session:
             # Vérifier si l'utilisateur existe déjà (par username ou email)
-            existing_user = session.query(UserCliClac).filter(
-                (UserCliClac.username == user_data.username) | (UserCliClac.email == user_data.email)
+            existing_user = session.query(UserClicClac).filter(
+                (UserClicClac.username == user_data.username) | (UserClicClac.email == user_data.email)
             ).first()
             
             if existing_user:
@@ -162,7 +162,7 @@ def add_user(user_data: AddUserRequest) -> AddUserResponse:
                 )
             
             # Créer le nouvel utilisateur
-            new_user = UserCliClac(
+            new_user = UserClicClac(
                 username=user_data.username,
                 password=hashed_password,
                 email=user_data.email,
@@ -177,7 +177,7 @@ def add_user(user_data: AddUserRequest) -> AddUserResponse:
             session.add(new_user)
             session.commit()  # Sauvegarder
             
-            logger.info(f"Utilisateur {new_user.username} ajouté avec succès dans CliClac (ID: {new_user.id}).")
+            logger.info(f"Utilisateur {new_user.username} ajouté avec succès dans ClicClac (ID: {new_user.id}).")
             
             return AddUserResponse(
                 success=True,

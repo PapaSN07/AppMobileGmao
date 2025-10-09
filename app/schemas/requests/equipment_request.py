@@ -61,3 +61,6 @@ class UpdateEquipmentRequest(BaseModel):
     isRejected: Optional[bool] = Field(None, description="Est rejeté")
     attributes: Optional[List[Dict[str, Any]]] = Field(None, description="Liste des attributs")
     commentaire: Optional[str] = Field(None, description="Commentaire sur l'équipement")
+
+class ArchiveEquipmentRequest(BaseModel):
+    equipment_ids: List[str] = Field(..., description="Liste des IDs des équipements à archiver")
