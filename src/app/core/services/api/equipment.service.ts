@@ -35,6 +35,12 @@ export class EquipmentService {
         );
     }
 
+    getAllHistory(): Observable<Equipment[]> {
+        return this.http.get<EquipmentResponse>(`${this.apiUrl}/history`).pipe(
+            map(response => (response.data || []).map(equipment => this.transformKeys(equipment)))
+        );
+    }
+
     getById(id: string): Observable<Equipment> {
         return this.http.get<Equipment>(`${this.apiUrl}/${id}`);
     }

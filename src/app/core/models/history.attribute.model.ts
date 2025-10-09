@@ -1,11 +1,14 @@
 export interface AttributeHistory {
     id: string;
     historyId: string;
-    attributeId: string;
+    specification: string;
+    famille: string;
+    indx: string;
     attributeName: string;
-    attributeValue: string;
+    value: string;
     code: string;
     description?: string;
+    isCopyOt?: boolean;
     createdAt?: Date;
     updatedAt?: Date;
 }
