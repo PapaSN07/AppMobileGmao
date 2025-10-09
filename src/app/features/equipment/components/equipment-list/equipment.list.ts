@@ -11,7 +11,7 @@ import { ConfirmationService, MessageService } from 'primeng/api';
 import { EquipmentService, AuthService } from '../../../../core/services/api';
 import { Equipment, User } from '../../../../core/models';
 
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import { InputTextModule } from 'primeng/inputtext';
@@ -76,9 +76,7 @@ export class EquipmentList implements OnInit {
     }
 
     // Export vers deux fichiers Excel : équipements ET attributs (refactorisé)
-    private async exportEquipmentsAndAttributes(tableIndex: number): Promise<void> {
-        const equipments = tableIndex === 1 ? this.equipmentsNoApproved() : this.equipmentsNoModified();
-
+    private async exportEquipmentsAndAttributes(equipments: Equipment[]): Promise<void> {
         const equipmentRows = this.buildEquipmentRows(equipments);
         const attributeRows = this.buildAttributeRows(equipments);
 
@@ -98,6 +96,7 @@ export class EquipmentList implements OnInit {
 
     // construit les lignes pour le fichier équipements
     private buildEquipmentRows(equipments: Equipment[]) {
+        console.log(equipments);
         return equipments.map((e) => ({
             Famille: e.famille,
             Unité: e.unite,
@@ -124,8 +123,8 @@ export class EquipmentList implements OnInit {
             // trier les attributs de cet équipement par indx (ordre croissant)
             const sortedAttrs = [...e.attributes].sort((a: any, b: any) => (Number(a.indx) || 0) - (Number(b.indx) || 0));
 
-            sortedAttrs.forEach((attr) => {
-                attributeRows.push({
+            sortedAttrs.forEach((attr, index) => {
+                const row: any = {
                     'Classe Attribut': attr.specification ?? '',
                     'Description Attribut': e.famille ?? '',
                     Index: attr.indx ?? '',
@@ -134,31 +133,129 @@ export class EquipmentList implements OnInit {
                     'Code Équipement': e.code ?? '',
                     'Description Équipement': e.description ?? '',
                     "Copie sur l'OT": attr.isCopyOT ? 1 : 0
-                });
-            });
+                };
 
-            // optionnel : ajouter une ligne vide comme séparateur (si tu veux visual separator dans le XLSX)
-            attributeRows.push({
-                'Classe Attribut': '',
-                'Description Attribut': '',
-                Index: '',
-                Attribut: '',
-                Valeur: '',
-                'Code Équipement': '',
-                'Description Équipement': '',
-                "Copie sur l'OT": ''
+                // Marquer la dernière ligne d'attributs de cet équipement
+                if (index === sortedAttrs.length - 1) {
+                    row['isLast'] = true;
+                }
+
+                attributeRows.push(row);
             });
         });
-
-        // tri global par 'Index' pour garantir ordre si nécessaire
-        // attributeRows.sort((a, b) => (Number(a['Index']) || 0) - (Number(b['Index']) || 0));
 
         return attributeRows;
     }
 
     // crée un workbook et renvoie un ArrayBuffer (type 'array')
     private createWorkbookArray(rows: any[], sheetName: string): ArrayBuffer {
-        const ws = XLSX.utils.json_to_sheet(rows);
+        // Filtrer 'isLast' des lignes pour éviter qu'il apparaisse comme colonne
+        const filteredRows = rows.map(row => {
+            const { isLast, ...rest } = row;
+            return rest;
+        });
+
+        // si pas de ligne, créer feuille vide avec header minimal
+        const headers = filteredRows && filteredRows.length > 0 ? Object.keys(filteredRows[0]) : [];
+
+        // construire la feuille en conservant l'ordre des colonnes (sans 'isLast')
+        const ws = XLSX.utils.json_to_sheet(filteredRows, { header: headers, skipHeader: false });
+
+        // --- STYLE HEADER (avec xlsx-js-style) ---
+        headers.forEach((h, c) => {
+            const cellAddress = XLSX.utils.encode_cell({ r: 0, c });
+            if (!ws[cellAddress]) ws[cellAddress] = { t: 's', v: h };
+
+            // Style compatible xlsx-js-style
+            ws[cellAddress].s = {
+                font: {
+                    bold: true,
+                    color: { rgb: 'FFFFFF' },
+                    sz: 12
+                },
+                fill: {
+                    fgColor: { rgb: '2F6FED' },
+                    patternType: 'solid'
+                },
+                alignment: {
+                    horizontal: 'center',
+                    vertical: 'center'
+                },
+                border: {
+                    top: { style: 'thin', color: { rgb: '000000' } },
+                    bottom: { style: 'thin', color: { rgb: '000000' } },
+                    left: { style: 'thin', color: { rgb: '000000' } },
+                    right: { style: 'thin', color: { rgb: '000000' } }
+                }
+            };
+        });
+
+        // --- AUTO WIDTH (wch) : calculer longueur max par colonne ---
+        const colMax: number[] = headers.map((h) => Math.max(String(h).length, 10));
+
+        // parcourir toutes les lignes pour mesurer
+        const allRows = [headers].concat(
+            rows.map((r) =>
+                headers.map((h) => {
+                    const v = r[h];
+                    return v === null || v === undefined ? '' : String(v);
+                })
+            )
+        );
+
+        for (let r = 1; r < allRows.length; r++) {
+            for (let c = 0; c < headers.length; c++) {
+                const cellStr = allRows[r][c] ?? '';
+                const len = Math.max(
+                    ...String(cellStr)
+                        .split('\n')
+                        .map((l) => l.length)
+                );
+                if (len > (colMax[c] || 0)) colMax[c] = len;
+            }
+        }
+
+        // Définir ws['!cols'] avec padding
+        ws['!cols'] = colMax.map((m) => ({ wch: Math.min(Math.max(m + 3, 10), 60) }));
+
+        // --- STYLE SÉPARATEUR (bordure épaisse sur la dernière ligne d'un bloc) ---
+        const range = XLSX.utils.decode_range(ws['!ref']!);
+        // Activer les filtres sur toute la plage (les dropdowns apparaîtront sur la ligne 0)
+        ws['!autofilter'] = { ref: XLSX.utils.encode_range(range) };
+
+        for (let r = 1; r <= range.e.r; r++) {
+            const rowIndex = r; // 1-based for data rows
+            const rowData = rows[r - 1]; // utiliser les rows originales pour accéder à 'isLast'
+
+            if (rowData && rowData['isLast']) {
+                // Appliquer bordure inférieure épaisse sur toute la ligne (marqueur de fin de bloc)
+                for (let c = 0; c <= range.e.c; c++) {
+                    const addr = XLSX.utils.encode_cell({ r, c });
+                    if (!ws[addr]) ws[addr] = { t: 's', v: '' };
+                    if (!ws[addr].s) ws[addr].s = {};
+                    ws[addr].s.border = {
+                        ...ws[addr].s.border,
+                        bottom: { style: 'thick', color: { rgb: '000000' } }
+                    };
+                }
+            } else {
+                // Appliquer bordures légères aux cellules de données (si pas déjà stylées)
+                for (let c = 0; c <= range.e.c; c++) {
+                    const addr = XLSX.utils.encode_cell({ r, c });
+                    if (ws[addr] && !ws[addr].s) {
+                        ws[addr].s = {
+                            border: {
+                                top: { style: 'thin', color: { rgb: 'D3D3D3' } },
+                                bottom: { style: 'thin', color: { rgb: 'D3D3D3' } },
+                                left: { style: 'thin', color: { rgb: 'D3D3D3' } },
+                                right: { style: 'thin', color: { rgb: 'D3D3D3' } }
+                            }
+                        };
+                    }
+                }
+            }
+        }
+
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, sheetName);
         return XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
@@ -193,7 +290,9 @@ export class EquipmentList implements OnInit {
 
     // Méthode publique déjà utilisée par le template — la redirige vers la nouvelle implémentation
     exportExcelTable(): void {
-        this.exportEquipmentsAndAttributes(2);
+        const allApproved = this.equipmentsApproved();
+        const selected = this.selectedEquipmentsExport && this.selectedEquipmentsExport.length > 0 ? this.selectedEquipmentsExport : allApproved;
+        this.exportEquipmentsAndAttributes(selected);
     }
 
     loadDataNoApproved() {
