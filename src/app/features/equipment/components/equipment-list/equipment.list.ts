@@ -107,7 +107,6 @@ export class EquipmentList implements OnInit {
 
     // construit les lignes pour le fichier équipements
     private buildEquipmentRows(equipments: Equipment[]) {
-        console.log(equipments);
         return equipments.map((e) => ({
             Famille: e.famille,
             Unité: e.unite,
@@ -303,8 +302,32 @@ export class EquipmentList implements OnInit {
     exportExcelTable(): void {
         const allApproved = this.equipmentsApproved();
         const selected = this.selectedEquipmentsExport && this.selectedEquipmentsExport.length > 0 ? this.selectedEquipmentsExport : allApproved;
-        this.exportEquipmentsAndAttributes(selected);
+        this.exportEquipmentsAndAttributes(selected).then(() => {
+            // Archiver les équipements exportés après succès
+            this.archiveExportedEquipments(selected);
+        }).catch((err) => {
+            console.error('Erreur lors de l\'export:', err);
+        });
     }
+
+    // Méthode pour archiver les équipements exportés
+    private archiveExportedEquipments(equipments: Equipment[]): void {
+        const ids = equipments.map(e => e.id!);
+        this.equipmentService.archive(ids).subscribe({
+            next: (response) => {
+                this.messageService.add({ severity: 'success', summary: 'Archivage réussi', detail: `${equipments.length} équipement(s) archivé(s) avec succès.`, life: 3000 });
+                // Recharger les données pour refléter l'archivage
+                this.loadDataApproved();
+                // Réinitialiser la sélection
+                this.selectedEquipmentsExport = [];
+            },
+            error: (err) => {
+                this.messageService.add({ severity: 'error', summary: 'Erreur d\'archivage', detail: 'Une erreur est survenue lors de l\'archivage.', life: 3000 });
+                console.error('Erreur archivage:', err);
+            }
+        });
+    }
+
 
     loadDataNoApproved() {
         this.loading = true;

@@ -39,10 +39,6 @@ export class EquipmentService {
         return this.http.get<Equipment>(`${this.apiUrl}/${id}`);
     }
 
-    create(equipment: Equipment): Observable<Equipment> {
-        return this.http.post<Equipment>(this.apiUrl, equipment);
-    }
-
     update(id: string, equipment: Equipment): Observable<Equipment> {
         return this.http.patch<Equipment>(`${this.apiUrl}/${id}`, equipment);
     }
@@ -63,5 +59,9 @@ export class EquipmentService {
             }
         }
         return transformed;
+    }
+
+    archive(equipmentIds: string[]): Observable<any> {
+        return this.http.post(`${this.apiUrl}/archive`, { equipment_ids: equipmentIds });
     }
 }
