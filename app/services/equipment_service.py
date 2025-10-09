@@ -376,7 +376,8 @@ def update_equipment_existing(equipment_id: str, updates: Dict[str, Any]) -> tup
                 'judgedBy': 'judged_by',
                 'isUpdate': 'is_update',
                 'isNew': 'is_new',
-                'isApproved': 'is_approved'
+                'isApproved': 'is_approved',
+                'isRejected': 'is_rejected',
             }
             
             # 3) Mettre à jour seulement les champs qui ont changé
@@ -391,7 +392,7 @@ def update_equipment_existing(equipment_id: str, updates: Dict[str, Any]) -> tup
                         logger.debug(f"Champ {snake_key} mis à jour: {current_value} -> {new_value}")
             
             # Champs sans mapping (famille, unite, etc.)
-            direct_fields = ['famille', 'unite', 'zone', 'entity', 'feeder', 'localisation', 'code', 'description']
+            direct_fields = ['famille', 'unite', 'zone', 'entity', 'feeder', 'localisation', 'code', 'description', 'commentaire']
             for field in direct_fields:
                 if field in updates and hasattr(existing_equipment, field):
                     new_value = updates[field]

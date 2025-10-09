@@ -529,6 +529,8 @@ class EquipmentCliClac(Base):
     is_update = Column(Boolean, default=False)
     is_new = Column(Boolean, default=False)
     is_approved = Column(Boolean, default=False)
+    is_rejected = Column(Boolean, default=False)
+    commentaire = Column(String(255), nullable=True)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -556,7 +558,9 @@ class EquipmentCliClac(Base):
             'is_update': self.is_update,
             'is_new': self.is_new,
             'is_approved': self.is_approved,
-            'attributes': [attr.to_dict() for attr in self.attributes]
+            'is_rejected': self.is_rejected,
+            'attributes': [attr.to_dict() for attr in self.attributes],
+            'commentaire': self.commentaire
         }
     
 class HistoryEquipmentCliClac(Base):
@@ -592,6 +596,7 @@ class HistoryEquipmentCliClac(Base):
     is_update = Column(Boolean, default=False)
     is_new = Column(Boolean, default=False)
     is_approved = Column(Boolean, default=False)
+    is_rejected = Column(Boolean, default=False)
     
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -623,7 +628,8 @@ class HistoryEquipmentCliClac(Base):
             'judged_by': self.judged_by,
             'is_update': self.is_update,
             'is_new': self.is_new,
-            'is_approved': self.is_approved
+            'is_approved': self.is_approved,
+            'is_rejected': self.is_rejected
         }
 
 class HistoryAttributeCliClac(Base):

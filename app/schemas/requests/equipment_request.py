@@ -1,3 +1,4 @@
+from click import command
 from pydantic import BaseModel, Field
 from typing import List, Optional, Any, Dict
 
@@ -57,4 +58,6 @@ class UpdateEquipmentRequest(BaseModel):
     isUpdate: Optional[bool] = Field(None, description="Est une mise à jour")
     isNew: Optional[bool] = Field(None, description="Est nouveau")
     isApproved: Optional[bool] = Field(None, description="Est approuvé")
+    isRejected: Optional[bool] = Field(None, description="Est rejeté")
     attributes: Optional[List[Dict[str, Any]]] = Field(None, description="Liste des attributs")
+    commentaire: Optional[str] = Field(None, description="Commentaire sur l'équipement")
