@@ -68,5 +68,16 @@ export class Menu implements OnInit {
                 ]
             });
         }
+
+        // Ajouter le menu Prestataire
+        if (user && user.role === 'PRESTATAIRE') {
+            this.model.push({
+                label: 'Prestataire',
+                icon: 'pi pi-fw pi-briefcase',
+                items: [
+                    { label: 'Liste Équipement', icon: 'pi pi-fw pi-list', routerLink: ['/equipment/list'] },
+                ]
+            });
+        }
     }
 }

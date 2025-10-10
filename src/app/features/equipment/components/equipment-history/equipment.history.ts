@@ -64,7 +64,6 @@ export class EquipmentHistory implements OnInit {
         this.loading = true;
         this.equipmentService.getAllHistory().subscribe({
             next: (data) => {
-                console.log(data);
                 this.equipmentsHistory.set(data);
                 this.loading = false;
             },
