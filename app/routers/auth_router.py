@@ -9,14 +9,13 @@ from app.services.auth_service import (
 )
 from app.schemas.requests.auth_request import (LoginRequest, LogoutRequest)
 import logging
-import oracledb
 
 logger = logging.getLogger(__name__)
 
 # Routeur simplifié pour mobile
 authenticate_user_router = APIRouter(
     prefix="/auth",
-    tags=["Authentification GMAO - WEB API"],
+    tags=["Authentification GMAO - Mobile/WEB API"],
 )
 
 # === ENDPOINTS CORE POUR WEB ===

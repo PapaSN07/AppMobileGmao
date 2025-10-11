@@ -700,11 +700,16 @@ def archive_equipments(equipment_ids: List[str]) -> tuple[bool, str, int, List[s
                     for attr in attributes:
                         history_attribute = HistoryAttributeClicClac(
                             history_id=history_equipment.id,
-                            attribute_id=attr.id,  # ✅ Plus de contrainte FK, juste une référence
+                            specification=attr.specification,
+                            famille=attr.famille,
+                            indx=attr.indx,
                             attribute_name=attr.attribute_name,
                             value=attr.value,
                             code=attr.code,
-                            description=attr.description
+                            description=attr.description,
+                            created_at=attr.created_at,
+                            updated_at=attr.updated_at,
+                            is_copy_ot=attr.is_copy_ot
                         )
                         session.add(history_attribute)
                         logger.debug(f"Attribut historique créé: {attr.attribute_name}")
