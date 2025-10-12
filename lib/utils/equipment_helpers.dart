@@ -202,7 +202,7 @@ class EquipmentHelpers {
     return data
         .map((item) {
           final code = item[codeKey]?.toString().trim() ?? '';
-          return formatDescription(code);
+          return code;
         })
         .where((item) => item.isNotEmpty)
         .toSet()
