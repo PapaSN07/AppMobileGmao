@@ -5,6 +5,6 @@ __pycache__
 *.pyc
 .git
 .vscode
-README.md
+*.md
 .gitignore
 venv/
