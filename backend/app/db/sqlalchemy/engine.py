@@ -15,7 +15,7 @@ Base = declarative_base()
 # Configuration des engines
 def create_main_engine():
     """Crée l'engine pour la DB principale"""
-    url = f"oracle+cx_oracle://{DB_USERNAME}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/?service_name={DB_SERVICE_NAME}"
+    url = f"oracle+oracledb://{DB_USERNAME}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/?service_name={DB_SERVICE_NAME}"
     
     engine = create_engine(
         url,
