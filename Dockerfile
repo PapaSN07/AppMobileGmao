@@ -1,5 +1,5 @@
 # Utiliser une image Python basée sur Debian 11 (Bullseye) pour compatibilité avec le repo Microsoft
-FROM python:3.11-slim-bullseye
+FROM python:3.11-slim
 
 # Installer les dépendances système pour cx_Oracle et pyodbc
 RUN apt-get update && apt-get install -y \
