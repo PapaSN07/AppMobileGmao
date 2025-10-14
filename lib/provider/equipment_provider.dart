@@ -1,4 +1,10 @@
+import 'package:appmobilegmao/models/centre_charge.dart';
+import 'package:appmobilegmao/models/entity.dart';
 import 'package:appmobilegmao/models/equipment_attribute.dart';
+import 'package:appmobilegmao/models/famille.dart';
+import 'package:appmobilegmao/models/feeder.dart';
+import 'package:appmobilegmao/models/unite.dart';
+import 'package:appmobilegmao/models/zone.dart';
 import 'package:appmobilegmao/provider/auth_provider.dart';
 import 'package:flutter/foundation.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -386,10 +392,11 @@ class EquipmentProvider extends ChangeNotifier {
       _equipments = List.from(_allEquipments);
     } else {
       final q = searchTerm.toLowerCase();
-      _equipments = _allEquipments.where((e) {
-        final value = e[field]?.toString().toLowerCase() ?? '';
-        return value.contains(q);
-      }).toList();
+      _equipments =
+          _allEquipments.where((e) {
+            final value = e[field]?.toString().toLowerCase() ?? '';
+            return value.contains(q);
+          }).toList();
     }
     notifyListeners();
   }
@@ -427,10 +434,91 @@ class EquipmentProvider extends ChangeNotifier {
         _cachedSelectors == null) {
       return null;
     }
-    final list =
-        _cachedSelectors![selectorType] as List<Map<String, dynamic>>? ?? [];
-    for (final item in list) {
-      if (item['description'] == displayValue) return item['code']?.toString();
+
+    // ✅ CORRECTION: Gérer les objets typés au lieu des Maps
+    final selectorData = _cachedSelectors![selectorType];
+
+    if (selectorData == null) return null;
+
+    try {
+      // ✅ Détecter le type et extraire le code correspondant
+      switch (selectorType) {
+        case 'familles':
+          final list = selectorData as List<Famille>;
+          for (final item in list) {
+            if (item.description == displayValue) {
+              return item.code;
+            }
+          }
+          break;
+
+        case 'zones':
+          final list = selectorData as List<Zone>;
+          for (final item in list) {
+            if (item.description == displayValue) {
+              return item.code;
+            }
+          }
+          break;
+
+        case 'entities':
+          final list = selectorData as List<Entity>;
+          for (final item in list) {
+            if (item.description == displayValue) {
+              return item.code;
+            }
+          }
+          break;
+
+        case 'unites':
+          final list = selectorData as List<Unite>;
+          for (final item in list) {
+            if (item.description == displayValue) {
+              return item.code;
+            }
+          }
+          break;
+
+        case 'centreCharges':
+          final list = selectorData as List<CentreCharge>;
+          for (final item in list) {
+            if (item.description == displayValue) {
+              return item.code;
+            }
+          }
+          break;
+
+        case 'feeders':
+          final list = selectorData as List<Feeder>;
+          for (final item in list) {
+            if (item.description == displayValue) {
+              return item.code;
+            }
+          }
+          break;
+
+        default:
+          if (kDebugMode) {
+            print(
+              '⚠️ EquipmentProvider - Type de sélecteur inconnu: $selectorType',
+            );
+          }
+          return null;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print(
+          '❌ EquipmentProvider - Erreur _extractCode pour $selectorType: $e',
+        );
+      }
+      return null;
+    }
+
+    // Fallback: retourner la valeur tronquée si aucune correspondance
+    if (kDebugMode) {
+      print(
+        '⚠️ EquipmentProvider - Aucune correspondance pour "$displayValue" dans $selectorType',
+      );
     }
     return displayValue.length > 20
         ? displayValue.substring(0, 20)

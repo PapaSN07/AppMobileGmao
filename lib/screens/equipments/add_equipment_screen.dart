@@ -1010,45 +1010,57 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
 
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final equipmentProvider = Provider.of<EquipmentProvider>(context, listen: false);
+      
       final attributs = EquipmentHelpers.prepareAttributesForSave(
         availableAttributes,
         selectedAttributeValues,
       );
 
+      // ✅ CORRECTION: Utiliser les sélecteurs depuis le provider (objets typés)
+      final cachedSelectors = equipmentProvider.cachedSelectors;
+
       final equipmentData = {
-        'codeParent': EquipmentHelpers.getCodeFromDescription(
+        'codeParent': SelectorLoader.extractCodeFromTypedSelectors(
           selectedCodeParent,
-          selectors['feeders'] ?? [],
+          'feeders',
+          cachedSelectors,
         ),
         'code': generatedCode,
-        'feeder': EquipmentHelpers.getCodeFromDescription(
+        'feeder': SelectorLoader.extractCodeFromTypedSelectors(
           selectedFeeder,
-          selectors['feeders'] ?? [],
+          'feeders',
+          cachedSelectors,
         ),
-        'infoFeeder': EquipmentHelpers.getCodeFromDescription(
+        'infoFeeder': SelectorLoader.extractCodeFromTypedSelectors(
           selectedFeeder,
-          selectors['feeders'] ?? [],
+          'feeders',
+          cachedSelectors,
         ),
-        // ✅ CORRECTION: Utiliser system_category pour famille
-        'famille': EquipmentHelpers.getCodeFromDescription(
+        'famille': SelectorLoader.extractCodeFromTypedSelectors(
           selectedFamille,
-          selectors['familles'] ?? [],
+          'familles',
+          cachedSelectors,
         ),
-        'zone': EquipmentHelpers.getCodeFromDescription(
+        'zone': SelectorLoader.extractCodeFromTypedSelectors(
           selectedZone,
-          selectors['zones'] ?? [],
+          'zones',
+          cachedSelectors,
         ),
-        'entity': EquipmentHelpers.getCodeFromDescription(
+        'entity': SelectorLoader.extractCodeFromTypedSelectors(
           selectedEntity,
-          selectors['entities'] ?? [],
+          'entities',
+          cachedSelectors,
         ),
-        'unite': EquipmentHelpers.getCodeFromDescription(
+        'unite': SelectorLoader.extractCodeFromTypedSelectors(
           selectedUnite,
-          selectors['unites'] ?? [],
+          'unites',
+          cachedSelectors,
         ),
-        'centreCharge': EquipmentHelpers.getCodeFromDescription(
+        'centreCharge': SelectorLoader.extractCodeFromTypedSelectors(
           selectedCentreCharge,
-          selectors['centreCharges'] ?? [],
+          'centreCharges',
+          cachedSelectors,
         ),
         'description': _descriptionController.text.trim(),
         'longitude': '12311231',
@@ -1062,9 +1074,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
         print('   - Code: ${equipmentData['code']}');
         print('   - Code Parent: ${equipmentData['codeParent']}');
         print('   - Feeder: ${equipmentData['feeder']}');
-        print(
-          '   - Famille (system_category): ${equipmentData['famille']}',
-        ); // ✅ MODIFIÉ
+        print('   - Famille (system_category): ${equipmentData['famille']}');
         print('   - Zone: ${equipmentData['zone']}');
         print('   - Entity: ${equipmentData['entity']}');
         print('   - Unite: ${equipmentData['unite']}');
@@ -1074,7 +1084,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
         print('   - Créé par: ${equipmentData['createdBy']}');
       }
 
-      await context.read<EquipmentProvider>().addEquipment(equipmentData);
+      await equipmentProvider.addEquipment(equipmentData);
 
       if (kDebugMode) {
         print('✅ $__logName Équipement ajouté avec succès');

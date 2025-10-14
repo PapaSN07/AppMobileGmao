@@ -1,32 +1,55 @@
+import 'package:appmobilegmao/models/centre_charge.dart';
+import 'package:appmobilegmao/models/entity.dart';
+import 'package:appmobilegmao/models/famille.dart';
+import 'package:appmobilegmao/models/feeder.dart';
+import 'package:appmobilegmao/models/unite.dart';
+import 'package:appmobilegmao/models/zone.dart';
 import 'package:flutter/foundation.dart';
-import 'package:appmobilegmao/services/hive_service.dart';
 import 'package:appmobilegmao/provider/equipment_provider.dart';
 
 class SelectorLoader {
+  static const String __logName = 'SelectorLoader -';
+
   static Future<Map<String, List<Map<String, dynamic>>>> loadSelectors({
     required EquipmentProvider equipmentProvider,
   }) async {
     try {
-      // 1. Tenter de charger depuis le cache (✅ CORRIGÉ)
-      final selectorsBox = HiveService.get(
-        HiveService.selectorsBox,
-        'selectors',
-      );
+      // Récupérer les sélecteurs depuis le provider (objets typés)
+      final rawSelectors = await equipmentProvider.loadSelectors();
 
-      // ✅ Vérifier que les données existent et sont valides
-      if (selectorsBox != null && selectorsBox is Map<String, dynamic>) {
-        if (kDebugMode) {
-          print('✅ SelectorLoader: Chargement depuis le cache');
-        }
-        return _extractSelectorsFromCache(selectorsBox);
-      }
-
-      // 2. Charger depuis l'API si pas de cache
-      if (kDebugMode) {
-        print('🔄 SelectorLoader: Chargement depuis l\'API');
-      }
-      final selectors = await equipmentProvider.loadSelectors();
-      return _extractSelectorsFromAPI(selectors);
+      // ✅ Convertir les objets typés en Maps
+      return {
+        'familles':
+            (rawSelectors['familles'] as List<Famille>?)
+                ?.map((f) => f.toJson())
+                .toList() ??
+            [],
+        'zones':
+            (rawSelectors['zones'] as List<Zone>?)
+                ?.map((z) => z.toJson())
+                .toList() ??
+            [],
+        'entities':
+            (rawSelectors['entities'] as List<Entity>?)
+                ?.map((e) => e.toJson())
+                .toList() ??
+            [],
+        'unites':
+            (rawSelectors['unites'] as List<Unite>?)
+                ?.map((u) => u.toJson())
+                .toList() ??
+            [],
+        'centreCharges':
+            (rawSelectors['centreCharges'] as List<CentreCharge>?)
+                ?.map((c) => c.toJson())
+                .toList() ??
+            [],
+        'feeders':
+            (rawSelectors['feeders'] as List<Feeder>?)
+                ?.map((f) => f.toJson())
+                .toList() ??
+            [],
+      };
     } catch (e) {
       if (kDebugMode) {
         print('❌ SelectorLoader: Erreur chargement sélecteurs: $e');
@@ -42,57 +65,81 @@ class SelectorLoader {
     }
   }
 
-  static Map<String, List<Map<String, dynamic>>> _extractSelectorsFromCache(
-    Map<String, dynamic> selectorsBox,
+  // ✅ NOUVELLE méthode locale pour extraire les codes depuis les objets typés
+  static String? extractCodeFromTypedSelectors(
+    String? displayValue,
+    String selectorType,
+    Map<String, dynamic>? cachedSelectors
   ) {
-    return {
-      'entities': _extractSelectorData(selectorsBox['entities']),
-      'unites': _extractSelectorData(selectorsBox['unites']),
-      'centreCharges': _extractSelectorData(selectorsBox['centreCharges']),
-      'zones': _extractSelectorData(selectorsBox['zones']),
-      'familles': _extractSelectorData(selectorsBox['familles']),
-      'feeders': _extractSelectorData(selectorsBox['feeders']),
-    };
-  }
+    if (displayValue == null || displayValue.isEmpty || cachedSelectors == null) {
+      return null;
+    }
 
-  static Map<String, List<Map<String, dynamic>>> _extractSelectorsFromAPI(
-    Map<String, dynamic> selectors,
-  ) {
-    return {
-      'entities': _extractSelectorData(selectors['entities']),
-      'unites': _extractSelectorData(selectors['unites']),
-      'centreCharges': _extractSelectorData(selectors['centreCharges']),
-      'zones': _extractSelectorData(selectors['zones']),
-      'familles': _extractSelectorData(selectors['familles']),
-      'feeders': _extractSelectorData(selectors['feeders']),
-    };
-  }
+    final selectorData = cachedSelectors[selectorType];
+    if (selectorData == null) return null;
 
-  static List<Map<String, dynamic>> _extractSelectorData(dynamic data) {
-    if (data == null) return [];
-
-    final List<dynamic> list =
-        data is Iterable ? data.toList() : (data is List ? data : const []);
-
-    return list
-        .map((item) {
-          if (item is Map<String, dynamic>) return item;
-          if (item is Map) {
-            return item.map((key, value) => MapEntry(key.toString(), value));
-          }
-
-          try {
-            final jsonMap = (item as dynamic).toJson();
-            if (jsonMap is Map) {
-              return jsonMap.map(
-                (key, value) => MapEntry(key.toString(), value),
-              );
+    try {
+      switch (selectorType) {
+        case 'familles':
+          final list = selectorData as List<Famille>;
+          for (final item in list) {
+            if (item.description == displayValue) {
+              return item.code;
             }
-          } catch (_) {}
+          }
+          break;
 
-          return <String, dynamic>{};
-        })
-        .where((m) => m.isNotEmpty)
-        .toList();
+        case 'zones':
+          final list = selectorData as List<Zone>;
+          for (final item in list) {
+            if (item.description == displayValue) {
+              return item.code;
+            }
+          }
+          break;
+
+        case 'entities':
+          final list = selectorData as List<Entity>;
+          for (final item in list) {
+            if (item.description == displayValue) {
+              return item.code;
+            }
+          }
+          break;
+
+        case 'unites':
+          final list = selectorData as List<Unite>;
+          for (final item in list) {
+            if (item.description == displayValue) {
+              return item.code;
+            }
+          }
+          break;
+
+        case 'centreCharges':
+          final list = selectorData as List<CentreCharge>;
+          for (final item in list) {
+            if (item.description == displayValue) {
+              return item.code;
+            }
+          }
+          break;
+
+        case 'feeders':
+          final list = selectorData as List<Feeder>;
+          for (final item in list) {
+            if (item.description == displayValue) {
+              return item.code;
+            }
+          }
+          break;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ $__logName Erreur extraction code pour $selectorType: $e');
+      }
+    }
+
+    return null;
   }
 }
