@@ -1,5 +1,5 @@
 """
-Requêtes SQL corrigées pour le projet SENELEC GMAO
+Requêtes SQL corrigées pour MSSQL (SQL Server)
 """
 
 #   ================================================================================
@@ -14,14 +14,14 @@ SELECT
     mdct_system_category,
     mdct_level,
     mdct_entity
-FROM coswin.t_category
+FROM category
 """
 GET_FAMILLES_QUERY = """
 SELECT DISTINCT 
     mdct_code,
     mdct_description,
     mdct_entity
-FROM coswin.category 
+FROM category 
 WHERE mdct_code IS NOT NULL
 ORDER BY mdct_entity, mdct_description
 """
@@ -35,7 +35,7 @@ SELECT
     ereq_code,
     ereq_description,
     ereq_entity
-FROM coswin.t_equipment
+FROM equipment
 """
 
 #   ================================================================================
@@ -47,7 +47,7 @@ SELECT
     mdzo_code,
     mdzo_description,
     mdzo_entity 
-FROM coswin.t_zone
+FROM zone
 """
 
 #   ================================================================================
@@ -62,15 +62,15 @@ SELECT
     chen_level,
     chen_parent_entity,
     chen_system_entity
-FROM coswin.t_entity
+FROM entity
 """
 
 #   ================================================================================
 #   REQUÊTES DE Fonction Hiérarchie
 #   ================================================================================
 HIERARCHIC = """
-SELECT COLUMN_VALUE as entity_code 
-FROM TABLE(coswin.sn_hierarchie(:entity))
+SELECT chen_code AS entity_code
+FROM sn_hierarchie_ancetres(:entity)
 """
 
 #   ================================================================================
@@ -82,7 +82,7 @@ SELECT
     mdcc_code,
     mdcc_description,
     mdcc_entity 
-FROM coswin.t_costcentre
+FROM costcentre
 """
 
 #   ================================================================================
@@ -90,13 +90,13 @@ FROM coswin.t_costcentre
 #   ================================================================================
 FUNCTION_QUERY = """
 SELECT 
-    pk_function_,
+    pk_function,
     mdfn_code,
     mdfn_description,
     mdfn_entity,
     mdfn_parent_function,
     mdfn_system_function 
-FROM coswin.t_function_
+FROM function_
 """
 
 #   ================================================================================
@@ -123,27 +123,29 @@ SELECT
     a.cwat_index as attr_index,
     a.cwat_name as attr_name,
     ea.etat_value as attr_value
-FROM coswin.t_equipment e
-LEFT JOIN coswin.t_costcentre cc ON e.ereq_costcentre = cc.mdcc_code
-LEFT JOIN coswin.t_equipment f ON e.ereq_string2 = f.ereq_code
-LEFT JOIN coswin.equipment_specs es ON e.ereq_code = es.etes_equipment
-LEFT JOIN coswin.equipment_attribute ea ON es.pk_equipment_specs = ea.commonkey
-LEFT JOIN coswin.t_specification s ON es.etes_specification = s.cwsp_code
-LEFT JOIN coswin.attribute a ON (s.pk_specification = a.cwat_specification AND ea.INDX = a.CWAT_INDEX)
+FROM equipment e
+LEFT JOIN costcentre cc ON e.ereq_costcentre = cc.mdcc_code
+LEFT JOIN equipment f ON e.ereq_string2 = f.ereq_code
+LEFT JOIN equipment_specs es ON e.ereq_code = es.etes_equipment
+LEFT JOIN equipment_attribute ea ON es.pk_equipment_specs = ea.commonkey
+LEFT JOIN specification s ON es.etes_specification = s.cwsp_code
+LEFT JOIN attribute a ON (s.pk_specification = a.cwat_specification AND ea.INDX = a.CWAT_INDEX)
 WHERE 1=1
 """
+
 ATTRIBUTE_VALUES_QUERY = """
 SELECT
     pk_attribute_values, 
     cwav_value
 FROM
-    coswin.attribute_values
+    attribute_values
 WHERE 1=1
     AND cwav_specification = :specification
     AND cwav_attribute_index = :attribute_index
 """
+
 EQUIPMENT_ADD_QUERY = """
-INSERT INTO coswin.t_equipment (
+INSERT INTO equipment (
     pk_equipment,
     ereq_code,
     ereq_bar_code,
@@ -170,10 +172,10 @@ INSERT INTO coswin.t_equipment (
     :longitude,
     :latitude,
     :feeder,
-    :creation_date --format(31/12/2023)
+    :creation_date
 )
 """
-# Récupération d'un équipement par ID
+
 EQUIPMENT_BY_ID_QUERY = """
 SELECT 
     e.pk_equipment, 
@@ -189,24 +191,23 @@ SELECT
     e.ereq_latitude,
     f.pk_equipment as feeder,
     f.ereq_description as feeder_description,
-    -- Attributs (peuvent être NULL si pas d'attributs)
     a.pk_attribute as attr_id,
     a.cwat_specification as attr_specification,
     a.cwat_index as attr_index,
     a.cwat_name as attr_name,
     ea.etat_value as attr_value
-FROM coswin.t_equipment e
-LEFT JOIN coswin.t_costcentre cc ON e.ereq_costcentre = cc.mdcc_code
-LEFT JOIN coswin.t_equipment f ON e.ereq_string2 = f.ereq_code
-LEFT JOIN coswin.equipment_specs es ON e.ereq_code = es.etes_equipment
-LEFT JOIN coswin.equipment_attribute ea ON es.pk_equipment_specs = ea.commonkey
-LEFT JOIN coswin.t_specification s ON es.etes_specification = s.cwsp_code
-LEFT JOIN coswin.attribute a ON (s.pk_specification = a.cwat_specification AND ea.INDX = a.CWAT_INDEX)
+FROM equipment e
+LEFT JOIN costcentre cc ON e.ereq_costcentre = cc.mdcc_code
+LEFT JOIN equipment f ON e.ereq_string2 = f.ereq_code
+LEFT JOIN equipment_specs es ON e.ereq_code = es.etes_equipment
+LEFT JOIN equipment_attribute ea ON es.pk_equipment_specs = ea.commonkey
+LEFT JOIN specification s ON es.etes_specification = s.cwsp_code
+LEFT JOIN attribute a ON (s.pk_specification = a.cwat_specification AND ea.INDX = a.CWAT_INDEX)
 WHERE e.pk_equipment = :equipment_id
 """
-# --- Modification d'équipement
+
 EQUIPMENT_UPDATE_QUERY = """
-UPDATE coswin.t_equipment 
+UPDATE equipment 
 SET 
     ereq_parent_equipment = :code_parent,
     ereq_code = :code,
@@ -221,28 +222,28 @@ SET
     ereq_string2 = :feeder
 WHERE pk_equipment = :equipment_id
 """
-# Mise à jour d'un attribut spécifique
+
 UPDATE_EQUIPMENT_ATTRIBUTE_QUERY = """
-UPDATE coswin.equipment_attribute 
+UPDATE equipment_attribute 
 SET etat_value = :value
 WHERE commonkey = (
     SELECT es.pk_equipment_specs 
-    FROM coswin.equipment_specs es
-    JOIN coswin.t_specification s ON es.etes_specification = s.cwsp_code
-    JOIN coswin.attribute a ON s.pk_specification = a.cwat_specification
+    FROM equipment_specs es
+    JOIN specification s ON es.etes_specification = s.cwsp_code
+    JOIN attribute a ON s.pk_specification = a.cwat_specification
     WHERE es.etes_equipment = :equipment_code
     AND a.cwat_name = :attribute_name
 )
 AND indx = (
     SELECT a.cwat_index
-    FROM coswin.equipment_specs es
-    JOIN coswin.t_specification s ON es.etes_specification = s.cwsp_code
-    JOIN coswin.attribute a ON s.pk_specification = a.cwat_specification
+    FROM equipment_specs es
+    JOIN specification s ON es.etes_specification = s.cwsp_code
+    JOIN attribute a ON s.pk_specification = a.cwat_specification
     WHERE es.etes_equipment = :equipment_code
     AND a.cwat_name = :attribute_name
 )
 """
-# Récupération des attributs d'un équipement par code
+
 EQUIPMENT_ATTRIBUTS_VALUES_QUERY = """
 SELECT 
     a.pk_attribute as id, 
@@ -251,44 +252,43 @@ SELECT
     a.cwat_name as name, 
     ea.etat_value as value
 FROM 
-    coswin.t_equipment e
-    JOIN coswin.equipment_specs es ON e.ereq_code = es.etes_equipment
-    JOIN coswin.EQUIPMENT_ATTRIBUTE ea ON es.pk_equipment_specs = ea.commonkey
-    JOIN coswin.t_specification s ON es.etes_specification = s.cwsp_code
-    JOIN coswin.attribute a ON (s.pk_specification = a.cwat_specification AND ea.INDX = a.CWAT_INDEX)
+    equipment e
+    JOIN equipment_specs es ON e.ereq_code = es.etes_equipment
+    JOIN equipment_attribute ea ON es.pk_equipment_specs = ea.commonkey
+    JOIN specification s ON es.etes_specification = s.cwsp_code
+    JOIN attribute a ON (s.pk_specification = a.cwat_specification AND ea.INDX = a.CWAT_INDEX)
 WHERE 
     e.ereq_code = :code
 ORDER BY a.cwat_name
 """
-# Récupère les spécifications de l'équipement à partir de la catégorie
+
 EQUIPMENT_T_SPECIFICATION_QUERY = """
 SELECT 
-    cs.mdcs_specification
-    , s.pk_specification
+    cs.mdcs_specification,
+    s.pk_specification
 FROM
-    coswin.t_category c,
-    coswin.category_specification cs,
-    coswin.t_specification s
-WHERE 1=1
-    AND c.mdct_code = cs.mdcs_category
-    AND cs.mdcs_specification = s.cwsp_code
-    AND c.mdct_code LIKE :category -- ereq_category (t_equipment)
+    category c
+    JOIN category_specification cs ON c.mdct_code = cs.mdcs_category
+    JOIN specification s ON cs.mdcs_specification = s.cwsp_code
+WHERE c.mdct_code LIKE :category
 """
+
 EQUIPMENT_SPEC_ADD_QUERY = """
-INSERT INTO coswin.equipment_specs (
+INSERT INTO equipment_specs (
     pk_equipment_specs,
     etes_specification,
     etes_equipment,
     etes_release_date,
     etes_release_number
 ) VALUES (
-    :id, -- pk_equipment_specs (equipment_specs)
-    :specification, -- cwsp_code (t_specification)
-    :equipment, -- ereq_code (t_equipment)
+    :id,
+    :specification,
+    :equipment,
     :release_date,
     :release_number
 )
 """
+
 EQUIPMENT_CLASSE_ATTRIBUTS_QUERY = """
 SELECT
     a.pk_attribute as id, 
@@ -297,66 +297,58 @@ SELECT
     a.cwat_name as name,
     NULL as value
 FROM
-    coswin.t_specification s, 
-    coswin.category_specification cs, 
-    coswin.t_category r, 
-    coswin.attribute a
-WHERE 1=1
-    AND cs.mdcs_specification = s.cwsp_code
-    AND r.mdct_code like cs.mdcs_category
-    AND  s.pk_specification = a.cwat_specification
-    AND r.mdct_code = :code
+    specification s
+    JOIN category_specification cs ON cs.mdcs_specification = s.cwsp_code
+    JOIN category r ON r.mdct_code = cs.mdcs_category
+    JOIN attribute a ON s.pk_specification = a.cwat_specification
+WHERE r.mdct_code = :code
 ORDER BY a.cwat_index
 """
-# Pour voir le nombre d'attribut qu'il faut créer dans la table equipment_attribute en lui passant la famille (ereq_category) de la table t_equipment
+
 EQUIPMENT_LENGTH_ATTRIBUTS_QUERY = """
 SELECT
     a.cwat_index as len
 FROM
-    coswin.t_specification s
-    , coswin.category_specification cs
-    , coswin.t_category r
-    , coswin.attribute a
-WHERE 1=1
-    AND cs.mdcs_specification = s.cwsp_code
-    AND r.mdct_code = cs.mdcs_category
-    AND s.pk_specification = a.cwat_specification
-    AND r.mdct_code LIKE :category -- ereq_category
+    specification s
+    JOIN category_specification cs ON cs.mdcs_specification = s.cwsp_code
+    JOIN category r ON r.mdct_code = cs.mdcs_category
+    JOIN attribute a ON s.pk_specification = a.cwat_specification
+WHERE r.mdct_code LIKE :category
 ORDER BY a.cwat_index
 """
+
 EQUIPMENT_ATTRIBUTE_ADD_QUERY = """
-INSERT INTO coswin.equipment_attribute (
+INSERT INTO equipment_attribute (
     commonkey,
     indx,
     etat_value
 ) VALUES (
-    :commonkey, -- pk_equipment (equipment_specs)
-    :indx, -- CWAT_INDEX (attribute)
-    :etat_value -- Valeur de l'attribut (NULL par défaut)
+    :commonkey,
+    :indx,
+    :etat_value
 )
 """
-# Pour récupérer le cwsp_code(t_specification) d'un équipement pour la création d'une ligne dans equipment_specs
+
+# ✅ CORRIGÉ : Remplacer ROWNUM <= 1 par TOP 1
 EQUIPMENT_T_SPECIFICATION_CODE_QUERY = """
-SELECT s.cwsp_code
-FROM coswin.t_equipment e
-    JOIN coswin.category_specification cs ON e.ereq_category = cs.mdcs_category
-    JOIN coswin.t_specification s ON cs.mdcs_specification = s.cwsp_code
-WHERE 
-    e.ereq_category LIKE :category 
-    AND ROWNUM <= 1
+SELECT TOP 1 s.cwsp_code
+FROM equipment e
+    JOIN category_specification cs ON e.ereq_category = cs.mdcs_category
+    JOIN specification s ON cs.mdcs_specification = s.cwsp_code
+WHERE e.ereq_category LIKE :category
 """
-# Vérification d'existence d'attribut
+
 CHECK_ATTRIBUTE_EXISTS_QUERY = """
-SELECT COUNT(*) FROM coswin.equipment_attribute 
+SELECT COUNT(*) FROM equipment_attribute 
 WHERE commonkey = :commonkey AND indx = :indx
 """
-# Requête corrigée pour les index d'attributs (sans doublons)
+
 EQUIPMENT_LENGTH_ATTRIBUTS_QUERY_DISTINCT = """
 SELECT DISTINCT a.cwat_index
-FROM coswin.t_specification s
-JOIN coswin.category_specification cs ON s.cwsp_code = cs.mdcs_specification  
-JOIN coswin.t_category r ON cs.mdcs_category = r.mdct_code
-JOIN coswin.attribute a ON s.pk_specification = a.cwat_specification
+FROM specification s
+JOIN category_specification cs ON s.cwsp_code = cs.mdcs_specification  
+JOIN category r ON cs.mdcs_category = r.mdct_code
+JOIN attribute a ON s.pk_specification = a.cwat_specification
 WHERE r.mdct_code LIKE :category
 ORDER BY a.cwat_index
 """
@@ -364,8 +356,9 @@ ORDER BY a.cwat_index
 #   ================================================================================
 #   REQUÊTES DE Utilisateurs
 #   ================================================================================
+# ✅ CORRIGÉ : Remplacer ROWNUM <= 1 par TOP 1
 GET_USER_AUTHENTICATION_QUERY = """
-SELECT 
+SELECT TOP 1
     pk_coswin_user, 
     cwcu_code, 
     cwcu_signature, 
@@ -375,13 +368,13 @@ SELECT
     cwcu_url_image,
     cwcu_is_absent, 
     cwcu_password
-FROM coswin.coswin_user
+FROM coswin_user
 WHERE (cwcu_signature = :username OR cwcu_email = :username)
 AND cwcu_password = :password
-AND ROWNUM <= 1
 """
+
 UPDATE_USER_QUERY = """
-UPDATE coswin.coswin_user
+UPDATE coswin_user
 SET 
     cwcu_code = :code,
     cwcu_signature = :signature,
@@ -392,8 +385,10 @@ SET
     cwcu_is_absent = :is_absent
 WHERE pk_coswin_user = :pk
 """
+
+# ✅ CORRIGÉ : Remplacer ROWNUM <= 1 par TOP 1
 GET_USER_CONNECT_QUERY = """
-SELECT 
+SELECT TOP 1
     pk_coswin_user, 
     cwcu_code, 
     cwcu_signature, 
@@ -402,34 +397,30 @@ SELECT
     cwcu_preferred_group, 
     cwcu_url_image,
     cwcu_is_absent
-FROM coswin.coswin_user
+FROM coswin_user
 WHERE (cwcu_signature = :username OR cwcu_email = :username)
-AND ROWNUM <= 1
 """
 
 #   ================================================================================
 #   REQUÊTES DE STATISTIQUES
 #   ================================================================================
-
-# Statistiques par entité
 STATS_BY_ENTITY_QUERY = """
 SELECT 
     ereq_entity,
     COUNT(*) as total_equipments,
     COUNT(DISTINCT ereq_category) as categories_count,
     COUNT(DISTINCT ereq_zone) as zones_count
-FROM coswin.t_equipment 
+FROM equipment 
 GROUP BY ereq_entity
 ORDER BY total_equipments DESC
 """
 
-# Statistiques par catégorie
 STATS_BY_CATEGORY_QUERY = """
 SELECT 
     ereq_category,
     COUNT(*) as equipment_count,
     COUNT(DISTINCT ereq_entity) as entities_count
-FROM coswin.t_equipment 
+FROM equipment 
 GROUP BY ereq_category
 ORDER BY equipment_count DESC
 """

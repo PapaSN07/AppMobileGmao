@@ -1,9 +1,8 @@
 from typing import Any, Dict
 from fastapi import APIRouter, Query, HTTPException
-from app.schemas.rest_response import create_simple_response
+import pymssql
 from app.services.unite_service import get_unites
 import logging
-import oracledb
 
 logger = logging.getLogger(__name__)
 
@@ -34,8 +33,8 @@ async def get_unites_mobile(
             "message": "Unités récupérées avec succès",
             "data": result
         }
-        
-    except oracledb.DatabaseError as e:
+
+    except pymssql.DatabaseError as e:
         logger.error(f"❌ Erreur base de données: {e}")
         raise HTTPException(status_code=500, detail="Erreur base de données")
     except Exception as e:

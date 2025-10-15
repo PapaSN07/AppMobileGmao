@@ -5,7 +5,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.core.config import DEFAULT_PASSWORD_PRESTATAIRE
 from app.db.sqlalchemy.session import get_temp_session
-from app.models.models import UserClicClac
+from app.models.user_model import UserClicClac
 from app.schemas.requests.user_request import AddUserRequest, UpdateUserRequest
 from app.schemas.responses.user_response import (
     AddUserResponse, GetAllUsersResponse, UpdateUserResponse, DeleteUserResponse, UserResponse

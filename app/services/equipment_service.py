@@ -1,11 +1,14 @@
 from sqlalchemy import cast
 from app.db.sqlalchemy.session import get_main_session, get_temp_session, SQLAlchemyQueryExecutor
 from app.core.config import CACHE_TTL_SHORT
-from app.models.models import (AttributeClicClac, EquipmentClicClac, EquipmentModel, EquipmentWithAttributesBuilder, AttributeValues, HistoryAttributeClicClac, HistoryEquipmentClicClac)
 from app.db.requests import (ATTRIBUTE_VALUES_QUERY, EQUIPMENT_BY_ID_QUERY, EQUIPMENT_CLASSE_ATTRIBUTS_QUERY, EQUIPMENT_INFINITE_QUERY, FEEDER_QUERY)
 from app.core.cache import cache, invalidate_equipment_insertion_cache
 from typing import Dict, Any, List, Optional
 import logging
+
+from app.models.attribute_model import AttributeClicClac, HistoryAttributeClicClac
+from app.models.attribute_values_model import AttributeValues
+from app.models.equipment_model import EquipmentClicClac, EquipmentModel, EquipmentWithAttributesBuilder, HistoryEquipmentClicClac
 
 logger = logging.getLogger(__name__)
 

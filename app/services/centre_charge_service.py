@@ -1,5 +1,5 @@
 from app.db.sqlalchemy.session import SQLAlchemyQueryExecutor, get_main_session
-from app.models.models import CentreChargeModel
+from app.models.costcentre_model import CentreChargeModel
 from app.core.config import CACHE_TTL_SHORT
 from app.db.requests import COSTCENTRE_QUERY
 from app.core.cache import cache

@@ -1,7 +1,7 @@
 from app.core.config import CACHE_TTL_SHORT
 from app.core.cache import cache
 from app.db.sqlalchemy.session import SQLAlchemyQueryExecutor, get_main_session
-from app.models.models import ZoneModel
+from app.models.zone_model import ZoneModel
 from app.db.requests import ZONE_QUERY
 from typing import Any, Dict
 import logging

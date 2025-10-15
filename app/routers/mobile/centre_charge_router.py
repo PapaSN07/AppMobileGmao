@@ -1,9 +1,8 @@
 from typing import Any, Dict
 from fastapi import APIRouter, Query, HTTPException
-from app.schemas.rest_response import create_simple_response
+import pymssql
 from app.services.centre_charge_service import get_centre_charges
 import logging
-import oracledb
 
 from app.services.entity_service import get_hierarchy
 
@@ -40,8 +39,8 @@ async def get_centre_charge_mobile(
                 }
             }
         }
-        
-    except oracledb.DatabaseError as e:
+
+    except pymssql.DatabaseError as e:
         logger.error(f"❌ Erreur base de données: {e}")
         raise HTTPException(status_code=500, detail="Erreur base de données")
     except Exception as e:
