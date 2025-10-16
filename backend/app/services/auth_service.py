@@ -1,13 +1,14 @@
 from typing import Union
 import bcrypt
+import pymssql
 from app.core.exceptions import AuthenticationError, DatabaseError, InvalidPasswordError, UserNotFoundError
 from app.db.sqlalchemy.session import SQLAlchemyQueryExecutor, get_main_session, get_temp_session
-from app.models.models import UserClicClac, UserModel
 from app.core.config import CACHE_TTL_SHORT
 from app.core.cache import cache
 from app.db.requests import (GET_USER_AUTHENTICATION_QUERY, UPDATE_USER_QUERY, GET_USER_CONNECT_QUERY)
 import logging
-import oracledb
+
+from app.models.user_model import UserClicClac, UserModel
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +61,7 @@ def authenticate_user(username: str, password: str) -> Union[UserModel, UserClic
                 user_main = UserModel.from_db_row(results[0])
                 
                 # ✅ NOUVEAU: Vérifier si l'utilisateur a le rôle ADMIN dans Coswin
-                admin_query = "SELECT 1 FROM coswin.coswin_user WHERE cwcu_code = :code AND cwcu_preferred_group LIKE '%ADMIN%'"
+                admin_query = "SELECT 1 FROM coswin_user WHERE cwcu_code = :code AND cwcu_preferred_group LIKE '%ADMIN%'"
                 admin_result = db.execute_query(admin_query, params={'code': user_main.code})
                 user_main.role = 'ADMIN' if admin_result else 'USER'  # Assigner le rôle
                 
@@ -71,7 +72,7 @@ def authenticate_user(username: str, password: str) -> Union[UserModel, UserClic
                 return user_main  # Retourner UserModel avec rôle
             else:
                 # Vérifier si l'utilisateur existe sans mot de passe (pour différencier)
-                query_check_user = "SELECT 1 FROM coswin.coswin_user WHERE cwcu_signature = :username OR cwcu_email = :username"
+                query_check_user = "SELECT 1 FROM coswin_user WHERE cwcu_signature = :username OR cwcu_email = :username"
                 user_exists = db.execute_query(query_check_user, params={'username': username})
                 if user_exists:
                     logger.warning(f"Échec de l'authentification pour {username} : Utilisateur existe, mot de passe faux")
@@ -165,7 +166,7 @@ def update_user(user: Union[UserModel, UserClicClac]) -> bool:
         else:
             logger.error("Type d'utilisateur non supporté pour la mise à jour.")
             return False
-    except oracledb.DatabaseError as e:
+    except pymssql.DatabaseError as e:
         logger.error(f"❌ Erreur base de données principale: {e}")
         return False
     except Exception as e:
@@ -213,8 +214,8 @@ def get_user_connect(username: str) -> Union[UserModel, UserClicClac] | None:
             else:
                 logger.warning(f"Utilisateur {username} introuvable dans les deux bases.")
                 return None
-    
-    except oracledb.DatabaseError as e:
+
+    except pymssql.DatabaseError as e:
         logger.error(f"❌ Erreur base de données principale: {e}")
         return None
     except Exception as e:

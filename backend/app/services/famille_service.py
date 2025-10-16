@@ -1,7 +1,7 @@
 from app.core.config import CACHE_TTL_SHORT
 from app.core.cache import cache
 from app.db.sqlalchemy.session import SQLAlchemyQueryExecutor, get_main_session
-from app.models.models import FamilleModel
+from app.models.famille_model import FamilleModel
 from app.db.requests import CATEGORY_QUERY
 from typing import Any, Dict
 import logging

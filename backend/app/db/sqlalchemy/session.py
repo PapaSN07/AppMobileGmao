@@ -2,15 +2,16 @@ from contextlib import contextmanager
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from typing import Generator, Dict, Any, List, Optional
-from .engine import MainSessionLocal, TempSessionLocal
 import logging
+
+from app.db.sqlalchemy.engine import SessionLocal, SessionLocalTemp
 
 logger = logging.getLogger(__name__)
 
 @contextmanager
 def get_main_session() -> Generator[Session, None, None]:
     """Générateur de session pour la DB principale"""
-    session = MainSessionLocal()
+    session = SessionLocal()
     try:
         yield session
     except Exception as e:
@@ -23,7 +24,7 @@ def get_main_session() -> Generator[Session, None, None]:
 @contextmanager
 def get_temp_session() -> Generator[Session, None, None]:
     """Générateur de session pour la DB temporaire"""
-    session = TempSessionLocal()
+    session = SessionLocalTemp()
     try:
         yield session
     except Exception as e:

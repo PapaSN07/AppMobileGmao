@@ -172,8 +172,8 @@ logs/
 config.ini
 settings.ini
 .env.local
-.env.production
 .env.prod
+.env.production
 .env.staging
 
 # Uploads/Media files

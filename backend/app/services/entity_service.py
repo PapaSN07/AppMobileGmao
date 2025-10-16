@@ -1,5 +1,5 @@
 from app.db.sqlalchemy.session import SQLAlchemyQueryExecutor, get_main_session
-from app.models.models import EntityModel
+from app.models.entity_model import EntityModel
 from app.core.config import CACHE_TTL_SHORT
 from app.db.requests import (ENTITY_QUERY, HIERARCHIC)
 from app.core.cache import cache

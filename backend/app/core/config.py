@@ -9,8 +9,7 @@ DB_NAME = os.getenv("DB_NAME")
 DB_USERNAME = os.getenv("DB_USERNAME") 
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_HOST = os.getenv("DB_HOST")
-DB_SERVICE_NAME = os.getenv("DB_SERVICE_NAME")
-DB_PORT = os.getenv("DB_PORT", "1521")
+DB_PORT = os.getenv("DB_PORT", "1430")
 
 # Configuration de la base de données Oracle
 TEMP_DB_NAME = os.getenv("TEMP_DB_NAME")
@@ -45,8 +44,8 @@ JWT_REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("JWT_REFRESH_TOKEN_EXPIRE_DAYS", 7
 DEFAULT_PASSWORD_PRESTATAIRE = os.getenv("DEFAULT_PASSWORD_PRESTATAIRE", "changeMe123!")
 
 # Vérification des variables obligatoires
-required_vars = [DB_USERNAME, DB_PASSWORD, DB_HOST, DB_SERVICE_NAME]
+required_vars = [DB_USERNAME, DB_PASSWORD, DB_HOST, DB_PORT, TEMP_DB_USERNAME, TEMP_DB_PASSWORD, TEMP_DB_HOST, TEMP_DB_PORT]
 if not all(required_vars):
     raise ValueError("Variables d'environnement de base de données manquantes dans .env.prod")
 
-print(f"Configuration chargée - DB: {DB_HOST}:{DB_SERVICE_NAME}")
+print(f"Configuration chargée - DB: {DB_HOST}:{DB_PORT}/{DB_NAME}, TEMP DB: {TEMP_DB_HOST}:{TEMP_DB_PORT}/{TEMP_DB_NAME}")

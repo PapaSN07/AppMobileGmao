@@ -1,11 +1,14 @@
 from sqlalchemy import cast
 from app.db.sqlalchemy.session import get_main_session, get_temp_session, SQLAlchemyQueryExecutor
 from app.core.config import CACHE_TTL_SHORT
-from app.models.models import (AttributeClicClac, EquipmentClicClac, EquipmentModel, EquipmentWithAttributesBuilder, AttributeValues, HistoryAttributeClicClac, HistoryEquipmentClicClac)
 from app.db.requests import (ATTRIBUTE_VALUES_QUERY, EQUIPMENT_BY_ID_QUERY, EQUIPMENT_CLASSE_ATTRIBUTS_QUERY, EQUIPMENT_INFINITE_QUERY, FEEDER_QUERY)
 from app.core.cache import cache, invalidate_equipment_insertion_cache
 from typing import Dict, Any, List, Optional
 import logging
+
+from app.models.attribute_model import AttributeClicClac, HistoryAttributeClicClac
+from app.models.attribute_values_model import AttributeValues
+from app.models.equipment_model import EquipmentClicClac, EquipmentModel, EquipmentWithAttributesBuilder, HistoryEquipmentClicClac
 
 logger = logging.getLogger(__name__)
 
@@ -700,11 +703,16 @@ def archive_equipments(equipment_ids: List[str]) -> tuple[bool, str, int, List[s
                     for attr in attributes:
                         history_attribute = HistoryAttributeClicClac(
                             history_id=history_equipment.id,
-                            attribute_id=attr.id,  # ✅ Plus de contrainte FK, juste une référence
+                            specification=attr.specification,
+                            famille=attr.famille,
+                            indx=attr.indx,
                             attribute_name=attr.attribute_name,
                             value=attr.value,
                             code=attr.code,
-                            description=attr.description
+                            description=attr.description,
+                            created_at=attr.created_at,
+                            updated_at=attr.updated_at,
+                            is_copy_ot=attr.is_copy_ot
                         )
                         session.add(history_attribute)
                         logger.debug(f"Attribut historique créé: {attr.attribute_name}")
