@@ -12,14 +12,31 @@ void main() async {
   // Initialiser le service Hive (qui gère l'init et les adaptateurs)
   await HiveService.init();
 
-  HiveService.clearAllCache();  // Nettoyer le cache au démarrage
+  // HiveService.clearAllCache();  // Nettoyer le cache au démarrage
 
   runApp(
+    // ✅ CORRIGÉ: Injection correcte avec ProxyProvider
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (context) => EquipmentProvider()),
+        // 1️⃣ AuthProvider en premier (indépendant)
         ChangeNotifierProvider(
           create: (context) => AuthProvider()..initialize(),
+        ),
+
+        // 2️⃣ EquipmentProvider qui dépend d'AuthProvider
+        ChangeNotifierProxyProvider<AuthProvider, EquipmentProvider>(
+          create:
+              (context) => EquipmentProvider(
+                Provider.of<AuthProvider>(context, listen: false),
+              ),
+          update: (context, authProvider, previousEquipmentProvider) {
+            // ✅ Si l'utilisateur change, recréer le provider
+            if (previousEquipmentProvider == null) {
+              return EquipmentProvider(authProvider);
+            }
+            // ✅ Sinon, réutiliser l'instance existante
+            return previousEquipmentProvider;
+          },
         ),
       ],
       child: const MyApp(),

@@ -2,12 +2,12 @@ import 'dart:async';
 
 import 'package:appmobilegmao/provider/auth_provider.dart';
 import 'package:appmobilegmao/provider/equipment_provider.dart';
-import 'package:appmobilegmao/screens/equipments/add_equipment_screen.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
-import 'package:appmobilegmao/widgets/list_item.dart';
-import 'package:appmobilegmao/widgets/loading_indicator.dart';
-import 'package:appmobilegmao/widgets/empty_state.dart';
 import 'package:appmobilegmao/widgets/tools.dart';
+// ✅ NOUVEAUX imports pour les widgets factorisés
+import 'package:appmobilegmao/widgets/search_bar.dart' as custom;
+import 'package:appmobilegmao/widgets/equipments/equipment_list.dart';
+import 'package:appmobilegmao/widgets/equipments/equipment_item.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -20,13 +20,10 @@ class EquipmentScreen extends StatefulWidget {
 }
 
 class _EquipmentScreenState extends State<EquipmentScreen> {
-  final _formKey = GlobalKey<FormState>();
   final TextEditingController _searchController = TextEditingController();
-  Timer? _debounce;
 
   // État pour le type de recherche
-  String _searchType = 'all'; // 'all', 'code', 'description', 'zone', 'famille'
-  bool _showSearchOptions = false;
+  String _searchType = 'all';
 
   // Logging
   static const String __logName = 'EquipmentScreen -';
@@ -42,7 +39,6 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
   @override
   void dispose() {
     _searchController.dispose();
-    _debounce?.cancel();
     super.dispose();
   }
 
@@ -52,7 +48,6 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     super.deactivate();
   }
 
-  /// ✅ AMÉLIORÉ: Optimisation du chargement initial avec préservation d'état
   void _loadEquipmentsWithUserInfo() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final equipmentProvider = Provider.of<EquipmentProvider>(
@@ -62,19 +57,17 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     final user = authProvider.currentUser;
 
     if (user != null) {
-      // ✅ 1. Charger d'abord les sélecteurs (priorité cache)
       try {
         if (kDebugMode) {
           print('🚀 $__logName Chargement initial des sélecteurs');
         }
 
         // Chargement en arrière-plan des sélecteurs (cache prioritaire)
-        unawaited(_loadSelectorsInBackground(equipmentProvider, user.entity));
+        unawaited(_loadSelectorsInBackground(equipmentProvider));
 
-        // ✅ 2. Charger les équipements normalement
-        await equipmentProvider.fetchEquipments(entity: user.entity);
+        // Charger les équipements (l'entité vient de AuthProvider via EquipmentProvider)
+        await equipmentProvider.fetchEquipments();
 
-        // ✅ 3. NOUVEAU: Restaurer l'état de recherche si nécessaire
         if (_searchController.text.isNotEmpty) {
           _performSearch(_searchController.text);
         }
@@ -84,18 +77,16 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
         }
       }
     } else {
-      // Utilisateur non connecté - charger uniquement les équipements
-      await context.read<EquipmentProvider>().fetchEquipments();
+      await equipmentProvider.fetchEquipments();
     }
   }
 
-  // Chargement en arrière-plan des sélecteurs
+  // ✅ MODIFIÉ: Ne passe plus entity en paramètre (déduit par le provider)
   Future<void> _loadSelectorsInBackground(
     EquipmentProvider equipmentProvider,
-    String entity,
   ) async {
     try {
-      final selectors = await equipmentProvider.loadSelectors(entity: entity);
+      final selectors = await equipmentProvider.loadSelectors();
       if (selectors.isNotEmpty) {
         if (kDebugMode) {
           print(
@@ -137,9 +128,33 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Column(
               children: [
-                _searchBar(equipmentProvider),
+                // ✅ REMPLACÉ: Utiliser le SearchBar factorisé
+                custom.SearchBar(
+                  controller: _searchController,
+                  initialType: _searchType,
+                  onSearch: (value) {
+                    _performSearch(value);
+                    setState(() {}); // Met à jour l'affichage du badge/clear
+                  },
+                  onTypeChange: (type) {
+                    setState(() {
+                      _searchType = type;
+                    });
+                    if (_searchController.text.isNotEmpty) {
+                      _performSearch(_searchController.text);
+                    }
+                  },
+                ),
                 const SizedBox(height: 20),
-                Expanded(child: _buildEquipmentList(equipmentProvider)),
+                // ✅ REMPLACÉ: Utiliser EquipmentList factorisée
+                Expanded(
+                  child: EquipmentList(
+                    isLoading: equipmentProvider.isLoading,
+                    items: equipmentProvider.equipments,
+                    onRefresh: () => _refreshWithFilters(equipmentProvider),
+                    itemBuilder: (item) => buildEquipmentItem(item),
+                  ),
+                ),
               ],
             ),
           ),
@@ -187,7 +202,6 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     );
   }
 
-  /// ✅ AMÉLIORÉ: Debug des filtres lors de la recherche
   void _performSearch(String value) {
     final equipmentProvider = Provider.of<EquipmentProvider>(
       context,
@@ -206,7 +220,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
 
     final totalBefore = equipmentProvider.equipments.length;
 
-    // Filtrer selon le type de recherche sélectionné
+    // ✅ CORRIGÉ : Utiliser le type de recherche pour filtrer le bon champ
     switch (_searchType) {
       case 'code':
         equipmentProvider.filterEquipmentsByField(value, 'code');
@@ -222,7 +236,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
         break;
       case 'all':
       default:
-        equipmentProvider.filterEquipments(value);
+        equipmentProvider.filterEquipments(value); // Recherche générale
         break;
     }
 
@@ -235,312 +249,12 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     }
   }
 
-  // Widget pour afficher les options de recherche
-  Widget _buildSearchTypeSelector() {
-    final searchTypes = [
-      {'key': 'all', 'label': 'Tous les champs', 'icon': Icons.search},
-      {'key': 'code', 'label': 'Code équipement', 'icon': Icons.qr_code},
-      {'key': 'description', 'label': 'Description', 'icon': Icons.description},
-      {'key': 'zone', 'label': 'Zone', 'icon': Icons.location_on},
-      {'key': 'famille', 'label': 'Famille', 'icon': Icons.category},
-    ];
-
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      height: _showSearchOptions ? 60 : 0,
-      child:
-          _showSearchOptions
-              ? Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryColor10,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppTheme.thirdColor30),
-                ),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Row(
-                    children:
-                        searchTypes.map((type) {
-                          final isSelected = _searchType == type['key'];
-                          return GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _searchType = type['key'] as String;
-                              });
-
-                              // Refaire la recherche avec le nouveau type
-                              if (_searchController.text.isNotEmpty) {
-                                _performSearch(_searchController.text);
-                              }
-                            },
-                            child: Container(
-                              margin: const EdgeInsets.only(right: 8),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color:
-                                    isSelected
-                                        ? AppTheme.secondaryColor
-                                        : AppTheme.primaryColor20,
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color:
-                                      isSelected
-                                          ? AppTheme.secondaryColor
-                                          : AppTheme.thirdColor,
-                                  width: 1,
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    type['icon'] as IconData,
-                                    size: 16,
-                                    color:
-                                        isSelected
-                                            ? Colors.white
-                                            : AppTheme.thirdColor,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    type['label'] as String,
-                                    style: TextStyle(
-                                      fontFamily: AppTheme.fontMontserrat,
-                                      fontSize: 12,
-                                      fontWeight:
-                                          isSelected
-                                              ? FontWeight.w600
-                                              : FontWeight.normal,
-                                      color:
-                                          isSelected
-                                              ? Colors.white
-                                              : AppTheme.thirdColor,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                  ),
-                ),
-              )
-              : const SizedBox.shrink(),
-    );
-  }
-
-  // Amélioration de la barre de recherche avec options
-  Widget _searchBar(EquipmentProvider equipmentProvider) {
-    return Column(
-      children: [
-        Form(
-          key: _formKey,
-          child: TextFormField(
-            controller: _searchController,
-            style: const TextStyle(
-              color: AppTheme.thirdColor,
-              fontFamily: AppTheme.fontMontserrat,
-              fontSize: 14,
-            ),
-            decoration: InputDecoration(
-              labelText: _getSearchPlaceholder(),
-              labelStyle: const TextStyle(
-                color: AppTheme.thirdColor,
-                fontFamily: AppTheme.fontRoboto,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-              ),
-              hintText: _getSearchHint(),
-              hintStyle: TextStyle(
-                color: AppTheme.thirdColor60,
-                fontFamily: AppTheme.fontRoboto,
-                fontSize: 12,
-              ),
-              border: const UnderlineInputBorder(
-                borderSide: BorderSide(color: AppTheme.thirdColor),
-              ),
-              enabledBorder: const UnderlineInputBorder(
-                borderSide: BorderSide(color: AppTheme.thirdColor),
-              ),
-              focusedBorder: const UnderlineInputBorder(
-                borderSide: BorderSide(color: AppTheme.thirdColor, width: 2.0),
-              ),
-              prefixIcon: IconButton(
-                icon: Icon(
-                  _showSearchOptions ? Icons.filter_list : Icons.tune,
-                  color:
-                      _showSearchOptions
-                          ? AppTheme.secondaryColor
-                          : AppTheme.thirdColor,
-                ),
-                onPressed: () {
-                  setState(() {
-                    _showSearchOptions = !_showSearchOptions;
-                  });
-                },
-                tooltip: 'Options de recherche',
-              ),
-              suffixIcon: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // ✅ NOUVEAU: Indicateur du type de recherche actuel
-                  if (_searchType != 'all')
-                    Container(
-                      margin: const EdgeInsets.only(right: 4),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppTheme.secondaryColor,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        _getSearchTypeLabel(_searchType),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  // ✅ Bouton de recherche existant
-                  IconButton(
-                    icon: const Icon(Icons.search, color: AppTheme.thirdColor),
-                    onPressed: () {
-                      _performSearch(_searchController.text);
-                      FocusScope.of(context).unfocus();
-                    },
-                  ),
-                  // ✅ NOUVEAU: Bouton pour effacer la recherche
-                  if (_searchController.text.isNotEmpty)
-                    IconButton(
-                      icon: const Icon(Icons.clear, color: AppTheme.thirdColor),
-                      onPressed: () {
-                        _searchController.clear();
-                        _performSearch('');
-                        FocusScope.of(context).unfocus();
-                      },
-                    ),
-                ],
-              ),
-            ),
-            onChanged: (value) {
-              if (_debounce?.isActive ?? false) _debounce!.cancel();
-              _debounce = Timer(const Duration(milliseconds: 500), () {
-                _performSearch(value);
-              });
-            },
-            onFieldSubmitted: (value) {
-              _performSearch(value);
-              FocusScope.of(context).unfocus();
-            },
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Veuillez entrer quelque chose';
-              }
-              return null;
-            },
-            textInputAction: TextInputAction.search,
-          ),
-        ),
-
-        // ✅ NOUVEAU: Options de recherche
-        _buildSearchTypeSelector(),
-      ],
-    );
-  }
-
-  // Obtenir le placeholder selon le type de recherche
-  String _getSearchPlaceholder() {
-    switch (_searchType) {
-      case 'code':
-        return 'Rechercher par code...';
-      case 'description':
-        return 'Rechercher par description...';
-      case 'zone':
-        return 'Rechercher par zone...';
-      case 'famille':
-        return 'Rechercher par famille...';
-      case 'all':
-      default:
-        return 'Rechercher par...';
-    }
-  }
-
-  // Obtenir le hint selon le type de recherche
-  String _getSearchHint() {
-    switch (_searchType) {
-      case 'code':
-        return 'Ex: EQ001, TRANSFO_001, LM0303...';
-      case 'description':
-        return 'Ex: Transformateur, Moteur, Cellule...';
-      case 'zone':
-        return 'Ex: Dakar, Thiès, Saint-Louis...';
-      case 'famille':
-        return 'Ex: TRANSFO_HTA/BT, CELLULE_DEPART...';
-      case 'all':
-      default:
-        return 'Code, description, zone, famille...';
-    }
-  }
-
-  // Obtenir le label court du type de recherche
-  String _getSearchTypeLabel(String type) {
-    switch (type) {
-      case 'code':
-        return 'CODE';
-      case 'description':
-        return 'DESC';
-      case 'zone':
-        return 'ZONE';
-      case 'famille':
-        return 'FAM';
-      default:
-        return 'ALL';
-    }
-  }
-
-  Widget _buildEquipmentList(EquipmentProvider equipmentProvider) {
-    final bool hasResults = equipmentProvider.equipments.isNotEmpty;
-
-    return equipmentProvider.isLoading
-        ? const LoadingIndicator()
-        : RefreshIndicator(
-          // ✅ CORRIGÉ: Préserver les filtres lors du refresh
-          onRefresh: () => _refreshWithFilters(equipmentProvider),
-          child:
-              hasResults
-                  ? ListView.builder(
-                    padding: EdgeInsets.zero,
-                    itemCount: equipmentProvider.equipments.length,
-                    itemBuilder: (context, index) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: _itemBuilder(
-                          equipmentProvider.equipments[index],
-                        ),
-                      );
-                    },
-                  )
-                  : _buildEmptyState(equipmentProvider),
-        );
-  }
-
-  /// ✅ NOUVEAU: Méthode pour rafraîchir en préservant les filtres
   Future<void> _refreshWithFilters(EquipmentProvider equipmentProvider) async {
     try {
       if (kDebugMode) {
         print('🔄 $__logName Début du refresh avec préservation des filtres');
       }
 
-      // ✅ 1. Sauvegarder l'état actuel des filtres
       final currentSearchText = _searchController.text;
       final currentSearchType = _searchType;
       final hasActiveFilter = currentSearchText.isNotEmpty;
@@ -555,20 +269,9 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
         print('   - Filtre actif: $hasActiveFilter');
       }
 
-      // ✅ 2. Recharger toutes les données depuis le backend/cache
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final user = authProvider.currentUser;
+      // ✅ MODIFIÉ: Ne passe plus entity (déduit via AuthProvider dans le provider)
+      await equipmentProvider.fetchEquipments(forceRefresh: true);
 
-      if (user != null) {
-        await equipmentProvider.fetchEquipments(
-          entity: user.entity,
-          forceRefresh: true, // ✅ Forcer le refresh depuis l'API
-        );
-      } else {
-        await equipmentProvider.fetchEquipments(forceRefresh: true);
-      }
-
-      // ✅ 3. Réappliquer les filtres si ils étaient actifs
       if (hasActiveFilter) {
         if (kDebugMode) {
           print(
@@ -576,7 +279,6 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
           );
         }
 
-        // Réappliquer le même type de recherche
         switch (currentSearchType) {
           case 'code':
             equipmentProvider.filterEquipmentsByField(
@@ -624,155 +326,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
       if (kDebugMode) {
         print('❌ $__logName Erreur lors du refresh: $e');
       }
-      // L'erreur sera gérée par le RefreshIndicator automatiquement
       rethrow;
     }
-  }
-
-  /// ✅ AMÉLIORÉ: Gestion améliorée de l'état vide avec contexte de filtre
-  Widget _buildEmptyState(EquipmentProvider equipmentProvider) {
-    final bool isSearching = _searchController.text.isNotEmpty;
-    final String searchTerm = _searchController.text.trim();
-
-    if (isSearching) {
-      String message;
-      String suggestions;
-
-      if (searchTerm.length < 3) {
-        message =
-            'Tapez au moins 3 caractères pour une recherche plus précise.';
-        suggestions = '';
-      } else {
-        // ✅ AMÉLIORÉ: Afficher le nombre total d'équipements pour contextualiser
-        final totalEquipments = equipmentProvider.equipments.length;
-        message =
-            'Aucun équipement ne correspond à "$searchTerm"\n($totalEquipments équipements au total)';
-
-        // Suggestions spécifiques selon le type de recherche
-        switch (_searchType) {
-          case 'code':
-            suggestions =
-                'Suggestions pour les codes:\n• EQ001, TRANSFO_001\n• LM0303I2CADTRF1\n• Vérifiez l\'orthographe du code';
-            break;
-          case 'description':
-            suggestions =
-                'Suggestions pour les descriptions:\n• Transformateur, Moteur\n• Cellule, Câble\n• Essayez des termes plus généraux';
-            break;
-          case 'zone':
-            suggestions =
-                'Suggestions pour les zones:\n• DAKAR, THIES\n• SAINT-LOUIS, KAOLACK\n• Utilisez le nom complet de la zone';
-            break;
-          case 'famille':
-            suggestions =
-                'Suggestions pour les familles:\n• TRANSFO_HTA/BT\n• CELLULE_DEPART\n• CABLE_HTA, CABLE_BT';
-            break;
-          default:
-            suggestions =
-                'Essayez avec d\'autres mots-clés comme:\n• Code équipement (ex: EQ001)\n• Zone (ex: Dakar)\n• Famille (ex: Moteur)';
-        }
-      }
-
-      return EmptyState(
-        title: '🔍 Aucun résultat trouvé',
-        message: suggestions.isNotEmpty ? '$message.\n\n$suggestions' : message,
-        icon: Icons.search_off,
-        onRetry: () {
-          _searchController.clear();
-          _performSearch('');
-          FocusScope.of(context).unfocus();
-          setState(() {
-            _showSearchOptions = false;
-            _searchType = 'all';
-          });
-        },
-        retryButtonText: 'Effacer la recherche',
-      );
-    } else {
-      return EmptyState(
-        title: '📦 Aucun équipement',
-        message:
-            'Aucun équipement n\'a été trouvé.\nCommencez par ajouter votre premier équipement.',
-        icon: Icons.inventory_2_outlined,
-        onRetry: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const AddEquipmentScreen()),
-          );
-        },
-        retryButtonText: 'Ajouter un équipement',
-      );
-    }
-  }
-
-  // Extraire les attributs correctement depuis les données mises à jour
-  Widget _itemBuilder(dynamic equipment) {
-    List<Map<String, dynamic>>? equipmentAttributes;
-
-    try {
-      if (equipment['attributes'] != null) {
-        if (equipment['attributes'] is List) {
-          final attributesList = equipment['attributes'] as List;
-          equipmentAttributes =
-              attributesList
-                  .map((attr) {
-                    if (attr is Map<String, dynamic>) {
-                      return attr;
-                    } else if (attr is Map) {
-                      return Map<String, dynamic>.from(attr);
-                    } else {
-                      // Si c'est un objet EquipmentAttribute, le convertir
-                      try {
-                        final dynamic attrObj = attr;
-                        return <String, dynamic>{
-                          'id': attrObj.id?.toString(),
-                          'name': attrObj.name?.toString(),
-                          'value': attrObj.value?.toString(),
-                          'type': attrObj.type?.toString(),
-                          'specification': attrObj.specification?.toString(),
-                          'index': attrObj.index?.toString(),
-                        };
-                      } catch (e) {
-                        if (kDebugMode) {
-                          print('⚠️ $__logName Erreur conversion attribut: $e');
-                        }
-                        return <String, dynamic>{};
-                      }
-                    }
-                  })
-                  .where((attr) => attr.isNotEmpty)
-                  .toList();
-        }
-      }
-
-      if (equipmentAttributes != null && equipmentAttributes.isNotEmpty) {
-        if (kDebugMode) {
-          print(
-            '📋 $__logName Attributs trouvés pour ${equipment['code']}: ${equipmentAttributes.length} éléments',
-          );
-        }
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ $__logName Erreur extraction attributs: $e');
-      }
-      equipmentAttributes = null;
-    }
-
-    return ListItemCustom.equipment(
-      id: equipment['id']?.toString() ?? '',
-      codeParent: equipment['codeParent'] ?? '',
-      feeder: equipment['feeder'] ?? '',
-      feederDescription: equipment['feederDescription'] ?? '',
-      code: equipment['code'] ?? '',
-      famille: equipment['famille'] ?? '',
-      zone: equipment['zone'] ?? '',
-      entity: equipment['entity'] ?? '',
-      unite: equipment['unite'] ?? '',
-      centre: equipment['centreCharge'] ?? '',
-      description: equipment['description'] ?? '',
-      longitude: equipment['longitude']?.toString() ?? '',
-      latitude: equipment['latitude']?.toString() ?? '',
-      attributes: equipmentAttributes, // ✅ Passer les attributs extraits
-    );
   }
 }

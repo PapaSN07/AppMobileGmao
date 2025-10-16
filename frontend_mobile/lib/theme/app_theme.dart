@@ -16,6 +16,7 @@ class AppTheme {
   static const Color secondaryColor70 = Color.fromRGBO(1, 92, 192, 0.7);
   static const Color secondaryColor80 = Color.fromRGBO(1, 92, 192, 0.8);
   static const Color thirdColor = Color.fromRGBO(144, 144, 144, 1);
+  static const Color thirdColor10 = Color.fromRGBO(144, 144, 144, 0.1);
   static const Color thirdColor20 = Color.fromRGBO(144, 144, 144, 0.2);
   static const Color thirdColor30 = Color.fromRGBO(144, 144, 144, 0.3);
   static const Color thirdColor50 = Color.fromRGBO(144, 144, 144, 0.5);
