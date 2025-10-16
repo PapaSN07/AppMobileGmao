@@ -399,6 +399,8 @@ export class EquipmentList implements OnInit {
                 this.messageService.add({ severity: 'success', summary: 'Succès', detail: `Équipement ${equipment.code} rejeté`, life: 3000 });
                 this.loadDataNoApproved();
                 this.loadDataApproved();
+                // Archiver l'équipement rejeté après succès
+                this.archiveRejectedEquipments([equipment]);
             },
             error: (err) => {
                 this.messageService.add({ severity: 'error', summary: 'Erreur', detail: `Échec du rejet de l'équipement ${equipment.code}`, life: 3000 });
@@ -429,12 +431,35 @@ export class EquipmentList implements OnInit {
                 this.messageService.add({ severity: 'success', summary: 'Succès', detail: `Équipement ${equipment.code} rejeté`, life: 3000 });
                 this.loadDataNoModified();
                 this.loadDataApproved();
+                // Archiver l'équipement rejeté après succès
+                this.archiveRejectedEquipments([equipment]);
             },
             error: (err) => {
                 this.messageService.add({ severity: 'error', summary: 'Erreur', detail: `Échec du rejet de l'équipement ${equipment.code}`, life: 3000 });
             }
         });
     }
+
+    // Méthode pour archiver les équipements rejetés
+    private archiveRejectedEquipments(equipments: Equipment[]): void {
+        const ids = equipments.map((e) => e.id!);
+        this.equipmentService.archive(ids).subscribe({
+            next: (response) => {
+                this.messageService.add({ severity: 'success', summary: 'Archivage réussi', detail: `${equipments.length} équipement(s) rejeté(s) archivé(s) avec succès.`, life: 3000 });
+                // Recharger les données pour refléter l'archivage
+                this.loadDataNoApproved();
+                this.loadDataNoModified();
+                // Réinitialiser les sélections
+                this.selectedEquipmentsNoApproved = [];
+                this.selectedEquipmentsNoModified = [];
+            },
+            error: (err) => {
+                this.messageService.add({ severity: 'error', summary: 'Erreur d\'archivage', detail: 'Une erreur est survenue lors de l\'archivage.', life: 3000 });
+                console.error('Erreur archivage:', err);
+            }
+        });
+    }
+
 
     confirm1(event: Event, equipment: Equipment) {
         this.confirmationService.confirm({
@@ -655,6 +680,8 @@ export class EquipmentList implements OnInit {
                 this.loadDataNoApproved();
                 this.loadDataNoModified();
                 this.loadDataApproved();
+                // Archiver les équipements rejetés après succès
+                this.archiveRejectedEquipments(equipments);
             })
             .catch((err) => {
                 this.messageService.add({ severity: 'error', summary: 'Erreur', detail: 'Une erreur est survenue lors du rejet en masse.', life: 3000 });

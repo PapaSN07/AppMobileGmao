@@ -1,5 +1,5 @@
-import { Component, HostBinding, Input } from '@angular/core';
-import { NavigationEnd, Router, RouterModule } from '@angular/router';
+import { Component, HostBinding, Input, OnDestroy, OnInit } from '@angular/core';
+import { NavigationEnd, Router, RouterModule, UrlTree } from '@angular/router';
 import { animate, state, style, transition, trigger } from '@angular/animations';
 import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
@@ -68,7 +68,7 @@ import { LayoutService } from '../core/services/state/layout.service';
     ],
     providers: [LayoutService]
 })
-export class AppMenuitem {
+export class AppMenuitem implements OnInit, OnDestroy {
     @Input() item!: MenuItem;
 
     @Input() index!: number;
@@ -89,11 +89,14 @@ export class AppMenuitem {
         public router: Router,
         private layoutService: LayoutService
     ) {
+        // écoute des changements venant du layout (clics sur d'autres items)
         this.menuSourceSubscription = this.layoutService.menuSource$.subscribe((value) => {
             Promise.resolve(null).then(() => {
                 if (value.routeEvent) {
+                    // routeEvent signifie qu'on a navigué — on garde ouvert si la clé correspond
                     this.active = value.key === this.key || value.key.startsWith(this.key + '-') ? true : false;
                 } else {
+                    // événement utilisateur : fermer si on n'est pas dans la branche
                     if (value.key !== this.key && !value.key.startsWith(this.key + '-')) {
                         this.active = false;
                     }
@@ -105,19 +108,17 @@ export class AppMenuitem {
             this.active = false;
         });
 
-        this.router.events.pipe(filter((event) => event instanceof NavigationEnd)).subscribe((params) => {
-            if (this.item.routerLink) {
-                this.updateActiveStateFromRoute();
-            }
+        // Sur chaque navigation, recalculer l'état actif (ne pas se limiter aux items qui ont routerLink)
+        this.router.events.pipe(filter((event) => event instanceof NavigationEnd)).subscribe(() => {
+            this.updateActiveStateFromRoute();
         });
     }
 
     ngOnInit() {
         this.key = this.parentKey ? this.parentKey + '-' + this.index : String(this.index);
 
-        if (this.item.routerLink) {
-            this.updateActiveStateFromRoute();
-        }
+        // Toujours mettre à jour l'état initial depuis la route courante (pour persistance après refresh)
+        this.updateActiveStateFromRoute();
     }
 
     // Getter pour l'icône dynamique
@@ -128,11 +129,49 @@ export class AppMenuitem {
         return this.item.icon || '';
     }
 
-    updateActiveStateFromRoute() {
-        let activeRoute = this.router.isActive(this.item.routerLink[0], { paths: 'exact', queryParams: 'ignored', matrixParams: 'ignored', fragment: 'ignored' });
+    /**
+     * Vérifie récursivement si l'item ou un de ses enfants correspond à la route courante.
+     * Utilise router.createUrlTree + router.isActive pour une détection robuste (supporte array/string routerLink).
+     */
+    private isActive(item: MenuItem): boolean {
+        // si item a routerLink, créer un UrlTree et vérifier isActive (non strict pour permettre les sous-routes)
+        if (item.routerLink) {
+            try {
+                const link = item.routerLink as any;
+                const tree: UrlTree = this.router.createUrlTree(Array.isArray(link) ? link : [link]);
+                if (this.router.isActive(tree, false)) {
+                    return true;
+                }
+            } catch (e) {
+                // fallback : essayer une comparaison simple
+                try {
+                    const path = Array.isArray(item.routerLink) ? item.routerLink.join('/') : String(item.routerLink);
+                    if (this.router.url.startsWith(path)) return true;
+                } catch {}
+            }
+        }
 
+        // sinon, si enfants, vérifier récursivement
+        if (item.items && item.items.length) {
+            return item.items.some((child) => this.isActive(child));
+        }
+
+        return false;
+    }
+
+    updateActiveStateFromRoute() {
+        const activeRoute = this.isActive(this.item);
+
+        // si la route correspond à cet item ou un descendant, on l'ouvre et on notifie en tant que routeEvent
         if (activeRoute) {
+            this.active = true;
             this.layoutService.onMenuStateChange({ key: this.key, routeEvent: true });
+        } else {
+            // Ne pas forcer la fermeture si l'utilisateur a explicitement ouvert ce menu.
+            // On ferme seulement si la route ne concerne pas la branche ET aucun événement utilisateur récent.
+            // Ici on met active = false pour refléter l'état de route au chargé initial,
+            // mais menuSource subscription (clic utilisateur) gardera la priorité ultérieurement.
+            this.active = false;
         }
     }
 
@@ -148,11 +187,12 @@ export class AppMenuitem {
             this.item.command({ originalEvent: event, item: this.item });
         }
 
-        // toggle active state
+        // toggle active state for submenus
         if (this.item.items) {
             this.active = !this.active;
         }
 
+        // notifier le layout (clic utilisateur)
         this.layoutService.onMenuStateChange({ key: this.key });
     }
 
