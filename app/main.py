@@ -18,6 +18,7 @@ from app.routers.web.user_router import user_router_web
 from app.routers.mobile.centre_charge_router import centre_charge_router
 from app.routers.mobile.famille_router import famille_router
 from app.routers.mobile.entity_router import entity_router
+from app.routers.web.entity_router import entity_router_web
 from app.routers.mobile.unite_router import unite_router
 from app.routers.mobile.zone_router import zone_router
 from app.core.cache import cache
@@ -229,6 +230,7 @@ app.include_router(zone_router, prefix=PREFIX_MOBILE)
 PREFIX_WEB = "/api/v1/web"
 app.include_router(equipment_router_web, prefix=PREFIX_WEB)
 app.include_router(user_router_web, prefix=PREFIX_WEB)
+app.include_router(entity_router_web, prefix=PREFIX_WEB)
 
 if __name__ == "__main__":
     import uvicorn

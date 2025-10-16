@@ -112,3 +112,29 @@ def get_hierarchy(entity_code: str) -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"❌ Erreur hiérarchie Oracle: {e}")
         raise
+
+def get_all_entities() -> Dict[str, Any]:
+    """Récupère les entités depuis la base de données."""
+    
+    # Inclure la limite dans la clé de cache
+    cache_key = f"mobile_entities"
+    cached = cache.get_data_only(cache_key)
+    if cached:
+        return cached
+    
+    try:
+        with get_main_session() as session:
+            entities = session.query(EntityModel).all()
+
+            response = {
+                "entities": [entity.to_dict() for entity in entities], 
+                "count": len(entities)
+            }
+            
+            cache.set(cache_key, response, CACHE_TTL_SHORT)
+            logger.info(f"✅ {len(entities)} entités récupérées")
+            return response
+            
+    except Exception as e:
+        logger.error(f"❌ Erreur entités: {e}")
+        raise

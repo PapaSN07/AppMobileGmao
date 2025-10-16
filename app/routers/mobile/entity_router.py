@@ -15,8 +15,6 @@ entity_router = APIRouter(
     tags=["Entité - Mobile API"],
 )
 
-# === ENDPOINTS CORE POUR MOBILE ===
-
 @entity_router.get("",
     summary="Liste des entités",
     description="Récupère la liste des entités pour mobile"
