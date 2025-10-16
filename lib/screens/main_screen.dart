@@ -1,3 +1,5 @@
+import 'package:appmobilegmao/screens/equipments/history_equipment_screen.dart';
+import 'package:appmobilegmao/widgets/custom_bottom_navigation_bar.dart';
 import 'package:appmobilegmao/widgets/custom_buttons.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -8,7 +10,6 @@ import 'package:appmobilegmao/screens/equipments/equipment_screen.dart';
 import 'package:appmobilegmao/screens/equipments/add_equipment_screen.dart';
 import 'package:appmobilegmao/screens/settings/menu_screen.dart';
 import 'package:appmobilegmao/screens/auth/login_screen.dart';
-import 'package:appmobilegmao/widgets/bottom_navigation_bar.dart';
 import 'package:appmobilegmao/provider/auth_provider.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
 
@@ -23,13 +24,22 @@ class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  late final List<Widget> _pages;
-
   @override
   void initState() {
     super.initState();
+  }
 
-    _pages = [
+  // Retirer _pages initialisé dans initState, au lieu de ça : getter dynamique
+  List<Widget> get _pages {
+    final role = Provider.of<AuthProvider>(context, listen: false).role;
+    if (role == 'PRESTATAIRE') {
+      return [
+        const EquipmentScreen(), // index 0
+        const HistoryEquipmentScreen(), // index 1
+      ];
+    }
+    // rôle normal : pages complètes
+    return [
       const HomeScreen(),
       const EquipmentScreen(),
       const OtScreen(),
@@ -44,6 +54,21 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   String _getPageTitle(int index) {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    if (authProvider.isPrestataire) {
+      // ✅ PRESTATAIRE : 2 onglets
+      switch (index) {
+        case 0:
+          return 'Équipements';
+        case 1:
+          return 'Historiques';
+        default:
+          return 'GMAO';
+      }
+    }
+
+    // ✅ LDAP : 4 onglets
     switch (index) {
       case 0:
         return 'Accueil';
@@ -54,33 +79,49 @@ class _MainScreenState extends State<MainScreen> {
       case 3:
         return 'Demandes d\'Intervention';
       default:
-        return 'SENELEC GMAO';
+        return 'GMAO';
     }
   }
 
   // ✅ NOUVELLE MÉTHODE: Obtenir la couleur de l'AppBar selon la page
   Color _getAppBarBackgroundColor() {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    if (authProvider.isPrestataire) {
+      // ✅ PRESTATAIRE : toujours couleur secondaire (bleu)
+      return AppTheme.secondaryColor;
+    }
+
+    // ✅ LDAP : couleurs selon page
     switch (_currentIndex) {
       case 0: // Home
-        return AppTheme.primaryColor; // ✅ Blanc pour l'accueil
+        return AppTheme.primaryColor;
       case 1: // Equipment
       case 2: // OT
       case 3: // DI
       default:
-        return AppTheme.secondaryColor; // ✅ Bleu pour les autres
+        return AppTheme.secondaryColor;
     }
   }
 
   // ✅ NOUVELLE MÉTHODE: Obtenir la couleur du texte selon la page
   Color _getAppBarTextColor() {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    if (authProvider.isPrestataire) {
+      // ✅ PRESTATAIRE : toujours texte blanc
+      return Colors.white;
+    }
+
+    // ✅ LDAP : couleurs selon page
     switch (_currentIndex) {
       case 0: // Home
-        return AppTheme.secondaryColor; // ✅ Texte bleu sur fond blanc
+        return AppTheme.secondaryColor;
       case 1: // Equipment
       case 2: // OT
       case 3: // DI
       default:
-        return Colors.white; // ✅ Texte blanc sur fond bleu
+        return Colors.white;
     }
   }
 
@@ -96,7 +137,7 @@ class _MainScreenState extends State<MainScreen> {
                 nom: user.username.split('.').last,
                 prenom: user.username.split('.').first,
                 email: user.email,
-                role: user.group ?? 'Utilisateur',
+                role: user.group ?? user.role ?? 'Utilisateur',
                 onLogout: _handleLogout,
               ),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
@@ -146,10 +187,7 @@ class _MainScreenState extends State<MainScreen> {
         icon: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color:
-                isHome
-                    ? AppTheme.secondaryColor10
-                    : AppTheme.primaryColor20,
+            color: isHome ? AppTheme.secondaryColor10 : AppTheme.primaryColor20,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(Icons.add, color: textColor, size: 20),
@@ -253,7 +291,8 @@ class _MainScreenState extends State<MainScreen> {
           actions: [
             Row(
               mainAxisAlignment:
-                  MainAxisAlignment.spaceBetween, // ✅ Aligne les boutons à droite
+                  MainAxisAlignment
+                      .spaceBetween, // ✅ Aligne les boutons à droite
               children: [
                 SecondaryButton(
                   text: 'Annuler',

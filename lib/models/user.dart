@@ -6,7 +6,7 @@ part 'user.g.dart';
 class User extends HiveObject {
   @HiveField(0)
   final String id;
-  @HiveField(1) 
+  @HiveField(1)
   final String? code;
   @HiveField(2)
   final String username;
@@ -22,6 +22,8 @@ class User extends HiveObject {
   final String? urlImage;
   @HiveField(8)
   final String? isAbsent;
+  @HiveField(9)
+  final String? role;
 
   User({
     required this.id,
@@ -33,6 +35,7 @@ class User extends HiveObject {
     this.group,
     this.urlImage,
     this.isAbsent,
+    this.role,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -46,6 +49,7 @@ class User extends HiveObject {
       group: json['group'] ?? '',
       urlImage: json['urlImage'] ?? '',
       isAbsent: json['isAbsent'] ?? '',
+      role: json['role'] ?? '',
     );
   }
 
@@ -60,11 +64,12 @@ class User extends HiveObject {
       'group': group,
       'urlImage': urlImage,
       'isAbsent': isAbsent,
+      'role': role,
     };
   }
 
   @override
   String toString() {
-    return 'User{id: $id, code: $code, username: $username, password: $password, email: $email, entity: $entity, group: $group, urlImage: $urlImage, isAbsent: $isAbsent}';
+    return 'User{id: $id, code: $code, username: $username, password: $password, email: $email, entity: $entity, group: $group, urlImage: $urlImage, isAbsent: $isAbsent, role: $role}';
   }
 }

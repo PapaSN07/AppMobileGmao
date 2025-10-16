@@ -26,13 +26,14 @@ class UserAdapter extends TypeAdapter<User> {
       group: fields[6] as String?,
       urlImage: fields[7] as String?,
       isAbsent: fields[8] as String?,
+      role: fields[9] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, User obj) {
     writer
-      ..writeByte(9)
+      ..writeByte(10)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -50,7 +51,9 @@ class UserAdapter extends TypeAdapter<User> {
       ..writeByte(7)
       ..write(obj.urlImage)
       ..writeByte(8)
-      ..write(obj.isAbsent);
+      ..write(obj.isAbsent)
+      ..writeByte(9)
+      ..write(obj.role);
   }
 
   @override

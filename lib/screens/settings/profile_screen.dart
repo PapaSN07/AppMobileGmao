@@ -185,7 +185,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
         _buildFormField(
           label: 'Groupe de préférence',
-          value: user?.group ?? '',
+          value: user?.group ?? user?.role ?? '',
           enabled: false,
         ),
       ],
