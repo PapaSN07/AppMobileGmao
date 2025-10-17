@@ -9,6 +9,7 @@ import logging
 from app.models.attribute_model import AttributeClicClac, HistoryAttributeClicClac
 from app.models.attribute_values_model import AttributeValues
 from app.models.equipment_model import EquipmentClicClac, EquipmentModel, EquipmentWithAttributesBuilder, HistoryEquipmentClicClac
+from app.services.notification_service import send_notification
 
 logger = logging.getLogger(__name__)
 
@@ -337,6 +338,15 @@ def update_equipment_partial(equipment_id: str, updates: Dict[str, Any]) -> tupl
                     str(updates.get('entity', '')), 
                     str(updates.get('famille', ''))
                 )
+                
+                # ✅ AJOUT : Envoyer notification à l'admin
+                import asyncio
+                asyncio.create_task(send_notification(
+                    user_id="admin",  # Adapter pour récupérer l'ID admin réel depuis DB
+                    title="Équipement mis à jour",
+                    message=f"L'équipement {updates['code']} a été mis à jour.",
+                    type="info"
+                ))
 
                 return (True, equipment_id_new)
 
@@ -441,6 +451,15 @@ def update_equipment_existing(equipment_id: str, updates: Dict[str, Any]) -> tup
                     str(existing_equipment.entity), 
                     str(existing_equipment.famille)
                 )
+                
+                # ✅ AJOUT : Envoyer notification à l'admin
+                import asyncio
+                asyncio.create_task(send_notification(
+                    user_id="admin",  # Adapter pour récupérer l'ID admin réel depuis DB
+                    title="Équipement modifié",
+                    message=f"L'équipement {existing_equipment.code} a été modifié (champs: {', '.join(updated_fields)}).",
+                    type="info"
+                ))
                 
                 return (True, f"Mise à jour réussie pour {len(updated_fields)} champs et {len(attributes_data)} attributs")
             else:
@@ -600,6 +619,15 @@ def insert_equipment(equipment: EquipmentClicClac) -> tuple[bool, Optional[int]]
                     str(equipment.entity), 
                     str(equipment.famille)
                 )
+                
+                # ✅ AJOUT : Envoyer notification à l'admin
+                import asyncio
+                asyncio.create_task(send_notification(
+                    user_id="admin",  # Adapter pour récupérer l'ID admin réel depuis DB
+                    title="Nouvel équipement créé",
+                    message=f"L'équipement {equipment.code} ({equipment.famille}) a été créé par {equipment.created_by or 'utilisateur inconnu'}.",
+                    type="success"
+                ))
 
                 return (True, equipment_id)
 
