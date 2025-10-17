@@ -13,6 +13,8 @@ import 'package:appmobilegmao/utils/equipment_helpers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:appmobilegmao/utils/responsive.dart';
+import 'package:appmobilegmao/theme/responsive_spacing.dart';
 
 class ModifyEquipmentScreen extends StatefulWidget {
   final Map<String, String>? equipmentData;
@@ -238,33 +240,36 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
   }
 
   Widget _buildBody(EquipmentProvider equipmentProvider) {
-    if (_isLoading) return _buildLoadingState();
-    if (_hasError) return _buildErrorState();
+    final responsive = context.responsive;
+    final spacing = context.spacing;
+
+    if (_isLoading) return _buildLoadingState(responsive, spacing);
+    if (_hasError) return _buildErrorState(responsive, spacing);
 
     return Stack(
       children: [
-        _buildCustomAppBar(),
+        _buildCustomAppBar(responsive, spacing),
         Positioned(
-          top: 156,
+          top: responsive.spacing(156), // ✅ Position responsive
           left: 0,
           right: 0,
           bottom: 0,
           child: SingleChildScrollView(
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: spacing.custom(all: 16), // ✅ Padding responsive
               child: Form(
                 key: _formKey,
                 child: Column(
                   children: [
                     // ✅ FACTORISATION: Utiliser EquipmentFormFields (SANS le bouton attributs intégré)
-                    _buildInformationsSection(),
-                    const SizedBox(height: 40),
-                    _buildParentInfoSection(),
-                    const SizedBox(height: 40),
-                    _buildPositioningSection(),
-                    const SizedBox(height: 20),
-                    _buildActionButtons(),
-                    const SizedBox(height: 40),
+                    _buildInformationsSection(responsive, spacing),
+                    SizedBox(height: spacing.xlarge), // ✅ Espacement responsive
+                    _buildParentInfoSection(responsive, spacing),
+                    SizedBox(height: spacing.xlarge), // ✅ Espacement responsive
+                    _buildPositioningSection(responsive, spacing),
+                    SizedBox(height: spacing.medium), // ✅ Espacement responsive
+                    _buildActionButtons(responsive, spacing),
+                    SizedBox(height: spacing.xlarge), // ✅ Espacement responsive
                   ],
                 ),
               ),
@@ -275,7 +280,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     );
   }
 
-  Widget _buildLoadingState() {
+  Widget _buildLoadingState(Responsive responsive, ResponsiveSpacing spacing) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -283,13 +288,13 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
           const CircularProgressIndicator(
             valueColor: AlwaysStoppedAnimation<Color>(AppTheme.secondaryColor),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: spacing.medium), // ✅ Espacement responsive
           Text(
             'Chargement des données...',
             style: TextStyle(
               fontFamily: AppTheme.fontMontserrat,
               color: AppTheme.secondaryColor,
-              fontSize: 16,
+              fontSize: responsive.sp(16), // ✅ Texte responsive
             ),
           ),
         ],
@@ -297,32 +302,32 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     );
   }
 
-  Widget _buildErrorState() {
+  Widget _buildErrorState(Responsive responsive, ResponsiveSpacing spacing) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.error_outline, size: 64, color: AppTheme.secondaryColor),
-          const SizedBox(height: 16),
+          SizedBox(height: spacing.medium), // ✅ Espacement responsive
           Text(
             'Erreur de chargement',
             style: TextStyle(
               fontFamily: AppTheme.fontMontserrat,
               fontWeight: FontWeight.bold,
               color: AppTheme.secondaryColor,
-              fontSize: 18,
+              fontSize: responsive.sp(18), // ✅ Texte responsive
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: spacing.small), // ✅ Espacement responsive
           Text(
             'Impossible de charger les données',
             style: TextStyle(
               fontFamily: AppTheme.fontMontserrat,
               color: AppTheme.secondaryColor,
-              fontSize: 14,
+              fontSize: responsive.sp(14), // ✅ Texte responsive
             ),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: spacing.xlarge), // ✅ Espacement responsive
           PrimaryButton(
             text: 'Réessayer',
             icon: Icons.refresh,
@@ -333,17 +338,17 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     );
   }
 
-  Widget _buildCustomAppBar() {
+  Widget _buildCustomAppBar(Responsive responsive, ResponsiveSpacing spacing) {
     return Positioned(
       top: 0,
       left: 0,
       right: 0,
       child: Container(
-        height: 150,
+        height: responsive.spacing(150), // ✅ Hauteur responsive
         decoration: const BoxDecoration(color: AppTheme.secondaryColor),
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: spacing.custom(horizontal: 16), // ✅ Padding responsive
             child: Row(
               children: [
                 IconButton(
@@ -374,15 +379,19 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
   }
 
   // ✅ FACTORISATION: Sections simplifiées avec EquipmentFormFields
-  Widget _buildInformationsSection() {
+  Widget _buildInformationsSection(
+    Responsive responsive,
+    ResponsiveSpacing spacing,
+  ) {
     return Column(
       children: [
-        Tools.buildFieldset('Informations'),
-        const SizedBox(height: 10),
+        Tools.buildFieldset(context, 'Informations'),
+        SizedBox(height: spacing.small), // ✅ Espacement responsive
         Row(
           children: [
             Expanded(
               child: Tools.buildText(
+                context,
                 label: 'Code',
                 value:
                     widget.equipmentData?['Code'] ??
@@ -390,7 +399,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                     '#12345',
               ),
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: spacing.small), // ✅ Espacement responsive
             Expanded(
               child: _buildDropdown(
                 label: 'Famille',
@@ -400,16 +409,19 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                 selectedValue: selectedFamille,
                 onChanged: (v) => setState(() => selectedFamille = v),
                 hintText: 'Rechercher une famille...',
+                responsive: responsive,
+                spacing: spacing,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 20),
-        _buildZoneEntityRow(),
-        const SizedBox(height: 20),
-        _buildUniteChargeRow(),
-        const SizedBox(height: 20),
+        SizedBox(height: spacing.medium), // ✅ Espacement responsive
+        _buildZoneEntityRow(responsive, spacing),
+        SizedBox(height: spacing.medium), // ✅ Espacement responsive
+        _buildUniteChargeRow(responsive, spacing),
+        SizedBox(height: spacing.medium), // ✅ Espacement responsive
         Tools.buildTextField(
+          context: context,
           label: 'Description',
           msgError: 'Veuillez entrer la description',
           focusNode: _descriptionFocusNode,
@@ -419,7 +431,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     );
   }
 
-  Widget _buildZoneEntityRow() {
+  Widget _buildZoneEntityRow(Responsive responsive, ResponsiveSpacing spacing) {
     return Row(
       children: [
         Expanded(
@@ -431,9 +443,11 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
             selectedValue: selectedZone,
             onChanged: (v) => setState(() => selectedZone = v),
             hintText: 'Rechercher une zone...',
+            responsive: responsive,
+            spacing: spacing,
           ),
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: spacing.small), // ✅ Espacement responsive
         Expanded(
           child: _buildDropdown(
             label: 'Entité',
@@ -443,13 +457,18 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
             selectedValue: selectedEntity,
             onChanged: (v) => setState(() => selectedEntity = v),
             hintText: 'Rechercher une entité...',
+            responsive: responsive,
+            spacing: spacing,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildUniteChargeRow() {
+  Widget _buildUniteChargeRow(
+    Responsive responsive,
+    ResponsiveSpacing spacing,
+  ) {
     return Row(
       children: [
         Expanded(
@@ -461,9 +480,11 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
             selectedValue: selectedUnite,
             onChanged: (v) => setState(() => selectedUnite = v),
             hintText: 'Rechercher une unité...',
+            responsive: responsive,
+            spacing: spacing,
           ),
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: spacing.small), // ✅ Espacement responsive
         Expanded(
           child: _buildDropdown(
             label: 'Centre de Charge',
@@ -473,17 +494,22 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
             selectedValue: selectedCentreCharge,
             onChanged: (v) => setState(() => selectedCentreCharge = v),
             hintText: 'Rechercher un centre...',
+            responsive: responsive,
+            spacing: spacing,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildParentInfoSection() {
+  Widget _buildParentInfoSection(
+    Responsive responsive,
+    ResponsiveSpacing spacing,
+  ) {
     return Column(
       children: [
-        Tools.buildFieldset('Informations parents'),
-        const SizedBox(height: 10),
+        Tools.buildFieldset(context, 'Informations parents'),
+        SizedBox(height: spacing.small), // ✅ Espacement responsive
         _buildDropdown(
           label: 'Code Parent',
           items: EquipmentHelpers.getSelectorsOptions(
@@ -493,8 +519,10 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
           selectedValue: selectedCodeParent,
           onChanged: (v) => setState(() => selectedCodeParent = v),
           hintText: 'Rechercher un code parent...',
+          responsive: responsive,
+          spacing: spacing,
         ),
-        const SizedBox(height: 20),
+        SizedBox(height: spacing.medium), // ✅ Espacement responsive
         Row(
           children: [
             Expanded(
@@ -506,11 +534,14 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                 selectedValue: selectedFeeder,
                 onChanged: (v) => setState(() => selectedFeeder = v),
                 hintText: 'Rechercher un feeder...',
+                responsive: responsive,
+                spacing: spacing,
               ),
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: spacing.small), // ✅ Espacement responsive
             Expanded(
               child: Tools.buildText(
+                context,
                 label: 'Info Feeder',
                 value: EquipmentHelpers.formatDescription(selectedFeeder ?? ''),
               ),
@@ -521,42 +552,49 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     );
   }
 
-  Widget _buildPositioningSection() {
+  Widget _buildPositioningSection(
+    Responsive responsive,
+    ResponsiveSpacing spacing,
+  ) {
     return Column(
       children: [
-        Tools.buildFieldset('Informations de positionnement'),
-        const SizedBox(height: 10),
+        Tools.buildFieldset(context, 'Informations de positionnement'),
+        SizedBox(height: spacing.small), // ✅ Espacement responsive
         Row(
           children: [
             Expanded(
               child: Tools.buildText(
+                context,
                 label: 'Longitude',
                 value: valueLongitude ?? '12311231',
               ),
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: spacing.small), // ✅ Espacement responsive
             Expanded(
               child: Tools.buildText(
+                context,
                 label: 'Latitude',
                 value: valueLatitude ?? '12311231',
               ),
             ),
           ],
         ),
-        const SizedBox(height: 20),
-        _buildMapSection(),
-        const SizedBox(height: 20),
-        _buildAttributesButton(),
+        SizedBox(height: spacing.medium), // ✅ Espacement responsive
+        _buildMapSection(responsive, spacing),
+        SizedBox(height: spacing.medium), // ✅ Espacement responsive
+        _buildAttributesButton(responsive, spacing),
       ],
     );
   }
 
-  Widget _buildMapSection() {
+  Widget _buildMapSection(Responsive responsive, ResponsiveSpacing spacing) {
     return Container(
       width: double.infinity,
-      height: 200,
+      height: responsive.spacing(200), // ✅ Hauteur responsive
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(
+          responsive.spacing(8),
+        ), // ✅ Border radius responsive
         image: const DecorationImage(
           image: AssetImage('assets/images/map.png'),
           fit: BoxFit.cover,
@@ -565,8 +603,8 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
         boxShadow: [
           BoxShadow(
             color: AppTheme.boxShadowColor,
-            blurRadius: 15,
-            offset: const Offset(0, 4),
+            blurRadius: responsive.spacing(15), // ✅ Blur radius responsive
+            offset: Offset(0, responsive.spacing(4)), // ✅ Offset responsive
           ),
         ],
       ),
@@ -574,7 +612,9 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
         children: [
           Container(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(
+                responsive.spacing(8),
+              ), // ✅ Border radius responsive
               gradient: const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -586,24 +626,24 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text(
+                Text(
                   'Position actuelle',
                   style: TextStyle(
                     fontFamily: AppTheme.fontMontserrat,
                     fontWeight: FontWeight.bold,
                     color: AppTheme.secondaryColor,
-                    fontSize: 18,
+                    fontSize: responsive.sp(18), // ✅ Texte responsive
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: spacing.small), // ✅ Espacement responsive
                 GestureDetector(
                   onTap: () {},
-                  child: const Text(
+                  child: Text(
                     'Toucher pour modifier',
                     style: TextStyle(
                       fontFamily: AppTheme.fontMontserrat,
                       color: AppTheme.secondaryColor,
-                      fontSize: 14,
+                      fontSize: responsive.sp(14), // ✅ Texte responsive
                       decoration: TextDecoration.underline,
                     ),
                   ),
@@ -616,11 +656,14 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     );
   }
 
-  Widget _buildAttributesButton() {
+  Widget _buildAttributesButton(
+    Responsive responsive,
+    ResponsiveSpacing spacing,
+  ) {
     return GestureDetector(
       onTap: availableAttributes.isNotEmpty ? _showAttributesModal : null,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: spacing.custom(vertical: 12), // ✅ Padding responsive
         child: Row(
           children: [
             Icon(
@@ -630,7 +673,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                       ? AppTheme.secondaryColor
                       : AppTheme.thirdColor,
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: spacing.small), // ✅ Espacement responsive
             Text(
               availableAttributes.isNotEmpty
                   ? 'Modifier les attributs (${availableAttributes.length})'
@@ -642,15 +685,15 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                     availableAttributes.isNotEmpty
                         ? AppTheme.secondaryColor
                         : AppTheme.thirdColor,
-                fontSize: 16,
+                fontSize: responsive.sp(16), // ✅ Texte responsive
               ),
             ),
-            const SizedBox(width: 5),
+            SizedBox(width: spacing.tiny), // ✅ Espacement responsive
             Expanded(
               child: Container(
                 height: 1,
                 color: AppTheme.thirdColor,
-                margin: const EdgeInsets.only(top: 10),
+                margin: spacing.custom(top: 10), // ✅ Margin responsive
               ),
             ),
           ],
@@ -666,6 +709,8 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     required String? selectedValue,
     required Function(String?) onChanged,
     required String hintText,
+    required Responsive responsive,
+    required ResponsiveSpacing spacing,
   }) {
     return EquipmentDropdown(
       label: label,
@@ -910,11 +955,11 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     }
   }
 
-  Widget _buildActionButtons() {
+  Widget _buildActionButtons(Responsive responsive, ResponsiveSpacing spacing) {
     final hasChanges = _hasChanges();
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 0),
+      padding: spacing.custom(vertical: 0), // ✅ Padding responsive
       child: Row(
         children: [
           Expanded(
@@ -923,30 +968,40 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
               onPressed: _isUpdating ? null : () => Navigator.pop(context),
             ),
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: spacing.medium), // ✅ Espacement responsive
           Expanded(
             child:
                 _isUpdating
                     ? Container(
-                      height: 48,
+                      height: responsive.spacing(48), // ✅ Hauteur responsive
                       decoration: BoxDecoration(
                         color: AppTheme.secondaryColor70,
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(
+                          responsive.spacing(8),
+                        ), // ✅ Border radius responsive
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           SizedBox(
-                            width: 20,
-                            height: 20,
+                            width: responsive.spacing(
+                              20,
+                            ), // ✅ Largeur responsive
+                            height: responsive.spacing(
+                              20,
+                            ), // ✅ Hauteur responsive
                             child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
+                              strokeWidth: responsive.spacing(
+                                2,
+                              ), // ✅ Épaisseur responsive
+                              valueColor: const AlwaysStoppedAnimation<Color>(
                                 Colors.white,
                               ),
                             ),
                           ),
-                          SizedBox(width: 8),
+                          SizedBox(
+                            width: spacing.small,
+                          ), // ✅ Espacement responsive
                           Flexible(
                             child: Text(
                               'Modification...',
@@ -955,7 +1010,9 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                                 fontFamily: AppTheme.fontMontserrat,
                                 fontWeight: FontWeight.w600,
                                 color: Colors.white,
-                                fontSize: 16,
+                                fontSize: responsive.sp(
+                                  16,
+                                ), // ✅ Texte responsive
                               ),
                             ),
                           ),
@@ -963,21 +1020,27 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                       ),
                     )
                     : Container(
-                      height: 48,
+                      height: responsive.spacing(48), // ✅ Hauteur responsive
                       decoration: BoxDecoration(
                         color:
                             hasChanges
                                 ? AppTheme.secondaryColor
                                 : AppTheme.thirdColor50,
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(
+                          responsive.spacing(8),
+                        ), // ✅ Border radius responsive
                       ),
                       child: Material(
                         color: Colors.transparent,
                         child: InkWell(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(
+                            responsive.spacing(8),
+                          ), // ✅ Border radius responsive
                           onTap: hasChanges ? _handleUpdate : null,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            padding: spacing.custom(
+                              horizontal: 12,
+                            ), // ✅ Padding responsive
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               mainAxisSize: MainAxisSize.min,
@@ -988,9 +1051,13 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                                       hasChanges
                                           ? Colors.white
                                           : AppTheme.thirdColor,
-                                  size: 18,
+                                  size: responsive.iconSize(
+                                    18,
+                                  ), // ✅ Icône responsive
                                 ),
-                                const SizedBox(width: 6),
+                                SizedBox(
+                                  width: spacing.small,
+                                ), // ✅ Espacement responsive
                                 Flexible(
                                   child: Text(
                                     hasChanges
@@ -1005,7 +1072,9 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                                           hasChanges
                                               ? Colors.white
                                               : AppTheme.thirdColor,
-                                      fontSize: 14,
+                                      fontSize: responsive.sp(
+                                        14,
+                                      ), // ✅ Texte responsive
                                     ),
                                   ),
                                 ),

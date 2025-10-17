@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
+import 'package:appmobilegmao/utils/responsive.dart';
+import 'package:appmobilegmao/theme/responsive_spacing.dart';
 
 class PrimaryButton extends StatelessWidget {
   final String text;
@@ -23,24 +25,34 @@ class PrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final responsive = context.responsive;
+    final spacing = context.spacing;
+
     return SizedBox(
       width: width,
-      height: height,
+      height: responsive.spacing(height), // ✅ Hauteur responsive
       child: ElevatedButton(
         onPressed: isLoading ? null : onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppTheme.secondaryColor,
           foregroundColor: AppTheme.primaryColor,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(
+              responsive.spacing(8),
+            ), // ✅ Border radius responsive
+          ),
           elevation: 2,
           shadowColor: AppTheme.boxShadowColor,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: EdgeInsets.symmetric(
+            horizontal: spacing.medium, // ✅ Padding horizontal responsive
+            vertical: spacing.small, // ✅ Padding vertical responsive
+          ),
         ),
         child:
             isLoading
                 ? SizedBox(
-                  height: 20,
-                  width: 20,
+                  height: responsive.iconSize(20), // ✅ Taille loader responsive
+                  width: responsive.iconSize(20), // ✅ Taille loader responsive
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
                     valueColor: AlwaysStoppedAnimation<Color>(
@@ -48,24 +60,32 @@ class PrimaryButton extends StatelessWidget {
                     ),
                   ),
                 )
-                : _buildButtonContent(),
+                : _buildButtonContent(context, responsive, spacing),
       ),
     );
   }
 
-  Widget _buildButtonContent() {
+  Widget _buildButtonContent(
+    BuildContext context,
+    Responsive responsive,
+    ResponsiveSpacing spacing,
+  ) {
     if (icon != null) {
       return Row(
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: fontSize, color: AppTheme.primaryColor),
-          const SizedBox(width: 8),
+          Icon(
+            icon,
+            size: responsive.iconSize(fontSize),
+            color: AppTheme.primaryColor,
+          ), // ✅ Icône responsive
+          SizedBox(width: spacing.small), // ✅ Espacement responsive
           Expanded(
             child: Text(
               text,
               style: TextStyle(
-                fontSize: fontSize,
+                fontSize: responsive.sp(fontSize), // ✅ Texte responsive
                 fontWeight: FontWeight.bold,
                 fontFamily: AppTheme.fontMontserrat,
                 color: AppTheme.primaryColor,
@@ -81,7 +101,7 @@ class PrimaryButton extends StatelessWidget {
       return Text(
         text,
         style: TextStyle(
-          fontSize: fontSize,
+          fontSize: responsive.sp(fontSize), // ✅ Texte responsive
           fontWeight: FontWeight.bold,
           fontFamily: AppTheme.fontMontserrat,
           color: AppTheme.primaryColor,
@@ -116,23 +136,33 @@ class SecondaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final responsive = context.responsive;
+    final spacing = context.spacing;
+
     return SizedBox(
       width: width,
-      height: height,
+      height: responsive.spacing(height), // ✅ Hauteur responsive
       child: OutlinedButton(
         onPressed: isLoading ? null : onPressed,
         style: OutlinedButton.styleFrom(
           backgroundColor: AppTheme.primaryColor,
           foregroundColor: AppTheme.secondaryColor,
           side: const BorderSide(color: AppTheme.secondaryColor, width: 2),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(
+              responsive.spacing(8),
+            ), // ✅ Border radius responsive
+          ),
+          padding: EdgeInsets.symmetric(
+            horizontal: spacing.medium, // ✅ Padding horizontal responsive
+            vertical: spacing.small, // ✅ Padding vertical responsive
+          ),
         ),
         child:
             isLoading
                 ? SizedBox(
-                  height: 20,
-                  width: 20,
+                  height: responsive.iconSize(20), // ✅ Taille loader responsive
+                  width: responsive.iconSize(20), // ✅ Taille loader responsive
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
                     valueColor: AlwaysStoppedAnimation<Color>(
@@ -140,24 +170,32 @@ class SecondaryButton extends StatelessWidget {
                     ),
                   ),
                 )
-                : _buildButtonContent(),
+                : _buildButtonContent(context, responsive, spacing),
       ),
     );
   }
 
-  Widget _buildButtonContent() {
+  Widget _buildButtonContent(
+    BuildContext context,
+    Responsive responsive,
+    ResponsiveSpacing spacing,
+  ) {
     if (icon != null) {
       return Row(
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: fontSize, color: AppTheme.secondaryColor),
-          const SizedBox(width: 8),
+          Icon(
+            icon,
+            size: responsive.iconSize(fontSize),
+            color: AppTheme.secondaryColor,
+          ), // ✅ Icône responsive
+          SizedBox(width: spacing.small), // ✅ Espacement responsive
           Expanded(
             child: Text(
               text,
               style: TextStyle(
-                fontSize: fontSize,
+                fontSize: responsive.sp(fontSize), // ✅ Texte responsive
                 fontWeight: FontWeight.bold,
                 fontFamily: AppTheme.fontMontserrat,
                 color: AppTheme.secondaryColor,
@@ -173,7 +211,7 @@ class SecondaryButton extends StatelessWidget {
       return Text(
         text,
         style: TextStyle(
-          fontSize: fontSize,
+          fontSize: responsive.sp(fontSize), // ✅ Texte responsive
           fontWeight: FontWeight.bold,
           fontFamily: AppTheme.fontMontserrat,
           color: AppTheme.secondaryColor,

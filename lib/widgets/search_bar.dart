@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
+import 'package:appmobilegmao/utils/responsive.dart';
+import 'package:appmobilegmao/theme/responsive_spacing.dart';
 
 typedef OnSearch = void Function(String value);
 typedef OnTypeChange = void Function(String type);
@@ -49,6 +51,9 @@ class _SearchBarState extends State<SearchBar> {
 
   @override
   Widget build(BuildContext context) {
+    final responsive = context.responsive;
+    final spacing = context.spacing;
+
     final searchTypes = [
       {'key': 'all', 'label': 'Tous les champs', 'icon': Icons.search},
       {'key': 'code', 'label': 'Code équipement', 'icon': Icons.qr_code},
@@ -90,20 +95,24 @@ class _SearchBarState extends State<SearchBar> {
               children: [
                 if (_searchType != 'all')
                   Container(
-                    margin: const EdgeInsets.only(right: 4),
-                    padding: const EdgeInsets.symmetric(
+                    margin: EdgeInsets.only(
+                      right: spacing.tiny,
+                    ), // ✅ Margin responsive
+                    padding: spacing.custom(
                       horizontal: 6,
                       vertical: 2,
-                    ),
+                    ), // ✅ Padding responsive
                     decoration: BoxDecoration(
                       color: AppTheme.secondaryColor,
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(
+                        responsive.spacing(10),
+                      ), // ✅ Border radius responsive
                     ),
                     child: Text(
                       _searchType.toUpperCase(),
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
-                        fontSize: 10,
+                        fontSize: responsive.sp(10), // ✅ Texte responsive
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -130,15 +139,18 @@ class _SearchBarState extends State<SearchBar> {
         ),
         AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          height: _showSearchOptions ? 60 : 0,
+          height:
+              _showSearchOptions
+                  ? responsive.spacing(60)
+                  : 0, // ✅ Hauteur responsive
           child:
               _showSearchOptions
                   ? SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(
+                    padding: spacing.custom(
                       horizontal: 12,
                       vertical: 8,
-                    ),
+                    ), // ✅ Padding responsive
                     child: Row(
                       children:
                           searchTypes.map((type) {
@@ -150,17 +162,21 @@ class _SearchBarState extends State<SearchBar> {
                                 widget.onTypeChange(key);
                               },
                               child: Container(
-                                margin: const EdgeInsets.only(right: 8),
-                                padding: const EdgeInsets.symmetric(
+                                margin: EdgeInsets.only(
+                                  right: spacing.small,
+                                ), // ✅ Margin responsive
+                                padding: spacing.custom(
                                   horizontal: 12,
                                   vertical: 6,
-                                ),
+                                ), // ✅ Padding responsive
                                 decoration: BoxDecoration(
                                   color:
                                       isSelected
                                           ? AppTheme.secondaryColor
                                           : AppTheme.primaryColor20,
-                                  borderRadius: BorderRadius.circular(20),
+                                  borderRadius: BorderRadius.circular(
+                                    responsive.spacing(20),
+                                  ), // ✅ Border radius responsive
                                   border: Border.all(
                                     color:
                                         isSelected
@@ -172,13 +188,17 @@ class _SearchBarState extends State<SearchBar> {
                                   children: [
                                     Icon(
                                       type['icon'] as IconData,
-                                      size: 16,
+                                      size: responsive.iconSize(
+                                        16,
+                                      ), // ✅ Icône responsive
                                       color:
                                           isSelected
                                               ? Colors.white
                                               : AppTheme.thirdColor,
                                     ),
-                                    const SizedBox(width: 6),
+                                    SizedBox(
+                                      width: spacing.tiny,
+                                    ), // ✅ Espacement responsive
                                     Text(
                                       type['label'] as String,
                                       style: TextStyle(

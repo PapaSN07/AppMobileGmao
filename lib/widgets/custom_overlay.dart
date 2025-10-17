@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:appmobilegmao/theme/app_theme.dart';
+import 'package:appmobilegmao/utils/responsive.dart';
+import 'package:appmobilegmao/theme/responsive_spacing.dart';
 
 class CustomOverlay extends StatelessWidget {
   final Widget content;
@@ -20,7 +22,8 @@ class CustomOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenSize = MediaQuery.of(context).size;
+    final responsive = context.responsive;
+    final spacing = context.spacing;
 
     return GestureDetector(
       onTap: isDismissible ? onClose : null,
@@ -39,21 +42,32 @@ class CustomOverlay extends StatelessWidget {
             child: GestureDetector(
               onTap: () {}, // Empêche la fermeture lors du clic sur le contenu
               child: Container(
-                width: width ?? screenSize.width * 0.9,
+                width: width ?? responsive.wp(90), // ✅ Largeur responsive
                 constraints: BoxConstraints(
-                  maxHeight: maxHeight ?? screenSize.height * 0.8,
-                  maxWidth: screenSize.width * 0.95,
+                  maxHeight:
+                      maxHeight ??
+                      responsive.hp(80), // ✅ Hauteur max responsive
+                  maxWidth: responsive.wp(95), // ✅ Largeur max responsive
                 ),
-                margin: const EdgeInsets.symmetric(horizontal: 20),
-                padding: const EdgeInsets.all(24),
+                margin: EdgeInsets.symmetric(
+                  horizontal: spacing.large,
+                ), // ✅ Marge responsive
+                padding: spacing.allPadding, // ✅ Padding responsive
                 decoration: BoxDecoration(
                   color: AppTheme.secondaryColor,
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(
+                    responsive.spacing(20),
+                  ), // ✅ Border radius responsive
                   boxShadow: [
                     BoxShadow(
                       color: AppTheme.primaryColor15,
-                      blurRadius: 20,
-                      offset: const Offset(0, 10),
+                      blurRadius: responsive.spacing(
+                        20,
+                      ), // ✅ Blur radius responsive
+                      offset: Offset(
+                        0,
+                        responsive.spacing(10),
+                      ), // ✅ Offset responsive
                     ),
                   ],
                 ),

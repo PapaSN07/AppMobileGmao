@@ -1,5 +1,7 @@
 import 'package:appmobilegmao/provider/auth_provider.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
+import 'package:appmobilegmao/utils/responsive.dart';
+import 'package:appmobilegmao/theme/responsive_spacing.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -15,16 +17,19 @@ class CustomBottomNavigationBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final responsive = context.responsive;
+    final spacing = context.spacing;
+
     return Consumer<AuthProvider>(
       builder: (context, authProvider, _) {
         // ✅ Déterminer les items selon le rôle
         final items =
             authProvider.isPrestataire
-                ? _buildPrestataireItems()
-                : _buildLdapItems();
+                ? _buildPrestataireItems(responsive)
+                : _buildLdapItems(responsive);
 
         return Container(
-          height: 100, // Augmente la hauteur du BottomNavigationBar
+          height: responsive.spacing(100), // ✅ Hauteur responsive
           decoration: BoxDecoration(
             color: AppTheme.secondaryColor, // Couleur de fond
             borderRadius: const BorderRadius.only(
@@ -33,7 +38,9 @@ class CustomBottomNavigationBar extends StatelessWidget {
             ),
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 5),
+            padding: EdgeInsets.symmetric(
+              horizontal: spacing.small,
+            ), // ✅ Padding responsive
             child: BottomNavigationBar(
               currentIndex: currentIndex,
               onTap: onTap,
@@ -45,13 +52,13 @@ class CustomBottomNavigationBar extends StatelessWidget {
               unselectedItemColor:
                   AppTheme
                       .primaryColor75, // Couleur des éléments non sélectionnés
-              selectedLabelStyle: const TextStyle(
+              selectedLabelStyle: TextStyle(
                 fontWeight: FontWeight.bold,
-                fontSize: 12,
+                fontSize: responsive.sp(12), // ✅ Taille de texte responsive
                 fontFamily: AppTheme.fontRoboto,
               ),
-              unselectedLabelStyle: const TextStyle(
-                fontSize: 11,
+              unselectedLabelStyle: TextStyle(
+                fontSize: responsive.sp(11), // ✅ Taille de texte responsive
                 fontFamily: AppTheme.fontRoboto,
               ),
               items: items,
@@ -63,42 +70,78 @@ class CustomBottomNavigationBar extends StatelessWidget {
   }
 
   // ✅ Items pour PRESTATAIRE (2 onglets)
-  List<BottomNavigationBarItem> _buildPrestataireItems() {
-    return const [
+  List<BottomNavigationBarItem> _buildPrestataireItems(Responsive responsive) {
+    return [
       BottomNavigationBarItem(
-        icon: Icon(Icons.shopping_bag_outlined),
-        activeIcon: Icon(Icons.shopping_bag),
+        icon: Icon(
+          Icons.shopping_bag_outlined,
+          size: responsive.iconSize(24), // ✅ Icône responsive
+        ),
+        activeIcon: Icon(
+          Icons.shopping_bag,
+          size: responsive.iconSize(24), // ✅ Icône responsive
+        ),
         label: 'Équipements',
       ),
       BottomNavigationBarItem(
-        icon: Icon(Icons.history_outlined),
-        activeIcon: Icon(Icons.history),
+        icon: Icon(
+          Icons.history_outlined,
+          size: responsive.iconSize(24), // ✅ Icône responsive
+        ),
+        activeIcon: Icon(
+          Icons.history,
+          size: responsive.iconSize(24), // ✅ Icône responsive
+        ),
         label: 'Historiques',
       ),
     ];
   }
 
   // ✅ Items pour LDAP (4 onglets)
-  List<BottomNavigationBarItem> _buildLdapItems() {
-    return const [
+  List<BottomNavigationBarItem> _buildLdapItems(Responsive responsive) {
+    return [
       BottomNavigationBarItem(
-        icon: Icon(Icons.home_outlined),
-        activeIcon: Icon(Icons.home),
+        icon: Icon(
+          Icons.home_outlined,
+          size: responsive.iconSize(24), // ✅ Icône responsive
+        ),
+        activeIcon: Icon(
+          Icons.home,
+          size: responsive.iconSize(24), // ✅ Icône responsive
+        ),
         label: 'Accueil',
       ),
       BottomNavigationBarItem(
-        icon: Icon(Icons.shopping_bag_outlined),
-        activeIcon: Icon(Icons.shopping_bag),
+        icon: Icon(
+          Icons.shopping_bag_outlined,
+          size: responsive.iconSize(24), // ✅ Icône responsive
+        ),
+        activeIcon: Icon(
+          Icons.shopping_bag,
+          size: responsive.iconSize(24), // ✅ Icône responsive
+        ),
         label: 'Équipements',
       ),
       BottomNavigationBarItem(
-        icon: Icon(Icons.assignment_outlined),
-        activeIcon: Icon(Icons.assignment),
+        icon: Icon(
+          Icons.assignment_outlined,
+          size: responsive.iconSize(24), // ✅ Icône responsive
+        ),
+        activeIcon: Icon(
+          Icons.assignment,
+          size: responsive.iconSize(24), // ✅ Icône responsive
+        ),
         label: 'OT',
       ),
       BottomNavigationBarItem(
-        icon: Icon(Icons.build_outlined),
-        activeIcon: Icon(Icons.build),
+        icon: Icon(
+          Icons.build_outlined,
+          size: responsive.iconSize(24), // ✅ Icône responsive
+        ),
+        activeIcon: Icon(
+          Icons.build,
+          size: responsive.iconSize(24), // ✅ Icône responsive
+        ),
         label: 'DI',
       ),
     ];

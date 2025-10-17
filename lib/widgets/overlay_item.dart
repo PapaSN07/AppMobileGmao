@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:appmobilegmao/screens/equipments/modify_equipment_screen.dart';
 import 'package:appmobilegmao/widgets/custom_buttons.dart'; // Ajout de l'import
+import 'package:appmobilegmao/utils/responsive.dart';
+import 'package:appmobilegmao/theme/responsive_spacing.dart';
 
 class OverlayContent extends StatelessWidget {
   final String title;
@@ -23,33 +25,36 @@ class OverlayContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final responsive = context.responsive;
+    final spacing = context.spacing;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _buildHeader(context),
-        const SizedBox(height: 20),
-        _buildContent(),
+        _buildHeader(context, responsive, spacing),
+        SizedBox(height: spacing.large), // ✅ Espacement responsive
+        _buildContent(responsive, spacing),
         if (showModifyButton)
-          _buildActionButtons(context), // Affichage conditionnel
+          _buildActionButtons(context, responsive, spacing), // Affichage conditionnel
       ],
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, Responsive responsive, ResponsiveSpacing spacing) {
     return Row(
       children: [
         // Bouton retour
-        _buildBackButton(context),
-        const SizedBox(width: 12),
+        _buildBackButton(context, responsive, spacing),
+        SizedBox(width: spacing.medium), // ✅ Espacement responsive
 
         // Titre
         Expanded(
           child: Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: AppTheme.fontMontserrat,
               fontWeight: FontWeight.bold,
-              fontSize: 20,
+              fontSize: responsive.sp(20), // ✅ Texte responsive
               color: AppTheme.primaryColor,
               decoration: TextDecoration.none,
             ),
@@ -60,42 +65,42 @@ class OverlayContent extends StatelessWidget {
     );
   }
 
-  Widget _buildBackButton(BuildContext context) {
+  Widget _buildBackButton(BuildContext context, Responsive responsive, ResponsiveSpacing spacing) {
     return GestureDetector(
       onTap: onClose ?? () => Navigator.of(context).pop(),
       child: Container(
-        width: 40,
-        height: 40,
+        width: responsive.spacing(40), // ✅ Largeur responsive
+        height: responsive.spacing(40), // ✅ Hauteur responsive
         decoration: BoxDecoration(
           color: AppTheme.primaryColor15,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(responsive.spacing(12)), // ✅ Border radius responsive
           border: Border.all(color: AppTheme.primaryColor15, width: 1),
         ),
-        child: const Icon(
+        child: Icon(
           Icons.arrow_back,
-          size: 20,
+          size: responsive.iconSize(20), // ✅ Icône responsive
           color: AppTheme.primaryColor,
         ),
       ),
     );
   }
 
-  Widget _buildContent() {
+  Widget _buildContent(Responsive responsive, ResponsiveSpacing spacing) {
     return Column(
       children: details.entries
           .where((entry) => entry.key.toLowerCase() != 'id')
-          .map((entry) => _buildDetailItem(entry))
+          .map((entry) => _buildDetailItem(entry, responsive, spacing))
           .toList(),
     );
   }
 
-  Widget _buildDetailItem(MapEntry<String, String> entry) {
+  Widget _buildDetailItem(MapEntry<String, String> entry, Responsive responsive, ResponsiveSpacing spacing) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
+      margin: EdgeInsets.only(bottom: spacing.medium), // ✅ Margin responsive
+      padding: spacing.allPadding, // ✅ Padding responsive
       decoration: BoxDecoration(
         color: AppTheme.primaryColor15,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(responsive.spacing(12)), // ✅ Border radius responsive
         border: Border.all(color: AppTheme.primaryColor15, width: 1),
       ),
       child: Column(
@@ -104,30 +109,30 @@ class OverlayContent extends StatelessWidget {
           // Label
           Text(
             entry.key,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: AppTheme.fontMontserrat,
               fontWeight: FontWeight.w600,
-              fontSize: 14,
+              fontSize: responsive.sp(14), // ✅ Texte responsive
               color: AppTheme.primaryColor,
               decoration: TextDecoration.none,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: spacing.small), // ✅ Espacement responsive
 
           // Valeur
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+            padding: spacing.custom(vertical: 8, horizontal: 12), // ✅ Padding responsive
             decoration: BoxDecoration(
               color: AppTheme.primaryColor15,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(responsive.spacing(8)), // ✅ Border radius responsive
             ),
             child: Text(
               entry.value.isNotEmpty ? entry.value : 'Non renseigné',
               style: TextStyle(
                 fontFamily: AppTheme.fontRoboto,
                 fontWeight: FontWeight.normal,
-                fontSize: 14,
+                fontSize: responsive.sp(14), // ✅ Texte responsive
                 color:
                     entry.value.isNotEmpty
                         ? AppTheme.primaryColor
@@ -141,9 +146,9 @@ class OverlayContent extends StatelessWidget {
     );
   }
 
-  Widget _buildActionButtons(BuildContext context) {
+  Widget _buildActionButtons(BuildContext context, Responsive responsive, ResponsiveSpacing spacing) {
     return Container(
-      margin: const EdgeInsets.only(top: 20),
+      margin: EdgeInsets.only(top: spacing.large), // ✅ Margin responsive
       child: SecondaryButton(
         text: 'Modifier',
         icon: Icons.edit,

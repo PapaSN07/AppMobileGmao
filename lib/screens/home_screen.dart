@@ -4,6 +4,8 @@ import 'package:appmobilegmao/widgets/list_item.dart';
 import 'package:appmobilegmao/provider/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:appmobilegmao/utils/responsive.dart';
+import 'package:appmobilegmao/theme/responsive_spacing.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -50,24 +52,28 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.primaryColor, // ✅ Fond transparent pour l'accueil
+      backgroundColor:
+          AppTheme.primaryColor, // ✅ Fond transparent pour l'accueil
       body: _buildBody(),
     );
   }
 
   Widget _buildBody() {
+    final responsive = context.responsive;
+    final spacing = context.spacing;
+
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
         return Padding(
-          padding: const EdgeInsets.symmetric(
+          padding: spacing.custom(
             horizontal: 20,
             vertical: 20,
-          ), // ✅ SIMPLIFIÉ: Padding direct
+          ), // ✅ Padding responsive
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _cardSectionOne(),
-              const SizedBox(height: 20),
+              _cardSectionOne(responsive, spacing),
+              SizedBox(height: spacing.medium), // ✅ Espacement responsive
               // Affichage du titre dynamique
               Text(
                 selectedCategory == 'OT'
@@ -77,17 +83,17 @@ class _HomeScreenState extends State<HomeScreen> {
                   fontFamily: AppTheme.fontMontserrat,
                   fontWeight: FontWeight.normal,
                   color: AppTheme.thirdColor,
-                  fontSize: 15,
+                  fontSize: responsive.sp(15), // ✅ Texte responsive
                 ),
               ),
-              const SizedBox(height: 10),
+              SizedBox(height: spacing.small), // ✅ Espacement responsive
               Expanded(
                 child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 300),
                   child:
                       selectedCategory == 'OT'
-                          ? _buildList(otOrders, 'OT')
-                          : _buildList(diOrders, 'DI'),
+                          ? _buildList(otOrders, 'OT', responsive, spacing)
+                          : _buildList(diOrders, 'DI', responsive, spacing),
                 ),
               ),
             ],
@@ -97,12 +103,17 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _cardSectionOne() {
+  Widget _cardSectionOne(Responsive responsive, ResponsiveSpacing spacing) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
+      padding: spacing.custom(
+        horizontal: 15,
+        vertical: 15,
+      ), // ✅ Padding responsive
       decoration: BoxDecoration(
         color: AppTheme.blurColor,
-        borderRadius: BorderRadius.circular(25),
+        borderRadius: BorderRadius.circular(
+          responsive.spacing(25),
+        ), // ✅ Border radius responsive
       ),
       child: Row(
         children: [
@@ -113,10 +124,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   selectedCategory = 'OT';
                 });
               },
-              child: AspectRatio(aspectRatio: 170 / 200, child: _boxOne()),
+              child: AspectRatio(
+                aspectRatio: 170 / 200,
+                child: _boxOne(responsive, spacing),
+              ),
             ),
           ),
-          const SizedBox(width: 10),
+          SizedBox(width: spacing.small), // ✅ Espacement responsive
           Expanded(
             child: GestureDetector(
               onTap: () {
@@ -124,7 +138,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   selectedCategory = 'DI';
                 });
               },
-              child: AspectRatio(aspectRatio: 170 / 200, child: _boxTwo()),
+              child: AspectRatio(
+                aspectRatio: 170 / 200,
+                child: _boxTwo(responsive, spacing),
+              ),
             ),
           ),
         ],
@@ -132,11 +149,13 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _boxOne() {
+  Widget _boxOne(Responsive responsive, ResponsiveSpacing spacing) {
     return Container(
       decoration: BoxDecoration(
         color: AppTheme.primaryColor,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(
+          responsive.spacing(10),
+        ), // ✅ Border radius responsive
         border:
             selectedCategory == 'OT'
                 ? Border.all(color: AppTheme.secondaryColor, width: 2)
@@ -145,7 +164,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Stack(
         children: [
           Padding(
-            padding: const EdgeInsets.all(10),
+            padding: spacing.custom(all: 10), // ✅ Padding responsive
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -154,15 +173,15 @@ class _HomeScreenState extends State<HomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      width: 50,
-                      height: 50,
+                      width: responsive.spacing(50), // ✅ Largeur responsive
+                      height: responsive.spacing(50), // ✅ Hauteur responsive
                       decoration: BoxDecoration(
                         color: AppTheme.secondaryColor,
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
                         Icons.assignment,
-                        size: 24,
+                        size: responsive.iconSize(24), // ✅ Icône responsive
                         color: AppTheme.primaryColor,
                       ),
                     ),
@@ -171,23 +190,23 @@ class _HomeScreenState extends State<HomeScreen> {
                       alignment: Alignment.center,
                       child: Icon(
                         Icons.arrow_back,
-                        size: 24,
+                        size: responsive.iconSize(24), // ✅ Icône responsive
                         color: AppTheme.secondaryColor,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
+                SizedBox(height: spacing.small), // ✅ Espacement responsive
                 Text(
                   'Ordre de Travail',
                   style: TextStyle(
                     fontFamily: AppTheme.fontMontserrat,
                     fontWeight: FontWeight.bold,
                     color: AppTheme.secondaryColor,
-                    fontSize: 14,
+                    fontSize: responsive.sp(14), // ✅ Texte responsive
                   ),
                 ),
-                const SizedBox(height: 10),
+                SizedBox(height: spacing.small), // ✅ Espacement responsive
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -197,7 +216,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         fontFamily: AppTheme.fontMontserrat,
                         fontWeight: FontWeight.bold,
                         color: AppTheme.thirdColor,
-                        fontSize: 14,
+                        fontSize: responsive.sp(14), // ✅ Texte responsive
                       ),
                     ),
                     Text(
@@ -206,7 +225,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         fontFamily: AppTheme.fontMontserrat,
                         fontWeight: FontWeight.bold,
                         color: AppTheme.secondaryColor,
-                        fontSize: 16,
+                        fontSize: responsive.sp(16), // ✅ Texte responsive
                       ),
                     ),
                   ],
@@ -219,12 +238,16 @@ class _HomeScreenState extends State<HomeScreen> {
             left: 0,
             right: 0,
             child: ClipRRect(
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(8),
-                bottomRight: Radius.circular(8),
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(
+                  responsive.spacing(8),
+                ), // ✅ Border radius responsive
+                bottomRight: Radius.circular(
+                  responsive.spacing(8),
+                ), // ✅ Border radius responsive
               ),
               child: SizedBox(
-                height: 80,
+                height: responsive.spacing(80), // ✅ Hauteur responsive
                 child: Image.asset(
                   'assets/images/bg_card.png',
                   fit: BoxFit.cover,
@@ -238,11 +261,13 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _boxTwo() {
+  Widget _boxTwo(Responsive responsive, ResponsiveSpacing spacing) {
     return Container(
       decoration: BoxDecoration(
         color: AppTheme.primaryColor,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(
+          responsive.spacing(10),
+        ), // ✅ Border radius responsive
         border:
             selectedCategory == 'DI'
                 ? Border.all(color: AppTheme.secondaryColor, width: 2)
@@ -251,7 +276,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Stack(
         children: [
           Padding(
-            padding: const EdgeInsets.all(10),
+            padding: spacing.custom(all: 10), // ✅ Padding responsive
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -260,15 +285,15 @@ class _HomeScreenState extends State<HomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      width: 50,
-                      height: 50,
+                      width: responsive.spacing(50), // ✅ Largeur responsive
+                      height: responsive.spacing(50), // ✅ Hauteur responsive
                       decoration: BoxDecoration(
                         color: AppTheme.secondaryColor,
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
                         Icons.build,
-                        size: 24,
+                        size: responsive.iconSize(24), // ✅ Icône responsive
                         color: AppTheme.primaryColor,
                       ),
                     ),
@@ -277,23 +302,23 @@ class _HomeScreenState extends State<HomeScreen> {
                       alignment: Alignment.center,
                       child: Icon(
                         Icons.arrow_back,
-                        size: 24,
+                        size: responsive.iconSize(24), // ✅ Icône responsive
                         color: AppTheme.secondaryColor,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
+                SizedBox(height: spacing.small), // ✅ Espacement responsive
                 Text(
                   'Demande d\'Intervention',
                   style: TextStyle(
                     fontFamily: AppTheme.fontMontserrat,
                     fontWeight: FontWeight.bold,
                     color: AppTheme.secondaryColor,
-                    fontSize: 14,
+                    fontSize: responsive.sp(14), // ✅ Texte responsive
                   ),
                 ),
-                const SizedBox(height: 10),
+                SizedBox(height: spacing.small), // ✅ Espacement responsive
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -303,7 +328,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         fontFamily: AppTheme.fontMontserrat,
                         fontWeight: FontWeight.bold,
                         color: AppTheme.thirdColor,
-                        fontSize: 14,
+                        fontSize: responsive.sp(14), // ✅ Texte responsive
                       ),
                     ),
                     Text(
@@ -312,7 +337,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         fontFamily: AppTheme.fontMontserrat,
                         fontWeight: FontWeight.bold,
                         color: AppTheme.secondaryColor,
-                        fontSize: 16,
+                        fontSize: responsive.sp(16), // ✅ Texte responsive
                       ),
                     ),
                   ],
@@ -325,12 +350,16 @@ class _HomeScreenState extends State<HomeScreen> {
             left: 0,
             right: 0,
             child: ClipRRect(
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(8),
-                bottomRight: Radius.circular(8),
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(
+                  responsive.spacing(8),
+                ), // ✅ Border radius responsive
+                bottomRight: Radius.circular(
+                  responsive.spacing(8),
+                ), // ✅ Border radius responsive
               ),
               child: SizedBox(
-                height: 80,
+                height: responsive.spacing(80), // ✅ Hauteur responsive
                 child: Image.asset(
                   'assets/images/bg_card.png',
                   fit: BoxFit.cover,
@@ -344,7 +373,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildList(List<Order> orders, String category) {
+  Widget _buildList(
+    List<Order> orders,
+    String category,
+    Responsive responsive,
+    ResponsiveSpacing spacing,
+  ) {
     return ListView.builder(
       key: ValueKey(category), // Clé unique pour chaque catégorie
       padding: EdgeInsets.zero,
@@ -352,7 +386,7 @@ class _HomeScreenState extends State<HomeScreen> {
       itemBuilder: (context, index) {
         final order = orders[index];
         return Padding(
-          padding: const EdgeInsets.only(bottom: 10),
+          padding: spacing.custom(bottom: 10), // ✅ Padding responsive
           child: ListItemCustom.order(
             id: order.id,
             code: order.code,

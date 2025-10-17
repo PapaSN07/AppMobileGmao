@@ -24,9 +24,9 @@ class ApiService {
 
   static const Duration _timeout = Duration(seconds: 60);
   static const int _defaultPort = 8000;
-  static const String _macIpAddress = '192.168.1.10';
+  static const String _macIpAddress = '172.20.10.4';
   // static const int _defaultPort = 9099;
-  // static const String _macIpAddress = 'https://srv-bddomtech';
+  // static const String _macIpAddress = 'domtec.senelec.sn';
 
   ApiService({int? port, String? customBaseUrl}) {
     baseUrl = customBaseUrl ?? _buildBaseUrl(port ?? _defaultPort);
@@ -50,7 +50,8 @@ class ApiService {
   String _buildBaseUrl(int port) {
     if (kIsWeb) return 'http://localhost:$port';
     // Pour Android et iOS on utilise l'IP du Mac (comme demandé)
-    return 'http://$_macIpAddress:$port';
+    // return 'https://$_macIpAddress:$port'; // Pour le prod
+    return 'http://$_macIpAddress:$port'; // Pour le dev sans SSL
   }
 
   Future<void> _loadAuthToken() async {

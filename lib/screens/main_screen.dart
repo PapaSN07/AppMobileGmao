@@ -12,6 +12,8 @@ import 'package:appmobilegmao/screens/settings/menu_screen.dart';
 import 'package:appmobilegmao/screens/auth/login_screen.dart';
 import 'package:appmobilegmao/provider/auth_provider.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
+import 'package:appmobilegmao/utils/responsive.dart';
+import 'package:appmobilegmao/theme/responsive_spacing.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -177,6 +179,9 @@ class _MainScreenState extends State<MainScreen> {
 
   // ✅ NOUVELLE MÉTHODE: Obtenir l'icône du bouton de droite
   Widget _getRightButton() {
+    final responsive = context.responsive;
+    final spacing = context.spacing;
+
     final user = Provider.of<AuthProvider>(context, listen: false).currentUser;
     final textColor = _getAppBarTextColor();
     final isHome = _currentIndex == 0;
@@ -185,12 +190,18 @@ class _MainScreenState extends State<MainScreen> {
       // Page Equipment - Bouton +
       return IconButton(
         icon: Container(
-          padding: const EdgeInsets.all(8),
+          padding: spacing.custom(all: 8), // ✅ Padding responsive
           decoration: BoxDecoration(
             color: isHome ? AppTheme.secondaryColor10 : AppTheme.primaryColor20,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(
+              responsive.spacing(8),
+            ), // ✅ Border radius responsive
           ),
-          child: Icon(Icons.add, color: textColor, size: 20),
+          child: Icon(
+            Icons.add,
+            color: textColor,
+            size: responsive.iconSize(20),
+          ), // ✅ Icône responsive
         ),
         onPressed: _handleRightButtonAction,
         tooltip: 'Ajouter un équipement',
@@ -199,19 +210,21 @@ class _MainScreenState extends State<MainScreen> {
       // Autres pages - Affichage des infos utilisateur
       if (user != null) {
         return Padding(
-          padding: const EdgeInsets.only(right: 16),
+          padding: spacing.custom(right: 16), // ✅ Padding responsive
           child: Center(
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: spacing.custom(all: 8), // ✅ Padding responsive
                   decoration: BoxDecoration(
                     color:
                         isHome
                             ? AppTheme.secondaryColor10
                             : AppTheme.primaryColor20,
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(
+                      responsive.spacing(20),
+                    ), // ✅ Border radius responsive
                   ),
                   child: Text(
                     user.username
@@ -221,11 +234,11 @@ class _MainScreenState extends State<MainScreen> {
                     style: TextStyle(
                       color: textColor,
                       fontWeight: FontWeight.bold,
-                      fontSize: 14,
+                      fontSize: responsive.sp(14), // ✅ Texte responsive
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: spacing.small), // ✅ Espacement responsive
                 Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -234,7 +247,7 @@ class _MainScreenState extends State<MainScreen> {
                       user.username,
                       style: TextStyle(
                         color: textColor,
-                        fontSize: 12,
+                        fontSize: responsive.sp(12), // ✅ Texte responsive
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -245,7 +258,7 @@ class _MainScreenState extends State<MainScreen> {
                             isHome
                                 ? textColor.withValues(alpha: 0.7)
                                 : textColor.withValues(alpha: 0.8),
-                        fontSize: 10,
+                        fontSize: responsive.sp(10), // ✅ Texte responsive
                       ),
                     ),
                   ],
@@ -260,6 +273,9 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Future<void> _handleLogout() async {
+    final responsive = context.responsive;
+    final spacing = context.spacing;
+
     // Afficher dialog de confirmation
     final shouldLogout = await showDialog<bool>(
       context: context,
@@ -267,26 +283,32 @@ class _MainScreenState extends State<MainScreen> {
       builder: (BuildContext context) {
         return AlertDialog(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(
+              responsive.spacing(16),
+            ), // ✅ Border radius responsive
           ),
           title: Row(
             children: [
-              Icon(Icons.logout, color: AppTheme.secondaryColor, size: 28),
-              const SizedBox(width: 12),
-              const Text(
+              Icon(
+                Icons.logout,
+                color: AppTheme.secondaryColor,
+                size: responsive.iconSize(28),
+              ), // ✅ Icône responsive
+              SizedBox(width: spacing.medium), // ✅ Espacement responsive
+              Text(
                 'Déconnexion',
                 style: TextStyle(
                   fontFamily: AppTheme.fontMontserrat,
                   fontWeight: FontWeight.w500,
-                  fontSize: 24,
+                  fontSize: responsive.sp(24), // ✅ Texte responsive
                   color: AppTheme.secondaryColor, // ✅ Couleur du titre
                 ),
               ),
             ],
           ),
-          content: const Text(
+          content: Text(
             'Êtes-vous sûr de vouloir vous déconnecter ?',
-            style: TextStyle(fontSize: 16),
+            style: TextStyle(fontSize: responsive.sp(16)), // ✅ Texte responsive
           ),
           actions: [
             Row(
@@ -297,8 +319,8 @@ class _MainScreenState extends State<MainScreen> {
                 SecondaryButton(
                   text: 'Annuler',
                   onPressed: () => Navigator.of(context).pop(false),
-                  width: 100,
-                  height: 42,
+                  width: responsive.spacing(100), // ✅ Largeur responsive
+                  height: responsive.spacing(42), // ✅ Hauteur responsive
                 ),
                 // const SizedBox(width: 5),
                 ElevatedButton(
@@ -307,7 +329,9 @@ class _MainScreenState extends State<MainScreen> {
                     backgroundColor: Colors.red,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(
+                        responsive.spacing(8),
+                      ), // ✅ Border radius responsive
                     ),
                   ),
                   child: const Text(
@@ -330,10 +354,12 @@ class _MainScreenState extends State<MainScreen> {
         builder:
             (context) => Center(
               child: Container(
-                padding: const EdgeInsets.all(20),
+                padding: spacing.allPadding, // ✅ Padding responsive
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(
+                    responsive.spacing(12),
+                  ), // ✅ Border radius responsive
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -343,10 +369,12 @@ class _MainScreenState extends State<MainScreen> {
                         AppTheme.secondaryColor,
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    const Text(
+                    SizedBox(height: spacing.medium), // ✅ Espacement responsive
+                    Text(
                       'Déconnexion en cours...',
-                      style: TextStyle(fontSize: 16),
+                      style: TextStyle(
+                        fontSize: responsive.sp(16),
+                      ), // ✅ Texte responsive
                     ),
                   ],
                 ),
@@ -390,7 +418,9 @@ class _MainScreenState extends State<MainScreen> {
               backgroundColor: Colors.red,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(
+                  responsive.spacing(8),
+                ), // ✅ Border radius responsive
               ),
             ),
           );
@@ -401,6 +431,9 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final responsive = context.responsive;
+    final spacing = context.spacing;
+
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
         final appBarBgColor = _getAppBarBackgroundColor();
@@ -416,7 +449,7 @@ class _MainScreenState extends State<MainScreen> {
                 fontFamily: AppTheme.fontMontserrat,
                 fontWeight: FontWeight.w600,
                 color: textColor, // ✅ CHANGÉ: Couleur conditionnelle
-                fontSize: 20,
+                fontSize: responsive.sp(20), // ✅ Texte responsive
               ),
             ),
             backgroundColor: appBarBgColor, // ✅ CHANGÉ: Couleur conditionnelle
@@ -426,18 +459,20 @@ class _MainScreenState extends State<MainScreen> {
               builder:
                   (context) => IconButton(
                     icon: Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: spacing.custom(all: 8), // ✅ Padding responsive
                       decoration: BoxDecoration(
                         color:
                             isHome
                                 ? AppTheme.secondaryColor10
                                 : AppTheme.primaryColor20,
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(
+                          responsive.spacing(8),
+                        ), // ✅ Border radius responsive
                       ),
                       child: Icon(
                         Icons.menu,
                         color: textColor, // ✅ CHANGÉ: Couleur conditionnelle
-                        size: 20,
+                        size: responsive.iconSize(20), // ✅ Icône responsive
                       ),
                     ),
                     onPressed: _openProfile,

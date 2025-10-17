@@ -11,6 +11,8 @@ import 'package:appmobilegmao/widgets/equipments/equipment_item.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:appmobilegmao/utils/responsive.dart';
+import 'package:appmobilegmao/theme/responsive_spacing.dart';
 
 class EquipmentScreen extends StatefulWidget {
   const EquipmentScreen({super.key});
@@ -117,15 +119,18 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     EquipmentProvider equipmentProvider,
     AuthProvider authProvider,
   ) {
+    final responsive = context.responsive;
+    final spacing = context.spacing;
+
     return Stack(
       children: [
         Positioned(
-          top: 120,
+          top: responsive.spacing(120), // ✅ Position responsive
           left: 0,
           right: 0,
           bottom: 0,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: spacing.custom(horizontal: 16), // ✅ Padding responsive
             child: Column(
               children: [
                 // ✅ REMPLACÉ: Utiliser le SearchBar factorisé
@@ -145,7 +150,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                     }
                   },
                 ),
-                const SizedBox(height: 20),
+                SizedBox(height: spacing.medium), // ✅ Espacement responsive
                 // ✅ REMPLACÉ: Utiliser EquipmentList factorisée
                 Expanded(
                   child: EquipmentList(
@@ -168,20 +173,30 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
         ),
 
         Positioned(
-          top: 20,
+          top: responsive.spacing(20), // ✅ Position responsive
           left: 20,
           right: 20,
           child: Container(
             height: 90,
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
+            padding: spacing.custom(
+              horizontal: 10,
+              vertical: 20,
+            ), // ✅ Padding responsive
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(
+                responsive.spacing(20),
+              ), // ✅ Border radius responsive
               boxShadow: [
                 BoxShadow(
                   color: AppTheme.boxShadowColor,
-                  blurRadius: 10,
-                  offset: const Offset(0, 5),
+                  blurRadius: responsive.spacing(
+                    10,
+                  ), // ✅ Blur radius responsive
+                  offset: Offset(
+                    0,
+                    responsive.spacing(5),
+                  ), // ✅ Offset responsive
                 ),
               ],
             ),
@@ -189,10 +204,11 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 Tools.buildStatCard(
+                  context,
                   equipmentProvider.equipments.length.toString(),
                   equipmentProvider.equipments.isEmpty
                       ? 'Équipements'
-                      : 'Équipement',
+                      : 'Équipement'
                 ),
               ],
             ),

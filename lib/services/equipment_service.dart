@@ -17,7 +17,7 @@ class EquipmentService {
   static const String __prefixURI = '/api/v1/mobile/equipments';
 
   EquipmentService({ApiService? apiService}) {
-    _apiService = apiService ?? ApiService(port: 8000);
+    _apiService = apiService ?? ApiService();
 
     if (kDebugMode) {
       print(

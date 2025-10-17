@@ -6,6 +6,8 @@ import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:appmobilegmao/widgets/custom_buttons.dart';
 import 'package:appmobilegmao/screens/main_screen.dart';
 import 'package:provider/provider.dart';
+import 'package:appmobilegmao/utils/responsive.dart';
+import 'package:appmobilegmao/theme/responsive_spacing.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -94,36 +96,40 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final responsive = context.responsive;
+    final spacing = context.spacing;
+
     return Scaffold(
       backgroundColor: AppTheme.primaryColor,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
+          padding: spacing.custom(all: 24), // ✅ Padding responsive
           child: Form(
             key: _formKey,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const SizedBox(height: 80),
-
+                SizedBox(height: spacing.xxlarge), // ✅ Espacement responsive
                 // Logo et titre
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: spacing.custom(all: 10), // ✅ Padding responsive
                   child: Column(
                     children: [
                       SizedBox(
-                        width: 200,
-                        height: 200,
+                        width: responsive.spacing(200), // ✅ Largeur responsive
+                        height: responsive.spacing(200), // ✅ Hauteur responsive
                         child: Image.asset(
                           'assets/images/logo.png',
                           fit: BoxFit.contain,
                         ),
                       ),
-                      const SizedBox(height: 24),
+                      SizedBox(
+                        height: spacing.large,
+                      ), // ✅ Espacement responsive
                       Text(
                         'GMAO Mobile',
                         style: TextStyle(
-                          fontSize: 18,
+                          fontSize: responsive.sp(18), // ✅ Texte responsive
                           fontWeight: FontWeight.bold,
                           color: AppTheme.secondaryColor,
                           fontFamily: AppTheme.fontMontserrat,
@@ -133,27 +139,32 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
 
-                const SizedBox(height: 40),
-
+                SizedBox(height: spacing.xlarge), // ✅ Espacement responsive
                 // Formulaire de connexion
                 Container(
-                  padding: const EdgeInsets.only(
+                  padding: spacing.custom(
                     left: 16,
                     right: 16,
                     top: 10,
                     bottom: 10,
-                  ),
+                  ), // ✅ Padding responsive
                   child: Column(
                     children: [
                       // Message d'erreur
                       if (_errorMessage != null)
                         Container(
                           width: double.infinity,
-                          padding: const EdgeInsets.all(16),
-                          margin: const EdgeInsets.only(bottom: 20),
+                          padding: spacing.custom(
+                            all: 16,
+                          ), // ✅ Padding responsive
+                          margin: spacing.custom(
+                            bottom: 20,
+                          ), // ✅ Margin responsive
                           decoration: BoxDecoration(
                             color: Colors.red.shade50,
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(
+                              responsive.spacing(12),
+                            ), // ✅ Border radius responsive
                             border: Border.all(color: Colors.red.shade200),
                           ),
                           child: Row(
@@ -162,7 +173,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                 Icons.error_outline,
                                 color: Colors.red.shade700,
                               ),
-                              const SizedBox(width: 12),
+                              SizedBox(
+                                width: spacing.medium,
+                              ), // ✅ Espacement responsive
                               Expanded(
                                 child: Text(
                                   _errorMessage!,
@@ -186,17 +199,23 @@ class _LoginScreenState extends State<LoginScreen> {
                             color: AppTheme.secondaryColor,
                           ),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(
+                              responsive.spacing(12),
+                            ), // ✅ Border radius responsive
                           ),
                           focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(
+                              responsive.spacing(12),
+                            ), // ✅ Border radius responsive
                             borderSide: BorderSide(
                               color: AppTheme.secondaryColor,
                               width: 2,
                             ),
                           ),
                           enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(
+                              responsive.spacing(12),
+                            ), // ✅ Border radius responsive
                             borderSide: BorderSide(
                               color: AppTheme.thirdColor,
                               width: 1,
@@ -215,8 +234,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         },
                       ),
 
-                      const SizedBox(height: 20),
-
+                      SizedBox(
+                        height: spacing.medium,
+                      ), // ✅ Espacement responsive
                       // Champ mot de passe
                       TextFormField(
                         controller: _passwordController,
@@ -241,17 +261,23 @@ class _LoginScreenState extends State<LoginScreen> {
                             },
                           ),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(
+                              responsive.spacing(12),
+                            ), // ✅ Border radius responsive
                           ),
                           focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(
+                              responsive.spacing(12),
+                            ), // ✅ Border radius responsive
                             borderSide: BorderSide(
                               color: AppTheme.secondaryColor,
                               width: 2,
                             ),
                           ),
                           enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(
+                              responsive.spacing(12),
+                            ), // ✅ Border radius responsive
                             borderSide: BorderSide(
                               color: AppTheme.thirdColor,
                               width: 1,
@@ -271,13 +297,14 @@ class _LoginScreenState extends State<LoginScreen> {
                         },
                       ),
 
-                      const SizedBox(height: 32),
-
+                      SizedBox(
+                        height: spacing.xlarge,
+                      ), // ✅ Espacement responsive
                       // Bouton de connexion
                       PrimaryButton(
                         text: 'Se connecter',
                         width: double.infinity,
-                        height: 56,
+                        height: responsive.spacing(56), // ✅ Hauteur responsive
                         isLoading: _isLoading,
                         onPressed: _handleLogin,
                       ),
@@ -285,14 +312,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
 
-                const SizedBox(height: 40),
-
+                SizedBox(height: spacing.xlarge), // ✅ Espacement responsive
                 // Informations de support
                 Text(
                   'En cas de problème, contactez le support IT SENELEC',
                   style: TextStyle(
                     color: Colors.white70,
-                    fontSize: 14,
+                    fontSize: responsive.sp(14), // ✅ Texte responsive
                     fontFamily: AppTheme.fontRoboto,
                   ),
                   textAlign: TextAlign.center,

@@ -3,6 +3,8 @@ import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:appmobilegmao/widgets/tools.dart';
 import 'package:appmobilegmao/widgets/equipments/equipment_dropdown.dart';
 import 'package:appmobilegmao/utils/equipment_helpers.dart';
+import 'package:appmobilegmao/utils/responsive.dart';
+import 'package:appmobilegmao/theme/responsive_spacing.dart';
 
 class EquipmentFormFields extends StatelessWidget {
   final String? generatedCode;
@@ -66,29 +68,47 @@ class EquipmentFormFields extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final responsive = context.responsive;
+    final spacing = context.spacing;
+
     return Column(
       children: [
         // Section Informations
-        Tools.buildFieldset('Informations'),
-        const SizedBox(height: 10),
-        _buildCodeAndFamilleRow(),
-        const SizedBox(height: 20),
-        _buildZoneAndEntityRow(),
-        const SizedBox(height: 20),
-        _buildUniteAndChargeRow(),
-        const SizedBox(height: 20),
+        Tools.buildFieldset(context, 'Informations'), // ✅ Context ajouté
+        SizedBox(height: spacing.small), // ✅ Espacement responsive
+        _buildCodeAndFamilleRow(
+          context,
+          responsive,
+          spacing,
+        ), // ✅ Paramètres ajoutés
+        SizedBox(height: spacing.medium), // ✅ Espacement responsive
+        _buildZoneAndEntityRow(
+          context,
+          responsive,
+          spacing,
+        ), // ✅ Paramètres ajoutés
+        SizedBox(height: spacing.medium), // ✅ Espacement responsive
+        _buildUniteAndChargeRow(
+          context,
+          responsive,
+          spacing,
+        ), // ✅ Paramètres ajoutés
+        SizedBox(height: spacing.medium), // ✅ Espacement responsive
         Tools.buildTextField(
+          context: context, // ✅ Context ajouté
           label: 'Description',
           msgError: 'Veuillez entrer la description',
           focusNode: descriptionFocusNode,
           controller: descriptionController,
           isRequired: false,
         ),
-        const SizedBox(height: 40),
-
+        SizedBox(height: spacing.xlarge), // ✅ Espacement responsive
         // Section Informations parents
-        Tools.buildFieldset('Informations parents'),
-        const SizedBox(height: 10),
+        Tools.buildFieldset(
+          context,
+          'Informations parents',
+        ), // ✅ Context ajouté
+        SizedBox(height: spacing.small), // ✅ Espacement responsive
         EquipmentDropdown(
           label: 'Code Parent',
           items: EquipmentHelpers.getSelectorsOptions(feeders, codeKey: 'code'),
@@ -97,33 +117,45 @@ class EquipmentFormFields extends StatelessWidget {
           hintText: 'Rechercher ou sélectionner un code parent...',
           isRequired: false,
         ),
-        const SizedBox(height: 20),
-        _buildFeederRow(),
-
+        SizedBox(height: spacing.medium), // ✅ Espacement responsive
+        _buildFeederRow(context, responsive, spacing), // ✅ Paramètres ajoutés
         // Bouton attributs si disponible
         if (showAttributesButton) ...[
-          const SizedBox(height: 40),
-          _buildAttributesButton(),
+          SizedBox(height: spacing.xlarge), // ✅ Espacement responsive
+          _buildAttributesButton(
+            context,
+            responsive,
+            spacing,
+          ), // ✅ Paramètres ajoutés
         ],
       ],
     );
   }
 
-  Widget _buildCodeAndFamilleRow() {
+  Widget _buildCodeAndFamilleRow(
+    BuildContext context,
+    Responsive responsive,
+    ResponsiveSpacing spacing,
+  ) {
     return Row(
       children: [
         Expanded(
           child:
               isCodeEditable
                   ? Tools.buildTextField(
+                    context: context, // ✅ Context ajouté
                     label: 'Code',
                     msgError: 'Veuillez entrer le code',
                     controller: TextEditingController(text: generatedCode),
                     isRequired: true,
                   )
-                  : Tools.buildText(label: 'Code', value: generatedCode ?? ''),
+                  : Tools.buildText(
+                    context,
+                    label: 'Code',
+                    value: generatedCode ?? '',
+                  ), // ✅ Context ajouté
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: spacing.small), // ✅ Espacement responsive
         Expanded(
           child: EquipmentDropdown(
             label: 'Famille',
@@ -139,7 +171,11 @@ class EquipmentFormFields extends StatelessWidget {
     );
   }
 
-  Widget _buildZoneAndEntityRow() {
+  Widget _buildZoneAndEntityRow(
+    BuildContext context,
+    Responsive responsive,
+    ResponsiveSpacing spacing,
+  ) {
     return Row(
       children: [
         Expanded(
@@ -152,7 +188,7 @@ class EquipmentFormFields extends StatelessWidget {
             isRequired: false,
           ),
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: spacing.small), // ✅ Espacement responsive
         Expanded(
           child: EquipmentDropdown(
             label: 'Entité',
@@ -168,7 +204,11 @@ class EquipmentFormFields extends StatelessWidget {
     );
   }
 
-  Widget _buildUniteAndChargeRow() {
+  Widget _buildUniteAndChargeRow(
+    BuildContext context,
+    Responsive responsive,
+    ResponsiveSpacing spacing,
+  ) {
     return Row(
       children: [
         Expanded(
@@ -181,7 +221,7 @@ class EquipmentFormFields extends StatelessWidget {
             isRequired: false,
           ),
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: spacing.small), // ✅ Espacement responsive
         Expanded(
           child: EquipmentDropdown(
             label: 'Centre de Charge',
@@ -196,7 +236,11 @@ class EquipmentFormFields extends StatelessWidget {
     );
   }
 
-  Widget _buildFeederRow() {
+  Widget _buildFeederRow(
+    BuildContext context,
+    Responsive responsive,
+    ResponsiveSpacing spacing,
+  ) {
     return Row(
       children: [
         Expanded(
@@ -209,9 +253,10 @@ class EquipmentFormFields extends StatelessWidget {
             isRequired: false,
           ),
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: spacing.small), // ✅ Espacement responsive
         Expanded(
           child: Tools.buildText(
+            context, // ✅ Context ajouté
             label: 'Info Feeder',
             value: EquipmentHelpers.formatDescription(selectedFeeder ?? ''),
           ),
@@ -220,11 +265,15 @@ class EquipmentFormFields extends StatelessWidget {
     );
   }
 
-  Widget _buildAttributesButton() {
+  Widget _buildAttributesButton(
+    BuildContext context,
+    Responsive responsive,
+    ResponsiveSpacing spacing,
+  ) {
     return GestureDetector(
       onTap: attributesCount > 0 ? onAttributesPressed : null,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: spacing.custom(vertical: 12), // ✅ Padding responsive
         child: Row(
           children: [
             Icon(
@@ -233,8 +282,9 @@ class EquipmentFormFields extends StatelessWidget {
                   attributesCount > 0
                       ? AppTheme.secondaryColor
                       : AppTheme.thirdColor,
+              size: responsive.iconSize(16), // ✅ Icône responsive
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: spacing.small), // ✅ Espacement responsive
             Text(
               attributesCount > 0
                   ? 'Modifier les attributs ($attributesCount)'
@@ -246,15 +296,17 @@ class EquipmentFormFields extends StatelessWidget {
                     attributesCount > 0
                         ? AppTheme.secondaryColor
                         : AppTheme.thirdColor,
-                fontSize: 16,
+                fontSize: responsive.sp(16), // ✅ Texte responsive
               ),
             ),
-            const SizedBox(width: 5),
+            SizedBox(width: spacing.tiny), // ✅ Espacement responsive
             Expanded(
               child: Container(
                 height: 1,
                 color: AppTheme.thirdColor,
-                margin: const EdgeInsets.only(top: 10),
+                margin: EdgeInsets.only(
+                  top: spacing.medium,
+                ), // ✅ Margin responsive
               ),
             ),
           ],

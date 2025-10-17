@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:appmobilegmao/widgets/custom_overlay.dart';
 import 'package:appmobilegmao/widgets/overlay_item.dart';
+import 'package:appmobilegmao/utils/responsive.dart';
+import 'package:appmobilegmao/theme/responsive_spacing.dart';
 
 class ListItemCustom extends StatelessWidget {
   final String? id;
@@ -168,50 +170,63 @@ class ListItemCustom extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final responsive = context.responsive;
+    final spacing = context.spacing;
+
     return GestureDetector(
       onTap: onTap ?? () => _showOverlay(context),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        padding: spacing.custom(
+          horizontal: 10,
+          vertical: 10,
+        ), // ✅ Padding responsive
         decoration: BoxDecoration(
           color: backgroundColor ?? AppTheme.secondaryColor,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(
+            responsive.spacing(20),
+          ), // ✅ Border radius responsive
         ),
         child: Row(
           children: [
-            _buildIcon(),
-            const SizedBox(width: 10),
-            Expanded(child: _buildContent()),
-            _buildArrowIcon(),
+            _buildIcon(responsive, spacing),
+            SizedBox(width: spacing.medium), // ✅ Espacement responsive
+            Expanded(child: _buildContent(responsive, spacing)),
+            _buildArrowIcon(responsive),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildIcon() {
+  Widget _buildIcon(Responsive responsive, ResponsiveSpacing spacing) {
     return Container(
-      width: 56,
-      height: 56,
+      width: responsive.spacing(56), // ✅ Largeur responsive
+      height: responsive.spacing(56), // ✅ Hauteur responsive
       decoration: BoxDecoration(
         color: iconColor ?? AppTheme.primaryColor,
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(
+          responsive.spacing(15),
+        ), // ✅ Border radius responsive
       ),
       child: Icon(
         icon,
-        size: 30,
+        size: responsive.iconSize(30), // ✅ Icône responsive
         color: backgroundColor ?? AppTheme.secondaryColor,
       ),
     );
   }
 
-  Widget _buildContent() {
+  Widget _buildContent(Responsive responsive, ResponsiveSpacing spacing) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [_buildPrimaryRow(), ..._buildFieldRows()],
+      children: [
+        _buildPrimaryRow(responsive, spacing),
+        ..._buildFieldRows(responsive, spacing),
+      ],
     );
   }
 
-  Widget _buildPrimaryRow() {
+  Widget _buildPrimaryRow(Responsive responsive, ResponsiveSpacing spacing) {
     return Row(
       children: [
         Text(
@@ -220,10 +235,10 @@ class ListItemCustom extends StatelessWidget {
             fontFamily: AppTheme.fontMontserrat,
             fontWeight: FontWeight.w600,
             color: textColor ?? AppTheme.primaryColor,
-            fontSize: 18,
+            fontSize: responsive.sp(18), // ✅ Texte responsive
           ),
         ),
-        const SizedBox(width: 5),
+        SizedBox(width: spacing.small), // ✅ Espacement responsive
         Expanded(
           child: Text(
             primaryText,
@@ -231,7 +246,7 @@ class ListItemCustom extends StatelessWidget {
               fontFamily: AppTheme.fontMontserrat,
               fontWeight: FontWeight.w600,
               color: textColor ?? AppTheme.primaryColor,
-              fontSize: 18,
+              fontSize: responsive.sp(18), // ✅ Texte responsive
             ),
             overflow: TextOverflow.ellipsis,
           ),
@@ -240,7 +255,10 @@ class ListItemCustom extends StatelessWidget {
     );
   }
 
-  List<Widget> _buildFieldRows() {
+  List<Widget> _buildFieldRows(
+    Responsive responsive,
+    ResponsiveSpacing spacing,
+  ) {
     List<Widget> rows = [];
 
     // Grouper les champs par paires
@@ -251,20 +269,31 @@ class ListItemCustom extends StatelessWidget {
         rowFields.add(fields[i + 1]);
       }
 
-      rows.add(_buildFieldRow(rowFields));
+      rows.add(_buildFieldRow(rowFields, responsive, spacing));
     }
 
     return rows;
   }
 
-  Widget _buildFieldRow(List<ItemField> rowFields) {
+  Widget _buildFieldRow(
+    List<ItemField> rowFields,
+    Responsive responsive,
+    ResponsiveSpacing spacing,
+  ) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: rowFields.map((field) => _buildFieldItem(field)).toList(),
+      children:
+          rowFields
+              .map((field) => _buildFieldItem(field, responsive, spacing))
+              .toList(),
     );
   }
 
-  Widget _buildFieldItem(ItemField field) {
+  Widget _buildFieldItem(
+    ItemField field,
+    Responsive responsive,
+    ResponsiveSpacing spacing,
+  ) {
     return Expanded(
       child: Row(
         children: [
@@ -274,10 +303,10 @@ class ListItemCustom extends StatelessWidget {
               fontFamily: AppTheme.fontRoboto,
               fontWeight: FontWeight.normal,
               color: textColor ?? AppTheme.primaryColor,
-              fontSize: 12,
+              fontSize: responsive.sp(12), // ✅ Texte responsive
             ),
           ),
-          const SizedBox(width: 5),
+          SizedBox(width: spacing.small), // ✅ Espacement responsive
           Expanded(
             child: Text(
               field.value,
@@ -285,7 +314,7 @@ class ListItemCustom extends StatelessWidget {
                 fontFamily: AppTheme.fontRoboto,
                 fontWeight: FontWeight.normal,
                 color: textColor ?? AppTheme.primaryColor,
-                fontSize: 12,
+                fontSize: responsive.sp(12), // ✅ Texte responsive
               ),
               overflow: TextOverflow.ellipsis,
             ),
@@ -295,13 +324,13 @@ class ListItemCustom extends StatelessWidget {
     );
   }
 
-  Widget _buildArrowIcon() {
+  Widget _buildArrowIcon(Responsive responsive) {
     return Transform(
       transform: Matrix4.rotationZ(-0.785398),
       alignment: Alignment.center,
       child: Icon(
         Icons.arrow_back,
-        size: 24,
+        size: responsive.iconSize(24), // ✅ Icône responsive
         color: textColor ?? AppTheme.primaryColor,
       ),
     );

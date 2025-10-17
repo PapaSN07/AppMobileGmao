@@ -1,6 +1,8 @@
 import 'package:appmobilegmao/screens/settings/profile_screen.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:flutter/material.dart';
+import 'package:appmobilegmao/utils/responsive.dart';
+import 'package:appmobilegmao/theme/responsive_spacing.dart';
 
 class ProfilMenu extends StatelessWidget {
   final String nom;
@@ -22,6 +24,9 @@ class ProfilMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final responsive = context.responsive;
+    final spacing = context.spacing;
+
     if (isLoading) {
       return Scaffold(
         backgroundColor: AppTheme.primaryColor,
@@ -37,25 +42,31 @@ class ProfilMenu extends StatelessWidget {
       backgroundColor: AppTheme.secondaryColor,
       // ✅ AJOUTÉ: AppBar standard pour uniformité avec main_screen.dart
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Paramètres',
           style: TextStyle(
             fontFamily: AppTheme.fontMontserrat,
             fontWeight: FontWeight.w600,
             color: Colors.white,
-            fontSize: 20,
+            fontSize: responsive.sp(20), // ✅ Texte responsive
           ),
         ),
         backgroundColor: AppTheme.secondaryColor,
         elevation: 0,
         leading: IconButton(
           icon: Container(
-            padding: const EdgeInsets.all(8),
+            padding: spacing.custom(all: 8), // ✅ Padding responsive
             decoration: BoxDecoration(
               color: AppTheme.primaryColor20,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(
+                responsive.spacing(8),
+              ), // ✅ Border radius responsive
             ),
-            child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+            child: Icon(
+              Icons.arrow_back,
+              color: Colors.white,
+              size: responsive.iconSize(20), // ✅ Icône responsive
+            ),
           ),
           onPressed: () => Navigator.of(context).pop(),
           tooltip: 'Retour',
@@ -63,15 +74,17 @@ class ProfilMenu extends StatelessWidget {
         actions: [
           IconButton(
             icon: Container(
-              padding: const EdgeInsets.all(8),
+              padding: spacing.custom(all: 8), // ✅ Padding responsive
               decoration: BoxDecoration(
                 color: AppTheme.primaryColor20,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(
+                  responsive.spacing(8),
+                ), // ✅ Border radius responsive
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.notifications_none,
                 color: Colors.white,
-                size: 20,
+                size: responsive.iconSize(20), // ✅ Icône responsive
               ),
             ),
             onPressed: () {},
@@ -95,29 +108,36 @@ class ProfilMenu extends StatelessWidget {
                 child: Stack(
                   children: [
                     Container(
-                      margin: const EdgeInsets.symmetric(
+                      margin: spacing.custom(
                         horizontal: 15,
                         vertical: 20,
-                      ),
+                      ), // ✅ Margin responsive
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: const BorderRadius.all(
-                          Radius.circular(20),
+                        borderRadius: BorderRadius.all(
+                          Radius.circular(
+                            responsive.spacing(20),
+                          ), // ✅ Border radius responsive
                         ),
                         boxShadow: [
                           BoxShadow(
                             color: AppTheme.boxShadowColor,
-                            blurRadius: 20,
-                            offset: const Offset(0, -5),
+                            blurRadius: responsive.spacing(
+                              20,
+                            ), // ✅ Blur radius responsive
+                            offset: Offset(
+                              0,
+                              responsive.spacing(-5),
+                            ), // ✅ Offset responsive
                           ),
                         ],
                       ),
                       child: SingleChildScrollView(
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(
+                          padding: spacing.custom(
                             horizontal: 10,
                             vertical: 20,
-                          ),
+                          ), // ✅ Padding responsive
                           child: Column(
                             children: [
                               // Photo de profil avec taille réduite
@@ -125,8 +145,12 @@ class ProfilMenu extends StatelessWidget {
                                 alignment: Alignment.center,
                                 children: [
                                   Container(
-                                    width: 100,
-                                    height: 100,
+                                    width: responsive.spacing(
+                                      100,
+                                    ), // ✅ Largeur responsive
+                                    height: responsive.spacing(
+                                      100,
+                                    ), // ✅ Hauteur responsive
                                     decoration: BoxDecoration(
                                       color: AppTheme.primaryColor10,
                                       shape: BoxShape.circle,
@@ -139,7 +163,9 @@ class ProfilMenu extends StatelessWidget {
                                       child: Text(
                                         "${prenom[0].toUpperCase()}${nom[0].toUpperCase()}",
                                         style: TextStyle(
-                                          fontSize: 30,
+                                          fontSize: responsive.sp(
+                                            30,
+                                          ), // ✅ Texte responsive
                                           fontWeight: FontWeight.bold,
                                           color: AppTheme.secondaryColor,
                                           fontFamily: AppTheme.fontMontserrat,
@@ -151,32 +177,42 @@ class ProfilMenu extends StatelessWidget {
                                     bottom: 0,
                                     right: 0,
                                     child: Container(
-                                      padding: const EdgeInsets.all(8),
+                                      padding: spacing.custom(
+                                        all: 8,
+                                      ), // ✅ Padding responsive
                                       decoration: BoxDecoration(
                                         color: AppTheme.secondaryColor,
-                                        borderRadius: BorderRadius.circular(10),
+                                        borderRadius: BorderRadius.circular(
+                                          responsive.spacing(10),
+                                        ), // ✅ Border radius responsive
                                         border: Border.all(
                                           color: Colors.white,
                                           width: 2,
                                         ),
                                       ),
-                                      child: const Icon(
+                                      child: Icon(
                                         Icons.photo_camera,
                                         color: Colors.white,
-                                        size: 16,
+                                        size: responsive.iconSize(
+                                          16,
+                                        ), // ✅ Icône responsive
                                       ),
                                     ),
                                   ),
                                 ],
                               ),
 
-                              const SizedBox(height: 20),
+                              SizedBox(
+                                height: spacing.medium,
+                              ), // ✅ Espacement responsive
                               // Nom complet
                               Text(
                                 "$prenom $nom",
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 22,
+                                  fontSize: responsive.sp(
+                                    22,
+                                  ), // ✅ Texte responsive
                                   fontFamily: AppTheme.fontMontserrat,
                                 ),
                               ),
@@ -186,22 +222,27 @@ class ProfilMenu extends StatelessWidget {
                                 email,
                                 style: TextStyle(
                                   color: AppTheme.thirdColor,
-                                  fontSize: 14,
+                                  fontSize: responsive.sp(
+                                    14,
+                                  ), // ✅ Texte responsive
                                   fontFamily: AppTheme.fontRoboto,
                                 ),
                               ),
 
-                              const SizedBox(height: 4),
-
+                              SizedBox(
+                                height: spacing.tiny,
+                              ), // ✅ Espacement responsive
                               // Rôle avec badge
                               Container(
-                                padding: const EdgeInsets.symmetric(
+                                padding: spacing.custom(
                                   horizontal: 12,
                                   vertical: 4,
-                                ),
+                                ), // ✅ Padding responsive
                                 decoration: BoxDecoration(
                                   color: AppTheme.secondaryColor10,
-                                  borderRadius: BorderRadius.circular(16),
+                                  borderRadius: BorderRadius.circular(
+                                    responsive.spacing(16),
+                                  ), // ✅ Border radius responsive
                                   border: Border.all(
                                     color: AppTheme.secondaryColor30,
                                   ),
@@ -211,13 +252,17 @@ class ProfilMenu extends StatelessWidget {
                                   style: TextStyle(
                                     color: AppTheme.secondaryColor,
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 12,
+                                    fontSize: responsive.sp(
+                                      12,
+                                    ), // ✅ Texte responsive
                                     fontFamily: AppTheme.fontRoboto,
                                   ),
                                 ),
                               ),
 
-                              const SizedBox(height: 24),
+                              SizedBox(
+                                height: spacing.xlarge,
+                              ), // ✅ Espacement responsive
                               // Options de menu
                               Column(
                                 children: [
@@ -232,76 +277,98 @@ class ProfilMenu extends StatelessWidget {
                                       );
                                     },
                                     AppTheme.secondaryColor,
+                                    responsive,
+                                    spacing,
                                   ),
-                                  _buildDivider(),
+                                  _buildDivider(responsive, spacing),
                                   _profilMenuItem(
                                     Icons.notifications_outlined,
                                     "Notifications",
                                     () {},
                                     AppTheme.secondaryColor,
+                                    responsive,
+                                    spacing,
                                   ),
-                                  _buildDivider(),
+                                  _buildDivider(responsive, spacing),
                                   _profilMenuItemWithValue(
                                     Icons.translate,
                                     "Langue",
                                     "Français",
                                     () {},
                                     AppTheme.secondaryColor,
+                                    responsive,
+                                    spacing,
                                   ),
-                                  _buildDivider(),
+                                  _buildDivider(responsive, spacing),
                                   _profilMenuItem(
                                     Icons.shield_outlined,
                                     "Conditions d'utilisation",
                                     () {},
                                     AppTheme.secondaryColor,
+                                    responsive,
+                                    spacing,
                                   ),
-                                  _buildDivider(),
+                                  _buildDivider(responsive, spacing),
                                   _profilMenuItem(
                                     Icons.help_outline,
                                     "Centre d'Aide",
                                     () {},
                                     AppTheme.secondaryColor,
+                                    responsive,
+                                    spacing,
                                   ),
-                                  _buildDivider(),
+                                  _buildDivider(responsive, spacing),
                                   _profilMenuItem(
                                     Icons.info_outline,
                                     "À propos",
                                     () {},
                                     AppTheme.secondaryColor,
+                                    responsive,
+                                    spacing,
                                   ),
-                                  const SizedBox(height: 20),
-
+                                  SizedBox(
+                                    height: spacing.medium,
+                                  ), // ✅ Espacement responsive
                                   // Bouton de déconnexion
                                   Container(
-                                    margin: const EdgeInsets.symmetric(
+                                    margin: spacing.custom(
                                       horizontal: 16,
-                                    ),
+                                    ), // ✅ Margin responsive
                                     width: double.infinity,
                                     child: ElevatedButton(
                                       onPressed: onLogout,
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor: Colors.red,
                                         foregroundColor: Colors.white,
-                                        padding: const EdgeInsets.symmetric(
+                                        padding: spacing.custom(
                                           vertical: 14,
-                                        ),
+                                        ), // ✅ Padding responsive
                                         shape: RoundedRectangleBorder(
                                           borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
+                                            responsive.spacing(12),
+                                          ), // ✅ Border radius responsive
                                         ),
                                         elevation: 2,
                                       ),
                                       child: Row(
                                         mainAxisAlignment:
                                             MainAxisAlignment.center,
-                                        children: const [
-                                          Icon(Icons.logout, size: 18),
-                                          SizedBox(width: 8),
+                                        children: [
+                                          Icon(
+                                            Icons.logout,
+                                            size: responsive.iconSize(
+                                              18,
+                                            ), // ✅ Icône responsive
+                                          ),
+                                          SizedBox(
+                                            width: spacing.small,
+                                          ), // ✅ Espacement responsive
                                           Text(
                                             'Déconnexion',
                                             style: TextStyle(
-                                              fontSize: 14,
+                                              fontSize: responsive.sp(
+                                                14,
+                                              ), // ✅ Texte responsive
                                               fontWeight: FontWeight.bold,
                                               fontFamily:
                                                   AppTheme.fontMontserrat,
@@ -312,7 +379,9 @@ class ProfilMenu extends StatelessWidget {
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(height: 20),
+                                  SizedBox(
+                                    height: spacing.medium,
+                                  ), // ✅ Espacement responsive
                                 ],
                               ),
                             ],
@@ -337,38 +406,53 @@ class ProfilMenu extends StatelessWidget {
     String label,
     VoidCallback onTap,
     Color iconColor,
+    Responsive responsive,
+    ResponsiveSpacing spacing,
   ) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      margin: spacing.custom(horizontal: 4, vertical: 2), // ✅ Margin responsive
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(
+          responsive.spacing(10),
+        ), // ✅ Border radius responsive
         color: Colors.transparent,
       ),
       child: ListTile(
         leading: Container(
-          padding: const EdgeInsets.all(6),
+          padding: spacing.custom(all: 6), // ✅ Padding responsive
           decoration: BoxDecoration(
             color: iconColor.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(
+              responsive.spacing(6),
+            ), // ✅ Border radius responsive
           ),
-          child: Icon(icon, color: iconColor, size: 20),
+          child: Icon(
+            icon,
+            color: iconColor,
+            size: responsive.iconSize(20),
+          ), // ✅ Icône responsive
         ),
         title: Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontWeight: FontWeight.w500,
-            fontSize: 14,
+            fontSize: responsive.sp(14), // ✅ Texte responsive
             fontFamily: AppTheme.fontRoboto,
           ),
         ),
         trailing: Icon(
           Icons.arrow_forward_ios,
-          size: 14,
+          size: responsive.iconSize(14), // ✅ Icône responsive
           color: AppTheme.thirdColor,
         ),
         onTap: onTap,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        contentPadding: spacing.custom(
+          horizontal: 12,
+          vertical: 2,
+        ), // ✅ Padding responsive
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(responsive.spacing(10)),
+        ), // ✅ Border radius responsive
       ),
     );
   }
@@ -379,27 +463,37 @@ class ProfilMenu extends StatelessWidget {
     String value,
     VoidCallback onTap,
     Color iconColor,
+    Responsive responsive,
+    ResponsiveSpacing spacing,
   ) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      margin: spacing.custom(horizontal: 4, vertical: 2), // ✅ Margin responsive
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(
+          responsive.spacing(10),
+        ), // ✅ Border radius responsive
         color: Colors.transparent,
       ),
       child: ListTile(
         leading: Container(
-          padding: const EdgeInsets.all(6),
+          padding: spacing.custom(all: 6), // ✅ Padding responsive
           decoration: BoxDecoration(
             color: iconColor.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(
+              responsive.spacing(6),
+            ), // ✅ Border radius responsive
           ),
-          child: Icon(icon, color: iconColor, size: 20),
+          child: Icon(
+            icon,
+            color: iconColor,
+            size: responsive.iconSize(20),
+          ), // ✅ Icône responsive
         ),
         title: Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontWeight: FontWeight.w500,
-            fontSize: 14,
+            fontSize: responsive.sp(14), // ✅ Texte responsive
             fontFamily: AppTheme.fontRoboto,
           ),
         ),
@@ -411,23 +505,35 @@ class ProfilMenu extends StatelessWidget {
               style: TextStyle(
                 color: AppTheme.thirdColor,
                 fontWeight: FontWeight.w500,
-                fontSize: 12,
+                fontSize: responsive.sp(12), // ✅ Texte responsive
               ),
             ),
-            const SizedBox(width: 6),
-            Icon(Icons.arrow_forward_ios, size: 14, color: AppTheme.thirdColor),
+            SizedBox(width: spacing.small), // ✅ Espacement responsive
+            Icon(
+              Icons.arrow_forward_ios,
+              size: responsive.iconSize(14), // ✅ Icône responsive
+              color: AppTheme.thirdColor,
+            ),
           ],
         ),
         onTap: onTap,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        contentPadding: spacing.custom(
+          horizontal: 12,
+          vertical: 2,
+        ), // ✅ Padding responsive
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(responsive.spacing(10)),
+        ), // ✅ Border radius responsive
       ),
     );
   }
 
-  Widget _buildDivider() {
+  Widget _buildDivider(Responsive responsive, ResponsiveSpacing spacing) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      margin: spacing.custom(
+        horizontal: 20,
+        vertical: 4,
+      ), // ✅ Margin responsive
       height: 1,
       color: AppTheme.thirdColor20,
     );

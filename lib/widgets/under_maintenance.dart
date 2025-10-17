@@ -5,23 +5,28 @@ import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
+import 'package:appmobilegmao/utils/responsive.dart';
+import 'package:appmobilegmao/theme/responsive_spacing.dart';
 
 class UnderMaintenanceScreen extends StatelessWidget {
   const UnderMaintenanceScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final responsive = context.responsive;
+    final spacing = context.spacing;
+
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: spacing.allPadding, // ✅ Padding responsive
           child: Column(
             children: [
               const Spacer(flex: 2),
               SizedBox(
-                width: MediaQuery.of(context).size.width * 0.8,
+                width: responsive.wp(80), // ✅ Largeur responsive
                 child: AspectRatio(
                   aspectRatio: 1,
                   child: SvgPicture.asset(
@@ -79,9 +84,14 @@ class ErrorInfo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final responsive = context.responsive;
+    final spacing = context.spacing;
+
     return Center(
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 400),
+        constraints: BoxConstraints(
+          maxWidth: responsive.maxContentWidth,
+        ), // ✅ Largeur max responsive
         alignment: Alignment.center,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -89,27 +99,39 @@ class ErrorInfo extends StatelessWidget {
           children: [
             Text(
               title,
-              style: Theme.of(
-                context,
-              ).textTheme.headlineSmall!.copyWith(fontWeight: FontWeight.bold),
+              style: Theme.of(context).textTheme.headlineSmall!.copyWith(
+                fontWeight: FontWeight.bold,
+                fontSize: responsive.sp(24), // ✅ Texte responsive
+              ),
             ),
-            const SizedBox(height: 16),
-            Text(description, textAlign: TextAlign.center),
-            const SizedBox(height: 16 * 2.5),
+            SizedBox(height: spacing.medium), // ✅ Espacement responsive
+            Text(
+              description,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: responsive.sp(14),
+              ), // ✅ Texte responsive
+            ),
+            SizedBox(height: spacing.xlarge), // ✅ Espacement responsive
             button ??
                 ElevatedButton(
                   onPressed: press,
                   style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 48),
+                    minimumSize: Size(
+                      double.infinity,
+                      responsive.spacing(48),
+                    ), // ✅ Hauteur responsive
                     backgroundColor: AppTheme.secondaryColor,
                     foregroundColor: Colors.white,
-                    shape: const RoundedRectangleBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(8)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.all(
+                        Radius.circular(responsive.spacing(8)),
+                      ), // ✅ Border radius responsive
                     ),
                   ),
                   child: Text(btnText ?? "Retry".toUpperCase()),
                 ),
-            const SizedBox(height: 16),
+            SizedBox(height: spacing.medium), // ✅ Espacement responsive
           ],
         ),
       ),

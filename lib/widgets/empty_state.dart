@@ -1,6 +1,8 @@
 import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:appmobilegmao/widgets/custom_buttons.dart'; // Ajout de l'import
 import 'package:flutter/material.dart';
+import 'package:appmobilegmao/utils/responsive.dart';
+import 'package:appmobilegmao/theme/responsive_spacing.dart';
 
 class EmptyState extends StatelessWidget {
   final String title;
@@ -20,10 +22,13 @@ class EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final responsive = context.responsive;
+    final spacing = context.spacing;
+
     return SingleChildScrollView(
       child: Center(
         child: Padding(
-          padding: const EdgeInsets.all(32.0),
+          padding: spacing.custom(all: 32), // ✅ Padding responsive
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -35,8 +40,8 @@ class EmptyState extends StatelessWidget {
                   return Transform.scale(
                     scale: value,
                     child: Container(
-                      width: 100,
-                      height: 100,
+                      width: responsive.spacing(100), // ✅ Largeur responsive
+                      height: responsive.spacing(100), // ✅ Hauteur responsive
                       decoration: BoxDecoration(
                         color: AppTheme.primaryColor15,
                         shape: BoxShape.circle,
@@ -45,14 +50,17 @@ class EmptyState extends StatelessWidget {
                           width: 2,
                         ),
                       ),
-                      child: Icon(icon, size: 50, color: AppTheme.thirdColor),
+                      child: Icon(
+                        icon,
+                        size: responsive.iconSize(50), // ✅ Icône responsive
+                        color: AppTheme.thirdColor,
+                      ),
                     ),
                   );
                 },
               ),
 
-              const SizedBox(height: 24),
-
+              SizedBox(height: spacing.large), // ✅ Espacement responsive
               // Titre
               Text(
                 title,
@@ -60,13 +68,12 @@ class EmptyState extends StatelessWidget {
                   fontFamily: AppTheme.fontMontserrat,
                   fontWeight: FontWeight.bold,
                   color: AppTheme.secondaryColor,
-                  fontSize: 20,
+                  fontSize: responsive.sp(20), // ✅ Texte responsive
                 ),
                 textAlign: TextAlign.center,
               ),
 
-              const SizedBox(height: 12),
-
+              SizedBox(height: spacing.medium), // ✅ Espacement responsive
               // Message
               Text(
                 message,
@@ -74,13 +81,12 @@ class EmptyState extends StatelessWidget {
                   fontFamily: AppTheme.fontRoboto,
                   fontWeight: FontWeight.normal,
                   color: AppTheme.thirdColor,
-                  fontSize: 16,
+                  fontSize: responsive.sp(16), // ✅ Texte responsive
                 ),
                 textAlign: TextAlign.center,
               ),
 
-              const SizedBox(height: 24),
-
+              SizedBox(height: spacing.large), // ✅ Espacement responsive
               // Bouton optionnel
               if (onRetry != null)
                 PrimaryButton(
