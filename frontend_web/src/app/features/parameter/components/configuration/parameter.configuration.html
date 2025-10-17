@@ -34,13 +34,34 @@
                         <label for="role">Rôle</label>
                         <input pInputText id="role" type="text" [disabled]="true" [value]="role" />
                     </div>
-                    <div class="flex flex-col flex-wrap gap-2 w-full ">
-                        <p>Active le compte</p>
-                        <p-toggleswitch [(ngModel)]="checked" name="checked">
-                            <ng-template #handle let-isChecked="checked">
-                                <i class="!text-xs pi" [class.pi-check]="isChecked" [class.pi-times]="!isChecked"></i>
-                            </ng-template>
-                        </p-toggleswitch>
+                    <div class="flex md:flex-row sm:flex-col justify-between items-center flex-wrap gap-2 w-full">
+                        <div>
+                            <p>Entité</p>
+                            <p-autocomplete
+                                name="selectedEntity"
+                                [(ngModel)]="selectedEntity"
+                                [virtualScroll]="true"
+                                [suggestions]="filteredItems"
+                                [virtualScrollItemSize]="40"
+                                (completeMethod)="filterItems($event)"
+                                optionLabel="name"
+                                [dropdown]="true"
+                                (onSelect)="selectedEntityError = false"
+                                (onBlur)="validateField('entity')"
+                                [styleClass]="selectedEntityError ? 'p-invalid' : ''"
+                            />
+                            @if (selectedEntityError) {
+                            <small class="p-error">Requis.</small>
+                            }
+                        </div>
+                        <div>
+                            <p>Active le compte</p>
+                            <p-toggleswitch [(ngModel)]="checked" name="checked">
+                                <ng-template #handle let-isChecked="checked">
+                                    <i class="!text-xs pi" [class.pi-check]="isChecked" [class.pi-times]="!isChecked"></i>
+                                </ng-template>
+                            </p-toggleswitch>
+                        </div>
                     </div>
                 </div>
 

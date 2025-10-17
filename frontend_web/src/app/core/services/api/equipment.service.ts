@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { environment } from '../../../../../environments/environment';
 import { Equipment, EquipmentResponse } from '../../models';
+import { Tools } from '../utils';
 
 @Injectable({ providedIn: 'root' })
 export class EquipmentService {
@@ -13,7 +14,7 @@ export class EquipmentService {
 
     getAll(): Observable<Equipment[]> {
         return this.http.get<EquipmentResponse>(this.apiUrl).pipe(
-            map(response => (response.data || []).map(equipment => this.transformKeys(equipment)))
+            map(response => (response.data || []).map(equipment => Tools.transformKeys(equipment)))
         );
     }
 
@@ -37,7 +38,7 @@ export class EquipmentService {
 
     getAllHistory(): Observable<Equipment[]> {
         return this.http.get<EquipmentResponse>(`${this.apiUrl}/history`).pipe(
-            map(response => (response.data || []).map(equipment => this.transformKeys(equipment)))
+            map(response => (response.data || []).map(equipment => Tools.transformKeys(equipment)))
         );
     }
 
@@ -51,20 +52,6 @@ export class EquipmentService {
 
     delete(id: string): Observable<void> {
         return this.http.delete<void>(`${this.apiUrl}/${id}`);
-    }
-
-    // Méthode pour transformer les clés snake_case en camelCase
-    private transformKeys(obj: any): any {
-        if (obj === null || typeof obj !== 'object') return obj;
-        if (Array.isArray(obj)) return obj.map(item => this.transformKeys(item));
-        const transformed: any = {};
-        for (const key in obj) {
-            if (obj.hasOwnProperty(key)) {
-                const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
-                transformed[camelKey] = this.transformKeys(obj[key]);
-            }
-        }
-        return transformed;
     }
 
     archive(equipmentIds: string[]): Observable<any> {

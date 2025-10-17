@@ -6,10 +6,21 @@ import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { TextareaModule } from 'primeng/textarea';
 import { ToggleSwitch } from 'primeng/toggleswitch';
-import { AuthService, UserService } from '../../../../core/services/api';
+import { AuthService, EntityService, UserService } from '../../../../core/services/api';
 import { MessageService } from 'primeng/api';
 import { Toast } from "primeng/toast";
-import { User } from '../../../../core/models';
+import { EntityModel, User } from '../../../../core/models';
+import { AutoCompleteModule } from 'primeng/autocomplete';
+
+interface AutoCompleteCompleteEvent {
+    originalEvent: Event;
+    query: string;
+}
+
+interface Entity {
+    name: string;
+    code: string;
+}
 
 @Component({
     selector: 'app-configuration',
@@ -21,7 +32,8 @@ import { User } from '../../../../core/models';
         FormsModule, 
         TextareaModule, 
         ToggleSwitch, 
-        Toast
+        Toast,
+        AutoCompleteModule
     ],
     standalone: true,
     templateUrl: './parameter.configuration.html',
@@ -29,6 +41,7 @@ import { User } from '../../../../core/models';
 })
 export class ParameterConfiguration implements OnInit {
     authService = inject(AuthService);
+    entityService = inject(EntityService);
     userService = inject(UserService);
     messageService = inject(MessageService);
 
@@ -44,8 +57,15 @@ export class ParameterConfiguration implements OnInit {
     emailError: boolean = false;
     companyError: boolean = false;
 
+    selectedEntity!: Entity | null;
+    selectedEntityError: boolean = false;
+    filteredItems: Entity[] = [];
+    entities: Entity[] = [];
+
+
     ngOnInit() {
         this.loadSupervisor();
+        this.loadEntities();
     }
 
     loadSupervisor() {
@@ -53,6 +73,48 @@ export class ParameterConfiguration implements OnInit {
         if (currentUser) {
             this.superviseur = currentUser.username.split('.').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
         }
+    }
+
+    filterItems(event: AutoCompleteCompleteEvent) {
+        const query = (event.query || '').toLowerCase();
+        if (!this.entities || this.entities.length === 0) {
+            this.filteredItems = [];
+            return;
+        }
+
+        // utiliser includes pour plus de flexibilité (ou startsWith si besoin)
+        this.filteredItems = (this.entities as Entity[]).filter(item =>
+            item.name.toLowerCase().includes(query)
+        );
+    }
+
+    loadEntities() {
+        this.entityService.getAllEntities().subscribe({
+            next: (data) => {
+                const seen = new Set<string>();
+                const unique: Entity[] = [];
+
+                (data || []).forEach((entity: EntityModel) => {
+                    const item: Entity = {
+                        name: entity.description,
+                        code: entity.entityType
+                    };
+                    const key = `${item.code}::${item.name}`;
+                    if (!seen.has(key)) {
+                        seen.add(key);
+                        unique.push(item);
+                    }
+                });
+
+                this.entities = unique.sort((a, b) => a.name.localeCompare(b.name));
+                // initialisation safe
+                this.filteredItems = [];
+            },
+            error: (error) => {
+                console.error('Erreur lors du chargement des entités:', error);
+                this.messageService.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger les entités.', life: 4000 });
+            }
+        });
     }
 
     validateField(field: string) {
@@ -66,6 +128,9 @@ export class ParameterConfiguration implements OnInit {
             case 'company':
                 this.companyError = !this.company?.trim();
                 break;
+            case 'entity':
+                this.selectedEntityError = !this.selectedEntity || !this.selectedEntity.name?.trim();
+                break;
         }
     }
 
@@ -73,7 +138,9 @@ export class ParameterConfiguration implements OnInit {
         this.validateField('username');
         this.validateField('email');
         this.validateField('company');
-        if (this.usernameError || this.emailError || this.companyError) {
+        this.validateField('entity');
+
+        if (this.usernameError || this.emailError || this.companyError || this.selectedEntityError) {
             this.messageService.add({ severity: 'error', summary: 'Erreurs', detail: 'Remplissez les champs obligatoires.', life: 4000 });
             return;
         }
