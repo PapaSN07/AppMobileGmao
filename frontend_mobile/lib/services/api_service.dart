@@ -24,7 +24,9 @@ class ApiService {
 
   static const Duration _timeout = Duration(seconds: 60);
   static const int _defaultPort = 8000;
-  static const String _macIpAddress = '172.16.8.214';
+  static const String _macIpAddress = '192.168.1.10';
+  // static const int _defaultPort = 9099;
+  // static const String _macIpAddress = 'https://srv-bddomtech';
 
   ApiService({int? port, String? customBaseUrl}) {
     baseUrl = customBaseUrl ?? _buildBaseUrl(port ?? _defaultPort);

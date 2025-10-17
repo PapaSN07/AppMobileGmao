@@ -1,3 +1,4 @@
+import 'package:appmobilegmao/widgets/under_maintenance.dart';
 import 'package:flutter/material.dart';
 
 class DiScreen extends StatefulWidget {
@@ -10,9 +11,6 @@ class DiScreen extends StatefulWidget {
 class _DiScreenState extends State<DiScreen> {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text('Demande d\'Intervention')),
-      body: Center(child: Text('Contenu de la demande d\'intervention'))
-    );
+    return const UnderMaintenanceScreen();
   }
 }
