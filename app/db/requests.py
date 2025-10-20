@@ -90,7 +90,7 @@ FROM costcentre
 #   ================================================================================
 FUNCTION_QUERY = """
 SELECT 
-    pk_function,
+    pk_function_,
     mdfn_code,
     mdfn_description,
     mdfn_entity,

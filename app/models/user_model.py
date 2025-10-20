@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Date, ForeignKey, Integer, Text, func
+from sqlalchemy import Boolean, Date, ForeignKey, Integer, Text, false, func
 
 from typing import Any, Dict
 from sqlalchemy import Column, String
@@ -66,6 +66,7 @@ class UserClicClac(BaseClicClac):
     username = Column(String(150), nullable=False, unique=True, index=True)
     password = Column(String(512), nullable=False)  # stocke le hash bcrypt / argon2
     email = Column(String(255), nullable=False, unique=True, index=True)
+    entity = Column(String(100), nullable=False)
     supervisor = Column(Integer, ForeignKey('dbo.users.id', ondelete='SET NULL'), nullable=True, index=True)
     url_image = Column(String(512), nullable=True)
     address = Column(Text, nullable=True)
@@ -83,6 +84,7 @@ class UserClicClac(BaseClicClac):
             'username': self.username,
             'email': self.email,
             'supervisor': str(self.supervisor) if self.supervisor is not None else None,
+            'entity': self.entity,
             'url_image': self.url_image,
             'role': self.role,
             'address': self.address,
