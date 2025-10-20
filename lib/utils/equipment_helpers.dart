@@ -75,41 +75,7 @@ class EquipmentHelpers {
 
     return null;
   }
-
-  /// Formate intelligemment une description
-  static String formatDescription(String description) {
-    final cleanDesc =
-        description
-            .replaceAll(RegExp(r'\bCABLE\b', caseSensitive: false), 'C.')
-            .replaceAll(RegExp(r'\bCELLULE\b', caseSensitive: false), 'CELL.')
-            .replaceAll(
-              RegExp(r'\bTRANSFORMATEUR\b', caseSensitive: false),
-              'TRANSFO',
-            )
-            .replaceAll(
-              RegExp(r'\bDISTRIBUTION\b', caseSensitive: false),
-              'DISTRIB',
-            )
-            .replaceAll(
-              RegExp(r'\bSOUTERRAIN\b', caseSensitive: false),
-              'SOUT.',
-            )
-            .replaceAll(RegExp(r'\bLIAISON\b', caseSensitive: false), 'LIAIS.')
-            .replaceAll(
-              RegExp(r'\bPROTECTION\b', caseSensitive: false),
-              'PROT.',
-            )
-            .replaceAll(
-              RegExp(r'\bTRONCONS DE\b', caseSensitive: false),
-              'TRONC.',
-            )
-            .trim();
-
-    return cleanDesc.length > 40
-        ? '${cleanDesc.substring(0, 40)}...'
-        : cleanDesc;
-  }
-
+  
   /// Prépare les attributs pour l'envoi au backend
   static List<Map<String, String>> prepareAttributesForSave(
     List<EquipmentAttribute> availableAttributes,

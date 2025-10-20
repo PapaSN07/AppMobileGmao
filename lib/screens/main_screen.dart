@@ -85,7 +85,7 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
-  // ✅ NOUVELLE MÉTHODE: Obtenir la couleur de l'AppBar selon la page
+  // Obtenir la couleur de l'AppBar selon la page
   Color _getAppBarBackgroundColor() {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
@@ -106,7 +106,7 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
-  // ✅ NOUVELLE MÉTHODE: Obtenir la couleur du texte selon la page
+  // Obtenir la couleur du texte selon la page
   Color _getAppBarTextColor() {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
@@ -139,7 +139,12 @@ class _MainScreenState extends State<MainScreen> {
                 nom: user.username.split('.').last,
                 prenom: user.username.split('.').first,
                 email: user.email,
-                role: user.group ?? user.role ?? 'Utilisateur',
+                role:
+                    (user.group?.trim().isNotEmpty == true)
+                        ? user.group!.trim()
+                        : (user.role?.trim().isNotEmpty == true)
+                        ? user.role!.trim()
+                        : 'Utilisateur',
                 onLogout: _handleLogout,
               ),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
@@ -161,19 +166,23 @@ class _MainScreenState extends State<MainScreen> {
 
   // ✅ NOUVELLE MÉTHODE: Action conditionnelle pour le bouton de droite
   void _handleRightButtonAction() {
-    switch (_currentIndex) {
-      case 1: // Equipment
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (authProvider.isPrestataire) {
+      if (_currentIndex == 0) {
+        // Equipment pour Prestataire
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const AddEquipmentScreen()),
         );
-        break;
-      case 0: // Home
-      case 2: // OT
-      case 3: // DI
-      default:
-        // Pour les autres pages, ne rien faire ou ouvrir les notifications
-        break;
+      }
+    } else {
+      if (_currentIndex == 1) {
+        // Equipment pour LDAP
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const AddEquipmentScreen()),
+        );
+      }
     }
   }
 
@@ -181,27 +190,38 @@ class _MainScreenState extends State<MainScreen> {
   Widget _getRightButton() {
     final responsive = context.responsive;
     final spacing = context.spacing;
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
-    final user = Provider.of<AuthProvider>(context, listen: false).currentUser;
+    final user = authProvider.currentUser;
     final textColor = _getAppBarTextColor();
-    final isHome = _currentIndex == 0;
 
-    if (_currentIndex == 1) {
+    // ✅ CORRECTION: isHome doit être false pour Prestataire sur page Equipment
+    final isHome = authProvider.isPrestataire ? false : _currentIndex == 0;
+
+    // ✅ CORRECTION: Logique basée sur le rôle et l'index
+    bool shouldShowAddButton = false;
+    if (authProvider.isPrestataire) {
+      shouldShowAddButton = _currentIndex == 0; // Equipment pour Prestataire
+    } else {
+      shouldShowAddButton = _currentIndex == 1; // Equipment pour LDAP
+    }
+
+    if (shouldShowAddButton) {
       // Page Equipment - Bouton +
       return IconButton(
         icon: Container(
-          padding: spacing.custom(all: 8), // ✅ Padding responsive
+          padding: spacing.custom(all: 8),
           decoration: BoxDecoration(
-            color: isHome ? AppTheme.secondaryColor10 : AppTheme.primaryColor20,
-            borderRadius: BorderRadius.circular(
-              responsive.spacing(8),
-            ), // ✅ Border radius responsive
+            color:
+                AppTheme
+                    .primaryColor20, // ✅ TOUJOURS primaryColor20 pour Equipment
+            borderRadius: BorderRadius.circular(responsive.spacing(8)),
           ),
           child: Icon(
             Icons.add,
             color: textColor,
             size: responsive.iconSize(20),
-          ), // ✅ Icône responsive
+          ),
         ),
         onPressed: _handleRightButtonAction,
         tooltip: 'Ajouter un équipement',
@@ -210,21 +230,19 @@ class _MainScreenState extends State<MainScreen> {
       // Autres pages - Affichage des infos utilisateur
       if (user != null) {
         return Padding(
-          padding: spacing.custom(right: 16), // ✅ Padding responsive
+          padding: spacing.custom(right: 16),
           child: Center(
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  padding: spacing.custom(all: 8), // ✅ Padding responsive
+                  padding: spacing.custom(all: 8),
                   decoration: BoxDecoration(
                     color:
                         isHome
                             ? AppTheme.secondaryColor10
                             : AppTheme.primaryColor20,
-                    borderRadius: BorderRadius.circular(
-                      responsive.spacing(20),
-                    ), // ✅ Border radius responsive
+                    borderRadius: BorderRadius.circular(responsive.spacing(20)),
                   ),
                   child: Text(
                     user.username
@@ -234,11 +252,11 @@ class _MainScreenState extends State<MainScreen> {
                     style: TextStyle(
                       color: textColor,
                       fontWeight: FontWeight.bold,
-                      fontSize: responsive.sp(14), // ✅ Texte responsive
+                      fontSize: responsive.sp(14),
                     ),
                   ),
                 ),
-                SizedBox(width: spacing.small), // ✅ Espacement responsive
+                SizedBox(width: spacing.small),
                 Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -247,18 +265,22 @@ class _MainScreenState extends State<MainScreen> {
                       user.username,
                       style: TextStyle(
                         color: textColor,
-                        fontSize: responsive.sp(12), // ✅ Texte responsive
+                        fontSize: responsive.sp(12),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                     Text(
-                      user.group ?? 'Utilisateur',
+                      (user.group?.trim().isNotEmpty == true)
+                          ? user.group!.trim()
+                          : (user.role?.trim().isNotEmpty == true)
+                          ? user.role!.trim()
+                          : 'Utilisateur',
                       style: TextStyle(
                         color:
                             isHome
                                 ? textColor.withValues(alpha: 0.7)
                                 : textColor.withValues(alpha: 0.8),
-                        fontSize: responsive.sp(10), // ✅ Texte responsive
+                        fontSize: responsive.sp(10),
                       ),
                     ),
                   ],
@@ -438,7 +460,8 @@ class _MainScreenState extends State<MainScreen> {
       builder: (context, authProvider, child) {
         final appBarBgColor = _getAppBarBackgroundColor();
         final textColor = _getAppBarTextColor();
-        final isHome = _currentIndex == 0;
+        // ✅ CORRECTION: isHome doit être false pour Prestataire sur page Equipment
+        final isHome = authProvider.isPrestataire ? false : _currentIndex == 0;
 
         return Scaffold(
           key: _scaffoldKey,

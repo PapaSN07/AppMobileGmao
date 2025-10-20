@@ -219,10 +219,11 @@ class EquipmentProvider extends ChangeNotifier {
       attributes: _extractAttributes(equipmentData['attributs']),
     );
 
-    final created = await _equipmentService.addEquipment(equipment);
-    final createdMap = _toMap(created);
-    _allEquipments.insert(0, createdMap);
-    _equipments.insert(0, createdMap);
+    await _equipmentService.addEquipment(equipment);
+    // final created = await _equipmentService.addEquipment(equipment);
+    // final createdMap = _toMap(created);
+    // _allEquipments.insert(0, createdMap);
+    // _equipments.insert(0, createdMap);
     notifyListeners();
   }
 

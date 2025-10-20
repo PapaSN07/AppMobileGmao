@@ -7,7 +7,7 @@ import 'package:appmobilegmao/widgets/custom_buttons.dart';
 import 'package:appmobilegmao/widgets/equipments/equipment_dropdown.dart';
 import 'package:appmobilegmao/widgets/notification_bar.dart';
 import 'package:appmobilegmao/widgets/tools.dart';
-import 'package:appmobilegmao/widgets/equipments/attributes_modal.dart'; // ✅ AJOUTÉ
+import 'package:appmobilegmao/widgets/equipments/attributes_modal.dart';
 import 'package:appmobilegmao/utils/selector_loader.dart';
 import 'package:appmobilegmao/utils/equipment_helpers.dart';
 import 'package:flutter/foundation.dart';
@@ -31,7 +31,6 @@ class ModifyEquipmentScreen extends StatefulWidget {
 }
 
 class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
-  // Valeurs sélectionnées
   String? selectedCodeParent,
       selectedFeeder,
       selectedFamille,
@@ -41,24 +40,19 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
       selectedCentreCharge;
   String? valueLongitude, valueLatitude;
 
-  // Contrôleurs et form
   final _formKey = GlobalKey<FormState>();
   final _descriptionFocusNode = FocusNode();
   final _descriptionController = TextEditingController();
 
-  // Structure harmonisée avec add_equipment_screen.dart
   Map<String, List<Map<String, dynamic>>> selectors = {};
 
-  // État de chargement
   bool _isLoading = true, _hasError = false, _isUpdating = false;
 
-  // État pour les attributs
   List<EquipmentAttribute> availableAttributes = [];
   Map<String, List<EquipmentAttribute>> attributeValuesBySpec = {};
   Map<String, String> selectedAttributeValues = {};
   bool _loadingAttributes = false;
 
-  // Variables pour stocker les valeurs initiales
   String? _initialCodeParent,
       _initialFeeder,
       _initialFamille,
@@ -70,7 +64,6 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
   Map<String, String> _initialAttributeValues = {};
   bool _initialValuesSaved = false;
 
-  // Logging
   static const String __logName = 'ModifyEquipmentScreen -';
 
   @override
@@ -97,7 +90,6 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
 
   void _onFieldChanged() => setState(() {});
 
-  // Vérifier s'il y a des changements par rapport aux valeurs initiales
   bool _hasChanges() {
     if (selectedCodeParent != _initialCodeParent ||
         selectedFeeder != _initialFeeder ||
@@ -120,7 +112,6 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     return false;
   }
 
-  // ✅ Chargement harmonisé avec add_equipment_screen.dart
   Future<void> _loadSelectors() async {
     setState(() => _isLoading = true);
 
@@ -141,12 +132,10 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     }
   }
 
-  // ✅ Initialisation des champs
   void _initializeFields() {
     if (widget.equipmentData == null) return;
     final data = widget.equipmentData!;
 
-    // Fonction helper pour mapper les valeurs reçues avec les valeurs disponibles
     String? mapValueToDropdown(
       String? receivedValue,
       List<Map<String, dynamic>> availableItems,
@@ -209,7 +198,6 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     if (!_initialValuesSaved) _saveInitialValues();
   }
 
-  // ✅ Sauvegarder les valeurs initiales
   void _saveInitialValues() {
     if (_initialValuesSaved) return;
 
@@ -229,54 +217,72 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppTheme.primaryColor,
-      body: Consumer<EquipmentProvider>(
-        builder:
-            (context, equipmentProvider, child) =>
-                _buildBody(equipmentProvider),
-      ),
-    );
-  }
-
-  Widget _buildBody(EquipmentProvider equipmentProvider) {
     final responsive = context.responsive;
     final spacing = context.spacing;
 
-    if (_isLoading) return _buildLoadingState(responsive, spacing);
-    if (_hasError) return _buildErrorState(responsive, spacing);
+    return Scaffold(
+      backgroundColor: AppTheme.primaryColor,
+      appBar: AppBar(
+        title: Text(
+          'Modifier l\'équipement',
+          style: TextStyle(
+            fontFamily: AppTheme.fontMontserrat,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+            fontSize: responsive.sp(20),
+          ),
+        ),
+        backgroundColor: AppTheme.secondaryColor,
+        elevation: 0,
+        leading: IconButton(
+          icon: Container(
+            padding: spacing.custom(all: 8),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryColor20,
+              borderRadius: BorderRadius.circular(responsive.spacing(8)),
+            ),
+            child: Icon(
+              Icons.arrow_back,
+              color: Colors.white,
+              size: responsive.iconSize(20),
+            ),
+          ),
+          onPressed: () {
+            if (kDebugMode) {
+              print('⬅️ $__logName Retour');
+            }
+            Navigator.pop(context);
+          },
+          tooltip: 'Retour',
+        ),
+      ),
+      body: Consumer<EquipmentProvider>(
+        builder: (context, equipmentProvider, child) {
+          if (_isLoading) return _buildLoadingState(responsive, spacing);
+          if (_hasError) return _buildErrorState(responsive, spacing);
 
-    return Stack(
-      children: [
-        _buildCustomAppBar(responsive, spacing),
-        Positioned(
-          top: responsive.spacing(156), // ✅ Position responsive
-          left: 0,
-          right: 0,
-          bottom: 0,
-          child: SingleChildScrollView(
+          return SingleChildScrollView(
             child: Padding(
-              padding: spacing.custom(all: 16), // ✅ Padding responsive
+              padding: spacing.custom(all: 16),
               child: Form(
                 key: _formKey,
                 child: Column(
                   children: [
-                    // ✅ FACTORISATION: Utiliser EquipmentFormFields (SANS le bouton attributs intégré)
                     _buildInformationsSection(responsive, spacing),
-                    SizedBox(height: spacing.xlarge), // ✅ Espacement responsive
+                    SizedBox(height: spacing.xlarge),
                     _buildParentInfoSection(responsive, spacing),
-                    SizedBox(height: spacing.xlarge), // ✅ Espacement responsive
+                    SizedBox(height: spacing.xlarge),
                     _buildPositioningSection(responsive, spacing),
-                    SizedBox(height: spacing.medium), // ✅ Espacement responsive
+                    SizedBox(height: spacing.medium),
                     _buildActionButtons(responsive, spacing),
-                    SizedBox(height: spacing.xlarge), // ✅ Espacement responsive
+                    SizedBox(height: spacing.xlarge),
                   ],
                 ),
               ),
             ),
-          ),
-        ),
-      ],
+          );
+        },
+      ),
     );
   }
 
@@ -288,13 +294,13 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
           const CircularProgressIndicator(
             valueColor: AlwaysStoppedAnimation<Color>(AppTheme.secondaryColor),
           ),
-          SizedBox(height: spacing.medium), // ✅ Espacement responsive
+          SizedBox(height: spacing.medium),
           Text(
             'Chargement des données...',
             style: TextStyle(
               fontFamily: AppTheme.fontMontserrat,
               color: AppTheme.secondaryColor,
-              fontSize: responsive.sp(16), // ✅ Texte responsive
+              fontSize: responsive.sp(16),
             ),
           ),
         ],
@@ -308,26 +314,26 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.error_outline, size: 64, color: AppTheme.secondaryColor),
-          SizedBox(height: spacing.medium), // ✅ Espacement responsive
+          SizedBox(height: spacing.medium),
           Text(
             'Erreur de chargement',
             style: TextStyle(
               fontFamily: AppTheme.fontMontserrat,
               fontWeight: FontWeight.bold,
               color: AppTheme.secondaryColor,
-              fontSize: responsive.sp(18), // ✅ Texte responsive
+              fontSize: responsive.sp(18),
             ),
           ),
-          SizedBox(height: spacing.small), // ✅ Espacement responsive
+          SizedBox(height: spacing.small),
           Text(
             'Impossible de charger les données',
             style: TextStyle(
               fontFamily: AppTheme.fontMontserrat,
               color: AppTheme.secondaryColor,
-              fontSize: responsive.sp(14), // ✅ Texte responsive
+              fontSize: responsive.sp(14),
             ),
           ),
-          SizedBox(height: spacing.xlarge), // ✅ Espacement responsive
+          SizedBox(height: spacing.xlarge),
           PrimaryButton(
             text: 'Réessayer',
             icon: Icons.refresh,
@@ -338,47 +344,6 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     );
   }
 
-  Widget _buildCustomAppBar(Responsive responsive, ResponsiveSpacing spacing) {
-    return Positioned(
-      top: 0,
-      left: 0,
-      right: 0,
-      child: Container(
-        height: responsive.spacing(150), // ✅ Hauteur responsive
-        decoration: const BoxDecoration(color: AppTheme.secondaryColor),
-        child: SafeArea(
-          child: Padding(
-            padding: spacing.custom(horizontal: 16), // ✅ Padding responsive
-            child: Row(
-              children: [
-                IconButton(
-                  icon: const Icon(
-                    Icons.arrow_back,
-                    color: Colors.white,
-                    size: 28,
-                  ),
-                  onPressed: () => Navigator.pop(context),
-                ),
-                const Spacer(),
-                const Text(
-                  'Modifier l\'équipement',
-                  style: TextStyle(
-                    fontFamily: AppTheme.fontMontserrat,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                    fontSize: 20,
-                  ),
-                ),
-                const Spacer(),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ✅ FACTORISATION: Sections simplifiées avec EquipmentFormFields
   Widget _buildInformationsSection(
     Responsive responsive,
     ResponsiveSpacing spacing,
@@ -386,7 +351,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     return Column(
       children: [
         Tools.buildFieldset(context, 'Informations'),
-        SizedBox(height: spacing.small), // ✅ Espacement responsive
+        SizedBox(height: spacing.small),
         Row(
           children: [
             Expanded(
@@ -399,7 +364,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                     '#12345',
               ),
             ),
-            SizedBox(width: spacing.small), // ✅ Espacement responsive
+            SizedBox(width: spacing.small),
             Expanded(
               child: _buildDropdown(
                 label: 'Famille',
@@ -415,11 +380,11 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
             ),
           ],
         ),
-        SizedBox(height: spacing.medium), // ✅ Espacement responsive
+        SizedBox(height: spacing.medium),
         _buildZoneEntityRow(responsive, spacing),
-        SizedBox(height: spacing.medium), // ✅ Espacement responsive
+        SizedBox(height: spacing.medium),
         _buildUniteChargeRow(responsive, spacing),
-        SizedBox(height: spacing.medium), // ✅ Espacement responsive
+        SizedBox(height: spacing.medium),
         Tools.buildTextField(
           context: context,
           label: 'Description',
@@ -447,7 +412,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
             spacing: spacing,
           ),
         ),
-        SizedBox(width: spacing.small), // ✅ Espacement responsive
+        SizedBox(width: spacing.small),
         Expanded(
           child: _buildDropdown(
             label: 'Entité',
@@ -484,7 +449,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
             spacing: spacing,
           ),
         ),
-        SizedBox(width: spacing.small), // ✅ Espacement responsive
+        SizedBox(width: spacing.small),
         Expanded(
           child: _buildDropdown(
             label: 'Centre de Charge',
@@ -509,7 +474,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     return Column(
       children: [
         Tools.buildFieldset(context, 'Informations parents'),
-        SizedBox(height: spacing.small), // ✅ Espacement responsive
+        SizedBox(height: spacing.small),
         _buildDropdown(
           label: 'Code Parent',
           items: EquipmentHelpers.getSelectorsOptions(
@@ -522,7 +487,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
           responsive: responsive,
           spacing: spacing,
         ),
-        SizedBox(height: spacing.medium), // ✅ Espacement responsive
+        SizedBox(height: spacing.medium),
         Row(
           children: [
             Expanded(
@@ -538,12 +503,12 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                 spacing: spacing,
               ),
             ),
-            SizedBox(width: spacing.small), // ✅ Espacement responsive
+            SizedBox(width: spacing.small),
             Expanded(
               child: Tools.buildText(
                 context,
                 label: 'Info Feeder',
-                value: EquipmentHelpers.formatDescription(selectedFeeder ?? ''),
+                value: selectedFeeder ?? '',
               ),
             ),
           ],
@@ -559,7 +524,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     return Column(
       children: [
         Tools.buildFieldset(context, 'Informations de positionnement'),
-        SizedBox(height: spacing.small), // ✅ Espacement responsive
+        SizedBox(height: spacing.small),
         Row(
           children: [
             Expanded(
@@ -569,7 +534,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                 value: valueLongitude ?? '12311231',
               ),
             ),
-            SizedBox(width: spacing.small), // ✅ Espacement responsive
+            SizedBox(width: spacing.small),
             Expanded(
               child: Tools.buildText(
                 context,
@@ -579,9 +544,9 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
             ),
           ],
         ),
-        SizedBox(height: spacing.medium), // ✅ Espacement responsive
+        SizedBox(height: spacing.medium),
         _buildMapSection(responsive, spacing),
-        SizedBox(height: spacing.medium), // ✅ Espacement responsive
+        SizedBox(height: spacing.medium),
         _buildAttributesButton(responsive, spacing),
       ],
     );
@@ -590,11 +555,9 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
   Widget _buildMapSection(Responsive responsive, ResponsiveSpacing spacing) {
     return Container(
       width: double.infinity,
-      height: responsive.spacing(200), // ✅ Hauteur responsive
+      height: responsive.spacing(200),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(
-          responsive.spacing(8),
-        ), // ✅ Border radius responsive
+        borderRadius: BorderRadius.circular(responsive.spacing(8)),
         image: const DecorationImage(
           image: AssetImage('assets/images/map.png'),
           fit: BoxFit.cover,
@@ -603,8 +566,8 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
         boxShadow: [
           BoxShadow(
             color: AppTheme.boxShadowColor,
-            blurRadius: responsive.spacing(15), // ✅ Blur radius responsive
-            offset: Offset(0, responsive.spacing(4)), // ✅ Offset responsive
+            blurRadius: responsive.spacing(15),
+            offset: Offset(0, responsive.spacing(4)),
           ),
         ],
       ),
@@ -612,9 +575,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
         children: [
           Container(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(
-                responsive.spacing(8),
-              ), // ✅ Border radius responsive
+              borderRadius: BorderRadius.circular(responsive.spacing(8)),
               gradient: const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -632,10 +593,10 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                     fontFamily: AppTheme.fontMontserrat,
                     fontWeight: FontWeight.bold,
                     color: AppTheme.secondaryColor,
-                    fontSize: responsive.sp(18), // ✅ Texte responsive
+                    fontSize: responsive.sp(18),
                   ),
                 ),
-                SizedBox(height: spacing.small), // ✅ Espacement responsive
+                SizedBox(height: spacing.small),
                 GestureDetector(
                   onTap: () {},
                   child: Text(
@@ -643,7 +604,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                     style: TextStyle(
                       fontFamily: AppTheme.fontMontserrat,
                       color: AppTheme.secondaryColor,
-                      fontSize: responsive.sp(14), // ✅ Texte responsive
+                      fontSize: responsive.sp(14),
                       decoration: TextDecoration.underline,
                     ),
                   ),
@@ -663,7 +624,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     return GestureDetector(
       onTap: availableAttributes.isNotEmpty ? _showAttributesModal : null,
       child: Container(
-        padding: spacing.custom(vertical: 12), // ✅ Padding responsive
+        padding: spacing.custom(vertical: 12),
         child: Row(
           children: [
             Icon(
@@ -673,7 +634,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                       ? AppTheme.secondaryColor
                       : AppTheme.thirdColor,
             ),
-            SizedBox(width: spacing.small), // ✅ Espacement responsive
+            SizedBox(width: spacing.small),
             Text(
               availableAttributes.isNotEmpty
                   ? 'Modifier les attributs (${availableAttributes.length})'
@@ -685,15 +646,15 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                     availableAttributes.isNotEmpty
                         ? AppTheme.secondaryColor
                         : AppTheme.thirdColor,
-                fontSize: responsive.sp(16), // ✅ Texte responsive
+                fontSize: responsive.sp(16),
               ),
             ),
-            SizedBox(width: spacing.tiny), // ✅ Espacement responsive
+            SizedBox(width: spacing.tiny),
             Expanded(
               child: Container(
                 height: 1,
                 color: AppTheme.thirdColor,
-                margin: spacing.custom(top: 10), // ✅ Margin responsive
+                margin: spacing.custom(top: 10),
               ),
             ),
           ],
@@ -702,7 +663,6 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     );
   }
 
-  // ✅ FACTORISATION: Utiliser le widget EquipmentDropdown existant
   Widget _buildDropdown({
     required String label,
     required List<String> items,
@@ -724,7 +684,6 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     );
   }
 
-  // ✅ FACTORISATION: Utiliser AttributesModal existant
   void _showAttributesModal() {
     if (availableAttributes.isEmpty) return;
 
@@ -758,7 +717,6 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     );
   }
 
-  // ✅ Chargement des attributs (conservé car logique métier)
   Future<void> _loadAttributeSpecifications() async {
     for (final attr in availableAttributes) {
       if (attr.specification != null && attr.index != null) {
@@ -858,7 +816,6 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     }
   }
 
-  // ✅ Mise à jour (conservé car logique métier)
   Future<void> _handleUpdate() async {
     if (_isUpdating) return;
 
@@ -959,7 +916,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     final hasChanges = _hasChanges();
 
     return Padding(
-      padding: spacing.custom(vertical: 0), // ✅ Padding responsive
+      padding: spacing.custom(vertical: 0),
       child: Row(
         children: [
           Expanded(
@@ -968,40 +925,32 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
               onPressed: _isUpdating ? null : () => Navigator.pop(context),
             ),
           ),
-          SizedBox(width: spacing.medium), // ✅ Espacement responsive
+          SizedBox(width: spacing.medium),
           Expanded(
             child:
                 _isUpdating
                     ? Container(
-                      height: responsive.spacing(48), // ✅ Hauteur responsive
+                      height: responsive.spacing(48),
                       decoration: BoxDecoration(
                         color: AppTheme.secondaryColor70,
                         borderRadius: BorderRadius.circular(
                           responsive.spacing(8),
-                        ), // ✅ Border radius responsive
+                        ),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           SizedBox(
-                            width: responsive.spacing(
-                              20,
-                            ), // ✅ Largeur responsive
-                            height: responsive.spacing(
-                              20,
-                            ), // ✅ Hauteur responsive
+                            width: responsive.spacing(20),
+                            height: responsive.spacing(20),
                             child: CircularProgressIndicator(
-                              strokeWidth: responsive.spacing(
-                                2,
-                              ), // ✅ Épaisseur responsive
+                              strokeWidth: responsive.spacing(2),
                               valueColor: const AlwaysStoppedAnimation<Color>(
                                 Colors.white,
                               ),
                             ),
                           ),
-                          SizedBox(
-                            width: spacing.small,
-                          ), // ✅ Espacement responsive
+                          SizedBox(width: spacing.small),
                           Flexible(
                             child: Text(
                               'Modification...',
@@ -1010,9 +959,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                                 fontFamily: AppTheme.fontMontserrat,
                                 fontWeight: FontWeight.w600,
                                 color: Colors.white,
-                                fontSize: responsive.sp(
-                                  16,
-                                ), // ✅ Texte responsive
+                                fontSize: responsive.sp(16),
                               ),
                             ),
                           ),
@@ -1020,7 +967,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                       ),
                     )
                     : Container(
-                      height: responsive.spacing(48), // ✅ Hauteur responsive
+                      height: responsive.spacing(48),
                       decoration: BoxDecoration(
                         color:
                             hasChanges
@@ -1028,19 +975,17 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                                 : AppTheme.thirdColor50,
                         borderRadius: BorderRadius.circular(
                           responsive.spacing(8),
-                        ), // ✅ Border radius responsive
+                        ),
                       ),
                       child: Material(
                         color: Colors.transparent,
                         child: InkWell(
                           borderRadius: BorderRadius.circular(
                             responsive.spacing(8),
-                          ), // ✅ Border radius responsive
+                          ),
                           onTap: hasChanges ? _handleUpdate : null,
                           child: Container(
-                            padding: spacing.custom(
-                              horizontal: 12,
-                            ), // ✅ Padding responsive
+                            padding: spacing.custom(horizontal: 12),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               mainAxisSize: MainAxisSize.min,
@@ -1051,13 +996,9 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                                       hasChanges
                                           ? Colors.white
                                           : AppTheme.thirdColor,
-                                  size: responsive.iconSize(
-                                    18,
-                                  ), // ✅ Icône responsive
+                                  size: responsive.iconSize(18),
                                 ),
-                                SizedBox(
-                                  width: spacing.small,
-                                ), // ✅ Espacement responsive
+                                SizedBox(width: spacing.small),
                                 Flexible(
                                   child: Text(
                                     hasChanges
@@ -1072,9 +1013,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                                           hasChanges
                                               ? Colors.white
                                               : AppTheme.thirdColor,
-                                      fontSize: responsive.sp(
-                                        14,
-                                      ), // ✅ Texte responsive
+                                      fontSize: responsive.sp(14),
                                     ),
                                   ),
                                 ),

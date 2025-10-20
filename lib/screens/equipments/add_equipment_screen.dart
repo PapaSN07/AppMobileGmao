@@ -9,7 +9,7 @@ import 'package:appmobilegmao/widgets/equipments/equipment_form_fields.dart';
 import 'package:appmobilegmao/utils/equipment_helpers.dart';
 import 'package:appmobilegmao/utils/selector_loader.dart';
 import 'package:dropdown_search/dropdown_search.dart';
-import 'package:flutter/foundation.dart'; // ✅ AJOUTÉ pour kDebugMode
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:appmobilegmao/utils/responsive.dart';
@@ -143,7 +143,6 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
       return;
     }
 
-    // ✅ CORRECTION: Convertir la description en system_category
     final familleCode = EquipmentHelpers.getCodeFromDescription(
       familleDescription,
       selectors['familles'] ?? [],
@@ -161,7 +160,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
     if (kDebugMode) {
       print('🔍 $__logName Chargement attributs pour famille:');
       print('   - Description: $familleDescription');
-      print('   - System Category: $familleCode'); // ✅ AJOUTÉ
+      print('   - System Category: $familleCode');
     }
 
     setState(() {
@@ -173,7 +172,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
     try {
       final equipmentService = EquipmentService();
       final result = await equipmentService.getEquipmentAttributeValueByCode(
-        codeFamille: familleCode, // ✅ Utiliser le system_category
+        codeFamille: familleCode,
       );
       final attributes =
           result['attributes'] as List<EquipmentAttribute>? ?? [];
@@ -267,6 +266,40 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
 
     return Scaffold(
       backgroundColor: AppTheme.primaryColor,
+      appBar: AppBar(
+        title: Text(
+          'Ajouter un équipement',
+          style: TextStyle(
+            fontFamily: AppTheme.fontMontserrat,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+            fontSize: responsive.sp(20),
+          ),
+        ),
+        backgroundColor: AppTheme.secondaryColor,
+        elevation: 0,
+        leading: IconButton(
+          icon: Container(
+            padding: spacing.custom(all: 8),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryColor20,
+              borderRadius: BorderRadius.circular(responsive.spacing(8)),
+            ),
+            child: Icon(
+              Icons.arrow_back,
+              color: Colors.white,
+              size: responsive.iconSize(20),
+            ),
+          ),
+          onPressed: () {
+            if (kDebugMode) {
+              print('⬅️ $__logName Retour');
+            }
+            Navigator.pop(context);
+          },
+          tooltip: 'Retour',
+        ),
+      ),
       body:
           _isLoading
               ? const Center(
@@ -276,122 +309,100 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
                   ),
                 ),
               )
-              : Stack(
-                children: [
-                  _buildCustomAppBar(responsive, spacing),
-                  Positioned(
-                    top: responsive.spacing(156), // ✅ Position responsive
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    child: SingleChildScrollView(
-                      child: Padding(
-                        padding: spacing.custom(
-                          all: 16,
-                        ), // ✅ Padding responsive
-                        child: Form(
-                          key: _formKey,
-                          child: Column(
-                            children: [
-                              EquipmentFormFields(
-                                generatedCode: generatedCode,
-                                selectedFamille: selectedFamille,
-                                selectedZone: selectedZone,
-                                selectedEntity: selectedEntity,
-                                selectedUnite: selectedUnite,
-                                selectedCentreCharge: selectedCentreCharge,
-                                selectedCodeParent: selectedCodeParent,
-                                selectedFeeder: selectedFeeder,
-                                descriptionController: _descriptionController,
-                                descriptionFocusNode: _descriptionFocusNode,
-                                familles: selectors['familles'] ?? [],
-                                zones: selectors['zones'] ?? [],
-                                entities: selectors['entities'] ?? [],
-                                unites: selectors['unites'] ?? [],
-                                centreCharges: selectors['centreCharges'] ?? [],
-                                feeders: selectors['feeders'] ?? [],
-                                onFamilleChanged: (v) {
-                                  if (kDebugMode) {
-                                    print('🔄 $__logName Famille changée: $v');
-                                  }
-                                  setState(() {
-                                    selectedFamille = v;
-                                    if (v != null) {
-                                      _loadAttributesForFamily(v);
-                                    }
-                                  });
-                                },
-                                onZoneChanged: (v) {
-                                  if (kDebugMode) {
-                                    print('🔄 $__logName Zone changée: $v');
-                                  }
-                                  setState(() => selectedZone = v);
-                                },
-                                onEntityChanged: (v) {
-                                  if (kDebugMode) {
-                                    print('🔄 $__logName Entité changée: $v');
-                                  }
-                                  setState(() => selectedEntity = v);
-                                },
-                                onUniteChanged: (v) {
-                                  if (kDebugMode) {
-                                    print('🔄 $__logName Unité changée: $v');
-                                  }
-                                  setState(() => selectedUnite = v);
-                                },
-                                onCentreChargeChanged: (v) {
-                                  if (kDebugMode) {
-                                    print('🔄 $__logName Centre changé: $v');
-                                  }
-                                  setState(() => selectedCentreCharge = v);
-                                },
-                                onCodeParentChanged: (v) {
-                                  if (kDebugMode) {
-                                    print(
-                                      '🔄 $__logName Code parent changé: $v',
-                                    );
-                                  }
-                                  setState(() => selectedCodeParent = v);
-                                },
-                                onFeederChanged: (v) {
-                                  if (kDebugMode) {
-                                    print('🔄 $__logName Feeder changé: $v');
-                                  }
-                                  setState(() => selectedFeeder = v);
-                                },
-                                showAttributesButton: true,
-                                attributesCount: availableAttributes.length,
-                                // ✅ CORRECTION: Afficher le modal complet
-                                onAttributesPressed: () {
-                                  if (kDebugMode) {
-                                    print(
-                                      '🔘 $__logName Bouton attributs pressé',
-                                    );
-                                  }
-                                  _showAttributesModal();
-                                },
-                              ),
-                              SizedBox(
-                                height: spacing.xlarge,
-                              ), // ✅ Espacement responsive
-                              _buildActionButtons(responsive, spacing),
-                            ],
-                          ),
+              : SingleChildScrollView(
+                child: Padding(
+                  padding: spacing.custom(all: 16),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      children: [
+                        EquipmentFormFields(
+                          generatedCode: generatedCode,
+                          selectedFamille: selectedFamille,
+                          selectedZone: selectedZone,
+                          selectedEntity: selectedEntity,
+                          selectedUnite: selectedUnite,
+                          selectedCentreCharge: selectedCentreCharge,
+                          selectedCodeParent: selectedCodeParent,
+                          selectedFeeder: selectedFeeder,
+                          descriptionController: _descriptionController,
+                          descriptionFocusNode: _descriptionFocusNode,
+                          familles: selectors['familles'] ?? [],
+                          zones: selectors['zones'] ?? [],
+                          entities: selectors['entities'] ?? [],
+                          unites: selectors['unites'] ?? [],
+                          centreCharges: selectors['centreCharges'] ?? [],
+                          feeders: selectors['feeders'] ?? [],
+                          onFamilleChanged: (v) {
+                            if (kDebugMode) {
+                              print('🔄 $__logName Famille changée: $v');
+                            }
+                            setState(() {
+                              selectedFamille = v;
+                              if (v != null) {
+                                _loadAttributesForFamily(v);
+                              }
+                            });
+                          },
+                          onZoneChanged: (v) {
+                            if (kDebugMode) {
+                              print('🔄 $__logName Zone changée: $v');
+                            }
+                            setState(() => selectedZone = v);
+                          },
+                          onEntityChanged: (v) {
+                            if (kDebugMode) {
+                              print('🔄 $__logName Entité changée: $v');
+                            }
+                            setState(() => selectedEntity = v);
+                          },
+                          onUniteChanged: (v) {
+                            if (kDebugMode) {
+                              print('🔄 $__logName Unité changée: $v');
+                            }
+                            setState(() => selectedUnite = v);
+                          },
+                          onCentreChargeChanged: (v) {
+                            if (kDebugMode) {
+                              print('🔄 $__logName Centre changé: $v');
+                            }
+                            setState(() => selectedCentreCharge = v);
+                          },
+                          onCodeParentChanged: (v) {
+                            if (kDebugMode) {
+                              print('🔄 $__logName Code parent changé: $v');
+                            }
+                            setState(() => selectedCodeParent = v);
+                          },
+                          onFeederChanged: (v) {
+                            if (kDebugMode) {
+                              print('🔄 $__logName Feeder changé: $v');
+                            }
+                            setState(() => selectedFeeder = v);
+                          },
+                          showAttributesButton: true,
+                          attributesCount: availableAttributes.length,
+                          onAttributesPressed: () {
+                            if (kDebugMode) {
+                              print('🔘 $__logName Bouton attributs pressé');
+                            }
+                            _showAttributesModal();
+                          },
                         ),
-                      ),
+                        SizedBox(height: spacing.xlarge),
+                        _buildActionButtons(responsive, spacing),
+                      ],
                     ),
                   ),
-                ],
+                ),
               ),
     );
   }
 
-  // ✅ AJOUTÉ: Modal des attributs (adapté de modify_equipment_screen.dart)
   void _showAttributesModal() {
     final responsive = context.responsive;
     final spacing = context.spacing;
 
-    // ✅ Vérifier si une famille est sélectionnée
     final bool isFamilleSelected =
         selectedFamille != null && selectedFamille!.isNotEmpty;
 
@@ -439,45 +450,34 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setModalState) {
             return Container(
-              height: responsive.hp(80), // ✅ Hauteur responsive
+              height: responsive.hp(80),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(
-                    responsive.spacing(30),
-                  ), // ✅ Border radius responsive
-                  topRight: Radius.circular(
-                    responsive.spacing(30),
-                  ), // ✅ Border radius responsive
+                  topLeft: Radius.circular(responsive.spacing(30)),
+                  topRight: Radius.circular(responsive.spacing(30)),
                 ),
               ),
               child: Column(
                 children: [
-                  // Handle bar
                   Container(
-                    margin: spacing.custom(vertical: 12), // ✅ Margin responsive
-                    height: responsive.spacing(4), // ✅ Hauteur responsive
-                    width: responsive.spacing(40), // ✅ Largeur responsive
+                    margin: spacing.custom(vertical: 12),
+                    height: responsive.spacing(4),
+                    width: responsive.spacing(40),
                     decoration: BoxDecoration(
                       color: AppTheme.thirdColor,
                       borderRadius: BorderRadius.circular(
                         responsive.spacing(2),
-                      ), // ✅ Border radius responsive
+                      ),
                     ),
                   ),
-
-                  // Header
                   Padding(
-                    padding: spacing.custom(
-                      horizontal: 20,
-                    ), // ✅ Padding responsive
+                    padding: spacing.custom(horizontal: 20),
                     child: Row(
                       children: [
                         SizedBox(
-                          width: responsive.spacing(64), // ✅ Largeur responsive
-                          height: responsive.spacing(
-                            34,
-                          ), // ✅ Hauteur responsive
+                          width: responsive.spacing(64),
+                          height: responsive.spacing(34),
                           child: ElevatedButton(
                             onPressed: () {
                               if (kDebugMode) {
@@ -493,16 +493,12 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
                             ),
                             child: Icon(
                               Icons.arrow_back,
-                              size: responsive.iconSize(
-                                20,
-                              ), // ✅ Icône responsive
+                              size: responsive.iconSize(20),
                               color: AppTheme.primaryColor,
                             ),
                           ),
                         ),
-                        SizedBox(
-                          width: spacing.medium,
-                        ), // ✅ Espacement responsive
+                        SizedBox(width: spacing.medium),
                         const Expanded(
                           child: Text(
                             'Ajouter les Attributs',
@@ -517,9 +513,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
                       ],
                     ),
                   ),
-
-                  SizedBox(height: spacing.medium), // ✅ Espacement responsive
-                  // Loading ou contenu
+                  SizedBox(height: spacing.medium),
                   if (_loadingAttributes)
                     const Expanded(
                       child: Center(
@@ -548,11 +542,8 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
                     Expanded(
                       child: Column(
                         children: [
-                          // Header des colonnes
                           Padding(
-                            padding: spacing.custom(
-                              horizontal: 20,
-                            ), // ✅ Padding responsive
+                            padding: spacing.custom(horizontal: 20),
                             child: Row(
                               children: [
                                 const Expanded(
@@ -567,9 +558,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
                                     ),
                                   ),
                                 ),
-                                SizedBox(
-                                  width: spacing.medium,
-                                ), // ✅ Espacement responsive
+                                SizedBox(width: spacing.medium),
                                 Expanded(
                                   flex: 1,
                                   child: Container(
@@ -577,12 +566,10 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
                                     color: AppTheme.thirdColor,
                                     margin: EdgeInsets.only(
                                       top: spacing.medium,
-                                    ), // ✅ Margin responsive
+                                    ),
                                   ),
                                 ),
-                                SizedBox(
-                                  width: spacing.medium,
-                                ), // ✅ Espacement responsive
+                                SizedBox(width: spacing.medium),
                                 const Expanded(
                                   flex: 3,
                                   child: Text(
@@ -599,16 +586,10 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
                               ],
                             ),
                           ),
-
-                          SizedBox(
-                            height: spacing.medium,
-                          ), // ✅ Espacement responsive
-                          // Liste des attributs
+                          SizedBox(height: spacing.medium),
                           Expanded(
                             child: ListView.builder(
-                              padding: spacing.custom(
-                                horizontal: 20,
-                              ), // ✅ Padding responsive
+                              padding: spacing.custom(horizontal: 20),
                               itemCount: availableAttributes.length,
                               itemBuilder: (context, index) {
                                 return _buildAttributeRow(
@@ -620,10 +601,8 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
                               },
                             ),
                           ),
-
-                          // Boutons d'action
                           Padding(
-                            padding: spacing.allPadding, // ✅ Padding responsive
+                            padding: spacing.allPadding,
                             child: Row(
                               children: [
                                 Expanded(
@@ -639,9 +618,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
                                     },
                                   ),
                                 ),
-                                SizedBox(
-                                  width: spacing.medium,
-                                ), // ✅ Espacement responsive
+                                SizedBox(width: spacing.medium),
                                 Expanded(
                                   child: PrimaryButton(
                                     text: 'Appliquer',
@@ -679,9 +656,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
                               ],
                             ),
                           ),
-                          SizedBox(
-                            height: spacing.medium,
-                          ), // ✅ Espacement responsive
+                          SizedBox(height: spacing.medium),
                         ],
                       ),
                     ),
@@ -694,7 +669,6 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
     );
   }
 
-  // ✅ AJOUTÉ: Widget pour ligne d'attribut (depuis modify_equipment_screen.dart)
   Widget _buildAttributeRow(
     EquipmentAttribute attribute,
     StateSetter setModalState,
@@ -705,22 +679,18 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
         '${attribute.specification ?? 'no_spec'}_${attribute.index ?? 'no_index'}';
     final availableValues = attributeValuesBySpec[specKey] ?? [];
 
-    // Créer la liste des options UNIQUES
     final optionsSet = <String>{};
 
-    // Ajouter les valeurs disponibles depuis l'API
     for (final attr in availableValues) {
       if (attr.value != null && attr.value!.isNotEmpty) {
         optionsSet.add(attr.value!);
       }
     }
 
-    // Toujours ajouter la valeur actuelle de l'attribut
     if (attribute.value != null && attribute.value!.isNotEmpty) {
       optionsSet.add(attribute.value!);
     }
 
-    // Si aucune option, ajouter une option par défaut
     if (optionsSet.isEmpty) {
       optionsSet.add('');
     }
@@ -728,7 +698,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
     final options =
         optionsSet.where((opt) => opt.isNotEmpty).toList()
           ..sort()
-          ..add(''); // Ajouter option vide à la fin
+          ..add('');
 
     final safeAttributeId =
         attribute.id ??
@@ -744,11 +714,10 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
     }
 
     return Padding(
-      padding: spacing.custom(bottom: 20), // ✅ Padding responsive
+      padding: spacing.custom(bottom: 20),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Nom de l'attribut
           Expanded(
             flex: 2,
             child: Text(
@@ -757,13 +726,11 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
                 fontFamily: AppTheme.fontMontserrat,
                 fontWeight: FontWeight.w600,
                 color: AppTheme.secondaryColor,
-                fontSize: responsive.sp(16), // ✅ Texte responsive
+                fontSize: responsive.sp(16),
               ),
             ),
           ),
-
-          SizedBox(width: spacing.medium), // ✅ Espacement responsive
-          // Dropdown des valeurs
+          SizedBox(width: spacing.medium),
           Expanded(
             flex: 3,
             child: DropdownSearch<String>(
@@ -793,31 +760,23 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(
                         responsive.spacing(8),
-                      ), // ✅ Border radius responsive
+                      ),
                     ),
-                    contentPadding: spacing.custom(
-                      horizontal: 12,
-                      vertical: 8,
-                    ), // ✅ Padding responsive
+                    contentPadding: spacing.custom(horizontal: 12, vertical: 8),
                   ),
                   style: const TextStyle(fontSize: 14),
                 ),
                 menuProps: MenuProps(
                   backgroundColor: Colors.white,
                   elevation: 8,
-                  borderRadius: BorderRadius.circular(
-                    responsive.spacing(8),
-                  ), // ✅ Border radius responsive
+                  borderRadius: BorderRadius.circular(responsive.spacing(8)),
                 ),
                 itemBuilder: (context, item, isSelected) {
                   final isOriginalValue = item == attribute.value;
                   final displayText = item.isEmpty ? '(Vide)' : item;
 
                   return Container(
-                    padding: spacing.custom(
-                      horizontal: 16,
-                      vertical: 12,
-                    ), // ✅ Padding responsive
+                    padding: spacing.custom(horizontal: 16, vertical: 12),
                     decoration: BoxDecoration(
                       color: isSelected ? AppTheme.secondaryColor10 : null,
                       border: const Border(
@@ -833,32 +792,25 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
                           Icon(
                             Icons.check_circle,
                             color: AppTheme.secondaryColor,
-                            size: responsive.iconSize(16), // ✅ Icône responsive
+                            size: responsive.iconSize(16),
                           ),
-                        if (isSelected)
-                          SizedBox(
-                            width: spacing.small,
-                          ), // ✅ Espacement responsive
+                        if (isSelected) SizedBox(width: spacing.small),
                         if (isOriginalValue && !isSelected)
                           Icon(
                             Icons.star,
                             color: AppTheme.thirdColor,
-                            size: responsive.iconSize(16), // ✅ Icône responsive
+                            size: responsive.iconSize(16),
                           ),
                         if (isOriginalValue && !isSelected)
-                          SizedBox(
-                            width: spacing.small,
-                          ), // ✅ Espacement responsive
+                          SizedBox(width: spacing.small),
                         if (item.isEmpty && !isSelected)
                           Icon(
                             Icons.clear,
                             color: AppTheme.thirdColor,
-                            size: responsive.iconSize(16), // ✅ Icône responsive
+                            size: responsive.iconSize(16),
                           ),
                         if (item.isEmpty && !isSelected)
-                          SizedBox(
-                            width: spacing.small,
-                          ), // ✅ Espacement responsive
+                          SizedBox(width: spacing.small),
                         Expanded(
                           child: RichText(
                             text: TextSpan(
@@ -866,9 +818,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
                                 TextSpan(
                                   text: displayText,
                                   style: TextStyle(
-                                    fontSize: responsive.sp(
-                                      14,
-                                    ), // ✅ Texte responsive
+                                    fontSize: responsive.sp(14),
                                     color:
                                         isSelected
                                             ? AppTheme.secondaryColor
@@ -891,9 +841,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
                                   TextSpan(
                                     text: ' (défaut)',
                                     style: TextStyle(
-                                      fontSize: responsive.sp(
-                                        12,
-                                      ), // ✅ Texte responsive
+                                      fontSize: responsive.sp(12),
                                       color: AppTheme.thirdColor,
                                       fontWeight: FontWeight.normal,
                                       fontStyle: FontStyle.italic,
@@ -912,31 +860,23 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
                 dropdownSearchDecoration: InputDecoration(
                   hintText: 'Sélectionner...',
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(
-                      responsive.spacing(8),
-                    ), // ✅ Border radius responsive
+                    borderRadius: BorderRadius.circular(responsive.spacing(8)),
                     borderSide: const BorderSide(color: AppTheme.thirdColor),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(
-                      responsive.spacing(8),
-                    ), // ✅ Border radius responsive
+                    borderRadius: BorderRadius.circular(responsive.spacing(8)),
                     borderSide: const BorderSide(
                       color: AppTheme.secondaryColor,
                       width: 2,
                     ),
                   ),
-                  contentPadding: spacing.custom(
-                    horizontal: 12,
-                    vertical: 8,
-                  ), // ✅ Padding responsive
+                  contentPadding: spacing.custom(horizontal: 12, vertical: 8),
                   suffixIcon: const Icon(
                     Icons.arrow_drop_down,
                     color: AppTheme.secondaryColor,
                   ),
                 ),
               ),
-              // ✅ CORRECTION: Ne plus tronquer, afficher le texte complet
               itemAsString: (String item) => item.isEmpty ? '(Vide)' : item,
             ),
           ),
@@ -945,56 +885,11 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
     );
   }
 
-  Widget _buildCustomAppBar(Responsive responsive, ResponsiveSpacing spacing) {
-    return Positioned(
-      top: 0,
-      left: 0,
-      right: 0,
-      child: Container(
-        height: responsive.spacing(150), // ✅ Hauteur responsive
-        decoration: const BoxDecoration(color: AppTheme.secondaryColor),
-        child: SafeArea(
-          child: Padding(
-            padding: spacing.custom(horizontal: 16), // ✅ Padding responsive
-            child: Row(
-              children: [
-                IconButton(
-                  icon: const Icon(
-                    Icons.arrow_back,
-                    color: Colors.white,
-                    size: 28,
-                  ),
-                  onPressed: () {
-                    if (kDebugMode) {
-                      print('⬅️ $__logName Retour');
-                    }
-                    Navigator.pop(context);
-                  },
-                ),
-                const Spacer(),
-                Text(
-                  'Ajouter un équipement',
-                  style: TextStyle(
-                    fontFamily: AppTheme.fontMontserrat,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                    fontSize: responsive.sp(20), // ✅ Texte responsive
-                  ),
-                ),
-                const Spacer(),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildActionButtons(Responsive responsive, ResponsiveSpacing spacing) {
     final canSave = selectedFamille != null && selectedFamille!.isNotEmpty;
 
     return Padding(
-      padding: spacing.custom(vertical: 0), // ✅ Padding responsive
+      padding: spacing.custom(vertical: 0),
       child: Row(
         children: [
           Expanded(
@@ -1011,46 +906,38 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
                       },
             ),
           ),
-          SizedBox(width: spacing.medium), // ✅ Espacement responsive
+          SizedBox(width: spacing.medium),
           Expanded(
             child:
                 _isUpdating
                     ? Container(
-                      height: responsive.spacing(48), // ✅ Hauteur responsive
+                      height: responsive.spacing(48),
                       decoration: BoxDecoration(
                         color: AppTheme.secondaryColor70,
                         borderRadius: BorderRadius.circular(
                           responsive.spacing(8),
-                        ), // ✅ Border radius responsive
+                        ),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           SizedBox(
-                            width: responsive.spacing(
-                              20,
-                            ), // ✅ Largeur responsive
-                            height: responsive.spacing(
-                              20,
-                            ), // ✅ Hauteur responsive
+                            width: responsive.spacing(20),
+                            height: responsive.spacing(20),
                             child: CircularProgressIndicator(
-                              strokeWidth: responsive.spacing(
-                                2,
-                              ), // ✅ Épaisseur responsive
+                              strokeWidth: responsive.spacing(2),
                               valueColor: const AlwaysStoppedAnimation<Color>(
                                 Colors.white,
                               ),
                             ),
                           ),
-                          SizedBox(
-                            width: spacing.small,
-                          ), // ✅ Espacement responsive
+                          SizedBox(width: spacing.small),
                           Text(
                             'Ajout en cours...',
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: responsive.sp(16),
-                            ), // ✅ Texte responsive
+                            ),
                           ),
                         ],
                       ),
@@ -1092,7 +979,6 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
         selectedAttributeValues,
       );
 
-      // ✅ CORRECTION: Utiliser les sélecteurs depuis le provider (objets typés)
       final cachedSelectors = equipmentProvider.cachedSelectors;
 
       final equipmentData = {

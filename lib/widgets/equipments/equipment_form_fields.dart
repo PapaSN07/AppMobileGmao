@@ -258,7 +258,7 @@ class EquipmentFormFields extends StatelessWidget {
           child: Tools.buildText(
             context, // ✅ Context ajouté
             label: 'Info Feeder',
-            value: EquipmentHelpers.formatDescription(selectedFeeder ?? ''),
+            value: selectedFeeder ?? '',
           ),
         ),
       ],

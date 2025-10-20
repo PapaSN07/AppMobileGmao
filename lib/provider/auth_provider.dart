@@ -64,6 +64,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       _currentUser = null;
       await HiveService.clearCurrentUser();
+      await HiveService.clearAllCache();
       notifyListeners();
 
       if (kDebugMode) {
