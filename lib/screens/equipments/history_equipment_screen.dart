@@ -1,4 +1,4 @@
-import 'package:appmobilegmao/widgets/under_maintenance.dart';
+import 'package:appmobilegmao/screens/widgets/under_maintenance_screen.dart';
 import 'package:flutter/widgets.dart';
 
 class HistoryEquipmentScreen extends StatefulWidget {

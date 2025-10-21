@@ -194,27 +194,23 @@ class _MainScreenState extends State<MainScreen> {
 
     final user = authProvider.currentUser;
     final textColor = _getAppBarTextColor();
-
-    // ✅ CORRECTION: isHome doit être false pour Prestataire sur page Equipment
     final isHome = authProvider.isPrestataire ? false : _currentIndex == 0;
 
-    // ✅ CORRECTION: Logique basée sur le rôle et l'index
     bool shouldShowAddButton = false;
     if (authProvider.isPrestataire) {
-      shouldShowAddButton = _currentIndex == 0; // Equipment pour Prestataire
+      shouldShowAddButton = _currentIndex == 0;
     } else {
-      shouldShowAddButton = _currentIndex == 1; // Equipment pour LDAP
+      shouldShowAddButton = _currentIndex == 1;
     }
 
     if (shouldShowAddButton) {
       // Page Equipment - Bouton +
       return IconButton(
+        padding: EdgeInsets.zero, // ✅ Supprime le padding interne
         icon: Container(
           padding: spacing.custom(all: 8),
           decoration: BoxDecoration(
-            color:
-                AppTheme
-                    .primaryColor20, // ✅ TOUJOURS primaryColor20 pour Equipment
+            color: AppTheme.primaryColor20,
             borderRadius: BorderRadius.circular(responsive.spacing(8)),
           ),
           child: Icon(
@@ -229,64 +225,61 @@ class _MainScreenState extends State<MainScreen> {
     } else {
       // Autres pages - Affichage des infos utilisateur
       if (user != null) {
-        return Padding(
-          padding: spacing.custom(right: 16),
-          child: Center(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: spacing.custom(all: 8),
-                  decoration: BoxDecoration(
-                    color:
-                        isHome
-                            ? AppTheme.secondaryColor10
-                            : AppTheme.primaryColor20,
-                    borderRadius: BorderRadius.circular(responsive.spacing(20)),
+        return Center(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: spacing.custom(all: 8),
+                decoration: BoxDecoration(
+                  color:
+                      isHome
+                          ? AppTheme.secondaryColor10
+                          : AppTheme.primaryColor20,
+                  borderRadius: BorderRadius.circular(responsive.spacing(20)),
+                ),
+                child: Text(
+                  user.username
+                      .split('.')
+                      .map((part) => part[0].toUpperCase())
+                      .join(''),
+                  style: TextStyle(
+                    color: textColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: responsive.sp(14),
                   ),
-                  child: Text(
-                    user.username
-                        .split('.')
-                        .map((part) => part[0].toUpperCase())
-                        .join(''),
+                ),
+              ),
+              SizedBox(width: spacing.small),
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    user.username,
                     style: TextStyle(
                       color: textColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: responsive.sp(14),
+                      fontSize: responsive.sp(12),
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
-                ),
-                SizedBox(width: spacing.small),
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      user.username,
-                      style: TextStyle(
-                        color: textColor,
-                        fontSize: responsive.sp(12),
-                        fontWeight: FontWeight.w500,
-                      ),
+                  Text(
+                    (user.group?.trim().isNotEmpty == true)
+                        ? user.group!.trim()
+                        : (user.role?.trim().isNotEmpty == true)
+                        ? user.role!.trim()
+                        : 'Utilisateur',
+                    style: TextStyle(
+                      color:
+                          isHome
+                              ? textColor.withValues(alpha: 0.7)
+                              : textColor.withValues(alpha: 0.8),
+                      fontSize: responsive.sp(10),
                     ),
-                    Text(
-                      (user.group?.trim().isNotEmpty == true)
-                          ? user.group!.trim()
-                          : (user.role?.trim().isNotEmpty == true)
-                          ? user.role!.trim()
-                          : 'Utilisateur',
-                      style: TextStyle(
-                        color:
-                            isHome
-                                ? textColor.withValues(alpha: 0.7)
-                                : textColor.withValues(alpha: 0.8),
-                        fontSize: responsive.sp(10),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+                  ),
+                ],
+              ),
+            ],
           ),
         );
       }
@@ -460,49 +453,71 @@ class _MainScreenState extends State<MainScreen> {
       builder: (context, authProvider, child) {
         final appBarBgColor = _getAppBarBackgroundColor();
         final textColor = _getAppBarTextColor();
-        // ✅ CORRECTION: isHome doit être false pour Prestataire sur page Equipment
         final isHome = authProvider.isPrestataire ? false : _currentIndex == 0;
 
         return Scaffold(
           key: _scaffoldKey,
-          appBar: AppBar(
-            title: Text(
-              _getPageTitle(_currentIndex),
-              style: TextStyle(
-                fontFamily: AppTheme.fontMontserrat,
-                fontWeight: FontWeight.w600,
-                color: textColor, // ✅ CHANGÉ: Couleur conditionnelle
-                fontSize: responsive.sp(20), // ✅ Texte responsive
+          // ✅ MODIFIÉ: Augmenter la hauteur de l'AppBar
+          appBar: PreferredSize(
+            preferredSize: Size.fromHeight(
+              responsive.spacing(70),
+            ), // ✅ Hauteur augmentée: 56 → 70
+            child: AppBar(
+              titleSpacing: 0,
+              title: Padding(
+                padding: spacing.custom(
+                  left: 4,
+                  right: 16,
+                ), // ✅ AJOUTÉ: Espacement à gauche
+                child: Text(
+                  _getPageTitle(_currentIndex),
+                  style: TextStyle(
+                    fontFamily: AppTheme.fontMontserrat,
+                    fontWeight: FontWeight.w600,
+                    color: textColor,
+                    fontSize: responsive.sp(18),
+                  ),
+                ),
               ),
-            ),
-            backgroundColor: appBarBgColor, // ✅ CHANGÉ: Couleur conditionnelle
-            elevation:
-                isHome ? 0.5 : 0, // ✅ AJOUTÉ: Légère ombre pour l'accueil
-            leading: Builder(
-              builder:
-                  (context) => IconButton(
-                    icon: Container(
-                      padding: spacing.custom(all: 8), // ✅ Padding responsive
-                      decoration: BoxDecoration(
-                        color:
-                            isHome
-                                ? AppTheme.secondaryColor10
-                                : AppTheme.primaryColor20,
-                        borderRadius: BorderRadius.circular(
-                          responsive.spacing(8),
-                        ), // ✅ Border radius responsive
-                      ),
-                      child: Icon(
-                        Icons.menu,
-                        color: textColor, // ✅ CHANGÉ: Couleur conditionnelle
-                        size: responsive.iconSize(20), // ✅ Icône responsive
+              backgroundColor: appBarBgColor,
+              elevation: isHome ? 0.5 : 0,
+              leading: Padding(
+                padding: spacing.custom(
+                  left: 12,
+                  right: 4,
+                ), // ✅ MODIFIÉ: Espacement augmenté (12→16, 4→8)
+                child: IconButton(
+                  padding: EdgeInsets.zero,
+                  icon: Container(
+                    padding: spacing.custom(all: 8),
+                    decoration: BoxDecoration(
+                      color:
+                          isHome
+                              ? AppTheme.secondaryColor10
+                              : AppTheme.primaryColor20,
+                      borderRadius: BorderRadius.circular(
+                        responsive.spacing(8),
                       ),
                     ),
-                    onPressed: _openProfile,
-                    tooltip: 'Profil utilisateur',
+                    child: Icon(
+                      Icons.menu,
+                      color: textColor,
+                      size: responsive.iconSize(20),
+                    ),
                   ),
+                  onPressed: _openProfile,
+                  tooltip: 'Profil utilisateur',
+                ),
+              ),
+              actions: [
+                Padding(
+                  padding: spacing.custom(
+                    right: 16,
+                  ), // ✅ Espacement à droite maintenu
+                  child: _getRightButton(),
+                ),
+              ],
             ),
-            actions: [_getRightButton()], // ✅ CHANGÉ: Action conditionnelle
           ),
           body: IndexedStack(index: _currentIndex, children: _pages),
           bottomNavigationBar: CustomBottomNavigationBar(

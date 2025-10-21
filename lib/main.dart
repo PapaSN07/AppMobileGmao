@@ -1,4 +1,6 @@
+import 'package:appmobilegmao/provider/notification_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:overlay_support/overlay_support.dart';
 import 'package:provider/provider.dart';
 import 'package:appmobilegmao/screens/splash_screen.dart';
 import 'package:appmobilegmao/provider/auth_provider.dart';
@@ -38,6 +40,9 @@ void main() async {
             return previousEquipmentProvider;
           },
         ),
+
+        // 3️⃣ Provider pour les notifications
+        ChangeNotifierProvider(create: (_) => NotificationProvider()),
       ],
       child: const MyApp(),
     ),
@@ -49,36 +54,38 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'GMAO - Senelec',
-      theme: ThemeData(
-        primaryColor: AppTheme.secondaryColor,
-        fontFamily: AppTheme.fontRoboto,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: AppTheme.secondaryColor,
-          primary: AppTheme.secondaryColor,
-          secondary: AppTheme.thirdColor,
-        ),
-        useMaterial3: true,
-        textTheme: const TextTheme(
-          headlineLarge: AppTheme.headline1,
-          bodyLarge: AppTheme.bodyText1,
-          bodyMedium: AppTheme.bodyText2,
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppTheme.secondaryColor,
-            foregroundColor: AppTheme.primaryColor,
-            textStyle: const TextStyle(
-              fontFamily: AppTheme.fontMontserrat,
-              fontWeight: FontWeight.bold,
+    return OverlaySupport.global(
+      child: MaterialApp(
+        title: 'GMAO - Senelec',
+        theme: ThemeData(
+          primaryColor: AppTheme.secondaryColor,
+          fontFamily: AppTheme.fontRoboto,
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: AppTheme.secondaryColor,
+            primary: AppTheme.secondaryColor,
+            secondary: AppTheme.thirdColor,
+          ),
+          useMaterial3: true,
+          textTheme: const TextTheme(
+            headlineLarge: AppTheme.headline1,
+            bodyLarge: AppTheme.bodyText1,
+            bodyMedium: AppTheme.bodyText2,
+          ),
+          elevatedButtonTheme: ElevatedButtonThemeData(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.secondaryColor,
+              foregroundColor: AppTheme.primaryColor,
+              textStyle: const TextStyle(
+                fontFamily: AppTheme.fontMontserrat,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ),
+        // ✅ Commencer par le Splash Screen
+        home: const SplashScreen(),
+        debugShowCheckedModeBanner: false,
       ),
-      // ✅ Commencer par le Splash Screen
-      home: const SplashScreen(),
-      debugShowCheckedModeBanner: false,
     );
   }
 }

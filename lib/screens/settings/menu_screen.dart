@@ -1,8 +1,11 @@
+import 'package:appmobilegmao/provider/notification_provider.dart';
+import 'package:appmobilegmao/screens/notifications/notifications_screen.dart';
 import 'package:appmobilegmao/screens/settings/profile_screen.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:appmobilegmao/utils/responsive.dart';
 import 'package:appmobilegmao/theme/responsive_spacing.dart';
+import 'package:provider/provider.dart';
 
 class ProfilMenu extends StatelessWidget {
   final String nom;
@@ -40,7 +43,6 @@ class ProfilMenu extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: AppTheme.secondaryColor,
-      // ✅ AJOUTÉ: AppBar standard pour uniformité avec main_screen.dart
       appBar: AppBar(
         title: Text(
           'Paramètres',
@@ -48,47 +50,88 @@ class ProfilMenu extends StatelessWidget {
             fontFamily: AppTheme.fontMontserrat,
             fontWeight: FontWeight.w600,
             color: Colors.white,
-            fontSize: responsive.sp(20), // ✅ Texte responsive
+            fontSize: responsive.sp(20),
           ),
         ),
         backgroundColor: AppTheme.secondaryColor,
         elevation: 0,
         leading: IconButton(
           icon: Container(
-            padding: spacing.custom(all: 8), // ✅ Padding responsive
+            padding: spacing.custom(all: 8),
             decoration: BoxDecoration(
               color: AppTheme.primaryColor20,
-              borderRadius: BorderRadius.circular(
-                responsive.spacing(8),
-              ), // ✅ Border radius responsive
+              borderRadius: BorderRadius.circular(responsive.spacing(8)),
             ),
             child: Icon(
               Icons.arrow_back,
               color: Colors.white,
-              size: responsive.iconSize(20), // ✅ Icône responsive
+              size: responsive.iconSize(20),
             ),
           ),
           onPressed: () => Navigator.of(context).pop(),
           tooltip: 'Retour',
         ),
         actions: [
-          IconButton(
-            icon: Container(
-              padding: spacing.custom(all: 8), // ✅ Padding responsive
-              decoration: BoxDecoration(
-                color: AppTheme.primaryColor20,
-                borderRadius: BorderRadius.circular(
-                  responsive.spacing(8),
-                ), // ✅ Border radius responsive
-              ),
-              child: Icon(
-                Icons.notifications_none,
-                color: Colors.white,
-                size: responsive.iconSize(20), // ✅ Icône responsive
-              ),
-            ),
-            onPressed: () {},
-            tooltip: 'Notifications',
+          // ✅ MODIFIÉ: Ajouter le badge de notifications
+          Consumer<NotificationProvider>(
+            builder: (context, notifProvider, _) {
+              final unreadCount = notifProvider.unreadCount;
+
+              return Stack(
+                children: [
+                  IconButton(
+                    icon: Container(
+                      padding: spacing.custom(all: 8),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryColor20,
+                        borderRadius: BorderRadius.circular(
+                          responsive.spacing(8),
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.notifications_none,
+                        color: Colors.white,
+                        size: responsive.iconSize(20),
+                      ),
+                    ),
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const NotificationsScreen(),
+                        ),
+                      );
+                    },
+                    tooltip: 'Notifications',
+                  ),
+                  if (unreadCount > 0)
+                    Positioned(
+                      right: responsive.spacing(8),
+                      top: responsive.spacing(8),
+                      child: Container(
+                        padding: spacing.custom(all: 4),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: BoxConstraints(
+                          minWidth: responsive.spacing(18),
+                          minHeight: responsive.spacing(18),
+                        ),
+                        child: Center(
+                          child: Text(
+                            unreadCount > 99 ? '99+' : unreadCount.toString(),
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: responsive.sp(10),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
         ],
       ),

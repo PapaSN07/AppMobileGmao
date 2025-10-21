@@ -24,9 +24,12 @@ class ApiService {
 
   static const Duration _timeout = Duration(seconds: 60);
   static const int _defaultPort = 8000;
-  static const String _macIpAddress = '192.168.1.102';
+  static const String _macIpAddress = '192.168.137.168';
   // static const int _defaultPort = 9099;
   // static const String _macIpAddress = 'domtec.senelec.sn';
+
+  get macIpAddress => _macIpAddress;
+  get defaultPort => _defaultPort;
 
   ApiService({int? port, String? customBaseUrl}) {
     baseUrl = customBaseUrl ?? _buildBaseUrl(port ?? _defaultPort);

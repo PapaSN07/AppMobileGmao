@@ -222,38 +222,58 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
 
     return Scaffold(
       backgroundColor: AppTheme.primaryColor,
-      appBar: AppBar(
-        title: Text(
-          'Modifier l\'équipement',
-          style: TextStyle(
-            fontFamily: AppTheme.fontMontserrat,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-            fontSize: responsive.sp(20),
-          ),
-        ),
-        backgroundColor: AppTheme.secondaryColor,
-        elevation: 0,
-        leading: IconButton(
-          icon: Container(
-            padding: spacing.custom(all: 8),
-            decoration: BoxDecoration(
-              color: AppTheme.primaryColor20,
-              borderRadius: BorderRadius.circular(responsive.spacing(8)),
-            ),
-            child: Icon(
-              Icons.arrow_back,
-              color: Colors.white,
-              size: responsive.iconSize(20),
+      // ✅ MODIFIÉ: Augmenter la hauteur de l'AppBar
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(
+          responsive.spacing(70),
+        ), // ✅ Hauteur augmentée
+        child: AppBar(
+          titleSpacing: 0,
+          title: Padding(
+            padding: spacing.custom(
+              left: 4,
+              right: 16,
+            ), // ✅ AJOUTÉ: Espacement à gauche
+            child: Text(
+              'Modifier l\'équipement',
+              style: TextStyle(
+                fontFamily: AppTheme.fontMontserrat,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+                fontSize: responsive.sp(18),
+              ),
             ),
           ),
-          onPressed: () {
-            if (kDebugMode) {
-              print('⬅️ $__logName Retour');
-            }
-            Navigator.pop(context);
-          },
-          tooltip: 'Retour',
+          backgroundColor: AppTheme.secondaryColor,
+          elevation: 0,
+          leading: Padding(
+            padding: spacing.custom(
+              left: 16,
+              right: 8,
+            ), // ✅ MODIFIÉ: Espacement augmenté
+            child: IconButton(
+              padding: EdgeInsets.zero,
+              icon: Container(
+                padding: spacing.custom(all: 8),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor20,
+                  borderRadius: BorderRadius.circular(responsive.spacing(8)),
+                ),
+                child: Icon(
+                  Icons.arrow_back,
+                  color: Colors.white,
+                  size: responsive.iconSize(20),
+                ),
+              ),
+              onPressed: () {
+                if (kDebugMode) {
+                  print('⬅️ $__logName Retour');
+                }
+                Navigator.pop(context);
+              },
+              tooltip: 'Retour',
+            ),
+          ),
         ),
       ),
       body: Consumer<EquipmentProvider>(
