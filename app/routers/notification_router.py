@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from app.services.notification_service import get_unread_notifications
-from app.main import get_current_user
+from app.dependencies import get_current_user
 
 router_notification = APIRouter(prefix="/notifications", tags=["Notifications"])
 

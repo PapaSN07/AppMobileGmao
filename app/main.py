@@ -1,5 +1,4 @@
-from typing import Any, Dict
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -7,7 +6,7 @@ import time
 import logging
 import os
 
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi.security import HTTPBearer
 from fastapi.staticfiles import StaticFiles
 
 from app.db.sqlalchemy.session import SQLAlchemyQueryExecutor, get_main_session, get_temp_session, test_connection
@@ -22,21 +21,13 @@ from app.routers.web.entity_router import entity_router_web
 from app.routers.mobile.unite_router import unite_router
 from app.routers.mobile.zone_router import zone_router
 from app.core.cache import cache
-from app.services.jwt_service import jwt_service
 from app.routers.websocket_router import router_ws
+from app.routers.notification_router import router_notification
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 security = HTTPBearer()
-
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> Dict[str, Any]:
-    """Dépendances pour vérifier le token JWT"""
-    token = credentials.credentials
-    payload = jwt_service.verify_token(token)
-    if not payload:
-        raise HTTPException(status_code=401, detail="Token invalide")
-    return payload
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -235,6 +226,7 @@ app.include_router(entity_router_web, prefix=PREFIX_WEB)
 
 # Inclusion du routeur pour les websockets
 app.include_router(router_ws, tags=["WebSocket - Notifications"])
+app.include_router(router_notification, tags=["Notifications"])
 
 if __name__ == "__main__":
     import uvicorn

@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
-from jose import JWTError, jwt
+from jose import jwt
+from jose.exceptions import ExpiredSignatureError, JWTError
 from passlib.context import CryptContext
 from app.core.config import JWT_SECRET_KEY, JWT_ALGORITHM, JWT_ACCESS_TOKEN_EXPIRE_MINUTES, JWT_REFRESH_TOKEN_EXPIRE_DAYS
 from app.core.cache import cache
@@ -12,6 +13,10 @@ logger = logging.getLogger(__name__)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 class JWTService:
+    def __init__(self):
+        self.SECRET_KEY = JWT_SECRET_KEY
+        self.ALGORITHM = JWT_ALGORITHM
+
     @staticmethod
     def hash_password(password: str) -> str:
         """Hache un mot de passe"""
@@ -32,6 +37,7 @@ class JWTService:
             expire = datetime.now(timezone.utc) + timedelta(minutes=JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
         to_encode.update({"exp": expire, "type": "access"})
         encoded_jwt = jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
+        logger.info(f"✅ Token créé pour user: {to_encode.get('username')} (sub={to_encode.get('sub')})")
         return encoded_jwt
 
     @staticmethod
@@ -43,23 +49,39 @@ class JWTService:
         encoded_jwt = jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
         return encoded_jwt
 
-    @staticmethod
-    def verify_token(token: str) -> Optional[Dict[str, Any]]:
-        """Vérifie et décode un token JWT"""
+    def verify_token(self, token: str) -> dict | None:
+        """Vérifie et décode un token JWT avec logs détaillés"""
         try:
-            payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
-            # Vérifier si le token est blacklisté
-            token_key = f"blacklist:{token}"
-            if cache.exists(token_key):
+            # ✅ Ajouter logs avant décodage
+            logger.info(f"🔐 Décodage token JWT...")
+            
+            payload = jwt.decode(
+                token,
+                self.SECRET_KEY,
+                algorithms=[self.ALGORITHM]
+            )
+            
+            # Vérifier le type de token
+            if payload.get("type") != "access":
+                logger.warning(f"❌ Type de token incorrect: {payload.get('type')}")
                 return None
+            
+            logger.info(f"✅ Token valide pour user: {payload.get('username')} (sub={payload.get('sub')})")
             return payload
-        except JWTError:
+        except ExpiredSignatureError:
+            logger.warning("❌ Token JWT expiré (ExpiredSignatureError)")
+            return None
+        except JWTError as e:
+            logger.error(f"❌ Token JWT invalide: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"❌ Erreur vérification token: {e}", exc_info=True)
             return None
 
     @staticmethod
     def refresh_access_token(refresh_token: str) -> Optional[str]:
         """Rafraîchit un token d'accès à partir d'un token de rafraîchissement"""
-        payload = JWTService.verify_token(refresh_token)
+        payload = jwt_service.verify_token(refresh_token)
         if payload and payload.get("type") == "refresh":
             user_data = {"sub": payload.get("sub"), "username": payload.get("username")}
             return JWTService.create_access_token(user_data)
