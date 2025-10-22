@@ -29,7 +29,7 @@
                 "input": "public"
               }
             ],
-            "styles": ["src/assets/styles.scss"],
+            "styles": ["src/assets/styles.scss", "node_modules/ngx-toastr/toastr.css"],
             "scripts": []
           },
           "configurations": {

@@ -1,17 +1,18 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { Router } from '@angular/router';
 import { environment } from '../../../../../environments/environment';
 import { Observable, tap, interval, Subscription } from 'rxjs';
 import { AuthResponse, DecodedToken, User } from '../../models/user.model';
 import { jwtDecode } from 'jwt-decode';
+import { WebSocketService } from '.';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
     private apiUrl = environment.apiUrlAuth;
     private tokenRefreshSubscription?: Subscription;
 
-    constructor(private http: HttpClient, private router: Router) {
+    constructor(private websocketService: WebSocketService, private http: HttpClient, private router: Router) {
         // Démarrer le rafraîchissement automatique au démarrage de l'app
         this.startTokenRefreshTimer();
     }
@@ -23,6 +24,11 @@ export class AuthService {
                 if (response.success) {
                     this.storeTokens(response);
                     this.startTokenRefreshTimer(); // Démarrer le timer après login
+
+                    // ✅ NOUVEAU : Connecter le WebSocket après login
+                    this.websocketService.connect().catch(err => {
+                        console.error('❌ Erreur connexion WebSocket après login:', err);
+                    });
                 }
             })
         );
@@ -173,25 +179,29 @@ export class AuthService {
     logout(): void {
         let user = this.getUser();
 
+        // ✅ NOUVEAU : Déconnecter le WebSocket avant logout
+        this.websocketService.disconnect();
+
         // Arrêter le timer de rafraîchissement
         this.stopTokenRefreshTimer();
 
         this.http.post(`${this.apiUrl}/logout`, { username: user?.username }).subscribe({
             next: () => {
-                sessionStorage.removeItem('access_token');
-                sessionStorage.removeItem('refresh_token');
-                sessionStorage.removeItem('user');
-                sessionStorage.removeItem('token_expiry');
+                this.clearSession();
                 this.router.navigate(['/auth/login']);
             },
             error: (err) => {
                 console.error('Erreur lors du logout', err);
-                sessionStorage.removeItem('access_token');
-                sessionStorage.removeItem('refresh_token');
-                sessionStorage.removeItem('user');
-                sessionStorage.removeItem('token_expiry');
+                this.clearSession();
                 this.router.navigate(['/auth/login']);
             }
         });
+    }
+
+    private clearSession(): void {
+        sessionStorage.removeItem('access_token');
+        sessionStorage.removeItem('refresh_token');
+        sessionStorage.removeItem('user');
+        sessionStorage.removeItem('token_expiry');
     }
 }

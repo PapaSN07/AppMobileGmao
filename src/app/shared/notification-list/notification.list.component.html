@@ -1,0 +1,12 @@
+<p-button 
+    icon="pi pi-bell" 
+    [badge]="unreadCount > 0 ? unreadCount.toString() : ''" 
+    badgeClass="p-badge-danger"
+    [text]="true"
+    [rounded]="true"
+    (click)="menu.toggle($event)"
+    [pTooltip]="connectionState === 'connected' ? 'Notifications actives' : 'Notifications déconnectées'"
+    tooltipPosition="bottom"
+></p-button>
+
+<p-menu #menu [model]="notificationMenuItems" [popup]="true"></p-menu>

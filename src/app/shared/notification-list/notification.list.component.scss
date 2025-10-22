@@ -1,0 +1,167 @@
+.notification-button {
+    position: relative;
+}
+
+::ng-deep .notification-menu {
+    .mat-mdc-menu-content {
+        padding: 0 !important;
+        max-width: 400px;
+        min-width: 320px;
+    }
+}
+
+.notification-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    background-color: #f5f5f5;
+
+    h3 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 500;
+    }
+
+    .connection-status {
+        display: flex;
+        align-items: center;
+        
+        mat-icon {
+            font-size: 18px;
+            width: 18px;
+            height: 18px;
+        }
+
+        &.status-connected mat-icon {
+            color: #4caf50;
+        }
+
+        &.status-connecting mat-icon {
+            color: #ff9800;
+        }
+
+        &.status-disconnected mat-icon,
+        &.status-error mat-icon {
+            color: #f44336;
+        }
+    }
+}
+
+.notification-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.notification-item {
+    cursor: pointer;
+    transition: background-color 0.2s;
+    border-bottom: 1px solid #e0e0e0;
+
+    &:hover {
+        background-color: #f5f5f5;
+    }
+
+    &.unread {
+        background-color: #e3f2fd;
+        
+        .notification-title {
+            font-weight: 600;
+        }
+    }
+
+    mat-icon {
+        margin-right: 12px;
+    }
+
+    .notification-title {
+        font-size: 14px;
+        margin-bottom: 4px;
+    }
+
+    .notification-message {
+        font-size: 12px;
+        color: #666;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .notification-time {
+        font-size: 11px;
+        color: #999;
+    }
+}
+
+.notification-success {
+    color: #4caf50;
+}
+
+.notification-error {
+    color: #f44336;
+}
+
+.notification-warning {
+    color: #ff9800;
+}
+
+.notification-info {
+    color: #2196f3;
+}
+
+.no-notifications {
+    padding: 32px;
+    text-align: center;
+    color: #999;
+
+    mat-icon {
+        font-size: 48px;
+        width: 48px;
+        height: 48px;
+        margin-bottom: 8px;
+    }
+
+    p {
+        margin: 0;
+        font-size: 14px;
+    }
+}
+
+:host ::ng-deep {
+    .p-menu {
+        min-width: 320px;
+        max-width: 400px;
+        
+        .p-menuitem-link {
+            white-space: normal;
+            word-wrap: break-word;
+            padding: 12px 16px;
+            
+            &:hover {
+                background-color: var(--surface-hover);
+            }
+        }
+        
+        .notification-success .p-menuitem-icon {
+            color: #22c55e;
+        }
+        
+        .notification-error .p-menuitem-icon {
+            color: #ef4444;
+        }
+        
+        .notification-warning .p-menuitem-icon {
+            color: #f97316;
+        }
+        
+        .notification-info .p-menuitem-icon {
+            color: #3b82f6;
+        }
+    }
+    
+    .p-button-badge {
+        min-width: 1.25rem;
+        height: 1.25rem;
+        line-height: 1.25rem;
+    }
+}
