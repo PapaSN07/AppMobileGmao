@@ -136,7 +136,7 @@ async def add_equipment_mobile(request: AddEquipmentRequest) -> Dict[str, Any]:
         logger.error(f"❌ Erreur ajout équipement: {e}")
         raise HTTPException(status_code=500, detail=f"Erreur ajout équipement: {str(e)}")
 
-@equipment_router.patch("/{equipment_id}",
+@equipment_router.post("/{equipment_id}",
     summary="Modifier partiellement un équipement", 
     description="Modifie seulement les champs spécifiés d'un équipement et ses attributs"
 )
@@ -163,7 +163,7 @@ async def update_equipment_mobile_partial_endpoint(
             return {
                 "status": "success", 
                 "message": f"Équipement modifié avec succès ({len(updates)} champs)",
-                "method": "PATCH",
+                "method": "POST",
                 "updated_fields": list(updates.keys()),
                 "equipment": updated_equipment.to_dict() if updated_equipment else None
             }

@@ -297,6 +297,9 @@ def update_equipment_mobile(equipment_id: str, updates: Dict[str, Any]) -> tuple
                     is_approved=updates.get('is_approved', False)
                 )
                 
+                logger.info(f"Création équipement ClicClac avec les données: {updates}")
+                logger.info(f"Détails équipement: {new_equipment}")
+                
                 session.add(new_equipment)
                 session.flush()  # Pour obtenir l'ID auto-généré
 
@@ -331,25 +334,14 @@ def update_equipment_mobile(equipment_id: str, updates: Dict[str, Any]) -> tuple
 
                 # 4) Commit final
                 session.commit()
-                logger.info(f"✅ Équipement mis à jour ClicClac ID: {equipment_id_new} - Code: {updates['code']} créé avec succès")
-                logger.info(f"✅ {created_attributes} attributs créés")
-
-                # Invalider le cache (si applicable pour ClicClac)
-                invalidate_equipment_insertion_cache(
-                    str(updates['code']), 
-                    str(updates.get('entity', '')), 
-                    str(updates.get('famille', ''))
-                )
                 
                 # ✅ AJOUT : Envoyer notification à l'admin
                 import asyncio
-                
                 # Vérifier le role de l'utilisateur
                 user = get_user_connect(str(new_equipment.created_by))
                 
                 if user and isinstance(user, UserClicClac):
-                    supervisor = session.query(UserModel).filter_by(id=user.supervisor).first()
-                    supervisor_id = str(supervisor.id) if supervisor else "admin"
+                    supervisor_id = str(user.supervisor) or "admin"
                     asyncio.create_task(send_notification(
                         user_id=supervisor_id,  # ID du superviseur ou admin par défaut
                         title="Équipement mis à jour",
@@ -362,11 +354,18 @@ def update_equipment_mobile(equipment_id: str, updates: Dict[str, Any]) -> tuple
                     asyncio.create_task(send_notification(
                         user_id=user_id,  # ID du prestataire ou admin par défaut
                         title="Équipement mis à jour",
-                        message=f"L'équipement {updates['code']} a été mis à jour par {user_name}.",
+                        message=f"L'équipement {updates['code']} a été mis à jour par {user_name} utilisateur de GMAO.",
                         type="info",
                         broadcast=True
                     ))
 
+                # Invalider le cache (si applicable pour ClicClac)
+                invalidate_equipment_insertion_cache(
+                    str(updates['code']), 
+                    str(updates.get('entity', '')), 
+                    str(updates.get('famille', ''))
+                )
+                
                 return (True, equipment_id_new)
 
             except Exception as e:
@@ -645,13 +644,11 @@ def insert_equipment(equipment: EquipmentClicClac) -> tuple[bool, Optional[int]]
                 
                 # ✅ AJOUT : Envoyer notification à l'admin
                 import asyncio
-                
                 # Vérifier le role de l'utilisateur
                 user = get_user_connect(str(equipment.created_by))
                 
                 if user and isinstance(user, UserClicClac):
-                    supervisor = session.query(UserModel).filter_by(id=user.supervisor).first()
-                    supervisor_id = str(supervisor.id) if supervisor else "admin"
+                    supervisor_id = str(user.supervisor) or "admin"
                     asyncio.create_task(send_notification(
                         user_id=supervisor_id,  # ID du superviseur ou admin par défaut
                         title="Nouvel équipement créé",
