@@ -2,7 +2,7 @@ import logging
 
 from fastapi import APIRouter
 
-from app.services.equipment_service import archive_equipments, get_all_equipment_histories, get_all_equipment_web, update_equipment_existing
+from app.services.equipment_service import archive_equipments, get_all_equipment_histories, get_all_equipment_web, update_equipment_web
 from app.schemas.requests.equipment_request import ArchiveEquipmentRequest, UpdateEquipmentRequest 
 from app.schemas.responses.equipment_response import AllEquipmentHistoriesResponse, ArchiveEquipmentResponse, UpdateEquipmentResponse
 
@@ -41,14 +41,14 @@ async def get_equipments():
             "message": f"Erreur: {str(e)}"
         }
 
-@equipment_router_web.patch("/{equipment_id}",
-    summary="Mettre à jour un équipement (PATCH)",
+@equipment_router_web.post("/{equipment_id}",
+    summary="Mettre à jour un équipement (POST)",
     description="Met à jour un équipement existant dans la DB temporaire, seulement les champs changés",
 )
 async def update_equipment(equipment_id: str, request: UpdateEquipmentRequest):
-    """Met à jour un équipement existant avec PATCH"""
+    """Met à jour un équipement existant avec POST"""
     try:
-        success, message = update_equipment_existing(equipment_id, request.model_dump(exclude_unset=True))
+        success, message = update_equipment_web(equipment_id, request.model_dump(exclude_unset=True))
         
         if success:
             return UpdateEquipmentResponse(

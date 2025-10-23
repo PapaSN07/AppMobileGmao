@@ -18,7 +18,7 @@ from app.services.equipment_service import (
     get_equipments_infinite,
     get_feeders,
     insert_equipment,
-    update_equipment_partial
+    update_equipment_mobile
 )
 from app.services.centre_charge_service import get_centre_charges
 from app.services.entity_service import get_entities
@@ -119,6 +119,7 @@ async def add_equipment_mobile(request: AddEquipmentRequest) -> Dict[str, Any]:
         success, equipment_id = insert_equipment(equipment)
         
         if success:
+            
             return {
                 "status": "success",
                 "message": "Équipement ajouté avec succès",
@@ -139,7 +140,7 @@ async def add_equipment_mobile(request: AddEquipmentRequest) -> Dict[str, Any]:
     summary="Modifier partiellement un équipement", 
     description="Modifie seulement les champs spécifiés d'un équipement et ses attributs"
 )
-async def update_equipment_partial_endpoint(
+async def update_equipment_mobile_partial_endpoint(
     equipment_id: str, 
     request: UpdateEquipmentRequest
 ) -> Dict[str, Any]:
@@ -153,7 +154,7 @@ async def update_equipment_partial_endpoint(
             raise HTTPException(status_code=400, detail="Aucun champ à mettre à jour fourni")
         
         # Effectuer la mise à jour
-        success = update_equipment_partial(equipment_id, updates)
+        success = update_equipment_mobile(equipment_id, updates)
         
         if success:
             # Récupérer l'équipement mis à jour pour la réponse

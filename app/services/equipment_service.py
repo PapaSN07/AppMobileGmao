@@ -9,6 +9,8 @@ import logging
 from app.models.attribute_model import AttributeClicClac, HistoryAttributeClicClac
 from app.models.attribute_values_model import AttributeValues
 from app.models.equipment_model import EquipmentClicClac, EquipmentModel, EquipmentWithAttributesBuilder, HistoryEquipmentClicClac
+from app.models.user_model import UserClicClac, UserModel
+from app.services.auth_service import get_user_connect
 from app.services.notification_service import send_notification
 
 logger = logging.getLogger(__name__)
@@ -239,7 +241,7 @@ def get_equipment_by_id(equipment_id: str) -> Optional[EquipmentModel]:
         return None
 
 
-def update_equipment_partial(equipment_id: str, updates: Dict[str, Any]) -> tuple[bool, Optional[int]]:
+def update_equipment_mobile(equipment_id: str, updates: Dict[str, Any]) -> tuple[bool, Optional[int]]:
     """
     Crée un nouvel équipement dans la DB temporaire MSSQL (ClicClac) avec les mises à jour fournies.
     S'inspire de insert_equipment pour utiliser EquipmentClicClac et AttributeClicClac.
@@ -341,12 +343,29 @@ def update_equipment_partial(equipment_id: str, updates: Dict[str, Any]) -> tupl
                 
                 # ✅ AJOUT : Envoyer notification à l'admin
                 import asyncio
-                asyncio.create_task(send_notification(
-                    user_id="admin",  # Adapter pour récupérer l'ID admin réel depuis DB
-                    title="Équipement mis à jour",
-                    message=f"L'équipement {updates['code']} a été mis à jour.",
-                    type="info"
-                ))
+                
+                # Vérifier le role de l'utilisateur
+                user = get_user_connect(str(new_equipment.created_by))
+                
+                if user and isinstance(user, UserClicClac):
+                    supervisor = session.query(UserModel).filter_by(id=user.supervisor).first()
+                    supervisor_id = str(supervisor.id) if supervisor else "admin"
+                    asyncio.create_task(send_notification(
+                        user_id=supervisor_id,  # ID du superviseur ou admin par défaut
+                        title="Équipement mis à jour",
+                        message=f"L'équipement {updates['code']} a été mis à jour.",
+                        type="info"
+                    ))
+                else:
+                    user_id = str(user.id) if user else "unknown"
+                    user_name = str(new_equipment.created_by) if new_equipment else "inconnu"
+                    asyncio.create_task(send_notification(
+                        user_id=user_id,  # ID du prestataire ou admin par défaut
+                        title="Équipement mis à jour",
+                        message=f"L'équipement {updates['code']} a été mis à jour par {user_name}.",
+                        type="info",
+                        broadcast=True
+                    ))
 
                 return (True, equipment_id_new)
 
@@ -360,7 +379,7 @@ def update_equipment_partial(equipment_id: str, updates: Dict[str, Any]) -> tupl
         return (False, None)
 
 
-def update_equipment_existing(equipment_id: str, updates: Dict[str, Any]) -> tuple[bool, Optional[str]]:
+def update_equipment_web(equipment_id: str, updates: Dict[str, Any]) -> tuple[bool, Optional[str]]:
     """
     Met à jour un équipement existant dans la DB temporaire MSSQL (ClicClac) avec PATCH.
     Ne change que les champs qui ont réellement changé.
@@ -454,10 +473,14 @@ def update_equipment_existing(equipment_id: str, updates: Dict[str, Any]) -> tup
                 
                 # ✅ AJOUT : Envoyer notification à l'admin
                 import asyncio
+                
+                # Vérifier le role de l'utilisateur
+                user = get_user_connect(str(existing_equipment.created_by))
+                user_id = str(user.id) if user else "unknown"
                 asyncio.create_task(send_notification(
-                    user_id="admin",  # Adapter pour récupérer l'ID admin réel depuis DB
+                    user_id=user_id,  # ID du prestataire
                     title="Équipement modifié",
-                    message=f"L'équipement {existing_equipment.code} a été modifié (champs: {', '.join(updated_fields)}).",
+                    message=f"L'équipement {existing_equipment.code} a été modifié (champs: {', '.join(updated_fields)}).\nInspecté(e) par {str(existing_equipment.created_by)}.",
                     type="info"
                 ))
                 
@@ -622,13 +645,29 @@ def insert_equipment(equipment: EquipmentClicClac) -> tuple[bool, Optional[int]]
                 
                 # ✅ AJOUT : Envoyer notification à l'admin
                 import asyncio
-                asyncio.create_task(send_notification(
-                    user_id="admin",  # Adapter pour récupérer l'ID admin réel depuis DB
-                    title="Nouvel équipement créé",
-                    message=f"L'équipement {equipment.code} ({equipment.famille}) a été créé par {equipment.created_by or 'utilisateur inconnu'}.",
-                    type="success"
-                ))
-
+                
+                # Vérifier le role de l'utilisateur
+                user = get_user_connect(str(equipment.created_by))
+                
+                if user and isinstance(user, UserClicClac):
+                    supervisor = session.query(UserModel).filter_by(id=user.supervisor).first()
+                    supervisor_id = str(supervisor.id) if supervisor else "admin"
+                    asyncio.create_task(send_notification(
+                        user_id=supervisor_id,  # ID du superviseur ou admin par défaut
+                        title="Nouvel équipement créé",
+                        message=f"L'équipement {equipment.code} ({equipment.famille}) a été créé par le prestataire {equipment.created_by or 'utilisateur inconnu'}.",
+                        type="success"
+                    ))
+                else:
+                    user_id = str(user.id) if user else "unknown"
+                    asyncio.create_task(send_notification(
+                        user_id=user_id,  # ID du superviseur ou admin par défaut
+                        title="Nouvel équipement créé",
+                        message=f"L'équipement {equipment.code} ({equipment.famille}) a été créé par l'utilisateur GMAO {equipment.created_by or 'utilisateur inconnu'}.",
+                        type="success",
+                        broadcast=True
+                    ))
+                
                 return (True, equipment_id)
 
             except Exception as e:

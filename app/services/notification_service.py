@@ -6,7 +6,7 @@ import json
 
 logger = logging.getLogger(__name__)
 
-async def send_notification(user_id: str, title: str, message: str, type: str = "info"):
+async def send_notification(user_id: str, title: str, message: str, type: str = "info", broadcast: bool = False):
     """Envoie une notification en temps réel via WebSocket"""
     notification = NotificationModel(
         user_id=user_id,
@@ -23,8 +23,12 @@ async def send_notification(user_id: str, title: str, message: str, type: str = 
     cache.set(cache_key, json.dumps(notifications), ttl=7*24*3600)  # 7 jours
     
     # Envoyer via WebSocket si connecté
-    await manager.send_to_user(notification.model_dump(mode='json'), user_id)
-    logger.info(f"📬 Notification envoyée à {user_id}: {title}")
+    if broadcast:
+        await manager.broadcast(notification.model_dump(mode='json'))
+        logger.info(f"📬 Notification diffusée: {title}")
+    else:
+        await manager.send_to_user(notification.model_dump(mode='json'), user_id)
+        logger.info(f"📬 Notification envoyée à {user_id}: {title}")
 
 async def notify_equipment_created(user_id: str, equipment_code: str):
     """Notification pour création d'équipement"""
