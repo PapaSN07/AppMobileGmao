@@ -4,8 +4,8 @@ import 'package:appmobilegmao/screens/widgets/empty_notifications_screen.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:appmobilegmao/utils/responsive.dart';
 import 'package:appmobilegmao/theme/responsive_spacing.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 class NotificationsScreen extends StatelessWidget {
@@ -162,6 +162,16 @@ class NotificationsScreen extends StatelessWidget {
     Responsive responsive,
     ResponsiveSpacing spacing,
   ) {
+    // ✅ VALIDATION: Vérifier que l'ID est valide
+    if (notification.id <= 0) {
+      if (kDebugMode) {
+        print(
+          '⚠️ NotificationCard: ID invalide (${notification.id}), carte ignorée',
+        );
+      }
+      return const SizedBox.shrink();
+    }
+
     // Déterminer l'icône et la couleur selon le type
     IconData icon;
     Color iconColor;
@@ -217,8 +227,27 @@ class NotificationsScreen extends StatelessWidget {
       },
       child: InkWell(
         onTap: () async {
-          if (!notification.isRead) {
-            await provider.markAsRead(notification.id);
+          // ✅ VALIDATION: Ne marquer comme lu que si l'ID est valide
+          if (!notification.isRead && notification.id > 0) {
+            try {
+              await provider.markAsRead(notification.id);
+              if (kDebugMode) {
+                print('✅ Notification ${notification.id} marquée comme lue');
+              }
+            } catch (e) {
+              if (kDebugMode) {
+                print('❌ Erreur lors du marquage: $e');
+              }
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Erreur: $e'),
+                    backgroundColor: Colors.red,
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            }
           }
         },
         child: Container(
@@ -247,7 +276,7 @@ class NotificationsScreen extends StatelessWidget {
             children: [
               // Icône
               Container(
-                padding: spacing.custom(all: 10),
+                padding: spacing.custom(all: 8),
                 decoration: BoxDecoration(
                   color: iconColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(responsive.spacing(10)),
@@ -255,7 +284,7 @@ class NotificationsScreen extends StatelessWidget {
                 child: Icon(
                   icon,
                   color: iconColor,
-                  size: responsive.iconSize(24),
+                  size: responsive.iconSize(28),
                 ),
               ),
               SizedBox(width: spacing.medium),
@@ -265,37 +294,22 @@ class NotificationsScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            notification.title,
-                            style: TextStyle(
-                              fontFamily: AppTheme.fontMontserrat,
-                              fontWeight: FontWeight.bold,
-                              color: AppTheme.secondaryColor,
-                              fontSize: responsive.sp(16),
-                            ),
-                          ),
-                        ),
-                        if (!notification.isRead)
-                          Container(
-                            width: responsive.spacing(10),
-                            height: responsive.spacing(10),
-                            decoration: const BoxDecoration(
-                              color: AppTheme.secondaryColor,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                      ],
+                    Text(
+                      notification.title,
+                      style: TextStyle(
+                        fontSize: responsive.sp(16),
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.secondaryColor,
+                        fontFamily: AppTheme.fontMontserrat,
+                      ),
                     ),
                     SizedBox(height: spacing.tiny),
                     Text(
                       notification.message,
                       style: TextStyle(
-                        fontFamily: AppTheme.fontRoboto,
-                        color: AppTheme.thirdColor,
                         fontSize: responsive.sp(14),
+                        color: AppTheme.thirdColor,
+                        fontFamily: AppTheme.fontRoboto,
                       ),
                     ),
                     SizedBox(height: spacing.tiny),
@@ -327,11 +341,11 @@ class NotificationsScreen extends StatelessWidget {
     } else if (difference.inHours < 1) {
       return 'Il y a ${difference.inMinutes} min';
     } else if (difference.inDays < 1) {
-      return 'Il y a ${difference.inHours}h';
+      return 'Il y a ${difference.inHours} h';
     } else if (difference.inDays < 7) {
-      return 'Il y a ${difference.inDays}j';
+      return 'Il y a ${difference.inDays} j';
     } else {
-      return DateFormat('dd/MM/yyyy HH:mm').format(timestamp);
+      return '${timestamp.day}/${timestamp.month}/${timestamp.year}';
     }
   }
 }

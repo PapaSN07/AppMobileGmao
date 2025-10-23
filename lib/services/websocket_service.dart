@@ -12,7 +12,7 @@ import 'package:flutter/material.dart';
 
 class WebSocketService {
   static final _apiService = ApiService();
-  
+
   // ✅ CORRECTION: Utiliser la même IP que ApiService
   static String get macIpAddress => _apiService.macIpAddress;
   static int get defaultPort => _apiService.defaultPort;
@@ -177,8 +177,26 @@ class WebSocketService {
         return;
       }
 
+      // ✅ VALIDATION: Vérifier et générer l'ID si manquant
+      if (data['id'] == null) {
+        data['id'] = DateTime.now().millisecondsSinceEpoch;
+        if (kDebugMode) {
+          print(
+            '⚠️ WebSocket: Notification sans ID, génération locale: ${data['id']}',
+          );
+        }
+      }
+
       // Créer l'objet notification
       final notification = NotificationModel.fromJson(data);
+
+      // ✅ SÉCURITÉ: Vérifier que l'ID est valide avant d'ajouter
+      if (notification.id <= 0) {
+        if (kDebugMode) {
+          print('❌ WebSocket: ID invalide, notification ignorée');
+        }
+        return;
+      }
 
       // Ajouter à la liste
       _notifications.insert(0, notification);
@@ -191,7 +209,9 @@ class WebSocketService {
       _showNotificationToast(notification);
 
       if (kDebugMode) {
-        print('✅ WebSocket: Notification traitée - ${notification.title}');
+        print(
+          '✅ WebSocket: Notification traitée - ${notification.title} (ID: ${notification.id})',
+        );
       }
     } catch (e) {
       if (kDebugMode) {
@@ -324,6 +344,16 @@ class WebSocketService {
 
   // ✅ Marquer une notification comme lue
   Future<void> markAsRead(int notificationId) async {
+    // ✅ VALIDATION: Vérifier que l'ID est valide
+    if (notificationId <= 0) {
+      if (kDebugMode) {
+        print(
+          '❌ WebSocket: ID invalide ($notificationId), impossible de marquer comme lu',
+        );
+      }
+      return;
+    }
+
     if (!_isConnected || _channel == null) {
       if (kDebugMode) {
         print('⚠️ WebSocket: Non connecté, impossible de marquer comme lu');
@@ -405,6 +435,16 @@ class WebSocketService {
 
   // ✅ Supprimer une notification
   void deleteNotification(int notificationId) {
+    // ✅ VALIDATION: Vérifier que l'ID est valide
+    if (notificationId <= 0) {
+      if (kDebugMode) {
+        print(
+          '❌ WebSocket: ID invalide ($notificationId), impossible de supprimer',
+        );
+      }
+      return;
+    }
+
     _notifications.removeWhere((n) => n.id == notificationId);
     _unreadCountController.add(unreadCount);
 

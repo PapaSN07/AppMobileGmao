@@ -127,7 +127,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         height: spacing.large,
                       ), // ✅ Espacement responsive
                       Text(
-                        'GMAO Mobile',
+                        'GMAO Mobile de la Senelec',
                         style: TextStyle(
                           fontSize: responsive.sp(18), // ✅ Texte responsive
                           fontWeight: FontWeight.bold,

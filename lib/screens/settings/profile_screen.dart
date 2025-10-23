@@ -1,5 +1,6 @@
 import 'package:appmobilegmao/provider/auth_provider.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
+import 'package:appmobilegmao/utils/string_utils.dart';
 import 'package:flutter/material.dart';
 
 import 'package:provider/provider.dart';
@@ -137,8 +138,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     ResponsiveSpacing spacing,
   ) {
     final user = authProvider.currentUser;
-    String nom = user?.username.split('.').last ?? '';
-    String prenom = user?.username.split('.').first ?? '';
+    // ✅ UTILISATION: Parser le username avec la méthode utilitaire
+    final userInfo = StringUtils.parseUserName(user?.username);
+    final initiales = userInfo['initiales']!;
     return Container(
       width: responsive.spacing(120), // ✅ Largeur responsive
       height: responsive.spacing(120), // ✅ Hauteur responsive
@@ -159,7 +161,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     // En cas d'erreur de chargement, afficher les initiales
                     return Center(
                       child: Text(
-                        "${prenom[0].toUpperCase()}${nom[0].toUpperCase()}",
+                        initiales,
                         style: TextStyle(
                           fontSize: responsive.sp(36), // ✅ Texte responsive
                           fontWeight: FontWeight.bold,
@@ -172,7 +174,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 )
                 : Center(
                   child: Text(
-                    "${prenom[0].toUpperCase()}${nom[0].toUpperCase()}", // Initiales par défaut
+                    initiales,
                     style: TextStyle(
                       fontSize: responsive.sp(36), // ✅ Texte responsive
                       fontWeight: FontWeight.bold,

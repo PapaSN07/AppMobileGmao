@@ -885,7 +885,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
           selectors['feeders'] ?? [],
         ),
         'feeder_description': selectedFeeder,
-        'created_by': authProvider.currentUser?.username ?? 'mobile_app',
+        'created_by': authProvider.currentUser?.username ?? '',
         'attributs': attributs,
       };
 

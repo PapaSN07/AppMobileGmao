@@ -204,7 +204,7 @@ class ProfilMenu extends StatelessWidget {
                                     ),
                                     child: Center(
                                       child: Text(
-                                        "${prenom[0].toUpperCase()}${nom[0].toUpperCase()}",
+                                        nom == prenom ? nom[0].toUpperCase() : "${prenom[0].toUpperCase()}${nom[0].toUpperCase()}",
                                         style: TextStyle(
                                           fontSize: responsive.sp(
                                             30,
@@ -250,7 +250,7 @@ class ProfilMenu extends StatelessWidget {
                               ), // ✅ Espacement responsive
                               // Nom complet
                               Text(
-                                "$prenom $nom",
+                                nom == prenom ? nom : "$prenom $nom",
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: responsive.sp(

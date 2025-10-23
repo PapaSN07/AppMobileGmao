@@ -199,6 +199,7 @@ class EquipmentProvider extends ChangeNotifier {
   Future<void> addEquipment(Map<String, dynamic> equipmentData) async {
     await _checkConnectivity();
     if (_isOffline) throw Exception('Mode hors ligne');
+    var currentUser = _authProvider.currentUser;
 
     final equipment = Equipment(
       code: equipmentData['code'] ?? '',
@@ -217,6 +218,7 @@ class EquipmentProvider extends ChangeNotifier {
       longitude: equipmentData['longitude'] ?? '',
       latitude: equipmentData['latitude'] ?? '',
       attributes: _extractAttributes(equipmentData['attributs']),
+      createdBy: currentUser?.username ?? '',
     );
 
     await _equipmentService.addEquipment(equipment);
@@ -232,7 +234,7 @@ class EquipmentProvider extends ChangeNotifier {
     await _checkConnectivity();
     if (_isOffline) throw Exception('Mode hors ligne');
 
-    final updated = await _equipmentService.updateEquipment(id, fields);
+    final updated = await _equipmentService.updateEquipment(int.parse(id), fields);
     final updatedMap = _toMap(updated);
 
     final idxAll = _allEquipments.indexWhere((e) => e['id'] == id);

@@ -1,4 +1,5 @@
 import 'package:appmobilegmao/screens/equipments/history_equipment_screen.dart';
+import 'package:appmobilegmao/utils/string_utils.dart';
 import 'package:appmobilegmao/widgets/custom_bottom_navigation_bar.dart';
 import 'package:appmobilegmao/widgets/custom_buttons.dart';
 import 'package:flutter/material.dart';
@@ -130,14 +131,15 @@ class _MainScreenState extends State<MainScreen> {
   void _openProfile() {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final user = authProvider.currentUser;
-
+    // ✅ UTILISATION: Parser le username avec la méthode utilitaire
+    final userInfo = StringUtils.parseUserName(user?.username);
     if (user != null) {
       Navigator.of(context).push(
         PageRouteBuilder(
           pageBuilder:
               (context, animation, secondaryAnimation) => ProfilMenu(
-                nom: user.username.split('.').last,
-                prenom: user.username.split('.').first,
+                nom: userInfo['nom']!,
+                prenom: userInfo['prenom']!,
                 email: user.email,
                 role:
                     (user.group?.trim().isNotEmpty == true)
