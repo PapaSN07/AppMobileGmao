@@ -10,28 +10,33 @@ import { Tools } from '../utils';
 export class EquipmentService {
     private apiUrl = `${environment.apiUrl}/equipments`;
 
-    constructor(private http: HttpClient) {}
+    constructor(private http: HttpClient) {
+        this.getAll();
+    }
+
+    private dataSource: Observable<Equipment[]> = new Observable<Equipment[]>();
 
     getAll(): Observable<Equipment[]> {
-        return this.http.get<EquipmentResponse>(this.apiUrl).pipe(
+        this.dataSource = this.http.get<EquipmentResponse>(this.apiUrl).pipe(
             map(response => (response.data || []).map(equipment => Tools.transformKeys(equipment)))
         );
+        return this.dataSource;
     }
 
     getAllNoApproved(): Observable<Equipment[]> {
-        return this.getAll().pipe(
+        return this.dataSource.pipe(
             map(equipments => equipments.filter(equipment => equipment.isNew && !equipment.isApproved && !equipment.isRejected))
         );
     }
 
     getAllNoModified(): Observable<Equipment[]> {
-        return this.getAll().pipe(
+        return this.dataSource.pipe(
             map(equipments => equipments.filter(equipment => equipment.isUpdate && !equipment.isApproved && !equipment.isRejected))
         );
     }
 
     getAllApproved(): Observable<Equipment[]> {
-        return this.getAll().pipe(
+        return this.dataSource.pipe(
             map(equipments => equipments.filter(equipment => equipment.isApproved))
         );
     }

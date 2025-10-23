@@ -6,7 +6,7 @@ import { MenuModule } from 'primeng/menu';
 import { StyleClassModule } from 'primeng/styleclass';
 import { Configurator } from '../configurator/configurator';
 import { MenuItem } from 'primeng/api';
-import { LayoutService } from '../../../core/services/state/layout.service';
+import { LayoutService } from '../../state/layout.service';
 import { AvatarModule } from 'primeng/avatar';
 import { BadgeModule } from 'primeng/badge';
 import { AuthService } from '../../../core/services/api';
