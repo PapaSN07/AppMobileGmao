@@ -61,6 +61,30 @@ class UpdateEquipmentRequest(BaseModel):
     is_rejected: Optional[bool] = Field(None, description="Est rejeté")
     attributes: Optional[List[Dict[str, Any]]] = Field(None, description="Liste des attributs")
     commentaire: Optional[str] = Field(None, description="Commentaire sur l'équipement")
+    
+class UpdateEquipmentWebRequest(BaseModel):
+    """Schéma pour la modification d'un équipement"""
+    famille: Optional[str] = Field(None, description="Famille de l'équipement")
+    unite: Optional[str] = Field(None, description="Unité")
+    centreCharge: Optional[str] = Field(None, description="Centre de charge")  # Note: camelCase depuis frontend
+    zone: Optional[str] = Field(None, description="Zone")
+    entity: Optional[str] = Field(None, description="Entité")
+    feeder: Optional[str] = Field(None, description="Feeder")
+    feederDescription: Optional[str] = Field(None, description="Description du feeder")
+    localisation: Optional[str] = Field(None, description="Localisation")
+    codeParent: Optional[str] = Field(None, description="Code parent")
+    code: Optional[str] = Field(None, description="Code de l'équipement")
+    description: Optional[str] = Field(None, description="Description")
+    createdAt: Optional[str] = Field(None, description="Date de création (ISO)")
+    updatedAt: Optional[str] = Field(None, description="Date de mise à jour (ISO)")
+    createdBy: Optional[str] = Field(None, description="Créé par")
+    judgedBy: Optional[str] = Field(None, description="Juré par")
+    isUpdate: Optional[bool] = Field(None, description="Est une mise à jour")
+    isNew: Optional[bool] = Field(None, description="Est nouveau")
+    isApproved: Optional[bool] = Field(None, description="Est approuvé")
+    isRejected: Optional[bool] = Field(None, description="Est rejeté")
+    attributes: Optional[List[Dict[str, Any]]] = Field(None, description="Liste des attributs")
+    commentaire: Optional[str] = Field(None, description="Commentaire sur l'équipement")
 
 class ArchiveEquipmentRequest(BaseModel):
     equipment_ids: List[str] = Field(..., description="Liste des IDs des équipements à archiver")

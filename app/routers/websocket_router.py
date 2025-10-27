@@ -37,13 +37,6 @@ async def websocket_notifications(
         await manager.connect(websocket, user_id)
         logger.info(f"✅ WebSocket connecté pour user_id={user_id}")
         
-        # ✅ Envoyer un message de bienvenue pour confirmer la connexion
-        await websocket.send_text(json.dumps({
-            "type": "connected",
-            "message": f"WebSocket connecté avec succès pour {user_id}",
-            "timestamp": "2025-10-20T00:00:00Z"
-        }))
-        
         try:
             while True:
                 # Recevoir les messages du client

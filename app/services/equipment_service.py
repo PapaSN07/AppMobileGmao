@@ -1,15 +1,15 @@
-from sqlalchemy import cast
 from app.db.sqlalchemy.session import get_main_session, get_temp_session, SQLAlchemyQueryExecutor
 from app.core.config import CACHE_TTL_SHORT
 from app.db.requests import (ATTRIBUTE_VALUES_QUERY, EQUIPMENT_BY_ID_QUERY, EQUIPMENT_CLASSE_ATTRIBUTS_QUERY, EQUIPMENT_INFINITE_QUERY, FEEDER_QUERY)
 from app.core.cache import cache, invalidate_equipment_insertion_cache
+from app.services.statistique_service import invalidate_statistics_cache
 from typing import Dict, Any, List, Optional
 import logging
 
 from app.models.attribute_model import AttributeClicClac, HistoryAttributeClicClac
 from app.models.attribute_values_model import AttributeValues
 from app.models.equipment_model import EquipmentClicClac, EquipmentModel, EquipmentWithAttributesBuilder, HistoryEquipmentClicClac
-from app.models.user_model import UserClicClac, UserModel
+from app.models.user_model import UserClicClac
 from app.services.auth_service import get_user_connect
 from app.services.notification_service import send_notification
 
@@ -334,6 +334,7 @@ def update_equipment_mobile(equipment_id: str, updates: Dict[str, Any]) -> tuple
 
                 # 4) Commit final
                 session.commit()
+                invalidate_statistics_cache()  # ✅ AJOUT : Invalider le cache des statistiques
                 
                 # ✅ AJOUT : Envoyer notification à l'admin
                 import asyncio
@@ -351,12 +352,14 @@ def update_equipment_mobile(equipment_id: str, updates: Dict[str, Any]) -> tuple
                 else:
                     user_id = str(user.id) if user else "unknown"
                     user_name = str(new_equipment.created_by) if new_equipment else "inconnu"
+                    # ✅ CORRECTION : Passer sender_id pour exclure l'émetteur
                     asyncio.create_task(send_notification(
-                        user_id=user_id,  # ID du prestataire ou admin par défaut
+                        user_id="all",
                         title="Équipement mis à jour",
                         message=f"L'équipement {updates['code']} a été mis à jour par {user_name} utilisateur de GMAO.",
                         type="info",
-                        broadcast=True
+                        broadcast=True,
+                        sender_id=user_id  # ✅ AJOUT : Exclure le modificateur
                     ))
 
                 # Invalider le cache (si applicable pour ClicClac)
@@ -390,6 +393,7 @@ def update_equipment_web(equipment_id: str, updates: Dict[str, Any]) -> tuple[bo
         # Utiliser SQLAlchemy session temporaire (MSSQL)
         with get_temp_session() as session:
             # 1) Récupérer l'équipement existant
+            
             existing_equipment = session.query(EquipmentClicClac).filter(EquipmentClicClac.id == equipment_id).first()
             
             if not existing_equipment:
@@ -469,6 +473,7 @@ def update_equipment_web(equipment_id: str, updates: Dict[str, Any]) -> tuple[bo
                     str(existing_equipment.entity), 
                     str(existing_equipment.famille)
                 )
+                invalidate_statistics_cache()  # ✅ AJOUT : Invalider le cache des statistiquesuv
                 
                 # ✅ AJOUT : Envoyer notification à l'admin
                 import asyncio
@@ -657,12 +662,14 @@ def insert_equipment(equipment: EquipmentClicClac) -> tuple[bool, Optional[int]]
                     ))
                 else:
                     user_id = str(user.id) if user else "unknown"
+                    # ✅ CORRECTION : Passer sender_id pour exclure l'émetteur
                     asyncio.create_task(send_notification(
-                        user_id=user_id,  # ID du superviseur ou admin par défaut
+                        user_id="all",
                         title="Nouvel équipement créé",
                         message=f"L'équipement {equipment.code} ({equipment.famille}) a été créé par l'utilisateur GMAO {equipment.created_by or 'utilisateur inconnu'}.",
                         type="success",
-                        broadcast=True
+                        broadcast=True,
+                        sender_id=user_id  # ✅ AJOUT : Exclure le créateur
                     ))
                 
                 return (True, equipment_id)
@@ -791,6 +798,7 @@ def archive_equipments(equipment_ids: List[str]) -> tuple[bool, str, int, List[s
                     
                     # 7) Commit final pour cet équipement (persistance atomique)
                     session.commit()
+                    invalidate_statistics_cache()  # ✅ AJOUT
                     
                     archived_count += 1
                     logger.info(f"✅ Équipement {equipment_id} ({equipment.code}) archivé avec {len(attributes)} attributs")

@@ -23,6 +23,7 @@ from app.routers.mobile.zone_router import zone_router
 from app.core.cache import cache
 from app.routers.websocket_router import router_ws
 from app.routers.notification_router import router_notification
+from app.routers.web.statistique_router import statistique_router_web
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -223,6 +224,7 @@ PREFIX_WEB = "/api/v1/web"
 app.include_router(equipment_router_web, prefix=PREFIX_WEB)
 app.include_router(user_router_web, prefix=PREFIX_WEB)
 app.include_router(entity_router_web, prefix=PREFIX_WEB)
+app.include_router(statistique_router_web, prefix=PREFIX_WEB)
 
 # Inclusion du routeur pour les websockets
 app.include_router(router_ws, tags=["WebSocket - Notifications"])

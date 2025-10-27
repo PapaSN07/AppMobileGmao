@@ -3,7 +3,7 @@ import logging
 from fastapi import APIRouter
 
 from app.services.equipment_service import archive_equipments, get_all_equipment_histories, get_all_equipment_web, update_equipment_web
-from app.schemas.requests.equipment_request import ArchiveEquipmentRequest, UpdateEquipmentRequest 
+from app.schemas.requests.equipment_request import ArchiveEquipmentRequest, UpdateEquipmentWebRequest 
 from app.schemas.responses.equipment_response import AllEquipmentHistoriesResponse, ArchiveEquipmentResponse, UpdateEquipmentResponse
 
 
@@ -40,38 +40,6 @@ async def get_equipments():
             "count": 0,
             "message": f"Erreur: {str(e)}"
         }
-
-@equipment_router_web.post("/{equipment_id}",
-    summary="Mettre à jour un équipement (POST)",
-    description="Met à jour un équipement existant dans la DB temporaire, seulement les champs changés",
-)
-async def update_equipment(equipment_id: str, request: UpdateEquipmentRequest):
-    """Met à jour un équipement existant avec POST"""
-    try:
-        success, message = update_equipment_web(equipment_id, request.model_dump(exclude_unset=True))
-        
-        if success:
-            return UpdateEquipmentResponse(
-                success=True,
-                message=message or "Équipement mis à jour avec succès",
-                data={"id": equipment_id},  # Retourner l'ID de l'équipement mis à jour
-                error_code=None
-            )
-        else:
-            return UpdateEquipmentResponse(
-                success=False,
-                message=message or "Échec de la mise à jour de l'équipement",
-                error_code="UPDATE_FAILED",
-                data=None
-            )
-    except Exception as e:
-        logger.error(f"❌ Erreur dans PATCH update_equipment: {e}")
-        return UpdateEquipmentResponse(
-            success=False,
-            message=f"Erreur interne: {str(e)}",
-            error_code="INTERNAL_ERROR",
-            data=None
-        )
 
 @equipment_router_web.post("/archive",
     summary="Archiver des équipements",
@@ -132,4 +100,37 @@ async def get_all_equipment_histories_endpoint():
             count=0,
             status="error",
             message=f"Erreur interne: {str(e)}"
+        )        
+
+
+@equipment_router_web.post("/{equipment_id}",
+    summary="Mettre à jour un équipement (POST)",
+    description="Met à jour un équipement existant dans la DB temporaire, seulement les champs changés",
+)
+async def update_equipment(equipment_id: str, request: UpdateEquipmentWebRequest):
+    """Met à jour un équipement existant avec POST"""
+    try:
+        success, message = update_equipment_web(equipment_id, request.model_dump())
+        
+        if success:
+            return UpdateEquipmentResponse(
+                success=True,
+                message=message or "Équipement mis à jour avec succès",
+                data={"id": equipment_id},  # Retourner l'ID de l'équipement mis à jour
+                error_code=None
+            )
+        else:
+            return UpdateEquipmentResponse(
+                success=False,
+                message=message or "Échec de la mise à jour de l'équipement",
+                error_code="UPDATE_FAILED",
+                data=None
+            )
+    except Exception as e:
+        logger.error(f"❌ Erreur dans PATCH update_equipment: {e}")
+        return UpdateEquipmentResponse(
+            success=False,
+            message=f"Erreur interne: {str(e)}",
+            error_code="INTERNAL_ERROR",
+            data=None
         )
