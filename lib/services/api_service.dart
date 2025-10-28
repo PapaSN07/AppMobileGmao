@@ -24,7 +24,7 @@ class ApiService {
 
   static const Duration _timeout = Duration(seconds: 60);
   static const int _defaultPort = 8000;
-  static const String _macIpAddress = '172.16.9.192';
+  static const String _macIpAddress = '172.16.10.186';
   // static const int _defaultPort = 9099;
   // static const String _macIpAddress = 'domtec.senelec.sn';
 

@@ -169,28 +169,35 @@ class WebSocketService {
 
       final data = jsonDecode(message as String);
 
-      // Vérifier si c'est un pong (réponse au ping)
-      if (data['type'] == 'pong') {
+      // ✅ Filtrer les messages de contrôle
+      final messageType = data['type']?.toString().toLowerCase();
+      if (messageType == 'connected' ||
+          messageType == 'pong' ||
+          messageType == 'ping') {
         if (kDebugMode) {
-          print('🏓 WebSocket: Pong reçu - connexion active');
+          print('🔔 WebSocket: Message de contrôle ignoré - $messageType');
         }
         return;
       }
 
-      // ✅ VALIDATION: Vérifier et générer l'ID si manquant
+      // ✅ Vérifier que c'est une vraie notification
+      if (data['title'] == null || data['message'] == null) {
+        if (kDebugMode) {
+          print('⚠️ WebSocket: Message incomplet, ignoré');
+        }
+        return;
+      }
+
+      // ✅ Générer ID si manquant
       if (data['id'] == null) {
         data['id'] = DateTime.now().millisecondsSinceEpoch;
         if (kDebugMode) {
-          print(
-            '⚠️ WebSocket: Notification sans ID, génération locale: ${data['id']}',
-          );
+          print('⚠️ WebSocket: ID généré localement: ${data['id']}');
         }
       }
 
-      // Créer l'objet notification
+      // Créer et valider la notification
       final notification = NotificationModel.fromJson(data);
-
-      // ✅ SÉCURITÉ: Vérifier que l'ID est valide avant d'ajouter
       if (notification.id <= 0) {
         if (kDebugMode) {
           print('❌ WebSocket: ID invalide, notification ignorée');
@@ -198,24 +205,18 @@ class WebSocketService {
         return;
       }
 
-      // Ajouter à la liste
+      // Ajouter la notification
       _notifications.insert(0, notification);
-
-      // Notifier les listeners
       _notificationController.add(notification);
       _unreadCountController.add(unreadCount);
-
-      // Afficher la notification à l'utilisateur
       _showNotificationToast(notification);
 
       if (kDebugMode) {
-        print(
-          '✅ WebSocket: Notification traitée - ${notification.title} (ID: ${notification.id})',
-        );
+        print('✅ WebSocket: Notification traitée - ${notification.title}');
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ WebSocket: Erreur de traitement du message: $e');
+        print('❌ WebSocket: Erreur traitement: $e');
       }
     }
   }

@@ -1,3 +1,5 @@
+import 'package:appmobilegmao/utils/upper_case_text_formatter.dart';
+import 'package:appmobilegmao/widgets/equipments/equipment_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:appmobilegmao/widgets/tools.dart';
@@ -5,9 +7,9 @@ import 'package:appmobilegmao/widgets/equipments/equipment_dropdown.dart';
 import 'package:appmobilegmao/utils/equipment_helpers.dart';
 import 'package:appmobilegmao/utils/responsive.dart';
 import 'package:appmobilegmao/theme/responsive_spacing.dart';
+import 'package:flutter/services.dart';
 
 class EquipmentFormFields extends StatelessWidget {
-  final String? generatedCode;
   final String? selectedFamille;
   final String? selectedZone;
   final String? selectedEntity;
@@ -17,6 +19,8 @@ class EquipmentFormFields extends StatelessWidget {
   final String? selectedFeeder;
   final TextEditingController descriptionController;
   final FocusNode descriptionFocusNode;
+  final TextEditingController abbreviationController;
+  final FocusNode abbreviationFocusNode;
   final List<Map<String, dynamic>> familles;
   final List<Map<String, dynamic>> zones;
   final List<Map<String, dynamic>> entities;
@@ -37,7 +41,6 @@ class EquipmentFormFields extends StatelessWidget {
 
   const EquipmentFormFields({
     super.key,
-    this.generatedCode,
     required this.selectedFamille,
     required this.selectedZone,
     required this.selectedEntity,
@@ -47,6 +50,8 @@ class EquipmentFormFields extends StatelessWidget {
     required this.selectedFeeder,
     required this.descriptionController,
     required this.descriptionFocusNode,
+    required this.abbreviationController,
+    required this.abbreviationFocusNode,
     required this.familles,
     required this.zones,
     required this.entities,
@@ -76,7 +81,7 @@ class EquipmentFormFields extends StatelessWidget {
         // Section Informations
         Tools.buildFieldset(context, 'Informations'), // ✅ Context ajouté
         SizedBox(height: spacing.small), // ✅ Espacement responsive
-        _buildCodeAndFamilleRow(
+        _buildUniteAndFamilleRow(
           context,
           responsive,
           spacing,
@@ -88,20 +93,13 @@ class EquipmentFormFields extends StatelessWidget {
           spacing,
         ), // ✅ Paramètres ajoutés
         SizedBox(height: spacing.medium), // ✅ Espacement responsive
-        _buildUniteAndChargeRow(
+        _buildCentreChargeAndAbbreviationRow(
           context,
           responsive,
           spacing,
         ), // ✅ Paramètres ajoutés
         SizedBox(height: spacing.medium), // ✅ Espacement responsive
-        Tools.buildTextField(
-          context: context, // ✅ Context ajouté
-          label: 'Description',
-          msgError: 'Veuillez entrer la description',
-          focusNode: descriptionFocusNode,
-          controller: descriptionController,
-          isRequired: false,
-        ),
+        _buildDescriptionField(responsive, spacing), // ✅ Refactorisé en méthode
         SizedBox(height: spacing.xlarge), // ✅ Espacement responsive
         // Section Informations parents
         Tools.buildFieldset(
@@ -110,11 +108,11 @@ class EquipmentFormFields extends StatelessWidget {
         ), // ✅ Context ajouté
         SizedBox(height: spacing.small), // ✅ Espacement responsive
         EquipmentDropdown(
-          label: 'Code Parent',
+          label: 'Code Feeder',
           items: EquipmentHelpers.getSelectorsOptions(feeders, codeKey: 'code'),
           selectedValue: selectedCodeParent,
           onChanged: onCodeParentChanged,
-          hintText: 'Rechercher ou sélectionner un code parent...',
+          hintText: 'Rechercher ou sélectionner un code feeder parent...',
           isRequired: false,
         ),
         SizedBox(height: spacing.medium), // ✅ Espacement responsive
@@ -132,30 +130,26 @@ class EquipmentFormFields extends StatelessWidget {
     );
   }
 
-  Widget _buildCodeAndFamilleRow(
+  Widget _buildDescriptionField(Responsive responsive, ResponsiveSpacing spacing) {
+  return EquipmentTextField(
+    label: 'Description',
+    hintText: 'Description de l\'équipement...',
+    controller: descriptionController,
+    focusNode: descriptionFocusNode,
+    isRequired: false,
+    maxLength: 255,
+    keyboardType: TextInputType.text,
+    maxLines: 1,
+  );
+}
+
+  Widget _buildUniteAndFamilleRow(
     BuildContext context,
     Responsive responsive,
     ResponsiveSpacing spacing,
   ) {
     return Row(
       children: [
-        Expanded(
-          child:
-              isCodeEditable
-                  ? Tools.buildTextField(
-                    context: context, // ✅ Context ajouté
-                    label: 'Code',
-                    msgError: 'Veuillez entrer le code',
-                    controller: TextEditingController(text: generatedCode),
-                    isRequired: true,
-                  )
-                  : Tools.buildText(
-                    context,
-                    label: 'Code',
-                    value: generatedCode ?? '',
-                  ), // ✅ Context ajouté
-        ),
-        SizedBox(width: spacing.small), // ✅ Espacement responsive
         Expanded(
           child: EquipmentDropdown(
             label: 'Famille',
@@ -165,6 +159,17 @@ class EquipmentFormFields extends StatelessWidget {
             onChanged: onFamilleChanged,
             hintText: 'Rechercher une famille...',
             isRequired: true,
+          ),
+        ),
+        SizedBox(width: spacing.small),
+        Expanded(
+          child: EquipmentDropdown(
+            label: 'Unité',
+            items: EquipmentHelpers.getSelectorsOptions(unites),
+            selectedValue: selectedUnite,
+            onChanged: onUniteChanged,
+            hintText: 'Rechercher une unité...',
+            isRequired: false,
           ),
         ),
       ],
@@ -204,7 +209,7 @@ class EquipmentFormFields extends StatelessWidget {
     );
   }
 
-  Widget _buildUniteAndChargeRow(
+  Widget _buildCentreChargeAndAbbreviationRow(
     BuildContext context,
     Responsive responsive,
     ResponsiveSpacing spacing,
@@ -213,23 +218,42 @@ class EquipmentFormFields extends StatelessWidget {
       children: [
         Expanded(
           child: EquipmentDropdown(
-            label: 'Unité',
-            items: EquipmentHelpers.getSelectorsOptions(unites),
-            selectedValue: selectedUnite,
-            onChanged: onUniteChanged,
-            hintText: 'Rechercher une unité...',
-            isRequired: false,
-          ),
-        ),
-        SizedBox(width: spacing.small), // ✅ Espacement responsive
-        Expanded(
-          child: EquipmentDropdown(
             label: 'Centre de Charge',
             items: EquipmentHelpers.getSelectorsOptions(centreCharges),
             selectedValue: selectedCentreCharge,
             onChanged: onCentreChargeChanged,
             hintText: 'Rechercher un centre...',
             isRequired: false,
+          ),
+        ),
+        SizedBox(width: spacing.small), // ✅ Espacement responsive
+        Expanded(
+          child: EquipmentTextField(
+            label: 'Abréviation',
+            hintText: 'XXXXX',
+            controller: abbreviationController,
+            focusNode: abbreviationFocusNode,
+            isRequired: true,
+            maxLength: 5,
+            textCapitalization: TextCapitalization.characters,
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Requis';
+              }
+              if (value.length < 3) {
+                return 'Min 3 car.';
+              }
+              // ✅ Validation des caractères alphanumériques uniquement
+              if (!RegExp(r'^[A-Z0-9]+$').hasMatch(value)) {
+                return 'Lettres/chiffres uniquement';
+              }
+              return null;
+            },
+            // ✅ Formatage automatique en majuscules
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
+              UpperCaseTextFormatter(),
+            ],
           ),
         ),
       ],
