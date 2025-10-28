@@ -257,27 +257,14 @@ class EquipmentFormFields extends StatelessWidget {
     Responsive responsive,
     ResponsiveSpacing spacing,
   ) {
-    return Row(
-      children: [
-        Expanded(
-          child: EquipmentDropdown(
-            label: 'Feeder',
-            items: EquipmentHelpers.getSelectorsOptions(feeders),
-            selectedValue: selectedFeeder, // ✅ selectedFeeder
-            onChanged: onFeederChanged, // ✅ onFeederChanged
-            hintText: 'Rechercher un feeder...',
-            isRequired: false,
-          ),
-        ),
-        SizedBox(width: spacing.small),
-        Expanded(
-          child: Tools.buildText(
-            context,
-            label: 'Info Feeder',
-            value: selectedFeeder ?? '', // ✅ Affiche la description
-          ),
-        ),
-      ],
+    // ✅ MODIFIÉ: Suppression du Row, feeder prend toute la largeur
+    return EquipmentDropdown(
+      label: 'Feeder',
+      items: EquipmentHelpers.getSelectorsOptions(feeders),
+      selectedValue: selectedFeeder,
+      onChanged: onFeederChanged,
+      hintText: 'Rechercher un feeder...',
+      isRequired: false,
     );
   }
 

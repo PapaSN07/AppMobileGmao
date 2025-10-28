@@ -3,10 +3,12 @@ import 'package:appmobilegmao/provider/auth_provider.dart';
 import 'package:appmobilegmao/provider/equipment_provider.dart';
 import 'package:appmobilegmao/services/equipment_service.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
+import 'package:appmobilegmao/utils/required_fields_manager.dart';
 import 'package:appmobilegmao/widgets/custom_buttons.dart';
 import 'package:appmobilegmao/widgets/equipments/equipment_dropdown.dart';
 import 'package:appmobilegmao/widgets/equipments/equipment_text_field.dart';
 import 'package:appmobilegmao/widgets/notification_bar.dart';
+import 'package:appmobilegmao/widgets/required_fields_badge.dart';
 import 'package:appmobilegmao/widgets/tools.dart';
 import 'package:appmobilegmao/widgets/equipments/attributes_modal.dart';
 import 'package:appmobilegmao/utils/selector_loader.dart';
@@ -32,8 +34,8 @@ class ModifyEquipmentScreen extends StatefulWidget {
 }
 
 class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
-  String? selectedCodeParent,
-      selectedFeeder,
+  // ✅ SUPPRIMÉ: selectedCodeParent
+  String? selectedFeeder,
       selectedFamille,
       selectedZone,
       selectedEntity,
@@ -54,8 +56,8 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
   Map<String, String> selectedAttributeValues = {};
   bool _loadingAttributes = false;
 
-  String? _initialCodeParent,
-      _initialFeeder,
+  // ✅ SUPPRIMÉ: _initialCodeParent
+  String? _initialFeeder,
       _initialFamille,
       _initialZone,
       _initialEntity,
@@ -64,6 +66,8 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
       _initialDescription;
   Map<String, String> _initialAttributeValues = {};
   bool _initialValuesSaved = false;
+
+  RequiredFieldsConfig _requiredFieldsConfig = RequiredFieldsConfig.empty();
 
   static const String __logName = 'ModifyEquipmentScreen -';
 
@@ -92,8 +96,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
   void _onFieldChanged() => setState(() {});
 
   bool _hasChanges() {
-    if (selectedCodeParent != _initialCodeParent ||
-        selectedFeeder != _initialFeeder ||
+    if (selectedFeeder != _initialFeeder ||
         selectedFamille != _initialFamille ||
         selectedZone != _initialZone ||
         selectedEntity != _initialEntity ||
@@ -168,11 +171,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     }
 
     selectedFeeder = mapValueToDropdown(
-      data['Feeder'],
-      selectors['feeders'] ?? [],
-    );
-    selectedCodeParent = mapValueToDropdown(
-      data['Code Parent'],
+      data['Feeder Description'],
       selectors['feeders'] ?? [],
     );
     selectedFamille = mapValueToDropdown(
@@ -202,7 +201,6 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
   void _saveInitialValues() {
     if (_initialValuesSaved) return;
 
-    _initialCodeParent = selectedCodeParent;
     _initialFeeder = selectedFeeder;
     _initialFamille = selectedFamille;
     _initialZone = selectedZone;
@@ -393,7 +391,24 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                   selectors['familles'] ?? [],
                 ),
                 selectedValue: selectedFamille,
-                onChanged: (v) => setState(() => selectedFamille = v),
+                onChanged: (v) {
+                  setState(() => selectedFamille = v);
+                  // ✅ AJOUT: Recharger la config si famille change
+                  if (v != null) {
+                    final familleCode = EquipmentHelpers.getCodeFromDescription(
+                      v,
+                      selectors['familles'] ?? [],
+                    );
+                    if (familleCode != null) {
+                      setState(() {
+                        _requiredFieldsConfig =
+                            RequiredFieldsManager.getRequiredFields(
+                              familleCode,
+                            );
+                      });
+                    }
+                  }
+                },
                 hintText: 'Rechercher une famille...',
                 responsive: responsive,
                 spacing: spacing,
@@ -405,9 +420,9 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
         _buildZoneEntityRow(responsive, spacing),
         SizedBox(height: spacing.medium),
         _buildUniteChargeRow(responsive, spacing),
-        SizedBox(height: spacing.medium),
+        SizedBox(height: spacing.xlarge),
 
-        // ✅ NOUVEAU: Remplacer buildTextField par EquipmentTextField
+        // ✅ Description avec compteur
         EquipmentTextField(
           label: 'Description',
           hintText: 'Description de l\'équipement...',
@@ -420,8 +435,48 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
           minLines: 2,
           showCounter: true,
         ),
+
+        // ✅ AJOUT: Badge des champs requis
+        if (_requiredFieldsConfig.hasRequiredAttributes) ...[
+          SizedBox(height: spacing.large),
+          RequiredFieldsBadge(
+            config: _requiredFieldsConfig,
+            onViewDetails: () {
+              if (availableAttributes.isNotEmpty) {
+                _showAttributesModal();
+              } else {
+                NotificationService.showInfo(
+                  context,
+                  title: '📋 Champs requis',
+                  message: _getRequiredFieldsMessage(),
+                  showAction: false,
+                );
+              }
+            },
+          ),
+        ],
       ],
     );
+  }
+
+  // ✅ AJOUT: Message des champs requis
+  String _getRequiredFieldsMessage() {
+    final fields = <String>[];
+    if (_requiredFieldsConfig.requiresFeeder) fields.add('• Feeder');
+    if (_requiredFieldsConfig.requiresNaturePoste) {
+      fields.add('• Nature du poste (attribut Statut)');
+    }
+    if (_requiredFieldsConfig.requiresCodeH) {
+      fields.add('• Code H (attribut Genie civil)');
+    }
+    if (_requiredFieldsConfig.requiresTension) {
+      fields.add('• Tension (attribut Structure poste)');
+    }
+    if (_requiredFieldsConfig.requiresCelluleType) {
+      fields.add('• Type de cellule');
+    }
+
+    return 'Champs obligatoires pour cette famille :\n\n${fields.join('\n')}';
   }
 
   Widget _buildZoneEntityRow(Responsive responsive, ResponsiveSpacing spacing) {
@@ -503,43 +558,18 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
       children: [
         Tools.buildFieldset(context, 'Informations parents'),
         SizedBox(height: spacing.small),
+
+        // ✅ MODIFIÉ: Feeder prend toute la largeur (suppression de Info Feeder)
         _buildDropdown(
-          label: 'Code Parent',
+          label: 'Feeder',
           items: EquipmentHelpers.getSelectorsOptions(
             selectors['feeders'] ?? [],
-            codeKey: 'code',
           ),
-          selectedValue: selectedCodeParent,
-          onChanged: (v) => setState(() => selectedCodeParent = v),
-          hintText: 'Rechercher un code parent...',
+          selectedValue: selectedFeeder,
+          onChanged: (v) => setState(() => selectedFeeder = v),
+          hintText: 'Rechercher un feeder...',
           responsive: responsive,
           spacing: spacing,
-        ),
-        SizedBox(height: spacing.medium),
-        Row(
-          children: [
-            Expanded(
-              child: _buildDropdown(
-                label: 'Feeder',
-                items: EquipmentHelpers.getSelectorsOptions(
-                  selectors['feeders'] ?? [],
-                ),
-                selectedValue: selectedFeeder,
-                onChanged: (v) => setState(() => selectedFeeder = v),
-                hintText: 'Rechercher un feeder...',
-                responsive: responsive,
-                spacing: spacing,
-              ),
-            ),
-            SizedBox(width: spacing.small),
-            Expanded(
-              child: Tools.buildText(
-                context,
-                label: 'Info Feeder',
-                value: selectedFeeder ?? '',
-              ),
-            ),
-          ],
         ),
       ],
     );
@@ -815,6 +845,24 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
           widget.equipmentData!['Code'] ?? widget.equipmentData!['code'] ?? '';
       if (equipmentCode.isEmpty) return;
 
+      // ✅ AJOUT: Charger la configuration des champs requis
+      final familleCode = EquipmentHelpers.getCodeFromDescription(
+        selectedFamille,
+        selectors['familles'] ?? [],
+      );
+
+      if (familleCode != null) {
+        setState(() {
+          _requiredFieldsConfig = RequiredFieldsManager.getRequiredFields(
+            familleCode,
+          );
+        });
+
+        if (kDebugMode) {
+          print('📋 $__logName Champs requis chargés pour $familleCode');
+        }
+      }
+
       final equipmentProvider = Provider.of<EquipmentProvider>(
         context,
         listen: false,
@@ -847,6 +895,44 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
   Future<void> _handleUpdate() async {
     if (_isUpdating) return;
 
+    // ✅ AJOUT: Validation des champs requis avant mise à jour
+    if (!_canUpdateEquipment()) {
+      final attributesForValidation =
+          availableAttributes
+              .where((attr) => attr.id != null)
+              .map(
+                (attr) => {
+                  'name': attr.name ?? '',
+                  'value': selectedAttributeValues[attr.id!] ?? '',
+                },
+              )
+              .toList();
+
+      final validation = RequiredFieldsManager.validateRequiredFields(
+        config: _requiredFieldsConfig,
+        feeder: EquipmentHelpers.getCodeFromDescription(
+          selectedFeeder,
+          selectors['feeders'] ?? [],
+        ),
+        attributes: attributesForValidation,
+        clientName: null,
+        poste1: null,
+        poste2: null,
+      );
+
+      if (mounted) {
+        NotificationService.showError(
+          context,
+          title: '⚠️ Champs manquants',
+          message: validation.errorMessage,
+          showAction: true,
+          actionText: 'Remplir',
+          onActionPressed: _showAttributesModal,
+        );
+      }
+      return;
+    }
+
     setState(() => _isUpdating = true);
 
     try {
@@ -855,60 +941,73 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
         selectedAttributeValues,
       );
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final equipmentProvider = Provider.of<EquipmentProvider>(
+        context,
+        listen: false,
+      );
+
+      final cachedSelectors = equipmentProvider.cachedSelectors;
+
+      final feederCode = SelectorLoader.extractCodeFromTypedSelectors(
+        selectedFeeder,
+        'feeders',
+        cachedSelectors,
+      );
 
       final updatedData = {
         'code':
             widget.equipmentData!['Code'] ??
             widget.equipmentData!['code'] ??
             '',
-        'code_parent': EquipmentHelpers.getCodeFromDescription(
-          selectedCodeParent,
-          selectors['feeders'] ?? [],
-        ),
-        'famille': EquipmentHelpers.getCodeFromDescription(
+        // ✅ SUPPRIMÉ: 'code_parent': ...
+        'famille': SelectorLoader.extractCodeFromTypedSelectors(
           selectedFamille,
-          selectors['familles'] ?? [],
+          'familles',
+          cachedSelectors,
         ),
-        'zone': EquipmentHelpers.getCodeFromDescription(
+        'zone': SelectorLoader.extractCodeFromTypedSelectors(
           selectedZone,
-          selectors['zones'] ?? [],
+          'zones',
+          cachedSelectors,
         ),
-        'entity': EquipmentHelpers.getCodeFromDescription(
+        'entity': SelectorLoader.extractCodeFromTypedSelectors(
           selectedEntity,
-          selectors['entities'] ?? [],
+          'entities',
+          cachedSelectors,
         ),
-        'unite': EquipmentHelpers.getCodeFromDescription(
+        'unite': SelectorLoader.extractCodeFromTypedSelectors(
           selectedUnite,
-          selectors['unites'] ?? [],
+          'unites',
+          cachedSelectors,
         ),
-        'centre_charge': EquipmentHelpers.getCodeFromDescription(
+        'centre_charge': SelectorLoader.extractCodeFromTypedSelectors(
           selectedCentreCharge,
-          selectors['centreCharges'] ?? [],
+          'centreCharges',
+          cachedSelectors,
         ),
         'description': _descriptionController.text.trim(),
         'longitude': valueLongitude ?? '12311231',
         'latitude': valueLatitude ?? '12311231',
-        'feeder': EquipmentHelpers.getCodeFromDescription(
-          selectedFeeder,
-          selectors['feeders'] ?? [],
-        ),
+        'feeder': feederCode,
         'feeder_description': selectedFeeder,
         'created_by': authProvider.currentUser?.username ?? '',
         'attributs': attributs,
       };
 
+      if (kDebugMode) {
+        print('📤 $__logName Données de mise à jour:');
+        print('   - feeder (code): ${updatedData['feeder']}');
+        print('   - feeder_description: ${updatedData['feeder_description']}');
+      }
+
       final equipmentId =
           widget.equipmentData!['id'] ?? widget.equipmentData!['ID'] ?? '';
       if (equipmentId.isEmpty) throw Exception('ID de l\'équipement manquant');
 
-      await context.read<EquipmentProvider>().updateEquipment(
-        equipmentId,
-        updatedData,
-      );
+      await equipmentProvider.updateEquipment(equipmentId, updatedData);
       await Future.delayed(const Duration(milliseconds: 300));
 
       if (mounted) {
-        final equipmentProvider = context.read<EquipmentProvider>();
         await equipmentProvider.fetchEquipments(forceRefresh: false);
       }
 
@@ -940,8 +1039,41 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     }
   }
 
+  // ✅ AJOUT: Méthode de validation
+  bool _canUpdateEquipment() {
+    if (selectedFamille == null) {
+      return true; // Pas de famille = pas de validation
+    }
+
+    final attributesForValidation =
+        availableAttributes
+            .where((attr) => attr.id != null)
+            .map(
+              (attr) => {
+                'name': attr.name ?? '',
+                'value': selectedAttributeValues[attr.id!] ?? '',
+              },
+            )
+            .toList();
+
+    final validation = RequiredFieldsManager.validateRequiredFields(
+      config: _requiredFieldsConfig,
+      feeder: EquipmentHelpers.getCodeFromDescription(
+        selectedFeeder,
+        selectors['feeders'] ?? [],
+      ),
+      attributes: attributesForValidation,
+      clientName: null,
+      poste1: null,
+      poste2: null,
+    );
+
+    return validation.isValid;
+  }
+
   Widget _buildActionButtons(Responsive responsive, ResponsiveSpacing spacing) {
     final hasChanges = _hasChanges();
+    final canUpdate = hasChanges && _canUpdateEquipment(); // ✅ AJOUT
 
     return Padding(
       padding: spacing.custom(vertical: 0),
@@ -998,7 +1130,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                       height: responsive.spacing(48),
                       decoration: BoxDecoration(
                         color:
-                            hasChanges
+                            canUpdate // ✅ MODIFIÉ
                                 ? AppTheme.secondaryColor
                                 : AppTheme.thirdColor50,
                         borderRadius: BorderRadius.circular(
@@ -1011,7 +1143,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                           borderRadius: BorderRadius.circular(
                             responsive.spacing(8),
                           ),
-                          onTap: hasChanges ? _handleUpdate : null,
+                          onTap: canUpdate ? _handleUpdate : null, // ✅ MODIFIÉ
                           child: Container(
                             padding: spacing.custom(horizontal: 12),
                             child: Row(
@@ -1021,7 +1153,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                                 Icon(
                                   Icons.save,
                                   color:
-                                      hasChanges
+                                      canUpdate // ✅ MODIFIÉ
                                           ? Colors.white
                                           : AppTheme.thirdColor,
                                   size: responsive.iconSize(18),
@@ -1029,16 +1161,18 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                                 SizedBox(width: spacing.small),
                                 Flexible(
                                   child: Text(
-                                    hasChanges
-                                        ? 'Modifier'
-                                        : 'Aucun changement',
+                                    !hasChanges
+                                        ? 'Aucun changement'
+                                        : (!canUpdate
+                                            ? 'Champs manquants'
+                                            : 'Modifier'),
                                     overflow: TextOverflow.ellipsis,
                                     maxLines: 1,
                                     style: TextStyle(
                                       fontFamily: AppTheme.fontMontserrat,
                                       fontWeight: FontWeight.w600,
                                       color:
-                                          hasChanges
+                                          canUpdate
                                               ? Colors.white
                                               : AppTheme.thirdColor,
                                       fontSize: responsive.sp(14),
