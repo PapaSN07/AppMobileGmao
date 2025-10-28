@@ -214,7 +214,7 @@ class EquipmentProvider extends ChangeNotifier {
           _extractCode(equipmentData['centreCharge'], 'centreCharges') ?? '',
       codeParent: equipmentData['codeParent'] ?? '',
       feeder: _extractCode(equipmentData['feeder'], 'feeders'),
-      feederDescription: equipmentData['infoFeeder'],
+      feederDescription: equipmentData['feederDescription'],
       longitude: equipmentData['longitude'] ?? '',
       latitude: equipmentData['latitude'] ?? '',
       attributes: _extractAttributes(equipmentData['attributs']),

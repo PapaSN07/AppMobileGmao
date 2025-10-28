@@ -15,8 +15,7 @@ class EquipmentFormFields extends StatelessWidget {
   final String? selectedEntity;
   final String? selectedUnite;
   final String? selectedCentreCharge;
-  final String? selectedCodeParent;
-  final String? selectedFeeder;
+  final String? selectedFeeder; // ✅ SIMPLIFIÉ: Une seule variable
   final TextEditingController descriptionController;
   final FocusNode descriptionFocusNode;
   final TextEditingController abbreviationController;
@@ -32,8 +31,7 @@ class EquipmentFormFields extends StatelessWidget {
   final Function(String?)? onEntityChanged;
   final Function(String?)? onUniteChanged;
   final Function(String?)? onCentreChargeChanged;
-  final Function(String?)? onCodeParentChanged;
-  final Function(String?)? onFeederChanged;
+  final Function(String?)? onFeederChanged; // ✅ RENOMMÉ
   final bool isCodeEditable;
   final bool showAttributesButton;
   final VoidCallback? onAttributesPressed;
@@ -46,8 +44,7 @@ class EquipmentFormFields extends StatelessWidget {
     required this.selectedEntity,
     required this.selectedUnite,
     required this.selectedCentreCharge,
-    required this.selectedCodeParent,
-    required this.selectedFeeder,
+    required this.selectedFeeder, // ✅ SIMPLIFIÉ
     required this.descriptionController,
     required this.descriptionFocusNode,
     required this.abbreviationController,
@@ -63,8 +60,7 @@ class EquipmentFormFields extends StatelessWidget {
     this.onEntityChanged,
     this.onUniteChanged,
     this.onCentreChargeChanged,
-    this.onCodeParentChanged,
-    this.onFeederChanged,
+    this.onFeederChanged, // ✅ RENOMMÉ
     this.isCodeEditable = false,
     this.showAttributesButton = false,
     this.onAttributesPressed,
@@ -98,7 +94,7 @@ class EquipmentFormFields extends StatelessWidget {
           responsive,
           spacing,
         ), // ✅ Paramètres ajoutés
-        SizedBox(height: spacing.medium), // ✅ Espacement responsive
+        SizedBox(height: spacing.xlarge), // ✅ Espacement responsive
         _buildDescriptionField(responsive, spacing), // ✅ Refactorisé en méthode
         SizedBox(height: spacing.xlarge), // ✅ Espacement responsive
         // Section Informations parents
@@ -107,15 +103,6 @@ class EquipmentFormFields extends StatelessWidget {
           'Informations parents',
         ), // ✅ Context ajouté
         SizedBox(height: spacing.small), // ✅ Espacement responsive
-        EquipmentDropdown(
-          label: 'Code Feeder',
-          items: EquipmentHelpers.getSelectorsOptions(feeders, codeKey: 'code'),
-          selectedValue: selectedCodeParent,
-          onChanged: onCodeParentChanged,
-          hintText: 'Rechercher ou sélectionner un code feeder parent...',
-          isRequired: false,
-        ),
-        SizedBox(height: spacing.medium), // ✅ Espacement responsive
         _buildFeederRow(context, responsive, spacing), // ✅ Paramètres ajoutés
         // Bouton attributs si disponible
         if (showAttributesButton) ...[
@@ -130,18 +117,23 @@ class EquipmentFormFields extends StatelessWidget {
     );
   }
 
-  Widget _buildDescriptionField(Responsive responsive, ResponsiveSpacing spacing) {
-  return EquipmentTextField(
-    label: 'Description',
-    hintText: 'Description de l\'équipement...',
-    controller: descriptionController,
-    focusNode: descriptionFocusNode,
-    isRequired: false,
-    maxLength: 255,
-    keyboardType: TextInputType.text,
-    maxLines: 1,
-  );
-}
+  Widget _buildDescriptionField(
+    Responsive responsive,
+    ResponsiveSpacing spacing,
+  ) {
+    return EquipmentTextField(
+      label: 'Description',
+      hintText: 'Description de l\'équipement...',
+      controller: descriptionController,
+      focusNode: descriptionFocusNode,
+      isRequired: false,
+      maxLength: 255, // ✅ Limite à 255 caractères
+      keyboardType: TextInputType.multiline,
+      maxLines: 4, // ✅ Textarea de 4 lignes
+      minLines: 2, // ✅ Minimum 2 lignes visibles
+      showCounter: true, // ✅ Afficher le compteur
+    );
+  }
 
   Widget _buildUniteAndFamilleRow(
     BuildContext context,
@@ -271,18 +263,18 @@ class EquipmentFormFields extends StatelessWidget {
           child: EquipmentDropdown(
             label: 'Feeder',
             items: EquipmentHelpers.getSelectorsOptions(feeders),
-            selectedValue: selectedFeeder,
-            onChanged: onFeederChanged,
+            selectedValue: selectedFeeder, // ✅ selectedFeeder
+            onChanged: onFeederChanged, // ✅ onFeederChanged
             hintText: 'Rechercher un feeder...',
             isRequired: false,
           ),
         ),
-        SizedBox(width: spacing.small), // ✅ Espacement responsive
+        SizedBox(width: spacing.small),
         Expanded(
           child: Tools.buildText(
-            context, // ✅ Context ajouté
+            context,
             label: 'Info Feeder',
-            value: selectedFeeder ?? '',
+            value: selectedFeeder ?? '', // ✅ Affiche la description
           ),
         ),
       ],

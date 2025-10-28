@@ -5,6 +5,7 @@ import 'package:appmobilegmao/services/equipment_service.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:appmobilegmao/widgets/custom_buttons.dart';
 import 'package:appmobilegmao/widgets/equipments/equipment_dropdown.dart';
+import 'package:appmobilegmao/widgets/equipments/equipment_text_field.dart';
 import 'package:appmobilegmao/widgets/notification_bar.dart';
 import 'package:appmobilegmao/widgets/tools.dart';
 import 'package:appmobilegmao/widgets/equipments/attributes_modal.dart';
@@ -405,12 +406,19 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
         SizedBox(height: spacing.medium),
         _buildUniteChargeRow(responsive, spacing),
         SizedBox(height: spacing.medium),
-        Tools.buildTextField(
-          context: context,
+
+        // ✅ NOUVEAU: Remplacer buildTextField par EquipmentTextField
+        EquipmentTextField(
           label: 'Description',
-          msgError: 'Veuillez entrer la description',
-          focusNode: _descriptionFocusNode,
+          hintText: 'Description de l\'équipement...',
           controller: _descriptionController,
+          focusNode: _descriptionFocusNode,
+          isRequired: false,
+          maxLength: 255,
+          keyboardType: TextInputType.multiline,
+          maxLines: 4,
+          minLines: 2,
+          showCounter: true,
         ),
       ],
     );

@@ -33,13 +33,13 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
   final _abbreviationController = TextEditingController();
   final _abbreviationFocusNode = FocusNode();
 
-  String? selectedCodeParent,
-      selectedFeeder,
+  String? selectedFeeder, // ✅ Description du feeder (ex: "BOUNTOU PIKINE")
       selectedFamille,
       selectedZone,
       selectedEntity,
       selectedUnite,
       selectedCentreCharge;
+
   late String generatedCode;
 
   List<EquipmentAttribute> availableAttributes = [];
@@ -92,6 +92,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
   // Génération automatique du code
   void _generateCodeFromInputs() {
     if (selectedFamille == null || selectedFeeder == null) {
+      // ✅ selectedFeeder
       if (kDebugMode) {
         print('⚠️ $__logName Famille ou feeder manquant');
       }
@@ -110,6 +111,12 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
       return;
     }
 
+    // ✅ CORRIGÉ: Extraire le code depuis la description
+    final feederCode = EquipmentHelpers.getCodeFromDescription(
+      selectedFeeder!, // ✅ selectedFeeder contient la description
+      selectors['feeders'] ?? [],
+    );
+
     // ✅ AJOUT: Valider les champs requis avant génération
     final attributesForValidation =
         availableAttributes
@@ -124,7 +131,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
 
     final validation = RequiredFieldsManager.validateRequiredFields(
       config: _requiredFieldsConfig,
-      feeder: selectedFeeder,
+      feeder: feederCode, // ✅ Passer le code extrait
       attributes: attributesForValidation,
       clientName: null,
       poste1: null,
@@ -138,12 +145,6 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
       return;
     }
 
-    final feederCode = EquipmentHelpers.getCodeFromDescription(
-      selectedFeeder!,
-      selectors['feeders'] ?? [],
-    );
-
-    // ✅ CORRIGÉ: Utiliser le champ abréviation au lieu du feeder
     final abbreviation = _abbreviationController.text.trim();
 
     // ✅ AJOUT: Validation de l'abréviation
@@ -191,8 +192,9 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
     if (kDebugMode) {
       print('🔢 $__logName Génération code:');
       print('   - Famille: $familleCode');
-      print('   - Feeder: $feederCode');
-      print('   - Abréviation: $abbreviation'); // ✅ Maintenant du champ
+      print('   - Feeder (code): $feederCode');
+      print('   - Feeder (description): $selectedFeeder'); // ✅ Ajout
+      print('   - Abréviation: $abbreviation');
       print('   - Nature: $nature');
       print('   - Code H: $codeH');
       print('   - Tension: $tension');
@@ -201,7 +203,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
 
     final result = EquipmentCodificationService.generateEquipmentCode(
       familleCode: familleCode,
-      abbreviation: abbreviation, // ✅ Utilise le champ saisi
+      abbreviation: abbreviation,
       feeder: feederCode,
       nature: nature,
       codeH: codeH,
@@ -434,8 +436,8 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
                           selectedEntity: selectedEntity,
                           selectedUnite: selectedUnite,
                           selectedCentreCharge: selectedCentreCharge,
-                          selectedCodeParent: selectedCodeParent,
-                          selectedFeeder: selectedFeeder,
+                          selectedFeeder:
+                              selectedFeeder, // ✅ selectedFeeder au lieu de selectedFeederDescription
                           descriptionController: _descriptionController,
                           descriptionFocusNode: _descriptionFocusNode,
                           abbreviationController: _abbreviationController,
@@ -462,11 +464,10 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
                               (v) => setState(() => selectedUnite = v),
                           onCentreChargeChanged:
                               (v) => setState(() => selectedCentreCharge = v),
-                          onCodeParentChanged:
-                              (v) => setState(() => selectedCodeParent = v),
                           onFeederChanged: (v) {
+                            // ✅ onFeederChanged au lieu de onCodeParentChanged
                             setState(() {
-                              selectedFeeder = v;
+                              selectedFeeder = v; // ✅ selectedFeeder
                             });
                             _generateCodeFromInputs();
                           },
@@ -782,7 +783,10 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
 
     final validation = RequiredFieldsManager.validateRequiredFields(
       config: _requiredFieldsConfig,
-      feeder: selectedFeeder,
+      feeder: EquipmentHelpers.getCodeFromDescription(
+        selectedFeeder, // ✅ Extraire le code
+        selectors['feeders'] ?? [],
+      ),
       attributes: attributesForValidation,
       clientName: null,
       poste1: null,
@@ -810,7 +814,10 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
 
       final validation = RequiredFieldsManager.validateRequiredFields(
         config: _requiredFieldsConfig,
-        feeder: selectedFeeder,
+        feeder: EquipmentHelpers.getCodeFromDescription(
+          selectedFeeder, // ✅ Extraire le code
+          selectors['feeders'] ?? [],
+        ),
         attributes: attributesForValidation,
         clientName: null,
         poste1: null,
@@ -846,6 +853,13 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
 
       final cachedSelectors = equipmentProvider.cachedSelectors;
 
+      // ✅ CORRIGÉ: Extraire correctement le code et la description
+      final feederCode = SelectorLoader.extractCodeFromTypedSelectors(
+        selectedFeeder, // ✅ Description du feeder
+        'feeders',
+        cachedSelectors,
+      );
+
       final equipmentData = {
         'code': generatedCode,
         'famille': SelectorLoader.extractCodeFromTypedSelectors(
@@ -853,11 +867,8 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
           'familles',
           cachedSelectors,
         ),
-        'feeder': SelectorLoader.extractCodeFromTypedSelectors(
-          selectedFeeder,
-          'feeders',
-          cachedSelectors,
-        ),
+        'feeder': feederCode, // ✅ Code du feeder
+        'feederDescription': selectedFeeder, // ✅ Description complète
         'zone': SelectorLoader.extractCodeFromTypedSelectors(
           selectedZone,
           'zones',
@@ -882,6 +893,12 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
         'attributs': attributs,
         'createdBy': authProvider.currentUser?.username,
       };
+
+      if (kDebugMode) {
+        print('📤 $__logName Données envoyées:');
+        print('   - feeder (code): ${equipmentData['feeder']}');
+        print('   - feederDescription: ${equipmentData['feederDescription']}');
+      }
 
       await equipmentProvider.addEquipment(equipmentData);
 
