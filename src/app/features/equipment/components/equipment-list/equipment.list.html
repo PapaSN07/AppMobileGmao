@@ -298,213 +298,6 @@
                             </tr>
                         </ng-template>
                     </p-table>
-
-                    <!-- Dialog de visualisation -->
-                    <p-dialog 
-                        [(visible)]="detailsDialog" 
-                        [modal]="true" 
-                        [style]="{ width: '700px' }" 
-                        header="Détails de l'équipement" 
-                        [draggable]="false" 
-                        [resizable]="false"
-                    >
-                        <ng-template pTemplate="content">
-                            <div class="flex flex-col gap-4">
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label class="block font-bold mb-2">Code</label>
-                                        <input pInputText [value]="selectedEquipment?.code" disabled class="w-full" />
-                                    </div>
-                                    <div>
-                                        <label class="block font-bold mb-2">Centre Charge</label>
-                                        <input pInputText [value]="selectedEquipment?.centreCharge" disabled class="w-full" />
-                                    </div>
-                                    <div>
-                                        <label class="block font-bold mb-2">Localisation</label>
-                                        <input pInputText [value]="selectedEquipment?.localisation" disabled class="w-full" />
-                                    </div>
-                                    <div>
-                                        <label class="block font-bold mb-2">Famille</label>
-                                        <input pInputText [value]="selectedEquipment?.famille" disabled class="w-full" />
-                                    </div>
-                                    <div>
-                                        <label class="block font-bold mb-2">Entité</label>
-                                        <input pInputText [value]="selectedEquipment?.entity" disabled class="w-full" />
-                                    </div>
-                                    <div>
-                                        <label class="block font-bold mb-2">Code Parent</label>
-                                        <input pInputText [value]="selectedEquipment?.codeParent" disabled class="w-full" />
-                                    </div>
-                                    <div>
-                                        <label class="block font-bold mb-2">Feeder</label>
-                                        <input pInputText [value]="selectedEquipment?.feeder" disabled class="w-full" />
-                                    </div>
-                                    <div>
-                                        <label class="block font-bold mb-2">Zone</label>
-                                        <input pInputText [value]="selectedEquipment?.zone" disabled class="w-full" />
-                                    </div>
-                                    <div>
-                                        <label class="block font-bold mb-2">Unité</label>
-                                        <input pInputText [value]="selectedEquipment?.unite" disabled class="w-full" />
-                                    </div>
-                                    <div>
-                                        <label class="block font-bold mb-2">Créé par</label>
-                                        <input pInputText [value]="selectedEquipment?.createdBy" disabled class="w-full" />
-                                    </div>
-                                    <div>
-                                        <label class="block font-bold mb-2">Créé le</label>
-                                        <input pInputText [value]="selectedEquipment?.createdAt | date:'dd/MM/yyyy HH:mm'" disabled class="w-full" />
-                                    </div>
-                                    <div>
-                                        <label class="block font-bold mb-2">Statut Approbation</label>
-                                        <p-tag 
-                                            [value]="selectedEquipment?.isApproved ? 'Approuvé' : 'Non approuvé'" 
-                                            [severity]="selectedEquipment?.isApproved ? 'success' : 'warn'" 
-                                        />
-                                    </div>
-                                    <div class="col-span-2">
-                                        <label class="block font-bold mb-2">Description</label>
-                                        <textarea pTextarea [value]="selectedEquipment?.description" rows="3" disabled class="w-full"></textarea>
-                                    </div>
-                                </div>
-
-                                @if (selectedEquipment && selectedEquipment.attributes && selectedEquipment.attributes.length > 0) {
-                                <div class="mt-4">
-                                    <h5 class="font-semibold mb-3">Attributs</h5>
-                                    <p-table 
-                                        [value]="selectedEquipment.attributes" 
-                                        [tableStyle]="{ 'min-width': '40rem' }" 
-                                        dataKey="id"
-                                    >
-                                        <ng-template #header>
-                                            <tr>
-                                                <th>Index</th>
-                                                <th>Spécification</th>
-                                                <th>Nom</th>
-                                                <th>Valeur</th>
-                                            </tr>
-                                        </ng-template>
-                                        <ng-template #body let-attr>
-                                            <tr>
-                                                <td>{{ attr.indx }}</td>
-                                                <td>{{ attr.specification }}</td>
-                                                <td>{{ attr.attributeName }}</td>
-                                                <td>{{ attr.value }}</td>
-                                            </tr>
-                                        </ng-template>
-                                    </p-table>
-                                </div>
-                                } @else {
-                                <div class="text-center text-muted-color py-4">
-                                    <i class="pi pi-inbox text-3xl mb-2"></i>
-                                    <p>Aucun attribut disponible</p>
-                                </div>
-                                }
-                            </div>
-                        </ng-template>
-
-                        <ng-template pTemplate="footer">
-                            <p-button 
-                                label="Fermer" 
-                                icon="pi pi-times" 
-                                text 
-                                (click)="hideDetails()" 
-                            />
-                        </ng-template>
-                    </p-dialog>
-
-                    <!-- Dialog de rejet en masse -->
-                    <p-dialog 
-                        [(visible)]="bulkRejectDialog" 
-                        [modal]="true" 
-                        [style]="{ width: '800px' }" 
-                        header="Rejet en masse - Commentaires" 
-                        [draggable]="false" 
-                        [resizable]="false"
-                    >
-                        <ng-template pTemplate="content">
-                            <div class="p-4">
-                                <p-table [value]="bulkRejectEquipments" dataKey="equipment.id" [tableStyle]="{ 'min-width': '60rem' }">
-                                    <ng-template #header>
-                                        <tr>
-                                            <th>Code Équipement</th>
-                                            <th>Description</th>
-                                            <th>Commentaire de rejet</th>
-                                        </tr>
-                                    </ng-template>
-                                    <ng-template #body let-item>
-                                        <tr>
-                                            <td>{{ item.equipment.code }}</td>
-                                            <td>{{ item.equipment.description }}</td>
-                                            <td>
-                                                <textarea 
-                                                    pTextarea 
-                                                    [(ngModel)]="item.comment" 
-                                                    rows="2" 
-                                                    placeholder="Motif du rejet (optionnel)"
-                                                    class="w-full"
-                                                ></textarea>
-                                            </td>
-                                        </tr>
-                                    </ng-template>
-                                </p-table>
-                            </div>
-                        </ng-template>
-
-                        <ng-template pTemplate="footer">
-                            <p-button 
-                                label="Annuler" 
-                                icon="pi pi-times" 
-                                text 
-                                (click)="cancelBulkReject()" 
-                            />
-                            <p-button 
-                                label="Rejeter" 
-                                icon="pi pi-times" 
-                                severity="danger" 
-                                (click)="submitBulkReject()" 
-                            />
-                        </ng-template>
-                    </p-dialog>
-
-                    <!-- Dialog de rejet unitaire -->
-                    <p-dialog 
-                        [(visible)]="singleRejectDialog" 
-                        [modal]="true" 
-                        [style]="{ width: '500px' }" 
-                        header="Motif du rejet" 
-                        [draggable]="false" 
-                        [resizable]="false"
-                    >
-                        <ng-template pTemplate="content">
-                            <div class="p-4">
-                                <label for="singleRejectComment" class="block font-bold mb-2">Commentaire (optionnel)</label>
-                                <textarea 
-                                    pTextarea 
-                                    id="singleRejectComment" 
-                                    [(ngModel)]="singleRejectComment" 
-                                    rows="4" 
-                                    placeholder="Saisissez le motif du rejet..." 
-                                    class="w-full"
-                                ></textarea>
-                            </div>
-                        </ng-template>
-
-                        <ng-template pTemplate="footer">
-                            <p-button 
-                                label="Annuler" 
-                                icon="pi pi-times" 
-                                text 
-                                (click)="cancelSingleReject()" 
-                            />
-                            <p-button 
-                                label="Rejeter" 
-                                icon="pi pi-times" 
-                                severity="danger" 
-                                (click)="submitSingleReject()" 
-                            />
-                        </ng-template>
-                    </p-dialog>
                 </div>
             </div>
         </p-tabpanel>
@@ -731,7 +524,7 @@
                                                 </div>
                                                 <div>
                                                     <span class="font-semibold">Créé le:</span>
-                                                    <span class="ml-2">{{ equipment.createdAt | date:'dd/MM/yyyy'}}</span>
+                                                    <span class="ml-2">{{ equipment.createdAt | date:'dd/MM/yyyy' }}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -807,13 +600,10 @@
                             </tr>
                         </ng-template>
                     </p-table>
-
-                    <!-- Les dialogs sont partagés avec l'onglet 0 -->
                 </div>
             </div>
         </p-tabpanel>
 
-        <!-- Onglet 2 reste inchangé -->
         <p-tabpanel value="2">
             <div>
                 <div class="font-semibold text-xl mb-4">Instance d'injection des équipements</div>
@@ -1083,122 +873,226 @@
                             </tr>
                         </ng-template>
                     </p-table>
-
-                    <!-- ✅ AJOUT : Dialog de visualisation pour le 3ème onglet -->
-                    <p-dialog 
-                        [(visible)]="detailsDialog" 
-                        [modal]="true" 
-                        [style]="{ width: '600px' }" 
-                        header="Détails de l'équipement" 
-                        [draggable]="false" 
-                        [resizable]="false"
-                    >
-                        <ng-template pTemplate="content">
-                            <div class="flex flex-col gap-4">
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label class="block font-bold mb-2">Code</label>
-                                        <input pInputText [value]="selectedEquipment?.code" disabled />
-                                    </div>
-                                    <div>
-                                        <label class="block font-bold mb-2">Centre Charge</label>
-                                        <input pInputText [value]="selectedEquipment?.centreCharge" disabled />
-                                    </div>
-                                    <div>
-                                        <label class="block font-bold mb-2">Localisation</label>
-                                        <input pInputText [value]="selectedEquipment?.localisation" disabled />
-                                    </div>
-                                    <div>
-                                        <label class="block font-bold mb-2">Famille</label>
-                                        <input pInputText [value]="selectedEquipment?.famille" disabled />
-                                    </div>
-                                    <div>
-                                        <label class="block font-bold mb-2">Entité</label>
-                                        <input pInputText [value]="selectedEquipment?.entity" disabled />
-                                    </div>
-                                    <div>
-                                        <label class="block font-bold mb-2">Code Parent</label>
-                                        <input pInputText [value]="selectedEquipment?.codeParent" disabled />
-                                    </div>
-                                    <div>
-                                        <label class="block font-bold mb-2">Feeder</label>
-                                        <input pInputText [value]="selectedEquipment?.feeder" disabled />
-                                    </div>
-                                    <div>
-                                        <label class="block font-bold mb-2">Zone</label>
-                                        <input pInputText [value]="selectedEquipment?.zone" disabled />
-                                    </div>
-                                    <div>
-                                        <label class="block font-bold mb-2">Unité</label>
-                                        <input pInputText [value]="selectedEquipment?.unite" disabled />
-                                    </div>
-                                    <div>
-                                        <label class="block font-bold mb-2">Créé par</label>
-                                        <input pInputText [value]="selectedEquipment?.createdBy" disabled />
-                                    </div>
-                                    <div>
-                                        <label class="block font-bold mb-2">Créé le</label>
-                                        <input pInputText [value]="selectedEquipment?.createdAt | date:'dd/MM/yyyy HH:mm'" disabled />
-                                    </div>
-                                    <div>
-                                        <label class="block font-bold mb-2">Statut Approbation</label>
-                                        <p-tag 
-                                            [value]="selectedEquipment?.isApproved ? 'Approuvé' : 'Non approuvé'" 
-                                            [severity]="selectedEquipment?.isApproved ? 'success' : 'warn'" 
-                                        />
-                                    </div>
-                                    <div class="col-span-2">
-                                        <label class="block font-bold mb-2">Description</label>
-                                        <textarea pTextarea [value]="selectedEquipment?.description" rows="3" disabled class="w-full"></textarea>
-                                    </div>
-                                </div>
-
-                                @if (selectedEquipment && selectedEquipment.attributes && selectedEquipment.attributes.length > 0) {
-                                <div class="mt-4">
-                                    <h5 class="font-semibold mb-3">Attributs</h5>
-                                    <p-table 
-                                        [value]="selectedEquipment.attributes" 
-                                        [tableStyle]="{ 'min-width': '40rem' }" 
-                                        dataKey="id"
-                                    >
-                                        <ng-template #header>
-                                            <tr>
-                                                <th>Index</th>
-                                                <th>Spécification</th>
-                                                <th>Nom</th>
-                                                <th>Valeur</th>
-                                            </tr>
-                                        </ng-template>
-                                        <ng-template #body let-attr>
-                                            <tr>
-                                                <td>{{ attr.indx }}</td>
-                                                <td>{{ attr.specification }}</td>
-                                                <td>{{ attr.attributeName }}</td>
-                                                <td>{{ attr.value }}</td>
-                                            </tr>
-                                        </ng-template>
-                                    </p-table>
-                                </div>
-                                } @else {
-                                <div class="text-center text-muted-color py-4">
-                                    <i class="pi pi-inbox text-3xl mb-2"></i>
-                                    <p>Aucun attribut disponible</p>
-                                </div>
-                                }
-                            </div>
-                        </ng-template>
-
-                        <ng-template pTemplate="footer">
-                            <p-button 
-                                label="Fermer" 
-                                icon="pi pi-times" 
-                                text 
-                                (click)="hideDetails()" 
-                            />
-                        </ng-template>
-                    </p-dialog>
                 </div>
             </div>
         </p-tabpanel>
     </p-tabpanels>
+
+    <!-- ✅ DIALOGS PARTAGÉS - Placés en dehors des tabs pour être accessibles partout -->
+    <!-- Dialog de visualisation - Unique et partagé entre tous les onglets -->
+    <p-dialog 
+        [(visible)]="detailsDialog" 
+        [modal]="true" 
+        [style]="{ width: '700px' }" 
+        header="Détails de l'équipement" 
+        [draggable]="false" 
+        [resizable]="false"
+    >
+        <ng-template pTemplate="content">
+            <div class="flex flex-col gap-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block font-bold mb-2">Code</label>
+                        <input pInputText [value]="selectedEquipment?.code" disabled class="w-full" />
+                    </div>
+                    <div>
+                        <label class="block font-bold mb-2">Centre Charge</label>
+                        <input pInputText [value]="selectedEquipment?.centreCharge" disabled class="w-full" />
+                    </div>
+                    <div>
+                        <label class="block font-bold mb-2">Localisation</label>
+                        <input pInputText [value]="selectedEquipment?.localisation" disabled class="w-full" />
+                    </div>
+                    <div>
+                        <label class="block font-bold mb-2">Famille</label>
+                        <input pInputText [value]="selectedEquipment?.famille" disabled class="w-full" />
+                    </div>
+                    <div>
+                        <label class="block font-bold mb-2">Entité</label>
+                        <input pInputText [value]="selectedEquipment?.entity" disabled class="w-full" />
+                    </div>
+                    <div>
+                        <label class="block font-bold mb-2">Code Parent</label>
+                        <input pInputText [value]="selectedEquipment?.codeParent" disabled class="w-full" />
+                    </div>
+                    <div>
+                        <label class="block font-bold mb-2">Feeder</label>
+                        <input pInputText [value]="selectedEquipment?.feeder" disabled class="w-full" />
+                    </div>
+                    <div>
+                        <label class="block font-bold mb-2">Zone</label>
+                        <input pInputText [value]="selectedEquipment?.zone" disabled class="w-full" />
+                    </div>
+                    <div>
+                        <label class="block font-bold mb-2">Unité</label>
+                        <input pInputText [value]="selectedEquipment?.unite" disabled class="w-full" />
+                    </div>
+                    <div>
+                        <label class="block font-bold mb-2">Créé par</label>
+                        <input pInputText [value]="selectedEquipment?.createdBy" disabled class="w-full" />
+                    </div>
+                    <div>
+                        <label class="block font-bold mb-2">Créé le</label>
+                        <input pInputText [value]="selectedEquipment?.createdAt | date:'dd/MM/yyyy'" disabled class="w-full" />
+                    </div>
+                    @if (selectedEquipment?.judgedBy) {
+                    <div>
+                        <label class="block font-bold mb-2">Modifié par</label>
+                        <input pInputText [value]="selectedEquipment?.judgedBy" disabled class="w-full" />
+                    </div>
+                    <div>
+                        <label class="block font-bold mb-2">Modifié le</label>
+                        <input pInputText [value]="selectedEquipment?.updatedAt | date:'dd/MM/yyyy'" disabled class="w-full" />
+                    </div>
+                    }
+                    <div>
+                        <label class="block font-bold mb-2">Statut Approbation</label>
+                        <p-tag 
+                            [value]="selectedEquipment?.isApproved ? 'Approuvé' : 'Non approuvé'" 
+                            [severity]="selectedEquipment?.isApproved ? 'success' : 'warn'" 
+                        />
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block font-bold mb-2">Description</label>
+                        <textarea pTextarea [value]="selectedEquipment?.description" rows="3" disabled class="w-full"></textarea>
+                    </div>
+                </div>
+
+                @if (selectedEquipment && selectedEquipment.attributes && selectedEquipment.attributes.length > 0) {
+                <div class="mt-4">
+                    <h5 class="font-semibold mb-3">Attributs</h5>
+                    <p-table 
+                        [value]="selectedEquipment.attributes" 
+                        [tableStyle]="{ 'min-width': '40rem' }" 
+                        dataKey="id"
+                    >
+                        <ng-template #header>
+                            <tr>
+                                <th>Index</th>
+                                <th>Spécification</th>
+                                <th>Nom</th>
+                                <th>Valeur</th>
+                            </tr>
+                        </ng-template>
+                        <ng-template #body let-attr>
+                            <tr>
+                                <td>{{ attr.indx }}</td>
+                                <td>{{ attr.specification }}</td>
+                                <td>{{ attr.attributeName }}</td>
+                                <td>{{ attr.value }}</td>
+                            </tr>
+                        </ng-template>
+                    </p-table>
+                </div>
+                } @else {
+                <div class="text-center text-muted-color py-4">
+                    <i class="pi pi-inbox text-3xl mb-2"></i>
+                    <p>Aucun attribut disponible</p>
+                </div>
+                }
+            </div>
+        </ng-template>
+
+        <ng-template pTemplate="footer">
+            <p-button 
+                label="Fermer" 
+                icon="pi pi-times" 
+                text 
+                (click)="hideDetails()" 
+            />
+        </ng-template>
+    </p-dialog>
+
+    <!-- Dialog de rejet en masse - Partagé entre Tab 0 et Tab 1 -->
+    <p-dialog 
+        [(visible)]="bulkRejectDialog" 
+        [modal]="true" 
+        [style]="{ width: '800px' }" 
+        header="Rejet en masse - Commentaires" 
+        [draggable]="false" 
+        [resizable]="false"
+    >
+        <ng-template pTemplate="content">
+            <div class="p-4">
+                <p-table [value]="bulkRejectEquipments" dataKey="equipment.id" [tableStyle]="{ 'min-width': '60rem' }">
+                    <ng-template #header>
+                        <tr>
+                            <th>Code Équipement</th>
+                            <th>Description</th>
+                            <th>Commentaire de rejet</th>
+                        </tr>
+                    </ng-template>
+                    <ng-template #body let-item>
+                        <tr>
+                            <td>{{ item.equipment.code }}</td>
+                            <td>{{ item.equipment.description }}</td>
+                            <td>
+                                <textarea 
+                                    pTextarea 
+                                    [(ngModel)]="item.comment" 
+                                    rows="2" 
+                                    placeholder="Motif du rejet (optionnel)"
+                                    class="w-full"
+                                ></textarea>
+                            </td>
+                        </tr>
+                    </ng-template>
+                </p-table>
+            </div>
+        </ng-template>
+
+        <ng-template pTemplate="footer">
+            <p-button 
+                label="Annuler" 
+                icon="pi pi-times" 
+                text 
+                (click)="cancelBulkReject()" 
+            />
+            <p-button 
+                label="Rejeter" 
+                icon="pi pi-times" 
+                severity="danger" 
+                (click)="submitBulkReject()" 
+            />
+        </ng-template>
+    </p-dialog>
+
+    <!-- Dialog de rejet unitaire - Partagé entre Tab 0 et Tab 1 -->
+    <p-dialog 
+        [(visible)]="singleRejectDialog" 
+        [modal]="true" 
+        [style]="{ width: '500px' }" 
+        header="Motif du rejet" 
+        [draggable]="false" 
+        [resizable]="false"
+    >
+        <ng-template pTemplate="content">
+            <div class="p-4">
+                <label for="singleRejectComment" class="block font-bold mb-2">Commentaire (optionnel)</label>
+                <textarea 
+                    pTextarea 
+                    id="singleRejectComment" 
+                    [(ngModel)]="singleRejectComment" 
+                    rows="4" 
+                    placeholder="Saisissez le motif du rejet..." 
+                    class="w-full"
+                ></textarea>
+            </div>
+        </ng-template>
+
+        <ng-template pTemplate="footer">
+            <p-button 
+                label="Annuler" 
+                icon="pi pi-times" 
+                text 
+                (click)="cancelSingleReject()" 
+            />
+            <p-button 
+                label="Rejeter" 
+                icon="pi pi-times" 
+                severity="danger" 
+                (click)="submitSingleReject()" 
+            />
+        </ng-template>
+    </p-dialog>
 </p-tabs>
