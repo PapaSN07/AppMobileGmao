@@ -21,6 +21,7 @@ export interface Equipment {
     isNew?: boolean;
     isApproved?: boolean;
     isRejected?: boolean;
+    isDeleted?: boolean;
     attributes?: Attribute[];
     commentaire?: string;
 }

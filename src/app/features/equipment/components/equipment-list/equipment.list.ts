@@ -562,6 +562,113 @@ export class EquipmentList implements OnInit {
         this.detailsDialog = false;
     }
 
+    /**
+     * ✅ Supprime un équipement et l'archive
+     */
+    deleteEquipment(equipment: Equipment) {
+        const now = new Date();
+        const updatedEquipment = { 
+            ...equipment, 
+            isDeleted: true, 
+            judgedBy: this.userConnected?.username || 'unknown', 
+            updatedAt: now 
+        };
+        
+        this.equipmentService.update(equipment.id!, updatedEquipment).subscribe({
+            next: (data) => {
+                this.messageService.add({ 
+                    severity: 'success', 
+                    summary: 'Succès', 
+                    detail: `Équipement ${equipment.code} supprimé`, 
+                    life: 3000 
+                });
+                
+                // Archiver l'équipement supprimé après succès
+                this.archiveDeletedEquipment(equipment);
+            },
+            error: (err) => {
+                this.messageService.add({ 
+                    severity: 'error', 
+                    summary: 'Erreur', 
+                    detail: `Échec de la suppression de l'équipement ${equipment.code}`, 
+                    life: 3000 
+                });
+                console.error('Erreur suppression:', err);
+            }
+        });
+    }
+
+    /**
+     * ✅ Archive un équipement supprimé
+     */
+    private archiveDeletedEquipment(equipment: Equipment): void {
+        const ids = [equipment.id!];
+        this.equipmentService.archive(ids).subscribe({
+            next: (response) => {
+                this.messageService.add({ 
+                    severity: 'success', 
+                    summary: 'Archivage réussi', 
+                    detail: `Équipement ${equipment.code} archivé avec succès.`, 
+                    life: 3000 
+                });
+                
+                // Recharger les données pour refléter la suppression
+                this.loadDataApproved();
+                
+                // Réinitialiser la sélection
+                this.selectedEquipmentsExport = [];
+            },
+            error: (err) => {
+                this.messageService.add({ 
+                    severity: 'error', 
+                    summary: 'Erreur d\'archivage', 
+                    detail: 'Une erreur est survenue lors de l\'archivage.', 
+                    life: 3000 
+                });
+                console.error('Erreur archivage:', err);
+            }
+        });
+    }
+
+    /**
+     * ✅ Confirmation de suppression
+     */
+    confirmDelete(event: Event, equipment: Equipment) {
+        this.confirmationService.confirm({
+            header: 'Confirmation de suppression',
+            target: event.currentTarget as EventTarget,
+            message: `Êtes-vous sûr de vouloir supprimer l'équipement ${equipment.code} ? Cette action est irréversible.`,
+            icon: 'pi pi-exclamation-triangle',
+            acceptIcon: 'pi pi-trash',
+            rejectButtonProps: {
+                label: 'Annuler',
+                severity: 'secondary',
+                outlined: true
+            },
+            acceptButtonProps: {
+                label: 'Supprimer',
+                severity: 'danger'
+            },
+            accept: () => {
+                this.messageService.add({ 
+                    severity: 'info', 
+                    summary: 'Suppression en cours', 
+                    detail: `Suppression de l'équipement ${equipment.code} en cours...`, 
+                    life: 3000 
+                });
+                this.deleteEquipment(equipment);
+            },
+            reject: () => {
+                this.messageService.add({ 
+                    severity: 'info', 
+                    summary: 'Annulé', 
+                    detail: 'Suppression annulée', 
+                    life: 3000 
+                });
+            }
+        });
+    }
+
     saveAllEquipmentAdd() {
         if (!this.selectedEquipmentsNoApproved || this.selectedEquipmentsNoApproved.length === 0) {
             this.messageService.add({ severity: 'warn', summary: 'Aucune sélection', detail: 'Veuillez sélectionner au moins un équipement à approuver.', life: 3000 });

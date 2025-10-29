@@ -16,34 +16,64 @@ export class EquipmentService {
 
     private dataSource: Observable<Equipment[]> = new Observable<Equipment[]>();
 
+    /**
+     * Trie les équipements du plus récent au plus ancien
+     * @param equipments - Liste d'équipements à trier
+     * @returns Liste triée par date décroissante
+     */
+    private sortByDateDesc(equipments: Equipment[]): Equipment[] {
+        return equipments.sort((a, b) => {
+            // Priorité 1: updatedAt (si existe)
+            const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : b.createdAt ? new Date(b.createdAt).getTime() : 0;
+
+            return dateB - dateA; // Ordre décroissant (plus récent en premier)
+        });
+    }
+
     getAll(): Observable<Equipment[]> {
         this.dataSource = this.http.get<EquipmentResponse>(this.API_URL).pipe(
-            map(response => (response.data || []).map(equipment => Tools.transformKeys(equipment)))
+            map((response) => {
+                const equipments = (response.data || []).map((equipment) => Tools.transformKeys(equipment));
+                return this.sortByDateDesc(equipments);
+            })
         );
         return this.dataSource;
     }
 
     getAllNoApproved(): Observable<Equipment[]> {
         return this.dataSource.pipe(
-            map(equipments => equipments.filter(equipment => equipment.isNew && !equipment.isApproved && !equipment.isRejected))
+            map((equipments) => {
+                const filtered = equipments.filter((equipment) => equipment.isNew && !equipment.isApproved && !equipment.isRejected);
+                return this.sortByDateDesc(filtered);
+            })
         );
     }
 
     getAllNoModified(): Observable<Equipment[]> {
         return this.dataSource.pipe(
-            map(equipments => equipments.filter(equipment => equipment.isUpdate && !equipment.isApproved && !equipment.isRejected))
+            map((equipments) => {
+                const filtered = equipments.filter((equipment) => equipment.isUpdate && !equipment.isApproved && !equipment.isRejected);
+                return this.sortByDateDesc(filtered);
+            })
         );
     }
 
     getAllApproved(): Observable<Equipment[]> {
         return this.dataSource.pipe(
-            map(equipments => equipments.filter(equipment => equipment.isApproved))
+            map((equipments) => {
+                const filtered = equipments.filter((equipment) => equipment.isApproved);
+                return this.sortByDateDesc(filtered);
+            })
         );
     }
 
     getAllHistory(): Observable<Equipment[]> {
         return this.http.get<EquipmentResponse>(`${this.API_URL}/history`).pipe(
-            map(response => (response.data || []).map(equipment => Tools.transformKeys(equipment)))
+            map((response) => {
+                const equipments = (response.data || []).map((equipment) => Tools.transformKeys(equipment));
+                return this.sortByDateDesc(equipments);
+            })
         );
     }
 

@@ -1,17 +1,16 @@
-import { Component, OnInit, signal, ViewChild } from '@angular/core';
-import { MessageService } from 'primeng/api';
-import { Table, TableModule } from 'primeng/table';
-import { DatePipe } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { Component, OnInit } from '@angular/core';
+import { CommonModule, DatePipe } from '@angular/common';
+import { TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
-import { DialogModule } from 'primeng/dialog';
+import { InputTextModule } from 'primeng/inputtext';
 import { IconFieldModule } from 'primeng/iconfield';
 import { InputIconModule } from 'primeng/inputicon';
-import { InputTextModule } from 'primeng/inputtext';
-import { TabsModule } from 'primeng/tabs';
 import { Tag } from 'primeng/tag';
+import { DialogModule } from 'primeng/dialog';
+import { TooltipModule } from 'primeng/tooltip';
+import { FormsModule } from '@angular/forms';
 import { TextareaModule } from 'primeng/textarea';
-import { ToastModule } from 'primeng/toast';
+
 import { Equipment } from '../../../../core/models';
 import { EquipmentService } from '../../../../core/services/api';
 
@@ -22,55 +21,129 @@ interface expandedRows {
 @Component({
     selector: 'app-equipment.history',
     standalone: true,
-    imports: [TableModule, ButtonModule, ToastModule, InputTextModule, DialogModule, InputIconModule, IconFieldModule, TabsModule, Tag, DatePipe, TextareaModule, FormsModule],
+    imports: [
+        CommonModule,
+        TableModule,
+        ButtonModule,
+        InputTextModule,
+        IconFieldModule,
+        InputIconModule,
+        Tag,
+        DialogModule,
+        TooltipModule,
+        FormsModule,
+        TextareaModule,
+        DatePipe
+    ],
     templateUrl: './equipment.history.html',
-    styleUrl: './equipment.history.scss',
-    providers: [MessageService]
+    styleUrls: ['./equipment.history.scss']
 })
 export class EquipmentHistory implements OnInit {
-    equipmentsHistory = signal<Equipment[]>([]);
-
-    @ViewChild('dt1') dt1!: Table;
-
-    expandedRows: expandedRows = {};
-
-    loading: boolean = true;
-
-    balanceFrozen: boolean = true;
-
-    detailsDialog: boolean = false;
-
+    equipments: Equipment[] = [];
     selectedEquipment: Equipment | null = null;
+    loading = false;
+    detailsDialog = false;
+    expandedRows: expandedRows = {};
+    balanceFrozen = true;
 
-    constructor(private messageService: MessageService, private equipmentService: EquipmentService) {}
+    constructor(private equipmentService: EquipmentService) {}
 
-    ngOnInit() {
-        this.loadData();
+    ngOnInit(): void {
+        this.loadHistory();
     }
 
-    // Ouvrir modal détails
-    viewDetails(equipment: Equipment) {
+    /**
+     * ✅ Charge l'historique des équipements
+     */
+    loadHistory(): void {
+        this.loading = true;
+        this.equipmentService.getAllHistory().subscribe({
+            next: (data) => {
+                this.equipments = data;
+                this.loading = false;
+            },
+            error: (err) => {
+                console.error('Erreur chargement historique:', err);
+                this.loading = false;
+            }
+        });
+    }
+
+    /**
+     * ✅ Affiche les détails d'un équipement
+     */
+    viewDetails(equipment: Equipment): void {
         this.selectedEquipment = { ...equipment };
         this.detailsDialog = true;
     }
 
-    // Fermer modal détails
-    hideDetails() {
-        this.selectedEquipment = null;
+    /**
+     * ✅ Ferme le dialog de détails
+     */
+    hideDetails(): void {
         this.detailsDialog = false;
+        this.selectedEquipment = null;
     }
 
-    loadData() {
-        this.loading = true;
-        this.equipmentService.getAllHistory().subscribe({
-            next: (data) => {
-                this.equipmentsHistory.set(data);
-                this.loading = false;
-            },
-            error: (err) => {
-                this.messageService.add({ severity: 'error', summary: 'Erreur', detail: 'Erreur lors du chargement des données', life: 3000 });
-                this.loading = false;
-            }
-        });
+    /**
+     * ✅ NOUVEAU : Retourne le tag de statut selon l'état de l'équipement
+     */
+    getStatusTag(equipment: Equipment): { severity: string; value: string; icon: string } {
+        if (equipment.isDeleted) {
+            return { 
+                severity: 'danger', 
+                value: 'Supprimé', 
+                icon: 'pi pi-trash' 
+            };
+        }
+        if (equipment.isRejected) {
+            return { 
+                severity: 'danger', 
+                value: 'Rejeté', 
+                icon: 'pi pi-times-circle' 
+            };
+        }
+        if (equipment.isApproved) {
+            return { 
+                severity: 'success', 
+                value: 'Approuvé', 
+                icon: 'pi pi-check-circle' 
+            };
+        }
+        if (equipment.isUpdate) {
+            return { 
+                severity: 'info', 
+                value: 'Modifié', 
+                icon: 'pi pi-pencil' 
+            };
+        }
+        if (equipment.isNew) {
+            return { 
+                severity: 'warn', 
+                value: 'Nouveau', 
+                icon: 'pi pi-plus-circle' 
+            };
+        }
+        return { 
+            severity: 'secondary', 
+            value: 'Inconnu', 
+            icon: 'pi pi-question-circle' 
+        };
+    }
+
+    /**
+     * ✅ NOUVEAU : Retourne la classe CSS selon le statut
+     */
+    getRowClass(equipment: Equipment): string {
+        if (equipment.isDeleted) {
+            return 'deleted-row';
+        }
+        if (equipment.isRejected) {
+            return 'rejected-row';
+        }
+        if (equipment.isApproved) {
+            return 'approved-row';
+        }
+        return '';
     }
 }
