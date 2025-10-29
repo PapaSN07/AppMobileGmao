@@ -86,7 +86,6 @@ async def get_all_equipment_histories_endpoint():
     """Récupère tous les historiques d'équipements"""
     try:
         histories = get_all_equipment_histories()
-        
         return AllEquipmentHistoriesResponse(
             data=histories,
             count=len(histories),

@@ -2,6 +2,7 @@ import logging
 from datetime import datetime
 from sqlalchemy import func, and_, case
 from typing import Dict
+import json  # ✅ AJOUT
 
 from app.db.sqlalchemy.session import get_main_session, get_temp_session
 from app.models.equipment_model import EquipmentModel as EquipmentGMAO
@@ -28,7 +29,26 @@ def get_statistics_cockpit_web(include_details: bool = False) -> Dict:
     
     if cached_stats:
         logger.info("✅ Statistiques récupérées depuis le cache")
-        return cached_stats
+        
+        # ✅ CORRECTION : Déballer le wrapper du cache
+        try:
+            # Si c'est une chaîne JSON, la parser
+            if isinstance(cached_stats, str):
+                cached_parsed = json.loads(cached_stats)
+            else:
+                cached_parsed = cached_stats
+            
+            # Si le cache contient un wrapper {"data": {...}, "cached_at": ..., "ttl": ...}
+            if isinstance(cached_parsed, dict) and "data" in cached_parsed:
+                logger.debug("🔓 Déballage du wrapper cache")
+                return cached_parsed["data"]
+            
+            # Sinon retourner tel quel (déjà au bon format)
+            return cached_parsed
+            
+        except Exception as e:
+            logger.warning(f"⚠️ Impossible d'interpréter le cache: {e}, recalcul des stats")
+            # Continuer l'exécution normale (recalculer)
     
     try:
         # ============ Statistiques principales ============
@@ -54,13 +74,13 @@ def get_statistics_cockpit_web(include_details: bool = False) -> Dict:
             ).scalar() or 0
             
             # Équipements approuvés
-            approved_equipments = temp_session.query(func.count(EquipmentClicClac.id)).filter(
-                EquipmentClicClac.is_approved == True
+            approved_equipments = temp_session.query(func.count(HistoryEquipmentClicClac.id)).filter(
+                HistoryEquipmentClicClac.is_approved == True
             ).scalar() or 0
             
             # Équipements rejetés
-            rejected_equipments = temp_session.query(func.count(EquipmentClicClac.id)).filter(
-                EquipmentClicClac.is_rejected == True
+            rejected_equipments = temp_session.query(func.count(HistoryEquipmentClicClac.id)).filter(
+                HistoryEquipmentClicClac.is_rejected == True
             ).scalar() or 0
             
             # Équipements en attente de validation
@@ -142,7 +162,7 @@ def get_statistics_cockpit_web(include_details: bool = False) -> Dict:
             "stats_by_entity": stats_by_entity,
             "stats_by_family": stats_by_family,
             "stats_by_user": stats_by_user,
-            "last_updated": datetime.now().isoformat() + "Z"
+            "last_updated": datetime.utcnow().isoformat() + "Z"  # ✅ CORRECTION: utcnow() au lieu de now()
         }
         
         # Mettre en cache (5 minutes)
@@ -169,7 +189,7 @@ def get_statistics_cockpit_web(include_details: bool = False) -> Dict:
             "stats_by_entity": None,
             "stats_by_family": None,
             "stats_by_user": None,
-            "last_updated": datetime.utcnow().isoformat() + "Z"
+            "last_updated": datetime.now().isoformat() + "Z"
         }
 
 def get_statistics_summary() -> Dict:

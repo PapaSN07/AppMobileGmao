@@ -59,6 +59,7 @@ class UpdateEquipmentRequest(BaseModel):
     is_new: Optional[bool] = Field(None, description="Est nouveau")
     is_approved: Optional[bool] = Field(None, description="Est approuvé")
     is_rejected: Optional[bool] = Field(None, description="Est rejeté")
+    is_deleted: Optional[bool] = Field(None, description="Est supprimé")
     attributes: Optional[List[Dict[str, Any]]] = Field(None, description="Liste des attributs")
     commentaire: Optional[str] = Field(None, description="Commentaire sur l'équipement")
     
@@ -83,6 +84,7 @@ class UpdateEquipmentWebRequest(BaseModel):
     isNew: Optional[bool] = Field(None, description="Est nouveau")
     isApproved: Optional[bool] = Field(None, description="Est approuvé")
     isRejected: Optional[bool] = Field(None, description="Est rejeté")
+    isDeleted: Optional[bool] = Field(None, description="Est supprimé")
     attributes: Optional[List[Dict[str, Any]]] = Field(None, description="Liste des attributs")
     commentaire: Optional[str] = Field(None, description="Commentaire sur l'équipement")
 

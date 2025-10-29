@@ -413,6 +413,7 @@ def update_equipment_web(equipment_id: str, updates: Dict[str, Any]) -> tuple[bo
                 'isNew': 'is_new',
                 'isApproved': 'is_approved',
                 'isRejected': 'is_rejected',
+                'isDeleted': 'is_deleted'
             }
             
             # 3) Mettre à jour seulement les champs qui ont changé
@@ -473,7 +474,7 @@ def update_equipment_web(equipment_id: str, updates: Dict[str, Any]) -> tuple[bo
                     str(existing_equipment.entity), 
                     str(existing_equipment.famille)
                 )
-                invalidate_statistics_cache()  # ✅ AJOUT : Invalider le cache des statistiquesuv
+                invalidate_statistics_cache()  # ✅ AJOUT : Invalider le cache des statistiques
                 
                 # ✅ AJOUT : Envoyer notification à l'admin
                 import asyncio
@@ -762,7 +763,8 @@ def archive_equipments(equipment_ids: List[str]) -> tuple[bool, str, int, List[s
                         is_update=equipment.is_update,
                         is_new=equipment.is_new,
                         is_approved=equipment.is_approved,
-                        is_rejected=equipment.is_rejected
+                        is_rejected=equipment.is_rejected,
+                        is_deleted=equipment.is_deleted
                     )
                     
                     session.add(history_equipment)
@@ -849,6 +851,7 @@ def get_all_equipment_histories() -> List[Dict[str, Any]]:
                 
                 # Convertir en dict
                 hist_dict = hist_eq.to_dict()
+                
                 hist_dict['attributes'] = [attr.to_dict() for attr in attributes]
                 
                 history_list.append(hist_dict)

@@ -167,6 +167,7 @@ class EquipmentClicClac(BaseClicClac):
     is_new = Column(Boolean, default=False)
     is_approved = Column(Boolean, default=False)
     is_rejected = Column(Boolean, default=False)
+    is_deleted = Column(Boolean, default=False)
     commentaire = Column(String(255), nullable=True)
 
     def __init__(self, **kwargs):
@@ -196,6 +197,7 @@ class EquipmentClicClac(BaseClicClac):
             'is_new': self.is_new,
             'is_approved': self.is_approved,
             'is_rejected': self.is_rejected,
+            'is_deleted': self.is_deleted,
             'attributes': [attr.to_dict() for attr in self.attributes],
             'commentaire': self.commentaire
         }
@@ -234,6 +236,7 @@ class HistoryEquipmentClicClac(BaseClicClac):
     is_new = Column(Boolean, default=False)
     is_approved = Column(Boolean, default=False)
     is_rejected = Column(Boolean, default=False)
+    is_deleted = Column(Boolean, default=False)
     
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -266,5 +269,6 @@ class HistoryEquipmentClicClac(BaseClicClac):
             'is_update': self.is_update,
             'is_new': self.is_new,
             'is_approved': self.is_approved,
-            'is_rejected': self.is_rejected
+            'is_rejected': self.is_rejected,
+            'is_deleted': self.is_deleted
         }
