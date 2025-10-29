@@ -8,7 +8,7 @@ import { Tools } from '../utils';
 
 @Injectable({ providedIn: 'root' })
 export class EquipmentService {
-    private apiUrl = `${environment.apiUrl}/equipments`;
+    private API_URL = `${environment.API_URL}/equipments`;
 
     constructor(private http: HttpClient) {
         this.getAll();
@@ -17,7 +17,7 @@ export class EquipmentService {
     private dataSource: Observable<Equipment[]> = new Observable<Equipment[]>();
 
     getAll(): Observable<Equipment[]> {
-        this.dataSource = this.http.get<EquipmentResponse>(this.apiUrl).pipe(
+        this.dataSource = this.http.get<EquipmentResponse>(this.API_URL).pipe(
             map(response => (response.data || []).map(equipment => Tools.transformKeys(equipment)))
         );
         return this.dataSource;
@@ -42,24 +42,24 @@ export class EquipmentService {
     }
 
     getAllHistory(): Observable<Equipment[]> {
-        return this.http.get<EquipmentResponse>(`${this.apiUrl}/history`).pipe(
+        return this.http.get<EquipmentResponse>(`${this.API_URL}/history`).pipe(
             map(response => (response.data || []).map(equipment => Tools.transformKeys(equipment)))
         );
     }
 
     getById(id: string): Observable<Equipment> {
-        return this.http.get<Equipment>(`${this.apiUrl}/${id}`);
+        return this.http.get<Equipment>(`${this.API_URL}/${id}`);
     }
 
     update(id: string, equipment: Equipment): Observable<Equipment> {
-        return this.http.patch<Equipment>(`${this.apiUrl}/${id}`, equipment);
+        return this.http.post<Equipment>(`${this.API_URL}/${id}`, equipment);
     }
 
     delete(id: string): Observable<void> {
-        return this.http.delete<void>(`${this.apiUrl}/${id}`);
+        return this.http.delete<void>(`${this.API_URL}/${id}`);
     }
 
     archive(equipmentIds: string[]): Observable<any> {
-        return this.http.post(`${this.apiUrl}/archive`, { equipment_ids: equipmentIds });
+        return this.http.post(`${this.API_URL}/archive`, { equipment_ids: equipmentIds });
     }
 }

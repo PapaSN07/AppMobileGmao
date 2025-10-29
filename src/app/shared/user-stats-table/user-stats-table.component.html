@@ -1,0 +1,63 @@
+<div class="card">
+    <div class="font-semibold text-xl mb-4">Statistiques par Utilisateur</div>
+
+    @if (data.length > 0) {
+    <p-table [value]="data" [paginator]="true" [rows]="5" [rowsPerPageOptions]="[5, 10, 20]" [sortField]="'new_count'" [sortOrder]="-1" [scrollable]="true" styleClass="p-datatable-sm">
+        <ng-template #header>
+            <tr>
+                <th pSortableColumn="username">
+                    Utilisateur
+                    <p-sortIcon field="username" />
+                </th>
+                <th pSortableColumn="new_count" class="text-right">
+                    Nouveaux
+                    <p-sortIcon field="new_count" />
+                </th>
+                <th pSortableColumn="update_count" class="text-right">
+                    Modifiés
+                    <p-sortIcon field="update_count" />
+                </th>
+                <th class="text-right">Total</th>
+            </tr>
+        </ng-template>
+
+        <ng-template #body let-user>
+            <tr>
+                <td>
+                    <div class="flex items-center gap-2">
+                        <i class="pi pi-user text-primary"></i>
+                        <span class="font-medium">{{ user.username }}</span>
+                    </div>
+                </td>
+                <td class="text-right">
+                    <span class="px-2 py-1 rounded-border bg-green-100 dark:bg-green-400/10 text-green-700 dark:text-green-400 text-sm">
+                        {{ user.new_count }}
+                    </span>
+                </td>
+                <td class="text-right">
+                    <span class="px-2 py-1 rounded-border bg-cyan-100 dark:bg-cyan-400/10 text-cyan-700 dark:text-cyan-400 text-sm">
+                        {{ user.update_count }}
+                    </span>
+                </td>
+                <td class="text-right font-semibold">
+                    {{ user.new_count + user.update_count }}
+                </td>
+            </tr>
+        </ng-template>
+
+        <ng-template #emptymessage>
+            <tr>
+                <td colspan="4" class="text-center text-muted-color py-8">
+                    <i class="pi pi-users text-4xl mb-4"></i>
+                    <p>Aucune statistique utilisateur disponible</p>
+                </td>
+            </tr>
+        </ng-template>
+    </p-table>
+    } @else {
+    <div class="text-center text-muted-color py-8">
+        <i class="pi pi-users text-4xl mb-4"></i>
+        <p>Aucune statistique utilisateur disponible</p>
+    </div>
+    }
+</div>

@@ -8,13 +8,13 @@ import { map } from 'rxjs/operators';
 
 @Injectable({ providedIn: 'root' })
 export class EntityService {
-    private apiUrl = `${environment.apiUrl}/entity`;
+    private API_URL = `${environment.API_URL}/entity`;
 
     constructor(private http: HttpClient) {}
 
     getAllEntities(): Observable<EntityModel[]> {
         return this.http
-            .get<{ data: EntityModel[] }>(this.apiUrl)
+            .get<{ data: EntityModel[] }>(this.API_URL)
             .pipe(map((response) => (response.data || []).map((entity: EntityModel) => Tools.transformKeys(entity))));
     }
 }

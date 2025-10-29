@@ -3,3 +3,4 @@ export * from './entity.service';
 export * from './equipment.service';
 export * from './user.service';
 export * from './websocket.service';
+export * from './statistics.service';

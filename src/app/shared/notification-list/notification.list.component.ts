@@ -77,34 +77,54 @@ export class NotificationListComponent implements OnInit, OnDestroy {
                 icon: this.getNotificationIcon(notif.type),
                 styleClass: this.getNotificationClass(notif.type),
                 command: () => this.markAsRead(notif),
-                title: notif.message
+                title: notif.message,
+                // ✅ AJOUT : Désactiver si pas d'ID valide
+                disabled: !notif.id || notif.id === null
             }));
 
             // Ajouter "Voir tout" si plus de 5 notifications
             if (this.notifications.length > 5) {
-                this.notificationMenuItems.push({
-                    separator: true
-                });
-                this.notificationMenuItems.push({
-                    label: `Voir toutes (${this.notifications.length})`,
-                    icon: 'pi pi-list',
-                    command: () => console.log('Redirection vers liste complète')
-                });
+                this.notificationMenuItems.push(
+                    { separator: true },
+                    {
+                        label: `Voir toutes (${this.notifications.length})`,
+                        icon: 'pi pi-list',
+                        command: () => this.viewAllNotifications()
+                    }
+                );
             }
         }
     }
 
     /**
-     * Marque une notification comme lue
+     * Ouvre la page de toutes les notifications
+     */
+    viewAllNotifications(): void {
+        console.log('📋 Voir toutes les notifications');
+        // TODO: Navigation vers page dédiée
+    }
+
+
+    /**
+     * ✅ CORRECTION : Marque une notification comme lue avec validation
      */
     markAsRead(notification: Notification): void {
+        // ✅ VALIDATION : Vérifier que l'ID existe
+        if (!notification || !notification.id || notification.id === null) {
+            console.error('❌ Impossible de marquer comme lue : notification ou ID manquant', notification);
+            return;
+        }
+
         if (!notification.is_read) {
+            console.log('🔄 Marquage notification comme lue:', notification.id);
             this.websocketService.markAsRead(notification.id);
+        } else {
+            console.log('⚠️ Notification déjà marquée comme lue:', notification.id);
         }
     }
 
     /**
-     * Retourne l'icône Material Design selon le type de notification
+     * Retourne l'icône PrimeNG selon le type de notification
      */
     getNotificationIcon(type: string): string {
         switch (type) {

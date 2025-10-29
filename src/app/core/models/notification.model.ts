@@ -14,35 +14,45 @@ export interface Notification {
     type: NotificationType;
     timestamp: string;
     is_read: boolean;
+    broadcast: boolean; // ✅ AJOUT : Différencier broadcast vs spécifique
 }
 
 /**
  * Message de contrôle WebSocket (ping/pong, connected, etc.)
  */
 export interface WebSocketControlMessage {
-    type: 'ping' | 'pong' | 'connected';
+    type: 'connected' | 'pong' | 'ping' | 'mark_read_ack';
     message?: string;
     timestamp?: string;
+    notification_id?: number;
+    success?: boolean;
 }
 
 /**
  * Action envoyée au serveur via WebSocket
  */
 export interface WebSocketAction {
-    action: 'mark_read' | 'ping';
+    action: 'ping' | 'mark_read';
     notification_id?: number;
 }
 
-/**
- * Type guard pour vérifier si un message est une notification
- */
-export function isNotification(message: any): message is Notification {
-    return message && typeof message.id === 'number' && typeof message.user_id === 'string';
+// ✅ Type guards
+export function isNotification(data: any): data is Notification {
+    return (
+        data &&
+        typeof data === 'object' &&
+        'title' in data &&
+        'message' in data &&
+        'type' in data &&
+        ['info', 'success', 'warning', 'error'].includes(data.type)
+    );
 }
 
-/**
- * Type guard pour vérifier si un message est un message de contrôle
- */
-export function isControlMessage(message: any): message is WebSocketControlMessage {
-    return message && ['ping', 'pong', 'connected'].includes(message.type);
+export function isControlMessage(data: any): data is WebSocketControlMessage {
+    return (
+        data &&
+        typeof data === 'object' &&
+        'type' in data &&
+        ['connected', 'pong', 'ping', 'mark_read_ack'].includes(data.type)
+    );
 }

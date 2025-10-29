@@ -1,4 +1,5 @@
 import { inject, Injectable, OnDestroy } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { ToastrService } from 'ngx-toastr';
@@ -13,28 +14,25 @@ export class WebSocketService implements OnDestroy {
     private socket: WebSocket | null = null;
     private reconnectAttempts = 0;
     private maxReconnectAttempts = 5;
-    private reconnectDelay = 1000; // Délai initial en ms
+    private reconnectDelay = 1000;
     private pingInterval: any = null;
     private reconnectTimeout: any = null;
+    private tokenCheckInterval: any = null;
     private destroy$ = new Subject<void>();
     private isManualDisconnect = false;
-    private tokenCheckInterval: any = null;
 
-    // BehaviorSubject pour stocker l'historique des notifications
+    private http = inject(HttpClient);
+
     private notificationsSubject = new BehaviorSubject<Notification[]>([]);
     public notifications$ = this.notificationsSubject.asObservable();
 
-    // Subject pour les nouvelles notifications en temps réel
     private newNotificationSubject = new Subject<Notification>();
     public newNotification$ = this.newNotificationSubject.asObservable();
 
-    // État de la connexion
     private connectionStateSubject = new BehaviorSubject<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
     public connectionState$ = this.connectionStateSubject.asObservable();
 
-    constructor(
-        private toastr: ToastrService
-    ) {}
+    constructor(private toastr: ToastrService) {}
 
     /**
      * Vérifie si le token JWT est expiré ou va expirer bientôt
@@ -71,6 +69,22 @@ export class WebSocketService implements OnDestroy {
     }
 
     /**
+     * ✅ NOUVEAU : Récupère l'ID de l'utilisateur connecté depuis sessionStorage
+     */
+    private getCurrentUserId(): string {
+        const userString = sessionStorage.getItem('user');
+        if (userString) {
+            try {
+                const user = JSON.parse(userString);
+                return user.id?.toString() || user.code?.toString() || '';
+            } catch (error) {
+                console.error('❌ Erreur parsing user depuis sessionStorage:', error);
+            }
+        }
+        return '';
+    }
+
+    /**
      * Obtient un token valide (rafraîchit si expiré)
      */
     private async getValidToken(): Promise<string | null> {
@@ -86,7 +100,7 @@ export class WebSocketService implements OnDestroy {
             console.log('🔄 Token expiré ou proche de l\'expiration, rafraîchissement en cours...');
             
             try {
-                const response = await fetch(`${environment.apiUrlAuth}/refresh`, {
+                const response = await fetch(`${environment.API_URL_AUTH}/refresh`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ refresh_token: sessionStorage.getItem('refresh_token') })
@@ -193,8 +207,10 @@ export class WebSocketService implements OnDestroy {
                 this.reconnectAttempts = 0;
                 this.reconnectDelay = 1000;
                 this.startPingInterval();
-                // ✅ NOUVEAU : Démarrer la surveillance du token
                 this.startTokenMonitoring();
+                
+                // ✅ NOUVEAU : Charger les notifications non lues après connexion
+                this.loadUnreadNotifications();
             };
 
             this.socket.onmessage = (event) => {
@@ -215,7 +231,6 @@ export class WebSocketService implements OnDestroy {
             this.socket.onclose = (event) => {
                 console.log(`🔌 WebSocket fermé (code: ${event.code}, raison: ${event.reason})`);
                 this.stopPingInterval();
-                // ✅ NOUVEAU : Arrêter la surveillance du token
                 this.stopTokenMonitoring();
                 this.connectionStateSubject.next('disconnected');
 
@@ -234,35 +249,76 @@ export class WebSocketService implements OnDestroy {
     }
 
     /**
-     * Gère les messages entrants du WebSocket
+     * ✅ CORRECTION : Gestion des messages broadcast et spécifiques avec validation d'ID
      */
     private handleIncomingMessage(data: any): void {
-        // Vérifier si c'est un message de contrôle
+        console.log('📨 Message WebSocket reçu:', data);
+
+        // 1. Messages de contrôle (connected, pong, mark_read_ack)
         if (isControlMessage(data)) {
             console.log(`🔔 Message de contrôle: ${data.type}`, data.message || '');
             
             if (data.type === 'ping') {
-                // Répondre au ping
                 this.send({ action: 'ping' });
             }
             return;
         }
 
-        // Vérifier si c'est une notification
+        // 2. Notifications (broadcast ou spécifiques)
         if (isNotification(data)) {
-            console.log('📬 Nouvelle notification reçue:', data);
+            const currentUserId = this.getCurrentUserId();
             
-            // Ajouter à l'historique
-            const currentNotifications = this.notificationsSubject.value;
-            this.notificationsSubject.next([data, ...currentNotifications]);
+            // ✅ VALIDATION : Générer un ID si manquant
+            if (!data.id || data.id === null) {
+                console.warn('⚠️ Notification sans ID reçue, génération locale');
+                data.id = this.generateNotificationId();
+            }
+            
+            const notification: Notification = {
+                ...data,
+                id: data.id,
+                broadcast: data.broadcast || false
+            };
 
-            // Émettre la nouvelle notification
-            this.newNotificationSubject.next(data);
+            // Filtrage selon le type de notification
+            if (notification.broadcast) {
+                console.log('📢 Notification BROADCAST reçue:', notification.title);
+                this.addNotification(notification);
+                this.showToast(notification);
+            } else if (notification.user_id === currentUserId) {
+                console.log('📨 Notification SPÉCIFIQUE reçue:', notification.title);
+                this.addNotification(notification);
+                this.showToast(notification);
+            } else {
+                console.log(`⏭️ Notification ignorée (destinée à user_id=${notification.user_id}, vous êtes user_id=${currentUserId})`);
+            }
+            
+            return;
+        }
 
-            // Afficher un toast
-            this.showToast(data);
+        console.warn('⚠️ Message WebSocket non reconnu:', data);
+    }
+
+    /**
+     * ✅ NOUVEAU : Génère un ID unique pour les notifications
+     */
+    private generateNotificationId(): number {
+        return Date.now() + Math.floor(Math.random() * 1000);
+    }
+
+    /**
+     * ✅ NOUVEAU : Ajoute une notification sans doublon
+     */
+    private addNotification(notification: Notification): void {
+        const currentNotifications = this.notificationsSubject.value;
+        
+        // Vérifier si la notification existe déjà
+        const exists = currentNotifications.some(n => n.id === notification.id);
+        if (!exists) {
+            this.notificationsSubject.next([notification, ...currentNotifications]);
+            this.newNotificationSubject.next(notification);
         } else {
-            console.warn('⚠️ Message WebSocket non reconnu:', data);
+            console.log('⚠️ Notification déjà présente, ignorée');
         }
     }
 
@@ -276,19 +332,24 @@ export class WebSocketService implements OnDestroy {
             progressBar: true
         };
 
+        // ✅ AJOUT : Afficher badge [BROADCAST] pour les notifications globales
+        const title = notification.broadcast 
+            ? `[BROADCAST] ${notification.title}` 
+            : notification.title;
+
         switch (notification.type) {
             case 'success':
-                this.toastr.success(notification.message, notification.title, config);
+                this.toastr.success(notification.message, title, config);
                 break;
             case 'error':
-                this.toastr.error(notification.message, notification.title, config);
+                this.toastr.error(notification.message, title, config);
                 break;
             case 'warning':
-                this.toastr.warning(notification.message, notification.title, config);
+                this.toastr.warning(notification.message, title, config);
                 break;
             case 'info':
             default:
-                this.toastr.info(notification.message, notification.title, config);
+                this.toastr.info(notification.message, title, config);
                 break;
         }
     }
@@ -343,20 +404,55 @@ export class WebSocketService implements OnDestroy {
     }
 
     /**
-     * Marque une notification comme lue
+     * ✅ CORRECTION : Marque une notification comme lue avec validation
      */
     markAsRead(notificationId: number): void {
+        // ✅ VALIDATION : Vérifier que l'ID existe et est valide
+        if (!notificationId || notificationId === null || isNaN(notificationId)) {
+            console.error('❌ Impossible de marquer comme lue : ID manquant ou invalide', notificationId);
+            this.toastr.error('Impossible de marquer cette notification comme lue', 'Erreur');
+            return;
+        }
+
         console.log(`✅ Marquer notification ${notificationId} comme lue`);
         
-        // Envoyer au serveur
+        // Envoyer au serveur via WebSocket
         this.send({ action: 'mark_read', notification_id: notificationId });
 
-        // Mettre à jour localement
+        // Mettre à jour localement AVANT l'appel HTTP pour feedback immédiat
         const currentNotifications = this.notificationsSubject.value;
         const updatedNotifications = currentNotifications.map(notif => 
             notif.id === notificationId ? { ...notif, is_read: true } : notif
         );
         this.notificationsSubject.next(updatedNotifications);
+
+        // Appeler l'API HTTP pour synchroniser avec le serveur
+        this.http.post(`${environment.API_URL_BASE}/notifications/mark-read`, { 
+            notification_id: notificationId 
+        })
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+            next: () => {
+                console.log(`✅ Notification ${notificationId} marquée comme lue sur le serveur`);
+                
+                // ✅ AMÉLIORATION : Retirer complètement la notification de la liste après succès
+                const remainingNotifications = this.notificationsSubject.value.filter(
+                    notif => notif.id !== notificationId
+                );
+                this.notificationsSubject.next(remainingNotifications);
+            },
+            error: (err) => {
+                console.error(`❌ Erreur marquage notification ${notificationId}:`, err);
+                
+                // ✅ ROLLBACK : Remettre is_read à false en cas d'erreur
+                const rolledBackNotifications = this.notificationsSubject.value.map(notif => 
+                    notif.id === notificationId ? { ...notif, is_read: false } : notif
+                );
+                this.notificationsSubject.next(rolledBackNotifications);
+                
+                this.toastr.error('Impossible de marquer la notification comme lue', 'Erreur');
+            }
+        });
     }
 
     /**
@@ -372,13 +468,46 @@ export class WebSocketService implements OnDestroy {
     }
 
     /**
-     * Charge les notifications non lues depuis l'API HTTP
+     * ✅ CORRECTION : Charge les notifications avec validation des IDs
      */
     loadUnreadNotifications(): void {
-        // Cette méthode sera appelée au démarrage pour charger l'historique
-        // Implémentation à ajouter selon votre endpoint HTTP
         console.log('📥 Chargement des notifications non lues depuis l\'API...');
-        // Exemple : this.http.get<Notification[]>('/notifications/unread').subscribe(...)
+        
+        this.http.get<{ notifications: Notification[] }>(`${environment.API_URL_BASE}/notifications/unread`)
+            .pipe(takeUntil(this.destroy$))
+            .subscribe({
+                next: (response) => {
+                    if (response.notifications && Array.isArray(response.notifications)) {
+                        console.log(`✅ ${response.notifications.length} notifications chargées depuis l'API`);
+                        
+                        // ✅ VALIDATION : Générer des IDs pour les notifications sans ID
+                        const validatedNotifications = response.notifications.map(notif => {
+                            if (!notif.id || notif.id === null) {
+                                console.warn('⚠️ Notification sans ID détectée, génération locale:', notif);
+                                notif.id = this.generateNotificationId();
+                            }
+                            return notif;
+                        });
+                        
+                        // Filtrer les doublons
+                        const currentNotifications = this.notificationsSubject.value;
+                        const newNotifications = validatedNotifications.filter(
+                            apiNotif => !currentNotifications.some(n => n.id === apiNotif.id)
+                        );
+                        
+                        if (newNotifications.length > 0) {
+                            this.notificationsSubject.next([...newNotifications, ...currentNotifications]);
+                            console.log(`📬 ${newNotifications.length} nouvelles notifications ajoutées`);
+                        }
+                    } else {
+                        console.warn('⚠️ Réponse API invalide:', response);
+                    }
+                },
+                error: (error) => {
+                    console.error('❌ Erreur lors du chargement des notifications:', error);
+                    this.toastr.error('Impossible de charger les notifications', 'Erreur');
+                }
+            });
     }
 
     /**
@@ -388,6 +517,7 @@ export class WebSocketService implements OnDestroy {
         console.log('🔌 Déconnexion WebSocket manuelle');
         this.isManualDisconnect = true;
         this.stopPingInterval();
+        this.stopTokenMonitoring();
         
         if (this.reconnectTimeout) {
             clearTimeout(this.reconnectTimeout);

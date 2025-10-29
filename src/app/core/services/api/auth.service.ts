@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { inject, Injectable } from '@angular/core';
+import { Injectable } from '@angular/core';
 import { Router } from '@angular/router';
 import { environment } from '../../../../../environments/environment';
 import { Observable, tap, interval, Subscription } from 'rxjs';
@@ -9,7 +9,7 @@ import { WebSocketService } from '.';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-    private apiUrl = environment.apiUrlAuth;
+    private API_URL = environment.API_URL_AUTH;
     private tokenRefreshSubscription?: Subscription;
 
     constructor(private websocketService: WebSocketService, private http: HttpClient, private router: Router) {
@@ -19,7 +19,7 @@ export class AuthService {
 
     login(username: string, password: string): Observable<AuthResponse> {
         const credentials = { username, password };
-        return this.http.post<AuthResponse>(`${this.apiUrl}/login`, credentials).pipe(
+        return this.http.post<AuthResponse>(`${this.API_URL}/login`, credentials).pipe(
             tap((response) => {
                 if (response.success) {
                     this.storeTokens(response);
@@ -107,7 +107,7 @@ export class AuthService {
 
     refreshToken(): Observable<AuthResponse> {
         const refreshToken = this.getRefreshToken();
-        return this.http.post<AuthResponse>(`${this.apiUrl}/refresh`, { refresh_token: refreshToken }).pipe(
+        return this.http.post<AuthResponse>(`${this.API_URL}/refresh`, { refresh_token: refreshToken }).pipe(
             tap((response) => {
                 if (response.success) {
                     sessionStorage.setItem('access_token', response.access_token);
@@ -185,7 +185,7 @@ export class AuthService {
         // Arrêter le timer de rafraîchissement
         this.stopTokenRefreshTimer();
 
-        this.http.post(`${this.apiUrl}/logout`, { username: user?.username }).subscribe({
+        this.http.post(`${this.API_URL}/logout`, { username: user?.username }).subscribe({
             next: () => {
                 this.clearSession();
                 this.router.navigate(['/auth/login']);
