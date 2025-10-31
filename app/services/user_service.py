@@ -24,6 +24,7 @@ def _to_frontend_user(user: Any) -> UserResponse:
         url_image=user.url_image,
         is_connected=user.is_connected,
         is_enabled=user.is_enabled,
+        is_first_time=user.is_first_time,
         created_at=user.created_at.isoformat() if user.created_at is not None else None,
         updated_at=user.updated_at.isoformat() if user.updated_at is not None else None,
         address=user.address,
@@ -69,6 +70,14 @@ def update_user(user_id: int, update_data: UpdateUserRequest) -> UpdateUserRespo
                     message="Utilisateur introuvable.",
                     error_code="USER_NOT_FOUND"
                 )
+            
+            # Hacher le mot de passe si fourni
+            if update_data.password:
+                hashed_password = bcrypt_lib.hashpw(
+                    update_data.password.encode('utf-8'), 
+                    bcrypt_lib.gensalt()
+                ).decode('utf-8')
+                update_data.password = hashed_password
             
             # Mettre à jour seulement les champs fournis
             for field, value in update_data.model_dump(exclude_unset=True).items():

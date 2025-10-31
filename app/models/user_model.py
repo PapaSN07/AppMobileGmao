@@ -74,6 +74,7 @@ class UserClicClac(BaseClicClac):
     role = Column(String(100), nullable=False, default='user', index=True)
     is_connected = Column(Boolean, default=False, nullable=True, index=True)
     is_enabled = Column(Boolean, default=True, nullable=True, index=True)
+    is_first_time = Column(Boolean, default=True, nullable=True, index=True)
     created_at = Column(Date, default=func.now(), nullable=False)
     updated_at = Column(Date, default=func.now(), onupdate=func.now(), nullable=False)
     
@@ -91,6 +92,7 @@ class UserClicClac(BaseClicClac):
             'company': self.company,
             'is_connected': self.is_connected,
             'is_enabled': self.is_enabled,
+            'is_first_time': self.is_first_time,
             'created_at': self.created_at.isoformat() if self.created_at is not None else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at is not None else None
         }
