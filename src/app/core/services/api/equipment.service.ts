@@ -3,7 +3,11 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { environment } from '../../../../../environments/environment';
-import { Equipment, EquipmentResponse } from '../../models';
+import { 
+    Equipment, 
+    EquipmentResponse, 
+    PrestataireHistoryResponse 
+} from '../../models';
 import { Tools } from '../utils';
 
 @Injectable({ providedIn: 'root' })
@@ -91,5 +95,22 @@ export class EquipmentService {
 
     archive(equipmentIds: string[]): Observable<any> {
         return this.http.post(`${this.API_URL}/archive`, { equipment_ids: equipmentIds });
+    }
+
+    /**
+     * ✅ NOUVEAU: Récupère l'historique complet d'un prestataire
+     * Principe DRY: Méthode réutilisable pour tous les prestataires
+     * @param username - Nom d'utilisateur du prestataire
+     * @returns Observable avec l'historique complet
+     */
+    getPrestataireHistory(username: string): Observable<PrestataireHistoryResponse> {
+        return this.http.get<PrestataireHistoryResponse>(
+            `${this.API_URL}/history/prestataire/${username}`
+        ).pipe(
+            map(response => ({
+                ...response,
+                data: response.data.map(item => Tools.transformKeys(item))
+            }))
+        );
     }
 }

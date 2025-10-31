@@ -23,6 +23,11 @@ export const routes: Routes = [
                 loadChildren: () => import('./features/equipment/equipment.routes').then((m) => m.EQUIPMENT_ROUTES)
             },
             {
+                path: 'prestataire-history',
+                loadComponent: () => import('./features/prestataire/prestataire-history/prestataire-history').then((m) => m.PrestataireHistory),
+                canActivate: [authGuard, firstLoginGuard],
+            },
+            {
                 path: 'parameter',
                 loadChildren: () => import('./features/parameter/parameter.routes').then((m) => m.PARAMETER_ROUTES)
             }
