@@ -3,6 +3,7 @@ import 'package:appmobilegmao/models/entity.dart';
 import 'package:appmobilegmao/models/equipment_attribute.dart';
 import 'package:appmobilegmao/models/famille.dart';
 import 'package:appmobilegmao/models/feeder.dart';
+import 'package:appmobilegmao/models/historique_equipment.dart';
 import 'package:appmobilegmao/models/unite.dart';
 import 'package:appmobilegmao/models/zone.dart';
 import 'package:appmobilegmao/provider/auth_provider.dart';
@@ -169,6 +170,94 @@ class EquipmentProvider extends ChangeNotifier {
     return filtered.toList();
   }
 
+    /// ✅ CORRIGÉ: Charge l'historique avec cache Hive
+  Future<List<HistoriqueEquipment>> loadHistoriqueEquipmentPrestataire({
+    required String username,
+    bool forceRefresh = false,
+  }) async {
+    try {
+      if (kDebugMode) {
+        print(
+          '🔧 EquipmentProvider: Récupération historique pour $username',
+        );
+      }
+  
+      // 1. ✅ Cache d'abord (si pas de refresh forcé)
+      if (!forceRefresh) {
+        final cached = HiveService.historiqueEquipmentBox.values
+            .where((h) => h.createdBy == username)
+            .toList();
+  
+        if (cached.isNotEmpty) {
+          if (kDebugMode) {
+            print(
+              '� EquipmentProvider: ${cached.length} items depuis cache',
+            );
+          }
+          return cached;
+        }
+      }
+  
+      // 2. ✅ Vérifier connectivité
+      await _checkConnectivity();
+      if (_isOffline) {
+        // Fallback cache en mode hors ligne
+        final cached = HiveService.historiqueEquipmentBox.values
+            .where((h) => h.createdBy == username)
+            .toList();
+  
+        if (cached.isNotEmpty) {
+          if (kDebugMode) {
+            print(
+              '📦 EquipmentProvider: ${cached.length} items depuis cache (mode hors ligne)',
+            );
+          }
+          return cached;
+        }
+  
+        throw Exception('Aucune donnée disponible hors ligne');
+      }
+  
+      // 3. ✅ Charger depuis l'API
+      final historique = await _equipmentService.getHistoriqueEquipmentPrestataire(
+        username: username,
+      );
+  
+      // 4. ✅ Mettre en cache
+      if (historique.isNotEmpty) {
+        // Supprimer l'ancien cache pour cet utilisateur
+        final oldKeys = HiveService.historiqueEquipmentBox.values
+            .where((h) => h.createdBy == username)
+            .map((h) => h.key)
+            .toList();
+  
+        for (final key in oldKeys) {
+          await HiveService.historiqueEquipmentBox.delete(key);
+        }
+  
+        // Ajouter le nouveau cache
+        for (final item in historique) {
+          await HiveService.historiqueEquipmentBox.add(item);
+        }
+  
+        if (kDebugMode) {
+          print(
+            '💾 EquipmentProvider: ${historique.length} items mis en cache',
+          );
+        }
+      }
+  
+      return historique;
+    } catch (e) {
+      if (kDebugMode) {
+        print(
+          '❌ EquipmentProvider: Erreur loadHistoriqueEquipmentPrestataire: $e',
+        );
+      }
+      rethrow;
+    }
+  }
+
   // ✅ loadSelectors : entity OBLIGATOIRE (vient de l'utilisateur)
   Future<Map<String, dynamic>> loadSelectors() async {
     // ✅ Entity OBLIGATOIRE vient de l'utilisateur
@@ -222,10 +311,6 @@ class EquipmentProvider extends ChangeNotifier {
     );
 
     await _equipmentService.addEquipment(equipment);
-    // final created = await _equipmentService.addEquipment(equipment);
-    // final createdMap = _toMap(created);
-    // _allEquipments.insert(0, createdMap);
-    // _equipments.insert(0, createdMap);
     notifyListeners();
   }
 

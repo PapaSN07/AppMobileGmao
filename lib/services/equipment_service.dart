@@ -3,6 +3,7 @@ import 'package:appmobilegmao/models/entity.dart';
 import 'package:appmobilegmao/models/equipment_attribute.dart';
 import 'package:appmobilegmao/models/famille.dart';
 import 'package:appmobilegmao/models/feeder.dart';
+import 'package:appmobilegmao/models/historique_equipment.dart';
 import 'package:appmobilegmao/models/unite.dart';
 import 'package:appmobilegmao/models/zone.dart';
 import 'package:flutter/foundation.dart';
@@ -393,7 +394,7 @@ class EquipmentService {
   }
 
   /// Met à jour un équipement existant avec ses attributs
-    Future<Equipment> updateEquipment(
+  Future<Equipment> updateEquipment(
     int equipmentId,
     Map<String, dynamic> equipmentData,
   ) async {
@@ -402,20 +403,21 @@ class EquipmentService {
         print('🔄 EquipmentService - Mise à jour équipement: $equipmentId');
         print('📊 EquipmentService - Données envoyées: $equipmentData');
       }
-  
+
       final response = await _apiService.post(
         '/api/v1/mobile/equipments/$equipmentId',
         data: equipmentData,
       );
-  
+
       // ✅ CORRECTION: Vérifier le type de réponse avant de traiter
       if (response == null) {
         throw ApiException('Réponse vide du serveur');
       }
-  
+
       // ✅ Vérifier si la réponse est une String HTML au lieu d'un Map JSON
       if (response is String) {
-        if (response.contains('<html>') || response.contains('Request Rejected')) {
+        if (response.contains('<html>') ||
+            response.contains('Request Rejected')) {
           throw ApiException(
             'La requête a été bloquée par le pare-feu du serveur',
             statusCode: 403,
@@ -423,22 +425,74 @@ class EquipmentService {
         }
         throw ApiException('Réponse invalide du serveur (format inattendu)');
       }
-  
+
       // ✅ Vérifier si la réponse est bien un Map
       if (response is! Map<String, dynamic>) {
         throw ApiException(
           'Format de réponse invalide: ${response.runtimeType}',
         );
       }
-  
+
       if (kDebugMode) {
         print('✅ EquipmentService - Équipement mis à jour avec succès');
       }
-  
+
       return Equipment.fromJson(response['equipment']);
     } catch (e) {
       if (kDebugMode) {
         print('❌ EquipmentService - Erreur updateEquipment: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// ✅ CORRIGÉ: Récupère l'historique avec typage fort
+  Future<List<HistoriqueEquipment>> getHistoriqueEquipmentPrestataire({
+    required String username,
+  }) async {
+    try {
+      if (kDebugMode) {
+        print(
+          '🔧 $__logName Récupération historique équipements prestataire: $username',
+        );
+      }
+
+      final data = await _apiService.get(
+        '$__prefixURI/history/prestataire/$username',
+      );
+
+      if (kDebugMode) {
+        print(
+          '📋 $__logName Données reçues: ${data['data']?.length ?? 0} items',
+        );
+      }
+
+      // ✅ AJOUTÉ: Vérifier si data['data'] existe
+      final historiqueData = data['data'];
+      if (historiqueData == null || historiqueData is! List) {
+        if (kDebugMode) {
+          print('⚠️ $__logName Aucun historique trouvé pour $username');
+        }
+        return [];
+      }
+
+      // ✅ MODIFIÉ: Parser avec le modèle typé
+      final historique =
+          (historiqueData)
+              .map(
+                (item) =>
+                    HistoriqueEquipment.fromJson(item as Map<String, dynamic>),
+              )
+              .toList();
+
+      if (kDebugMode) {
+        print('✅ $__logName ${historique.length} items d\'historique traités');
+      }
+
+      return historique;
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ $__logName Erreur getHistoriqueEquipmentPrestataire: $e');
       }
       rethrow;
     }

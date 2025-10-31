@@ -10,6 +10,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../models/equipment.dart';
 import '../models/user.dart';
 import '../models/equipment_attribute.dart';
+import '../models/historique_equipment.dart';
 
 /// Version simplifiée du HiveService : uniquement les opérations essentielles.
 class HiveService {
@@ -21,6 +22,7 @@ class HiveService {
   static late Box<Map<String, dynamic>> workOrderBox;
   static late Box<Map<String, dynamic>> interventionBox;
   static late Box<Map<String, dynamic>> attributeValuesBox;
+  static late Box<HistoriqueEquipment> historiqueEquipmentBox; // ✅ AJOUTÉ
   static const String _authBoxName = 'auth';
 
   /// Initialisation minimale
@@ -44,9 +46,15 @@ class HiveService {
     if (!Hive.isAdapterRegistered(11)) Hive.registerAdapter(UniteAdapter());
     if (!Hive.isAdapterRegistered(12)) Hive.registerAdapter(ZoneAdapter());
     if (!Hive.isAdapterRegistered(13)) Hive.registerAdapter(FamilleAdapter());
-    if (!Hive.isAdapterRegistered(14)) Hive.registerAdapter(CentreChargeAdapter());
+    if (!Hive.isAdapterRegistered(14)) {
+      Hive.registerAdapter(CentreChargeAdapter());
+    }
     if (!Hive.isAdapterRegistered(15)) Hive.registerAdapter(FeederAdapter());
-    
+    if (!Hive.isAdapterRegistered(16)) {
+      // ✅ AJOUTÉ
+      Hive.registerAdapter(HistoriqueEquipmentAdapter());
+    }
+
     if (kDebugMode) {
       print('✅ HiveService: Adaptateurs enregistrés');
     }
@@ -66,6 +74,10 @@ class HiveService {
     );
     attributeValuesBox = await Hive.openBox<Map<String, dynamic>>(
       'gmao_attribute_values',
+    );
+    historiqueEquipmentBox = await Hive.openBox<HistoriqueEquipment>(
+      // ✅ AJOUTÉ
+      'gmao_historique_equipment',
     );
   }
 
@@ -104,6 +116,7 @@ class HiveService {
     await workOrderBox.clear();
     await interventionBox.clear();
     await attributeValuesBox.clear();
+    await historiqueEquipmentBox.clear(); // ✅ AJOUTÉ
     if (kDebugMode) print('HiveService: tout le cache vidé');
   }
 
@@ -217,6 +230,7 @@ class HiveService {
       'work_orders': workOrderBox.length,
       'interventions': interventionBox.length,
       'attribute_values': attributeValuesBox.length,
+      'historique_equipment': historiqueEquipmentBox.length, // ✅ AJOUTÉ
     };
   }
 }
