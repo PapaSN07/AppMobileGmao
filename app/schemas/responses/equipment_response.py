@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Dict, Any, Optional
+from typing import List, Optional, Dict, Any
 
 
 class AttributeValue(BaseModel):
@@ -106,3 +106,120 @@ class AllEquipmentHistoriesResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class EquipmentHistoryAttribute(BaseModel):
+    """Attribut d'un équipement historisé"""
+    id: Optional[str] = None
+    specification: Optional[str] = None
+    famille: Optional[str] = None
+    indx: Optional[int] = Field(None, alias='index')
+    attribute_name: Optional[str] = Field(None, alias='name')
+    value: Optional[str] = None
+    code: Optional[str] = None
+    description: Optional[str] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+    is_copy_ot: Optional[bool] = False
+    
+    class Config:
+        populate_by_name = True
+        json_schema_extra = {
+            "example": {
+                "id": "123",
+                "specification": "TRANSFO-SPEC-001",
+                "famille": "TRANSFORMATEURS",
+                "index": 1,
+                "name": "Puissance",
+                "value": "630 kVA",
+                "code": "TRANSFO-001",
+                "description": "Puissance nominale du transformateur",
+                "is_copy_ot": False
+            }
+        }
+
+class EquipmentHistoryItem(BaseModel):
+    """Un équipement dans l'historique (archivé ou en cours)"""
+    id: str
+    code: str
+    famille: Optional[str] = None
+    zone: Optional[str] = None
+    entity: Optional[str] = None
+    unite: Optional[str] = None
+    centre_charge: Optional[str] = None
+    description: Optional[str] = None
+    feeder: Optional[str] = None
+    feeder_description: Optional[str] = None
+    localisation: Optional[str] = None
+    code_parent: Optional[str] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+    created_by: Optional[str] = None
+    judged_by: Optional[str] = None
+    is_update: Optional[bool] = False
+    is_new: Optional[bool] = False
+    is_approved: Optional[bool] = False
+    is_rejected: Optional[bool] = False
+    is_deleted: Optional[bool] = False
+    commentaire: Optional[str] = None
+    status: str = Field(..., description="Status: 'archived' ou 'in_progress'")
+    attributes: List[EquipmentHistoryAttribute] = []
+    
+    # Champs spécifiques aux historiques archivés
+    equipment_id: Optional[str] = None
+    date_history_created_at: Optional[str] = None
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "id": "456",
+                "code": "TRANSFO-001",
+                "famille": "TRANSFORMATEURS",
+                "zone": "ZONE1",
+                "entity": "HCAU",
+                "description": "Transformateur 630 kVA",
+                "created_by": "nafissatou.diack",
+                "status": "archived",
+                "attributes": [
+                    {
+                        "name": "Puissance",
+                        "value": "630 kVA"
+                    }
+                ],
+                "date_history_created_at": "2025-10-27T10:00:00Z"
+            }
+        }
+
+class PrestataireHistoryResponse(BaseModel):
+    """Réponse contenant tous les historiques d'un prestataire"""
+    success: bool
+    message: str
+    data: List[EquipmentHistoryItem]
+    count: int
+    prestataire: str
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "success": True,
+                "message": "45 historiques récupérés pour le prestataire nafissatou.diack",
+                "data": [
+                    {
+                        "id": "456",
+                        "code": "TRANSFO-001",
+                        "status": "archived",
+                        "created_by": "nafissatou.diack",
+                        "date_history_created_at": "2025-10-27T10:00:00Z"
+                    },
+                    {
+                        "id": "123",
+                        "code": "TRANSFO-002",
+                        "status": "in_progress",
+                        "created_by": "nafissatou.diack",
+                        "created_at": "2025-10-28T14:30:00Z"
+                    }
+                ],
+                "count": 45,
+                "prestataire": "nafissatou.diack"
+            }
+        }

@@ -863,3 +863,71 @@ def get_all_equipment_histories() -> List[Dict[str, Any]]:
     except Exception as e:
         logger.error(f"❌ Erreur récupération tous les historiques: {e}")
         return []
+
+def get_all_equipment_histories_prestataire(username: str) -> List[Dict[str, Any]]:
+    """
+    Récupère tous les historiques d'équipements pour un prestataire spécifique, y compris leurs attributs.
+    Retourne une liste de dictionnaires avec chaque historique et ses attributs associés.
+    """
+    logger.info(f"🔍 Récupération de tous les historiques d'équipements pour le prestataire: {username}")
+
+    try:
+        with get_temp_session() as session:
+            # 1) Récupérer tous les historiques d'équipement pour le prestataire
+            history_equipments = session.query(HistoryEquipmentClicClac).filter(
+                HistoryEquipmentClicClac.created_by == username
+            ).order_by(
+                HistoryEquipmentClicClac.date_history_created_at.desc()
+            ).all()
+            
+            # 2) Récupérer tous les équipements en cours pour le prestataire
+            ongoing_equipments = session.query(EquipmentClicClac).filter(
+                EquipmentClicClac.created_by == username
+            ).order_by(
+                EquipmentClicClac.created_at.desc()
+            ).all()
+
+            if not history_equipments and not ongoing_equipments:
+                logger.info(f"Aucun historique trouvé pour le prestataire: {username}")
+                return []
+            
+            history_list = []
+            
+            # 3) Pour chaque historique d'équipement, récupérer ses attributs
+            for hist_eq in history_equipments:
+                # Récupérer les attributs associés
+                attributes = session.query(HistoryAttributeClicClac).filter(
+                    HistoryAttributeClicClac.code == hist_eq.code
+                ).all()
+                
+                # ✅ CORRECTION : Convertir directement en dict (to_dict() ne nécessite PAS d'attributs)
+                hist_dict = hist_eq.to_dict()
+                hist_dict['status'] = 'archived'  # ✅ Marquer comme archivé
+                hist_dict['attributes'] = [attr.to_dict() for attr in attributes]
+                
+                history_list.append(hist_dict)
+                logger.debug(f"Historique {hist_eq.id} récupéré avec {len(attributes)} attributs")
+
+            # 4) Pour chaque équipement en cours, récupérer ses attributs
+            for on_equipment in ongoing_equipments:
+                # ✅ CORRECTION : Récupérer les attributs depuis la DB
+                attributes = session.query(AttributeClicClac).filter(
+                    AttributeClicClac.code == on_equipment.code
+                ).all()
+                
+                # ✅ SOLUTION : Ajouter dynamiquement l'attribut 'attributes' AVANT d'appeler to_dict_SDDV()
+                setattr(on_equipment, 'attributes', attributes)
+                
+                # ✅ Maintenant on_equipment.to_dict_SDDV() peut accéder à self.attributes
+                on_dict = on_equipment.to_dict_SDDV()
+                on_dict['status'] = 'in_progress'  # ✅ Marquer comme en cours
+                
+                history_list.append(on_dict)
+                logger.debug(f"Équipement en cours {on_equipment.id} récupéré avec {len(attributes)} attributs")
+            
+            logger.info(f"✅ {len(history_list)} historiques récupérés pour le prestataire: {username}")
+            return history_list
+    
+    except Exception as e:
+        logger.error(f"❌ Erreur récupération historiques pour le prestataire {username}: {e}", exc_info=True)
+        return []
