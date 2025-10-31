@@ -3,10 +3,13 @@ export interface User {
     username: string;
     email: string;
     role: string;
+    password?: string;
     supervisor?: string;
+    entity?: string;
     url_image?: string;
     is_connected?: boolean;
     is_enabled?: boolean;
+    is_first_time?: boolean; // ✅ NOUVEAU
     created_at?: Date;
     updated_at?: Date;
     address?: string;
@@ -27,4 +30,16 @@ export interface DecodedToken {
     username: string;
     exp: number;
     iat: number;
+}
+
+// ✅ NOUVEAU: Interface pour le changement de mot de passe
+export interface ChangePasswordRequest {
+    current_password?: string;
+    new_password: string;
+    confirm_password: string;
+}
+
+export interface ChangePasswordResponse {
+    success: boolean;
+    message: string;
 }

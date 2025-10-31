@@ -18,7 +18,6 @@ interface AutoCompleteCompleteEvent {
 }
 
 interface Entity {
-    name: string;
     code: string;
 }
 
@@ -84,7 +83,7 @@ export class ParameterConfiguration implements OnInit {
 
         // utiliser includes pour plus de flexibilité (ou startsWith si besoin)
         this.filteredItems = (this.entities as Entity[]).filter(item =>
-            item.name.toLowerCase().includes(query)
+            item.code.toLowerCase().includes(query)
         );
     }
 
@@ -96,17 +95,16 @@ export class ParameterConfiguration implements OnInit {
 
                 (data || []).forEach((entity: EntityModel) => {
                     const item: Entity = {
-                        name: entity.description,
-                        code: entity.entityType
+                        code: entity.code
                     };
-                    const key = `${item.code}::${item.name}`;
+                    const key = `${item.code}`;
                     if (!seen.has(key)) {
                         seen.add(key);
                         unique.push(item);
                     }
                 });
 
-                this.entities = unique.sort((a, b) => a.name.localeCompare(b.name));
+                this.entities = unique.sort((a, b) => a.code.localeCompare(b.code));
                 // initialisation safe
                 this.filteredItems = [];
             },
@@ -129,7 +127,7 @@ export class ParameterConfiguration implements OnInit {
                 this.companyError = !this.company?.trim();
                 break;
             case 'entity':
-                this.selectedEntityError = !this.selectedEntity || !this.selectedEntity.name?.trim();
+                this.selectedEntityError = !this.selectedEntity || !this.selectedEntity.code?.trim();
                 break;
         }
     }
