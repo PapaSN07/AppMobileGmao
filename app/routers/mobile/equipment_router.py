@@ -308,10 +308,6 @@ async def get_equipment_by_id_endpoint(equipment_id: str) -> EquipmentResponse:
         logger.error(f"❌ Erreur récupération équipement {equipment_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Erreur récupération équipement: {str(e)}")
 
-# === FIN ENDPOINTS CORE POUR MOBILE ===
-
-# === ENDPOINTS WEB ADMIN ===
-
 @equipment_router.get("/history/prestataire/{username}",
     summary="Historique d'un prestataire spécifique",
     description="Récupère tous les équipements (archivés + en cours) créés par un prestataire spécifique",

@@ -1,10 +1,10 @@
 import logging
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
-from app.services.equipment_service import archive_equipments, get_all_equipment_histories, get_all_equipment_web, update_equipment_web
+from app.services.equipment_service import archive_equipments, get_all_equipment_histories, get_all_equipment_histories_prestataire, get_all_equipment_web, update_equipment_web
 from app.schemas.requests.equipment_request import ArchiveEquipmentRequest, UpdateEquipmentWebRequest 
-from app.schemas.responses.equipment_response import AllEquipmentHistoriesResponse, ArchiveEquipmentResponse, UpdateEquipmentResponse
+from app.schemas.responses.equipment_response import AllEquipmentHistoriesResponse, ArchiveEquipmentResponse, EquipmentHistoryItem, PrestataireHistoryResponse, UpdateEquipmentResponse
 
 
 logger = logging.getLogger(__name__)
@@ -132,4 +132,53 @@ async def update_equipment(equipment_id: str, request: UpdateEquipmentWebRequest
             message=f"Erreur interne: {str(e)}",
             error_code="INTERNAL_ERROR",
             data=None
+        )
+
+@equipment_router_web.get("/history/prestataire/{username}",
+    summary="Historique d'un prestataire spécifique",
+    description="Récupère tous les équipements (archivés + en cours) créés par un prestataire spécifique",
+    response_model=PrestataireHistoryResponse,
+    tags=["Historique - Web Admin"]
+)
+async def get_prestataire_history_by_username(
+    username: str,
+) -> PrestataireHistoryResponse:
+    """
+    Récupère l'historique complet d'un prestataire spécifique (réservé aux admins)
+    
+    - **Équipements archivés** : status = "archived"
+    - **Équipements en cours** : status = "in_progress"
+    """
+    try:
+        
+        # Appeler le service
+        history_data = get_all_equipment_histories_prestataire(username)
+        
+        if not history_data:
+            return PrestataireHistoryResponse(
+                success=True,
+                message=f"Aucun historique trouvé pour le prestataire {username}",
+                data=[],
+                count=0,
+                prestataire=username
+            )
+        
+        # Convert dictionaries to EquipmentHistoryItem objects
+        history_items = [EquipmentHistoryItem(**item) for item in history_data]
+        
+        return PrestataireHistoryResponse(
+            success=True,
+            message=f"{len(history_items)} historiques récupérés pour {username}",
+            data=history_items,
+            count=len(history_items),
+            prestataire=username
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Erreur récupération historique prestataire {username}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erreur récupération historique: {str(e)}"
         )
