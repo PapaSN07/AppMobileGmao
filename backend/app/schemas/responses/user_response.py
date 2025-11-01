@@ -16,6 +16,7 @@ class UserResponse(BaseModel):
     url_image: Optional[str] = None  # Correspond à url_image
     is_connected: Optional[bool] = None  # Correspond à is_connected
     is_enabled: Optional[bool] = None
+    is_first_time: Optional[bool] = None  # Correspond à is_first_time
     created_at: Optional[str] = None  # Correspond à created_at (ISO format)
     updated_at: Optional[str] = None
     address: Optional[str] = None

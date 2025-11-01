@@ -38,6 +38,8 @@ def get_familles(entity: str, hierarchy_result: Dict[str, Any]) -> Dict[str, Any
         with get_main_session() as session:
             db = SQLAlchemyQueryExecutor(session)
             
+            hierarchy_entities.append('INFO_PARTAGEE') # Ajout de l'entité partagée
+            
             # Filtre par hiérarchie d'entités (OBLIGATOIRE)
             placeholders = ','.join([f':entity_{i}' for i in range(len(hierarchy_entities))])
             query += f" WHERE mdct_entity IN ({placeholders})"

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, Query, HTTPException, Depends
 from typing import Optional, Dict, Any
 import logging
 
@@ -9,7 +9,9 @@ from app.schemas.responses.equipment_response import (
     AttributeResponse, 
     AttributeValueResponse, 
     EquipmentResponse,
-    EquipmentListResponse
+    EquipmentListResponse,
+    PrestataireHistoryResponse,  # ✅ AJOUT
+    EquipmentHistoryItem
 )
 from app.services.equipment_service import (
     get_attribute_values,
@@ -18,7 +20,8 @@ from app.services.equipment_service import (
     get_equipments_infinite,
     get_feeders,
     insert_equipment,
-    update_equipment_partial
+    update_equipment_mobile,
+    get_all_equipment_histories_prestataire  # ✅ AJOUT
 )
 from app.services.centre_charge_service import get_centre_charges
 from app.services.entity_service import get_entities
@@ -26,6 +29,7 @@ from app.services.famille_service import get_familles
 from app.services.unite_service import get_unites
 from app.services.zone_service import get_zones
 from app.schemas.requests.equipment_request import AddEquipmentRequest, UpdateEquipmentRequest
+from app.dependencies import get_current_user  # ✅ AJOUT
 
 logger = logging.getLogger(__name__)
 
@@ -119,6 +123,7 @@ async def add_equipment_mobile(request: AddEquipmentRequest) -> Dict[str, Any]:
         success, equipment_id = insert_equipment(equipment)
         
         if success:
+            
             return {
                 "status": "success",
                 "message": "Équipement ajouté avec succès",
@@ -135,11 +140,11 @@ async def add_equipment_mobile(request: AddEquipmentRequest) -> Dict[str, Any]:
         logger.error(f"❌ Erreur ajout équipement: {e}")
         raise HTTPException(status_code=500, detail=f"Erreur ajout équipement: {str(e)}")
 
-@equipment_router.patch("/{equipment_id}",
+@equipment_router.post("/{equipment_id}",
     summary="Modifier partiellement un équipement", 
     description="Modifie seulement les champs spécifiés d'un équipement et ses attributs"
 )
-async def update_equipment_partial_endpoint(
+async def update_equipment_mobile_partial_endpoint(
     equipment_id: str, 
     request: UpdateEquipmentRequest
 ) -> Dict[str, Any]:
@@ -153,7 +158,7 @@ async def update_equipment_partial_endpoint(
             raise HTTPException(status_code=400, detail="Aucun champ à mettre à jour fourni")
         
         # Effectuer la mise à jour
-        success = update_equipment_partial(equipment_id, updates)
+        success = update_equipment_mobile(equipment_id, updates)
         
         if success:
             # Récupérer l'équipement mis à jour pour la réponse
@@ -162,7 +167,7 @@ async def update_equipment_partial_endpoint(
             return {
                 "status": "success", 
                 "message": f"Équipement modifié avec succès ({len(updates)} champs)",
-                "method": "PATCH",
+                "method": "POST",
                 "updated_fields": list(updates.keys()),
                 "equipment": updated_equipment.to_dict() if updated_equipment else None
             }
@@ -303,4 +308,51 @@ async def get_equipment_by_id_endpoint(equipment_id: str) -> EquipmentResponse:
         logger.error(f"❌ Erreur récupération équipement {equipment_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Erreur récupération équipement: {str(e)}")
 
-# === FIN ENDPOINTS CORE POUR MOBILE ===
+@equipment_router.get("/history/prestataire/{username}",
+    summary="Historique d'un prestataire spécifique",
+    description="Récupère tous les équipements (archivés + en cours) créés par un prestataire spécifique",
+    response_model=PrestataireHistoryResponse,
+    tags=["Historique - Web Admin"]
+)
+async def get_prestataire_history_by_username(
+    username: str,
+) -> PrestataireHistoryResponse:
+    """
+    Récupère l'historique complet d'un prestataire spécifique (réservé aux admins)
+    
+    - **Équipements archivés** : status = "archived"
+    - **Équipements en cours** : status = "in_progress"
+    """
+    try:
+        
+        # Appeler le service
+        history_data = get_all_equipment_histories_prestataire(username)
+        
+        if not history_data:
+            return PrestataireHistoryResponse(
+                success=True,
+                message=f"Aucun historique trouvé pour le prestataire {username}",
+                data=[],
+                count=0,
+                prestataire=username
+            )
+        
+        # Convert dictionaries to EquipmentHistoryItem objects
+        history_items = [EquipmentHistoryItem(**item) for item in history_data]
+        
+        return PrestataireHistoryResponse(
+            success=True,
+            message=f"{len(history_items)} historiques récupérés pour {username}",
+            data=history_items,
+            count=len(history_items),
+            prestataire=username
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Erreur récupération historique prestataire {username}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erreur récupération historique: {str(e)}"
+        )

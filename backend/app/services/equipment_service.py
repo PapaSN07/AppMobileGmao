@@ -1,14 +1,16 @@
-from sqlalchemy import cast
 from app.db.sqlalchemy.session import get_main_session, get_temp_session, SQLAlchemyQueryExecutor
 from app.core.config import CACHE_TTL_SHORT
 from app.db.requests import (ATTRIBUTE_VALUES_QUERY, EQUIPMENT_BY_ID_QUERY, EQUIPMENT_CLASSE_ATTRIBUTS_QUERY, EQUIPMENT_INFINITE_QUERY, FEEDER_QUERY)
 from app.core.cache import cache, invalidate_equipment_insertion_cache
+from app.services.statistique_service import invalidate_statistics_cache
 from typing import Dict, Any, List, Optional
 import logging
 
 from app.models.attribute_model import AttributeClicClac, HistoryAttributeClicClac
 from app.models.attribute_values_model import AttributeValues
 from app.models.equipment_model import EquipmentClicClac, EquipmentModel, EquipmentWithAttributesBuilder, HistoryEquipmentClicClac
+from app.models.user_model import UserClicClac
+from app.services.auth_service import get_user_connect
 from app.services.notification_service import send_notification
 
 logger = logging.getLogger(__name__)
@@ -239,7 +241,7 @@ def get_equipment_by_id(equipment_id: str) -> Optional[EquipmentModel]:
         return None
 
 
-def update_equipment_partial(equipment_id: str, updates: Dict[str, Any]) -> tuple[bool, Optional[int]]:
+def update_equipment_mobile(equipment_id: str, updates: Dict[str, Any]) -> tuple[bool, Optional[int]]:
     """
     Crée un nouvel équipement dans la DB temporaire MSSQL (ClicClac) avec les mises à jour fournies.
     S'inspire de insert_equipment pour utiliser EquipmentClicClac et AttributeClicClac.
@@ -295,6 +297,9 @@ def update_equipment_partial(equipment_id: str, updates: Dict[str, Any]) -> tupl
                     is_approved=updates.get('is_approved', False)
                 )
                 
+                logger.info(f"Création équipement ClicClac avec les données: {updates}")
+                logger.info(f"Détails équipement: {new_equipment}")
+                
                 session.add(new_equipment)
                 session.flush()  # Pour obtenir l'ID auto-généré
 
@@ -329,8 +334,33 @@ def update_equipment_partial(equipment_id: str, updates: Dict[str, Any]) -> tupl
 
                 # 4) Commit final
                 session.commit()
-                logger.info(f"✅ Équipement mis à jour ClicClac ID: {equipment_id_new} - Code: {updates['code']} créé avec succès")
-                logger.info(f"✅ {created_attributes} attributs créés")
+                invalidate_statistics_cache()  # ✅ AJOUT : Invalider le cache des statistiques
+                
+                # ✅ AJOUT : Envoyer notification à l'admin
+                import asyncio
+                # Vérifier le role de l'utilisateur
+                user = get_user_connect(str(new_equipment.created_by))
+                
+                if user and isinstance(user, UserClicClac):
+                    supervisor_id = str(user.supervisor) or "admin"
+                    asyncio.create_task(send_notification(
+                        user_id=supervisor_id,  # ID du superviseur ou admin par défaut
+                        title="Équipement mis à jour",
+                        message=f"L'équipement {updates['code']} a été mis à jour.",
+                        type="info"
+                    ))
+                else:
+                    user_id = str(user.id) if user else "unknown"
+                    user_name = str(new_equipment.created_by) if new_equipment else "inconnu"
+                    # ✅ CORRECTION : Passer sender_id pour exclure l'émetteur
+                    asyncio.create_task(send_notification(
+                        user_id="all",
+                        title="Équipement mis à jour",
+                        message=f"L'équipement {updates['code']} a été mis à jour par {user_name} utilisateur de GMAO.",
+                        type="info",
+                        broadcast=True,
+                        sender_id=user_id  # ✅ AJOUT : Exclure le modificateur
+                    ))
 
                 # Invalider le cache (si applicable pour ClicClac)
                 invalidate_equipment_insertion_cache(
@@ -339,15 +369,6 @@ def update_equipment_partial(equipment_id: str, updates: Dict[str, Any]) -> tupl
                     str(updates.get('famille', ''))
                 )
                 
-                # ✅ AJOUT : Envoyer notification à l'admin
-                import asyncio
-                asyncio.create_task(send_notification(
-                    user_id="admin",  # Adapter pour récupérer l'ID admin réel depuis DB
-                    title="Équipement mis à jour",
-                    message=f"L'équipement {updates['code']} a été mis à jour.",
-                    type="info"
-                ))
-
                 return (True, equipment_id_new)
 
             except Exception as e:
@@ -360,7 +381,7 @@ def update_equipment_partial(equipment_id: str, updates: Dict[str, Any]) -> tupl
         return (False, None)
 
 
-def update_equipment_existing(equipment_id: str, updates: Dict[str, Any]) -> tuple[bool, Optional[str]]:
+def update_equipment_web(equipment_id: str, updates: Dict[str, Any]) -> tuple[bool, Optional[str]]:
     """
     Met à jour un équipement existant dans la DB temporaire MSSQL (ClicClac) avec PATCH.
     Ne change que les champs qui ont réellement changé.
@@ -372,6 +393,7 @@ def update_equipment_existing(equipment_id: str, updates: Dict[str, Any]) -> tup
         # Utiliser SQLAlchemy session temporaire (MSSQL)
         with get_temp_session() as session:
             # 1) Récupérer l'équipement existant
+            
             existing_equipment = session.query(EquipmentClicClac).filter(EquipmentClicClac.id == equipment_id).first()
             
             if not existing_equipment:
@@ -391,6 +413,7 @@ def update_equipment_existing(equipment_id: str, updates: Dict[str, Any]) -> tup
                 'isNew': 'is_new',
                 'isApproved': 'is_approved',
                 'isRejected': 'is_rejected',
+                'isDeleted': 'is_deleted'
             }
             
             # 3) Mettre à jour seulement les champs qui ont changé
@@ -451,13 +474,18 @@ def update_equipment_existing(equipment_id: str, updates: Dict[str, Any]) -> tup
                     str(existing_equipment.entity), 
                     str(existing_equipment.famille)
                 )
+                invalidate_statistics_cache()  # ✅ AJOUT : Invalider le cache des statistiques
                 
                 # ✅ AJOUT : Envoyer notification à l'admin
                 import asyncio
+                
+                # Vérifier le role de l'utilisateur
+                user = get_user_connect(str(existing_equipment.created_by))
+                user_id = str(user.id) if user else "unknown"
                 asyncio.create_task(send_notification(
-                    user_id="admin",  # Adapter pour récupérer l'ID admin réel depuis DB
+                    user_id=user_id,  # ID du prestataire
                     title="Équipement modifié",
-                    message=f"L'équipement {existing_equipment.code} a été modifié (champs: {', '.join(updated_fields)}).",
+                    message=f"L'équipement {existing_equipment.code} a été modifié (champs: {', '.join(updated_fields)}).\nInspecté(e) par {str(existing_equipment.created_by)}.",
                     type="info"
                 ))
                 
@@ -622,13 +650,29 @@ def insert_equipment(equipment: EquipmentClicClac) -> tuple[bool, Optional[int]]
                 
                 # ✅ AJOUT : Envoyer notification à l'admin
                 import asyncio
-                asyncio.create_task(send_notification(
-                    user_id="admin",  # Adapter pour récupérer l'ID admin réel depuis DB
-                    title="Nouvel équipement créé",
-                    message=f"L'équipement {equipment.code} ({equipment.famille}) a été créé par {equipment.created_by or 'utilisateur inconnu'}.",
-                    type="success"
-                ))
-
+                # Vérifier le role de l'utilisateur
+                user = get_user_connect(str(equipment.created_by))
+                
+                if user and isinstance(user, UserClicClac):
+                    supervisor_id = str(user.supervisor) or "admin"
+                    asyncio.create_task(send_notification(
+                        user_id=supervisor_id,  # ID du superviseur ou admin par défaut
+                        title="Nouvel équipement créé",
+                        message=f"L'équipement {equipment.code} ({equipment.famille}) a été créé par le prestataire {equipment.created_by or 'utilisateur inconnu'}.",
+                        type="success"
+                    ))
+                else:
+                    user_id = str(user.id) if user else "unknown"
+                    # ✅ CORRECTION : Passer sender_id pour exclure l'émetteur
+                    asyncio.create_task(send_notification(
+                        user_id="all",
+                        title="Nouvel équipement créé",
+                        message=f"L'équipement {equipment.code} ({equipment.famille}) a été créé par l'utilisateur GMAO {equipment.created_by or 'utilisateur inconnu'}.",
+                        type="success",
+                        broadcast=True,
+                        sender_id=user_id  # ✅ AJOUT : Exclure le créateur
+                    ))
+                
                 return (True, equipment_id)
 
             except Exception as e:
@@ -719,7 +763,8 @@ def archive_equipments(equipment_ids: List[str]) -> tuple[bool, str, int, List[s
                         is_update=equipment.is_update,
                         is_new=equipment.is_new,
                         is_approved=equipment.is_approved,
-                        is_rejected=equipment.is_rejected
+                        is_rejected=equipment.is_rejected,
+                        is_deleted=equipment.is_deleted
                     )
                     
                     session.add(history_equipment)
@@ -755,6 +800,7 @@ def archive_equipments(equipment_ids: List[str]) -> tuple[bool, str, int, List[s
                     
                     # 7) Commit final pour cet équipement (persistance atomique)
                     session.commit()
+                    invalidate_statistics_cache()  # ✅ AJOUT
                     
                     archived_count += 1
                     logger.info(f"✅ Équipement {equipment_id} ({equipment.code}) archivé avec {len(attributes)} attributs")
@@ -805,6 +851,7 @@ def get_all_equipment_histories() -> List[Dict[str, Any]]:
                 
                 # Convertir en dict
                 hist_dict = hist_eq.to_dict()
+                
                 hist_dict['attributes'] = [attr.to_dict() for attr in attributes]
                 
                 history_list.append(hist_dict)
@@ -815,4 +862,72 @@ def get_all_equipment_histories() -> List[Dict[str, Any]]:
     
     except Exception as e:
         logger.error(f"❌ Erreur récupération tous les historiques: {e}")
+        return []
+
+def get_all_equipment_histories_prestataire(username: str) -> List[Dict[str, Any]]:
+    """
+    Récupère tous les historiques d'équipements pour un prestataire spécifique, y compris leurs attributs.
+    Retourne une liste de dictionnaires avec chaque historique et ses attributs associés.
+    """
+    logger.info(f"🔍 Récupération de tous les historiques d'équipements pour le prestataire: {username}")
+
+    try:
+        with get_temp_session() as session:
+            # 1) Récupérer tous les historiques d'équipement pour le prestataire
+            history_equipments = session.query(HistoryEquipmentClicClac).filter(
+                HistoryEquipmentClicClac.created_by == username
+            ).order_by(
+                HistoryEquipmentClicClac.date_history_created_at.desc()
+            ).all()
+            
+            # 2) Récupérer tous les équipements en cours pour le prestataire
+            ongoing_equipments = session.query(EquipmentClicClac).filter(
+                EquipmentClicClac.created_by == username
+            ).order_by(
+                EquipmentClicClac.created_at.desc()
+            ).all()
+
+            if not history_equipments and not ongoing_equipments:
+                logger.info(f"Aucun historique trouvé pour le prestataire: {username}")
+                return []
+            
+            history_list = []
+            
+            # 3) Pour chaque historique d'équipement, récupérer ses attributs
+            for hist_eq in history_equipments:
+                # Récupérer les attributs associés
+                attributes = session.query(HistoryAttributeClicClac).filter(
+                    HistoryAttributeClicClac.code == hist_eq.code
+                ).all()
+                
+                # ✅ CORRECTION : Convertir directement en dict (to_dict() ne nécessite PAS d'attributs)
+                hist_dict = hist_eq.to_dict()
+                hist_dict['status'] = 'archived'  # ✅ Marquer comme archivé
+                hist_dict['attributes'] = [attr.to_dict() for attr in attributes]
+                
+                history_list.append(hist_dict)
+                logger.debug(f"Historique {hist_eq.id} récupéré avec {len(attributes)} attributs")
+
+            # 4) Pour chaque équipement en cours, récupérer ses attributs
+            for on_equipment in ongoing_equipments:
+                # ✅ CORRECTION : Récupérer les attributs depuis la DB
+                attributes = session.query(AttributeClicClac).filter(
+                    AttributeClicClac.code == on_equipment.code
+                ).all()
+                
+                # ✅ SOLUTION : Ajouter dynamiquement l'attribut 'attributes' AVANT d'appeler to_dict_SDDV()
+                setattr(on_equipment, 'attributes', attributes)
+                
+                # ✅ Maintenant on_equipment.to_dict_SDDV() peut accéder à self.attributes
+                on_dict = on_equipment.to_dict_SDDV()
+                on_dict['status'] = 'in_progress'  # ✅ Marquer comme en cours
+                
+                history_list.append(on_dict)
+                logger.debug(f"Équipement en cours {on_equipment.id} récupéré avec {len(attributes)} attributs")
+            
+            logger.info(f"✅ {len(history_list)} historiques récupérés pour le prestataire: {username}")
+            return history_list
+    
+    except Exception as e:
+        logger.error(f"❌ Erreur récupération historiques pour le prestataire {username}: {e}", exc_info=True)
         return []
