@@ -104,7 +104,7 @@ FROM function_
 #   ================================================================================
 EQUIPMENT_INFINITE_QUERY = """
 SELECT 
-    e.pk_equipment, 
+    e.timestamp, 
     e.ereq_parent_equipment, 
     e.ereq_code, 
     e.ereq_category, 
@@ -115,7 +115,7 @@ SELECT
     e.ereq_description, 
     e.ereq_longitude, 
     e.ereq_latitude,
-    f.pk_equipment as feeder,
+    f.timestamp as feeder,
     f.ereq_description as feeder_description,
     -- Attributs (peuvent être NULL si pas d'attributs)
     a.pk_attribute as attr_id,
