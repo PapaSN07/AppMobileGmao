@@ -3,6 +3,8 @@ import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:appmobilegmao/services/auth_service.dart';
 import 'package:appmobilegmao/screens/auth/login_screen.dart';
 import 'package:appmobilegmao/screens/main_screen.dart';
+import 'package:appmobilegmao/utils/responsive.dart';
+import 'package:appmobilegmao/theme/responsive_spacing.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -112,6 +114,9 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    final responsive = context.responsive;
+    final spacing = context.spacing;
+
     return Scaffold(
       backgroundColor: AppTheme.primaryColor,
       body: Container(
@@ -135,16 +140,23 @@ class _SplashScreenState extends State<SplashScreen>
                     child: ScaleTransition(
                       scale: _scaleAnimation,
                       child: Container(
-                        width: 150,
-                        height: 150,
+                        width: responsive.spacing(150), // ✅ Largeur responsive
+                        height: responsive.spacing(150), // ✅ Hauteur responsive
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(25),
+                          borderRadius: BorderRadius.circular(
+                            responsive.spacing(25),
+                          ), // ✅ Border radius responsive
                           boxShadow: [
                             BoxShadow(
                               color: const Color.fromRGBO(0, 0, 0, 0.2),
-                              blurRadius: 20,
-                              offset: const Offset(0, 10),
+                              blurRadius: responsive.spacing(
+                                20,
+                              ), // ✅ Blur radius responsive
+                              offset: Offset(
+                                0,
+                                responsive.spacing(10),
+                              ), // ✅ Offset responsive
                             ),
                           ],
                         ),
@@ -160,8 +172,7 @@ class _SplashScreenState extends State<SplashScreen>
                 },
               ),
 
-              const SizedBox(height: 40),
-
+              SizedBox(height: spacing.xlarge), // ✅ Espacement responsive
               // Sous-titre
               AnimatedBuilder(
                 animation: _fadeAnimation,
@@ -171,7 +182,7 @@ class _SplashScreenState extends State<SplashScreen>
                     child: Text(
                       'GMAO Mobile',
                       style: TextStyle(
-                        fontSize: 20,
+                        fontSize: responsive.sp(20), // ✅ Texte responsive
                         color: const Color.fromRGBO(255, 255, 255, 0.9),
                         fontFamily: AppTheme.fontRoboto,
                         fontWeight: FontWeight.w300,
@@ -181,8 +192,7 @@ class _SplashScreenState extends State<SplashScreen>
                 },
               ),
 
-              const SizedBox(height: 60),
-
+              SizedBox(height: spacing.xxlarge), // ✅ Espacement responsive
               // Indicateur de chargement animé
               AnimatedBuilder(
                 animation: _fadeAnimation,
@@ -190,13 +200,15 @@ class _SplashScreenState extends State<SplashScreen>
                   return FadeTransition(
                     opacity: _fadeAnimation,
                     child: SizedBox(
-                      width: 40,
-                      height: 40,
+                      width: responsive.spacing(40), // ✅ Largeur responsive
+                      height: responsive.spacing(40), // ✅ Hauteur responsive
                       child: CircularProgressIndicator(
                         valueColor: const AlwaysStoppedAnimation<Color>(
                           Colors.white,
                         ),
-                        strokeWidth: 3,
+                        strokeWidth: responsive.spacing(
+                          3,
+                        ), // ✅ Épaisseur responsive
                         backgroundColor: const Color.fromRGBO(
                           255,
                           255,
@@ -209,8 +221,7 @@ class _SplashScreenState extends State<SplashScreen>
                 },
               ),
 
-              const SizedBox(height: 20),
-
+              SizedBox(height: spacing.medium), // ✅ Espacement responsive
               // Texte de chargement
               AnimatedBuilder(
                 animation: _fadeAnimation,
@@ -221,7 +232,7 @@ class _SplashScreenState extends State<SplashScreen>
                       'Chargement...',
                       style: TextStyle(
                         color: const Color.fromRGBO(255, 255, 255, 0.8),
-                        fontSize: 16,
+                        fontSize: responsive.sp(16), // ✅ Texte responsive
                         fontFamily: AppTheme.fontRoboto,
                       ),
                     ),

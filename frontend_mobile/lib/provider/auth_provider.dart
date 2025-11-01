@@ -1,10 +1,12 @@
 import 'package:appmobilegmao/models/user.dart';
 import 'package:appmobilegmao/services/auth_service.dart';
 import 'package:appmobilegmao/services/hive_service.dart';
+import 'package:appmobilegmao/services/websocket_service.dart';
 import 'package:flutter/foundation.dart';
 
-class AuthProvider extends ChangeNotifier {
+class AuthProvider with ChangeNotifier {
   final AuthService _authService;
+  final WebSocketService _wsService = WebSocketService();
   User? _currentUser;
 
   AuthProvider({AuthService? authService})
@@ -40,21 +42,27 @@ class AuthProvider extends ChangeNotifier {
 
   /// Connexion utilisateur
   Future<bool> login(String username, String password) async {
-    final result = await _authService.login(username, password);
+    try {
+      final result = await _authService.login(username, password);
 
-    if (result['success']) {
-      // Créer un objet User
-      final user = result['data'];
+      if (result['success'] == true) {
+        final userData = result['data'];
+        _currentUser = userData;
 
-      // Sauvegarder l'utilisateur dans Hive
-      await HiveService.cacheCurrentUser(user);
+        await HiveService.cacheCurrentUser(_currentUser!);
 
-      // Mettre à jour l'état local
-      _currentUser = user;
-      notifyListeners();
+        // ✅ NOUVEAU: Se connecter au WebSocket après login réussi
+        await _wsService.connect();
 
-      return true;
-    } else {
+        notifyListeners();
+        return true;
+      }
+
+      return false;
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ AuthProvider: Erreur login: $e');
+      }
       return false;
     }
   }
@@ -62,16 +70,19 @@ class AuthProvider extends ChangeNotifier {
   /// Déconnexion utilisateur
   Future<void> logout() async {
     try {
-      _currentUser = null;
-      await HiveService.clearCurrentUser();
-      notifyListeners();
-
-      if (kDebugMode) {
-        print('✅ AuthProvider.logout()');
+      if (_currentUser != null) {
+        await _authService.logout(_currentUser!.username);
       }
+
+      // ✅ NOUVEAU: Se déconnecter du WebSocket
+      await _wsService.disconnect();
+
+      await HiveService.clearAllCache();
+      _currentUser = null;
+      notifyListeners();
     } catch (e) {
       if (kDebugMode) {
-        print('❌ AuthProvider.logout() error: $e');
+        print('❌ AuthProvider: Erreur logout: $e');
       }
     }
   }

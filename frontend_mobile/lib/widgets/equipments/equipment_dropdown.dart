@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:dropdown_search/dropdown_search.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
+import 'package:appmobilegmao/utils/responsive.dart';
+import 'package:appmobilegmao/theme/responsive_spacing.dart';
 
 class EquipmentDropdown extends StatelessWidget {
   final String label;
@@ -24,6 +26,9 @@ class EquipmentDropdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final responsive = context.responsive;
+    final spacing = context.spacing;
+
     final cleanItems = items.toSet().toList()..sort();
     if (cleanItems.isEmpty) {
       cleanItems.add('Aucun élément disponible');
@@ -42,28 +47,39 @@ class EquipmentDropdown extends StatelessWidget {
               Icons.search,
               color: AppTheme.secondaryColor,
             ),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(
+                responsive.spacing(8),
+              ), // ✅ Border radius responsive
+            ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(
+                responsive.spacing(8),
+              ), // ✅ Border radius responsive
               borderSide: const BorderSide(
                 color: AppTheme.secondaryColor,
                 width: 2,
               ),
             ),
-            contentPadding: const EdgeInsets.symmetric(
+            contentPadding: spacing.custom(
               horizontal: 12,
               vertical: 8,
-            ),
+            ), // ✅ Padding responsive
           ),
         ),
         menuProps: MenuProps(
           backgroundColor: Colors.white,
           elevation: 8,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(
+            responsive.spacing(8),
+          ), // ✅ Border radius responsive
         ),
         itemBuilder: (context, item, isSelected) {
           return Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: spacing.custom(
+              horizontal: 16,
+              vertical: 12,
+            ), // ✅ Padding responsive
             decoration: BoxDecoration(
               color: isSelected ? AppTheme.secondaryColor10 : null,
               border: Border(
@@ -73,17 +89,18 @@ class EquipmentDropdown extends StatelessWidget {
             child: Row(
               children: [
                 if (isSelected)
-                  const Icon(
+                  Icon(
                     Icons.check_circle,
                     color: AppTheme.secondaryColor,
-                    size: 18,
+                    size: responsive.iconSize(18), // ✅ Icône responsive
                   ),
-                if (isSelected) const SizedBox(width: 8),
+                if (isSelected)
+                  SizedBox(width: spacing.small), // ✅ Espacement responsive
                 Expanded(
                   child: Text(
                     item,
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: responsive.sp(14), // ✅ Texte responsive
                       color:
                           isSelected ? AppTheme.secondaryColor : Colors.black87,
                       fontWeight:
@@ -102,11 +119,11 @@ class EquipmentDropdown extends StatelessWidget {
         dropdownSearchDecoration: InputDecoration(
           labelText: label,
           hintText: hintText,
-          labelStyle: const TextStyle(
+          labelStyle: TextStyle(
             color: AppTheme.secondaryColor,
             fontFamily: AppTheme.fontMontserrat,
             fontWeight: FontWeight.w600,
-            fontSize: 16,
+            fontSize: responsive.sp(16), // ✅ Texte responsive
           ),
           border: const UnderlineInputBorder(),
           focusedBorder: const UnderlineInputBorder(
@@ -116,7 +133,7 @@ class EquipmentDropdown extends StatelessWidget {
             Icons.arrow_drop_down,
             color: AppTheme.secondaryColor,
           ),
-          contentPadding: const EdgeInsets.symmetric(vertical: 8),
+          contentPadding: spacing.custom(vertical: 8), // ✅ Padding responsive
         ),
       ),
       validator:

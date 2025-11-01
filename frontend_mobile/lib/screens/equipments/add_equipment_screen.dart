@@ -3,15 +3,21 @@ import 'package:appmobilegmao/provider/auth_provider.dart';
 import 'package:appmobilegmao/provider/equipment_provider.dart';
 import 'package:appmobilegmao/services/equipment_service.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
+import 'package:appmobilegmao/utils/codification/equipment_codification_service.dart';
 import 'package:appmobilegmao/widgets/custom_buttons.dart';
 import 'package:appmobilegmao/widgets/notification_bar.dart';
 import 'package:appmobilegmao/widgets/equipments/equipment_form_fields.dart';
 import 'package:appmobilegmao/utils/equipment_helpers.dart';
 import 'package:appmobilegmao/utils/selector_loader.dart';
+import 'package:appmobilegmao/utils/codification/codification_attribute_extractor.dart';
+import 'package:appmobilegmao/utils/required_fields_manager.dart';
+import 'package:appmobilegmao/widgets/required_fields_badge.dart';
 import 'package:dropdown_search/dropdown_search.dart';
-import 'package:flutter/foundation.dart'; // ✅ AJOUTÉ pour kDebugMode
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:appmobilegmao/utils/responsive.dart';
+import 'package:appmobilegmao/theme/responsive_spacing.dart';
 
 class AddEquipmentScreen extends StatefulWidget {
   const AddEquipmentScreen({super.key});
@@ -24,22 +30,27 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
   final _formKey = GlobalKey<FormState>();
   final _descriptionController = TextEditingController();
   final _descriptionFocusNode = FocusNode();
+  final _abbreviationController = TextEditingController();
+  final _abbreviationFocusNode = FocusNode();
 
-  String? selectedCodeParent,
-      selectedFeeder,
+  String? selectedFeeder, // ✅ Description du feeder (ex: "BOUNTOU PIKINE")
       selectedFamille,
       selectedZone,
       selectedEntity,
       selectedUnite,
       selectedCentreCharge;
+
   late String generatedCode;
 
   List<EquipmentAttribute> availableAttributes = [];
   Map<String, List<EquipmentAttribute>> attributeValuesBySpec = {};
   Map<String, String> selectedAttributeValues = {};
-  bool _loadingAttributes = false, _isUpdating = false, _isLoading = true;
+  bool _isUpdating = false, _isLoading = true;
 
   Map<String, List<Map<String, dynamic>>> selectors = {};
+
+  // ✅ AJOUT: Configuration des champs requis
+  RequiredFieldsConfig _requiredFieldsConfig = RequiredFieldsConfig.empty();
 
   static int _globalCounter = 0;
   static const String __logName = 'AddEquipmentScreen -';
@@ -48,6 +59,13 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
   void initState() {
     super.initState();
     generatedCode = _generateUniqueEquipmentCode();
+
+    // ✅ AJOUT: Régénérer quand l'abréviation change
+    _abbreviationController.addListener(() {
+      if (_abbreviationController.text.length >= 3) {
+        _generateCodeFromInputs();
+      }
+    });
 
     if (kDebugMode) {
       print('🆕 $__logName Initialisation avec code: $generatedCode');
@@ -61,6 +79,9 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
     _descriptionFocusNode.dispose();
     _descriptionController.dispose();
 
+    _abbreviationFocusNode.dispose();
+    _abbreviationController.dispose();
+
     if (kDebugMode) {
       print('🗑️ $__logName Dispose');
     }
@@ -68,31 +89,144 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
     super.dispose();
   }
 
-  String _generateUniqueEquipmentCode() {
-    final now = DateTime.now();
-    final microTime = now.microsecondsSinceEpoch;
-    _globalCounter = (_globalCounter + 1) % 999;
-    final shortTimestamp = microTime.toString().substring(
-      microTime.toString().length - 6,
-    );
-    final shortUuid = microTime.toRadixString(36).toUpperCase();
-    final uuid =
-        shortUuid.length >= 4
-            ? shortUuid.substring(0, 4)
-            : shortUuid.padRight(4, 'X');
-    final counter = _globalCounter.toString().padLeft(3, '0');
-    final code = 'EQ$shortTimestamp$uuid$counter';
-
-    if (kDebugMode) {
-      print('🔢 $__logName Code généré: $code');
+  // Génération automatique du code
+  void _generateCodeFromInputs() {
+    if (selectedFamille == null || selectedFeeder == null) {
+      // ✅ selectedFeeder
+      if (kDebugMode) {
+        print('⚠️ $__logName Famille ou feeder manquant');
+      }
+      return;
     }
 
-    return code;
+    final familleCode = EquipmentHelpers.getCodeFromDescription(
+      selectedFamille!,
+      selectors['familles'] ?? [],
+    );
+
+    if (familleCode == null) {
+      if (kDebugMode) {
+        print('⚠️ $__logName Code famille introuvable');
+      }
+      return;
+    }
+
+    // ✅ CORRIGÉ: Extraire le code depuis la description
+    final feederCode = EquipmentHelpers.getCodeFromDescription(
+      selectedFeeder!, // ✅ selectedFeeder contient la description
+      selectors['feeders'] ?? [],
+    );
+
+    // ✅ AJOUT: Valider les champs requis avant génération
+    final attributesForValidation =
+        availableAttributes
+            .where((attr) => attr.id != null)
+            .map(
+              (attr) => {
+                'name': attr.name ?? '',
+                'value': selectedAttributeValues[attr.id!] ?? '',
+              },
+            )
+            .toList();
+
+    final validation = RequiredFieldsManager.validateRequiredFields(
+      config: _requiredFieldsConfig,
+      feeder: feederCode, // ✅ Passer le code extrait
+      attributes: attributesForValidation,
+      clientName: null,
+      poste1: null,
+      poste2: null,
+    );
+
+    if (!validation.isValid) {
+      if (kDebugMode) {
+        print('⚠️ $__logName ${validation.errorMessage}');
+      }
+      return;
+    }
+
+    final abbreviation = _abbreviationController.text.trim();
+
+    // ✅ AJOUT: Validation de l'abréviation
+    if (abbreviation.isEmpty) {
+      if (kDebugMode) {
+        print('⚠️ $__logName Abréviation manquante');
+      }
+      return;
+    }
+
+    // ✅ AJOUT: Logs détaillés
+    if (kDebugMode) {
+      print('📋 $__logName Attributs disponibles:');
+      for (final attr in availableAttributes) {
+        print('   - ${attr.name} (id: ${attr.id})');
+      }
+      print('📋 $__logName Valeurs sélectionnées:');
+      selectedAttributeValues.forEach((key, value) {
+        if (kDebugMode) {
+          print('   - $key: $value');
+        }
+      });
+    }
+
+    final nature = CodificationAttributeExtractor.extractNaturePoste(
+      availableAttributes,
+      selectedAttributeValues,
+    );
+
+    final codeH = CodificationAttributeExtractor.extractCodeH(
+      availableAttributes,
+      selectedAttributeValues,
+    );
+
+    final tension = CodificationAttributeExtractor.extractTension(
+      availableAttributes,
+      selectedAttributeValues,
+    );
+
+    final celluleType = CodificationAttributeExtractor.extractCelluleType(
+      availableAttributes,
+      selectedAttributeValues,
+    );
+
+    if (kDebugMode) {
+      print('🔢 $__logName Génération code:');
+      print('   - Famille: $familleCode');
+      print('   - Feeder (code): $feederCode');
+      print('   - Feeder (description): $selectedFeeder'); // ✅ Ajout
+      print('   - Abréviation: $abbreviation');
+      print('   - Nature: $nature');
+      print('   - Code H: $codeH');
+      print('   - Tension: $tension');
+      print('   - Cellule: $celluleType');
+    }
+
+    final result = EquipmentCodificationService.generateEquipmentCode(
+      familleCode: familleCode,
+      abbreviation: abbreviation,
+      feeder: feederCode,
+      nature: nature,
+      codeH: codeH,
+      tension: tension,
+      celluleType: celluleType,
+    );
+
+    if (result.success && mounted) {
+      setState(() {
+        generatedCode = result.code!;
+      });
+
+      if (kDebugMode) {
+        print('✅ $__logName Code généré: ${result.code}');
+      }
+    } else if (kDebugMode) {
+      print('⚠️ $__logName ${result.errorMessage}');
+    }
   }
 
   Future<void> _loadSelectors() async {
     if (kDebugMode) {
-      print('🔄 $__logName Début chargement sélecteurs...');
+      print('🔄 $__logName Chargement sélecteurs...');
     }
 
     setState(() => _isLoading = true);
@@ -108,62 +242,60 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
       );
 
       if (kDebugMode) {
-        print('✅ $__logName Sélecteurs chargés:');
-        print('   - Familles: ${selectors['familles']?.length ?? 0}');
-        print('   - Zones: ${selectors['zones']?.length ?? 0}');
-        print('   - Entités: ${selectors['entities']?.length ?? 0}');
-        print('   - Unités: ${selectors['unites']?.length ?? 0}');
-        print('   - Centres: ${selectors['centreCharges']?.length ?? 0}');
-        print('   - Feeders: ${selectors['feeders']?.length ?? 0}');
+        print('✅ $__logName Sélecteurs chargés');
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ $__logName Erreur chargement sélecteurs: $e');
+        print('❌ $__logName Erreur: $e');
       }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
-
-        if (kDebugMode) {
-          print('✅ $__logName Chargement terminé');
-        }
       }
     }
   }
 
-  Future<void> _loadAttributesForFamily(String familleDescription) async {
-    if (familleDescription.isEmpty) {
-      if (kDebugMode) {
-        print(
-          '⚠️ $__logName Description famille vide, abandon chargement attributs',
-        );
-      }
-      return;
+  String _generateUniqueEquipmentCode() {
+    _globalCounter++;
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final code =
+        'EQ${timestamp.toString().substring(7)}${_globalCounter.toString().padLeft(3, '0')}';
+
+    if (kDebugMode) {
+      print('🔢 $__logName Code temporaire: $code');
     }
 
-    // ✅ CORRECTION: Convertir la description en system_category
+    return code;
+  }
+
+  Future<void> _loadAttributesForFamily(String familleDescription) async {
+    if (familleDescription.isEmpty) return;
+
     final familleCode = EquipmentHelpers.getCodeFromDescription(
       familleDescription,
       selectors['familles'] ?? [],
     );
 
-    if (familleCode == null || familleCode.isEmpty) {
-      if (kDebugMode) {
-        print(
-          '⚠️ $__logName Impossible de trouver le system_category pour: $familleDescription',
-        );
-      }
-      return;
-    }
+    if (familleCode == null) return;
+
+    // ✅ AJOUT: Charger la configuration des champs requis
+    setState(() {
+      _requiredFieldsConfig = RequiredFieldsManager.getRequiredFields(
+        familleCode,
+      );
+    });
 
     if (kDebugMode) {
-      print('🔍 $__logName Chargement attributs pour famille:');
-      print('   - Description: $familleDescription');
-      print('   - System Category: $familleCode'); // ✅ AJOUTÉ
+      print('🔍 $__logName Chargement attributs: $familleCode');
+      print('📋 $__logName Champs requis:');
+      print('   - Feeder: ${_requiredFieldsConfig.requiresFeeder}');
+      print('   - Nature: ${_requiredFieldsConfig.requiresNaturePoste}');
+      print('   - Code H: ${_requiredFieldsConfig.requiresCodeH}');
+      print('   - Tension: ${_requiredFieldsConfig.requiresTension}');
+      print('   - Cellule: ${_requiredFieldsConfig.requiresCelluleType}');
     }
 
     setState(() {
-      _loadingAttributes = true;
       availableAttributes = [];
       selectedAttributeValues.clear();
     });
@@ -171,7 +303,7 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
     try {
       final equipmentService = EquipmentService();
       final result = await equipmentService.getEquipmentAttributeValueByCode(
-        codeFamille: familleCode, // ✅ Utiliser le system_category
+        codeFamille: familleCode,
       );
       final attributes =
           result['attributes'] as List<EquipmentAttribute>? ?? [];
@@ -187,40 +319,25 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
           for (final attr in attributes) {
             if (attr.id != null && attr.value != null) {
               selectedAttributeValues[attr.id!] = attr.value!;
-
-              if (kDebugMode) {
-                print('   - Attribut ${attr.name}: "${attr.value}"');
-              }
             }
           }
         });
 
         await _loadAttributeSpecifications();
-      } else {
-        if (kDebugMode) {
-          print('📋 $__logName Aucun attribut disponible pour cette famille');
-        }
+
+        // ✅ AJOUT: Générer le code après chargement des attributs
+        _generateCodeFromInputs();
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ $__logName Erreur chargement attributs: $e');
+        print('❌ $__logName Erreur: $e');
       }
     } finally {
-      if (mounted) {
-        setState(() => _loadingAttributes = false);
-
-        if (kDebugMode) {
-          print('✅ $__logName Chargement attributs terminé');
-        }
-      }
+      if (mounted) {}
     }
   }
 
   Future<void> _loadAttributeSpecifications() async {
-    if (kDebugMode) {
-      print('🔄 $__logName Chargement spécifications attributs...');
-    }
-
     final equipmentService = EquipmentService();
     final processedSpecs = <String, bool>{};
 
@@ -238,11 +355,9 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
           final values =
               result['attributes'] as List<EquipmentAttribute>? ?? [];
 
-          if (kDebugMode) {
-            print('   ✅ Spec $specKey: ${values.length} valeurs');
+          if (mounted) {
+            setState(() => attributeValuesBySpec[specKey] = values);
           }
-
-          if (mounted) setState(() => attributeValuesBySpec[specKey] = values);
         } catch (e) {
           if (kDebugMode) {
             print('   ❌ Erreur spec $specKey: $e');
@@ -250,18 +365,55 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
         }
       }
     }
-
-    if (kDebugMode) {
-      print(
-        '✅ $__logName Spécifications chargées: ${attributeValuesBySpec.length}',
-      );
-    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final responsive = context.responsive;
+    final spacing = context.spacing;
+
     return Scaffold(
       backgroundColor: AppTheme.primaryColor,
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(responsive.spacing(70)),
+        child: AppBar(
+          titleSpacing: 0,
+          title: Padding(
+            padding: spacing.custom(left: 4, right: 16),
+            child: Text(
+              'Ajouter un équipement',
+              style: TextStyle(
+                fontFamily: AppTheme.fontMontserrat,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+                fontSize: responsive.sp(18),
+              ),
+            ),
+          ),
+          backgroundColor: AppTheme.secondaryColor,
+          elevation: 0,
+          leading: Padding(
+            padding: spacing.custom(left: 16, right: 8),
+            child: IconButton(
+              padding: EdgeInsets.zero,
+              icon: Container(
+                padding: spacing.custom(all: 8),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor20,
+                  borderRadius: BorderRadius.circular(responsive.spacing(8)),
+                ),
+                child: Icon(
+                  Icons.arrow_back,
+                  color: Colors.white,
+                  size: responsive.iconSize(20),
+                ),
+              ),
+              onPressed: () => Navigator.pop(context),
+              tooltip: 'Retour',
+            ),
+          ),
+        ),
+      ),
       body:
           _isLoading
               ? const Center(
@@ -271,152 +423,128 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
                   ),
                 ),
               )
-              : Stack(
-                children: [
-                  _buildCustomAppBar(),
-                  Positioned(
-                    top: 156,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    child: SingleChildScrollView(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Form(
-                          key: _formKey,
-                          child: Column(
-                            children: [
-                              EquipmentFormFields(
-                                generatedCode: generatedCode,
-                                selectedFamille: selectedFamille,
-                                selectedZone: selectedZone,
-                                selectedEntity: selectedEntity,
-                                selectedUnite: selectedUnite,
-                                selectedCentreCharge: selectedCentreCharge,
-                                selectedCodeParent: selectedCodeParent,
-                                selectedFeeder: selectedFeeder,
-                                descriptionController: _descriptionController,
-                                descriptionFocusNode: _descriptionFocusNode,
-                                familles: selectors['familles'] ?? [],
-                                zones: selectors['zones'] ?? [],
-                                entities: selectors['entities'] ?? [],
-                                unites: selectors['unites'] ?? [],
-                                centreCharges: selectors['centreCharges'] ?? [],
-                                feeders: selectors['feeders'] ?? [],
-                                onFamilleChanged: (v) {
-                                  if (kDebugMode) {
-                                    print('🔄 $__logName Famille changée: $v');
-                                  }
-                                  setState(() {
-                                    selectedFamille = v;
-                                    if (v != null) {
-                                      _loadAttributesForFamily(v);
-                                    }
-                                  });
-                                },
-                                onZoneChanged: (v) {
-                                  if (kDebugMode) {
-                                    print('🔄 $__logName Zone changée: $v');
-                                  }
-                                  setState(() => selectedZone = v);
-                                },
-                                onEntityChanged: (v) {
-                                  if (kDebugMode) {
-                                    print('🔄 $__logName Entité changée: $v');
-                                  }
-                                  setState(() => selectedEntity = v);
-                                },
-                                onUniteChanged: (v) {
-                                  if (kDebugMode) {
-                                    print('🔄 $__logName Unité changée: $v');
-                                  }
-                                  setState(() => selectedUnite = v);
-                                },
-                                onCentreChargeChanged: (v) {
-                                  if (kDebugMode) {
-                                    print('🔄 $__logName Centre changé: $v');
-                                  }
-                                  setState(() => selectedCentreCharge = v);
-                                },
-                                onCodeParentChanged: (v) {
-                                  if (kDebugMode) {
-                                    print(
-                                      '🔄 $__logName Code parent changé: $v',
-                                    );
-                                  }
-                                  setState(() => selectedCodeParent = v);
-                                },
-                                onFeederChanged: (v) {
-                                  if (kDebugMode) {
-                                    print('🔄 $__logName Feeder changé: $v');
-                                  }
-                                  setState(() => selectedFeeder = v);
-                                },
-                                showAttributesButton: true,
-                                attributesCount: availableAttributes.length,
-                                // ✅ CORRECTION: Afficher le modal complet
-                                onAttributesPressed: () {
-                                  if (kDebugMode) {
-                                    print(
-                                      '🔘 $__logName Bouton attributs pressé',
-                                    );
-                                  }
-                                  _showAttributesModal();
-                                },
-                              ),
-                              const SizedBox(height: 40),
-                              _buildActionButtons(),
-                            ],
-                          ),
+              : SingleChildScrollView(
+                child: Padding(
+                  padding: spacing.custom(all: 16),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      children: [
+                        EquipmentFormFields(
+                          selectedFamille: selectedFamille,
+                          selectedZone: selectedZone,
+                          selectedEntity: selectedEntity,
+                          selectedUnite: selectedUnite,
+                          selectedCentreCharge: selectedCentreCharge,
+                          selectedFeeder:
+                              selectedFeeder, // ✅ selectedFeeder au lieu de selectedFeederDescription
+                          descriptionController: _descriptionController,
+                          descriptionFocusNode: _descriptionFocusNode,
+                          abbreviationController: _abbreviationController,
+                          abbreviationFocusNode: _abbreviationFocusNode,
+                          familles: selectors['familles'] ?? [],
+                          zones: selectors['zones'] ?? [],
+                          entities: selectors['entities'] ?? [],
+                          unites: selectors['unites'] ?? [],
+                          centreCharges: selectors['centreCharges'] ?? [],
+                          feeders: selectors['feeders'] ?? [],
+                          onFamilleChanged: (v) {
+                            setState(() {
+                              selectedFamille = v;
+                              if (v != null) {
+                                _loadAttributesForFamily(v);
+                              }
+                            });
+                          },
+                          onZoneChanged:
+                              (v) => setState(() => selectedZone = v),
+                          onEntityChanged:
+                              (v) => setState(() => selectedEntity = v),
+                          onUniteChanged:
+                              (v) => setState(() => selectedUnite = v),
+                          onCentreChargeChanged:
+                              (v) => setState(() => selectedCentreCharge = v),
+                          onFeederChanged: (v) {
+                            // ✅ onFeederChanged au lieu de onCodeParentChanged
+                            setState(() {
+                              selectedFeeder = v; // ✅ selectedFeeder
+                            });
+                            _generateCodeFromInputs();
+                          },
+                          showAttributesButton: true,
+                          attributesCount: availableAttributes.length,
+                          onAttributesPressed: _showAttributesModal,
                         ),
-                      ),
+
+                        // ✅ AJOUT: Badge des champs requis
+                        if (_requiredFieldsConfig.hasRequiredAttributes) ...[
+                          SizedBox(height: spacing.large),
+                          RequiredFieldsBadge(
+                            config: _requiredFieldsConfig,
+                            onViewDetails: () {
+                              if (availableAttributes.isNotEmpty) {
+                                _showAttributesModal();
+                              } else {
+                                NotificationService.showInfo(
+                                  context,
+                                  title: '📋 Champs requis',
+                                  message: _getRequiredFieldsMessage(),
+                                  showAction: false,
+                                );
+                              }
+                            },
+                          ),
+                        ],
+
+                        SizedBox(height: spacing.xlarge),
+                        _buildActionButtons(responsive, spacing),
+                        SizedBox(height: spacing.xlarge),
+                      ],
                     ),
                   ),
-                ],
+                ),
               ),
     );
   }
 
-  // ✅ AJOUTÉ: Modal des attributs (adapté de modify_equipment_screen.dart)
+  // ✅ AJOUT: Message des champs requis
+  String _getRequiredFieldsMessage() {
+    final fields = <String>[];
+    if (_requiredFieldsConfig.requiresFeeder) fields.add('• Feeder');
+    if (_requiredFieldsConfig.requiresNaturePoste) {
+      fields.add('• Nature du poste (attribut Statut)');
+    }
+    if (_requiredFieldsConfig.requiresCodeH) {
+      fields.add('• Code H (attribut Genie civil)');
+    }
+    if (_requiredFieldsConfig.requiresTension) {
+      fields.add('• Tension (attribut Structure poste)');
+    }
+    if (_requiredFieldsConfig.requiresCelluleType) {
+      fields.add('• Type de cellule');
+    }
+    if (_requiredFieldsConfig.requiresClientName) {
+      fields.add('• Nom du client');
+    }
+    if (_requiredFieldsConfig.requiresPosteNames) {
+      fields.add('• Poste 1 et Poste 2');
+    }
+
+    return 'Champs obligatoires pour cette famille :\n\n${fields.join('\n')}';
+  }
+
   void _showAttributesModal() {
-    // ✅ Vérifier si une famille est sélectionnée
-    final bool isFamilleSelected =
-        selectedFamille != null && selectedFamille!.isNotEmpty;
+    final responsive = context.responsive;
+    final spacing = context.spacing;
 
-    if (!isFamilleSelected) {
-      if (kDebugMode) {
-        print('⚠️ $__logName Aucune famille sélectionnée, modal annulé');
-      }
-
+    if (selectedFamille == null || availableAttributes.isEmpty) {
       NotificationService.showError(
         context,
         title: '⚠️ Attention',
         message: 'Veuillez sélectionner une famille d\'abord',
         showAction: false,
-        duration: const Duration(seconds: 2),
       );
       return;
-    }
-
-    if (availableAttributes.isEmpty) {
-      if (kDebugMode) {
-        print('⚠️ $__logName Aucun attribut disponible pour cette famille');
-      }
-
-      NotificationService.showError(
-        context,
-        title: 'ℹ️ Information',
-        message: 'Aucun attribut disponible pour cette famille',
-        showAction: false,
-        duration: const Duration(seconds: 2),
-      );
-      return;
-    }
-
-    if (kDebugMode) {
-      print(
-        '✅ $__logName Ouverture modal avec ${availableAttributes.length} attributs',
-      );
     }
 
     showModalBottomSheet(
@@ -427,56 +555,48 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setModalState) {
             return Container(
-              height: MediaQuery.of(context).size.height * 0.8,
-              decoration: const BoxDecoration(
+              height: responsive.hp(80),
+              decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(30),
-                  topRight: Radius.circular(30),
+                  topLeft: Radius.circular(responsive.spacing(30)),
+                  topRight: Radius.circular(responsive.spacing(30)),
                 ),
               ),
               child: Column(
                 children: [
-                  // Handle bar
                   Container(
-                    margin: const EdgeInsets.symmetric(vertical: 12),
-                    height: 4,
-                    width: 40,
+                    margin: spacing.custom(vertical: 12),
+                    height: responsive.spacing(4),
+                    width: responsive.spacing(40),
                     decoration: BoxDecoration(
                       color: AppTheme.thirdColor,
-                      borderRadius: BorderRadius.circular(2),
+                      borderRadius: BorderRadius.circular(
+                        responsive.spacing(2),
+                      ),
                     ),
                   ),
-
-                  // Header
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    padding: spacing.custom(horizontal: 20),
                     child: Row(
                       children: [
                         SizedBox(
-                          width: 64,
-                          height: 34,
+                          width: responsive.spacing(64),
+                          height: responsive.spacing(34),
                           child: ElevatedButton(
-                            onPressed: () {
-                              if (kDebugMode) {
-                                print(
-                                  '⬅️ $__logName Fermeture modal attributs',
-                                );
-                              }
-                              Navigator.pop(context);
-                            },
+                            onPressed: () => Navigator.pop(context),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppTheme.secondaryColor,
                               padding: EdgeInsets.zero,
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.arrow_back,
-                              size: 20,
+                              size: responsive.iconSize(20),
                               color: AppTheme.primaryColor,
                             ),
                           ),
                         ),
-                        const SizedBox(width: 20),
+                        SizedBox(width: spacing.medium),
                         const Expanded(
                           child: Text(
                             'Ajouter les Attributs',
@@ -491,161 +611,52 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
                       ],
                     ),
                   ),
-
-                  const SizedBox(height: 20),
-
-                  // Loading ou contenu
-                  if (_loadingAttributes)
-                    const Expanded(
-                      child: Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            CircularProgressIndicator(
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                AppTheme.secondaryColor,
-                              ),
-                            ),
-                            SizedBox(height: 16),
-                            Text(
-                              'Chargement des attributs...',
-                              style: TextStyle(
-                                fontFamily: AppTheme.fontMontserrat,
-                                color: AppTheme.secondaryColor,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                  else
-                    Expanded(
-                      child: Column(
-                        children: [
-                          // Header des colonnes
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            child: Row(
-                              children: [
-                                const Expanded(
-                                  flex: 2,
-                                  child: Text(
-                                    'Attribut',
-                                    style: TextStyle(
-                                      fontFamily: AppTheme.fontMontserrat,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppTheme.secondaryColor,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  flex: 1,
-                                  child: Container(
-                                    height: 1,
-                                    color: AppTheme.thirdColor,
-                                    margin: const EdgeInsets.only(top: 8),
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                const Expanded(
-                                  flex: 3,
-                                  child: Text(
-                                    'Valeur',
-                                    textAlign: TextAlign.right,
-                                    style: TextStyle(
-                                      fontFamily: AppTheme.fontMontserrat,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppTheme.secondaryColor,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          const SizedBox(height: 20),
-
-                          // Liste des attributs
-                          Expanded(
-                            child: ListView.builder(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                              ),
-                              itemCount: availableAttributes.length,
-                              itemBuilder: (context, index) {
-                                final attribute = availableAttributes[index];
-                                return _buildAttributeRow(
-                                  attribute,
-                                  setModalState,
-                                );
-                              },
-                            ),
-                          ),
-
-                          // Boutons d'action
-                          Padding(
-                            padding: const EdgeInsets.all(20),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: SecondaryButton(
-                                    text: 'Annuler',
-                                    onPressed: () {
-                                      if (kDebugMode) {
-                                        print(
-                                          '❌ $__logName Annulation modal attributs',
-                                        );
-                                      }
-                                      Navigator.pop(context);
-                                    },
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: PrimaryButton(
-                                    text: 'Appliquer',
-                                    icon: Icons.check,
-                                    onPressed: () {
-                                      if (kDebugMode) {
-                                        print(
-                                          '✅ $__logName Attributs appliqués: ${selectedAttributeValues.length}',
-                                        );
-                                        selectedAttributeValues.forEach((
-                                          key,
-                                          value,
-                                        ) {
-                                          if (kDebugMode) {
-                                            print('   - $key: "$value"');
-                                          }
-                                        });
-                                      }
-
-                                      Navigator.pop(context);
-
-                                      if (mounted) {
-                                        NotificationService.showSuccess(
-                                          context,
-                                          title: '✅ Attributs sélectionnés',
-                                          message:
-                                              'Les attributs seront inclus lors de la sauvegarde',
-                                          showAction: false,
-                                          duration: const Duration(seconds: 2),
-                                        );
-                                      }
-                                    },
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                        ],
-                      ),
+                  SizedBox(height: spacing.medium),
+                  Expanded(
+                    child: ListView.builder(
+                      padding: spacing.custom(horizontal: 20),
+                      itemCount: availableAttributes.length,
+                      itemBuilder: (context, index) {
+                        return _buildAttributeRow(
+                          availableAttributes[index],
+                          setModalState,
+                          responsive,
+                          spacing,
+                        );
+                      },
                     ),
+                  ),
+                  Padding(
+                    padding: spacing.allPadding,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: SecondaryButton(
+                            text: 'Annuler',
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        ),
+                        SizedBox(width: spacing.medium),
+                        Expanded(
+                          child: PrimaryButton(
+                            text: 'Appliquer',
+                            icon: Icons.check,
+                            onPressed: () {
+                              Navigator.pop(context);
+                              // ✅ Régénérer le code après changement
+                              _generateCodeFromInputs();
+                              NotificationService.showSuccess(
+                                context,
+                                title: '✅ Attributs sélectionnés',
+                                message: 'Code mis à jour automatiquement',
+                                showAction: false,
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             );
@@ -655,39 +666,29 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
     );
   }
 
-  // ✅ AJOUTÉ: Widget pour ligne d'attribut (depuis modify_equipment_screen.dart)
   Widget _buildAttributeRow(
     EquipmentAttribute attribute,
     StateSetter setModalState,
+    Responsive responsive,
+    ResponsiveSpacing spacing,
   ) {
     final specKey =
         '${attribute.specification ?? 'no_spec'}_${attribute.index ?? 'no_index'}';
     final availableValues = attributeValuesBySpec[specKey] ?? [];
 
-    // Créer la liste des options UNIQUES
     final optionsSet = <String>{};
-
-    // Ajouter les valeurs disponibles depuis l'API
     for (final attr in availableValues) {
       if (attr.value != null && attr.value!.isNotEmpty) {
         optionsSet.add(attr.value!);
       }
     }
 
-    // Toujours ajouter la valeur actuelle de l'attribut
     if (attribute.value != null && attribute.value!.isNotEmpty) {
       optionsSet.add(attribute.value!);
     }
 
-    // Si aucune option, ajouter une option par défaut
-    if (optionsSet.isEmpty) {
-      optionsSet.add('');
-    }
-
-    final options =
-        optionsSet.where((opt) => opt.isNotEmpty).toList()
-          ..sort()
-          ..add(''); // Ajouter option vide à la fin
+    final options = optionsSet.toList()..sort();
+    if (options.isEmpty) options.add('');
 
     final safeAttributeId =
         attribute.id ??
@@ -695,190 +696,45 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
     final currentValue =
         selectedAttributeValues[safeAttributeId] ?? attribute.value;
 
-    if (kDebugMode) {
-      print('🔍 $__logName Attribut ${attribute.name}:');
-      print('   - ID: $safeAttributeId');
-      print('   - Valeur actuelle: "$currentValue"');
-      print('   - Options: ${options.length} (${options.join(', ')})');
-    }
-
     return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
+      padding: spacing.custom(bottom: 20),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Nom de l'attribut
           Expanded(
             flex: 2,
             child: Text(
               attribute.name ?? 'Attribut ${attribute.index ?? ''}',
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: AppTheme.fontMontserrat,
                 fontWeight: FontWeight.w600,
                 color: AppTheme.secondaryColor,
-                fontSize: 16,
+                fontSize: responsive.sp(16),
               ),
             ),
           ),
-
-          const SizedBox(width: 16),
-
-          // Dropdown des valeurs
+          SizedBox(width: spacing.medium),
           Expanded(
             flex: 3,
             child: DropdownSearch<String>(
               items: options,
               selectedItem: currentValue,
               onChanged: (value) {
-                if (kDebugMode) {
-                  print(
-                    '🔄 $__logName Changement attribut ${attribute.name}: "$currentValue" → "$value"',
-                  );
-                }
-
                 setModalState(() {
                   selectedAttributeValues[safeAttributeId] = value ?? '';
                 });
-
                 setState(() {
                   selectedAttributeValues[safeAttributeId] = value ?? '';
                 });
               },
-              popupProps: PopupProps.menu(
-                showSearchBox: options.length > 5,
-                searchFieldProps: TextFieldProps(
-                  decoration: InputDecoration(
-                    hintText: 'Rechercher...',
-                    prefixIcon: const Icon(Icons.search, size: 20),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                  ),
-                  style: const TextStyle(fontSize: 14),
-                ),
-                menuProps: MenuProps(
-                  backgroundColor: Colors.white,
-                  elevation: 8,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                itemBuilder: (context, item, isSelected) {
-                  final isOriginalValue = item == attribute.value;
-                  final displayText = item.isEmpty ? '(Vide)' : item;
-
-                  return Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isSelected ? AppTheme.secondaryColor10 : null,
-                      border: const Border(
-                        bottom: BorderSide(
-                          color: AppTheme.thirdColor30,
-                          width: 0.5,
-                        ),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        if (isSelected)
-                          const Icon(
-                            Icons.check_circle,
-                            color: AppTheme.secondaryColor,
-                            size: 16,
-                          ),
-                        if (isSelected) const SizedBox(width: 8),
-                        if (isOriginalValue && !isSelected)
-                          const Icon(
-                            Icons.star,
-                            color: AppTheme.thirdColor,
-                            size: 16,
-                          ),
-                        if (isOriginalValue && !isSelected)
-                          const SizedBox(width: 8),
-                        if (item.isEmpty && !isSelected)
-                          const Icon(
-                            Icons.clear,
-                            color: AppTheme.thirdColor,
-                            size: 16,
-                          ),
-                        if (item.isEmpty && !isSelected)
-                          const SizedBox(width: 8),
-                        Expanded(
-                          child: RichText(
-                            text: TextSpan(
-                              children: [
-                                TextSpan(
-                                  text: displayText,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color:
-                                        isSelected
-                                            ? AppTheme.secondaryColor
-                                            : (isOriginalValue
-                                                ? AppTheme.thirdColor
-                                                : Colors.black87),
-                                    fontWeight:
-                                        isSelected
-                                            ? FontWeight.w600
-                                            : (isOriginalValue
-                                                ? FontWeight.w500
-                                                : FontWeight.normal),
-                                    fontStyle:
-                                        item.isEmpty
-                                            ? FontStyle.italic
-                                            : FontStyle.normal,
-                                  ),
-                                ),
-                                if (isOriginalValue && !isSelected)
-                                  TextSpan(
-                                    text: ' (défaut)',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: AppTheme.thirdColor,
-                                      fontWeight: FontWeight.normal,
-                                      fontStyle: FontStyle.italic,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
               dropdownDecoratorProps: DropDownDecoratorProps(
                 dropdownSearchDecoration: InputDecoration(
                   hintText: 'Sélectionner...',
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: AppTheme.thirdColor),
+                    borderRadius: BorderRadius.circular(responsive.spacing(8)),
                   ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(
-                      color: AppTheme.secondaryColor,
-                      width: 2,
-                    ),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  suffixIcon: const Icon(
-                    Icons.arrow_drop_down,
-                    color: AppTheme.secondaryColor,
-                  ),
+                  contentPadding: spacing.custom(horizontal: 12, vertical: 8),
                 ),
               ),
-              // ✅ CORRECTION: Ne plus tronquer, afficher le texte complet
-              itemAsString: (String item) => item.isEmpty ? '(Vide)' : item,
             ),
           ),
         ],
@@ -886,122 +742,97 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
     );
   }
 
-  Widget _buildCustomAppBar() {
-    return Positioned(
-      top: 0,
-      left: 0,
-      right: 0,
-      child: Container(
-        height: 150,
-        decoration: const BoxDecoration(color: AppTheme.secondaryColor),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                IconButton(
-                  icon: const Icon(
-                    Icons.arrow_back,
-                    color: Colors.white,
-                    size: 28,
-                  ),
-                  onPressed: () {
-                    if (kDebugMode) {
-                      print('⬅️ $__logName Retour');
-                    }
-                    Navigator.pop(context);
-                  },
-                ),
-                const Spacer(),
-                const Text(
-                  'Ajouter un équipement',
-                  style: TextStyle(
-                    fontFamily: AppTheme.fontMontserrat,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                    fontSize: 20,
-                  ),
-                ),
-                const Spacer(),
-              ],
-            ),
+  Widget _buildActionButtons(Responsive responsive, ResponsiveSpacing spacing) {
+    // ✅ MODIFIÉ: Validation avant sauvegarde
+    final canSave = selectedFamille != null && _canSaveEquipment();
+
+    return Row(
+      children: [
+        Expanded(
+          child: SecondaryButton(
+            text: 'Annuler',
+            onPressed: _isUpdating ? null : () => Navigator.pop(context),
           ),
         ),
-      ),
+        SizedBox(width: spacing.medium),
+        Expanded(
+          child: PrimaryButton(
+            text: 'Ajouter',
+            icon: Icons.add,
+            onPressed: canSave && !_isUpdating ? _handleSave : null,
+          ),
+        ),
+      ],
     );
   }
 
-  Widget _buildActionButtons() {
-    final canSave = selectedFamille != null && selectedFamille!.isNotEmpty;
+  // ✅ AJOUT: Vérification complète avant sauvegarde
+  bool _canSaveEquipment() {
+    if (selectedFamille == null) return false;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 0),
-      child: Row(
-        children: [
-          Expanded(
-            child: SecondaryButton(
-              text: 'Annuler',
-              onPressed:
-                  _isUpdating
-                      ? null
-                      : () {
-                        if (kDebugMode) {
-                          print('❌ $__logName Annulation');
-                        }
-                        Navigator.pop(context);
-                      },
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child:
-                _isUpdating
-                    ? Container(
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: AppTheme.secondaryColor70,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                Colors.white,
-                              ),
-                            ),
-                          ),
-                          SizedBox(width: 8),
-                          Text(
-                            'Ajout en cours...',
-                            style: TextStyle(color: Colors.white, fontSize: 16),
-                          ),
-                        ],
-                      ),
-                    )
-                    : PrimaryButton(
-                      text: canSave ? 'Ajouter' : 'Remplissez les champs',
-                      icon: Icons.add,
-                      onPressed: canSave ? _handleSave : null,
-                    ),
-          ),
-        ],
+    final attributesForValidation =
+        availableAttributes
+            .where((attr) => attr.id != null)
+            .map(
+              (attr) => {
+                'name': attr.name ?? '',
+                'value': selectedAttributeValues[attr.id!] ?? '',
+              },
+            )
+            .toList();
+
+    final validation = RequiredFieldsManager.validateRequiredFields(
+      config: _requiredFieldsConfig,
+      feeder: EquipmentHelpers.getCodeFromDescription(
+        selectedFeeder, // ✅ Extraire le code
+        selectors['feeders'] ?? [],
       ),
+      attributes: attributesForValidation,
+      clientName: null,
+      poste1: null,
+      poste2: null,
     );
+
+    return validation.isValid;
   }
 
   Future<void> _handleSave() async {
-    if (kDebugMode) {
-      print('💾 $__logName Début sauvegarde...');
-    }
+    if (!_formKey.currentState!.validate() || _isUpdating) return;
 
-    if (!_formKey.currentState!.validate() || _isUpdating) {
-      if (kDebugMode) {
-        print('⚠️ $__logName Validation échouée ou déjà en cours');
+    // ✅ AJOUT: Double validation avant sauvegarde
+    if (!_canSaveEquipment()) {
+      final attributesForValidation =
+          availableAttributes
+              .where((attr) => attr.id != null)
+              .map(
+                (attr) => {
+                  'name': attr.name ?? '',
+                  'value': selectedAttributeValues[attr.id!] ?? '',
+                },
+              )
+              .toList();
+
+      final validation = RequiredFieldsManager.validateRequiredFields(
+        config: _requiredFieldsConfig,
+        feeder: EquipmentHelpers.getCodeFromDescription(
+          selectedFeeder, // ✅ Extraire le code
+          selectors['feeders'] ?? [],
+        ),
+        attributes: attributesForValidation,
+        clientName: null,
+        poste1: null,
+        poste2: null,
+      );
+
+      if (mounted) {
+        NotificationService.showError(
+          context,
+          title: '⚠️ Champs manquants',
+          message: validation.errorMessage,
+          showAction: true,
+          actionText: 'Remplir',
+          onActionPressed: _showAttributesModal,
+        );
       }
       return;
     }
@@ -1010,38 +841,34 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
 
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final equipmentProvider = Provider.of<EquipmentProvider>(context, listen: false);
-      
+      final equipmentProvider = Provider.of<EquipmentProvider>(
+        context,
+        listen: false,
+      );
+
       final attributs = EquipmentHelpers.prepareAttributesForSave(
         availableAttributes,
         selectedAttributeValues,
       );
 
-      // ✅ CORRECTION: Utiliser les sélecteurs depuis le provider (objets typés)
       final cachedSelectors = equipmentProvider.cachedSelectors;
 
+      // ✅ CORRIGÉ: Extraire correctement le code et la description
+      final feederCode = SelectorLoader.extractCodeFromTypedSelectors(
+        selectedFeeder, // ✅ Description du feeder
+        'feeders',
+        cachedSelectors,
+      );
+
       final equipmentData = {
-        'codeParent': SelectorLoader.extractCodeFromTypedSelectors(
-          selectedCodeParent,
-          'feeders',
-          cachedSelectors,
-        ),
         'code': generatedCode,
-        'feeder': SelectorLoader.extractCodeFromTypedSelectors(
-          selectedFeeder,
-          'feeders',
-          cachedSelectors,
-        ),
-        'infoFeeder': SelectorLoader.extractCodeFromTypedSelectors(
-          selectedFeeder,
-          'feeders',
-          cachedSelectors,
-        ),
         'famille': SelectorLoader.extractCodeFromTypedSelectors(
           selectedFamille,
           'familles',
           cachedSelectors,
         ),
+        'feeder': feederCode, // ✅ Code du feeder
+        'feederDescription': selectedFeeder, // ✅ Description complète
         'zone': SelectorLoader.extractCodeFromTypedSelectors(
           selectedZone,
           'zones',
@@ -1063,67 +890,40 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
           cachedSelectors,
         ),
         'description': _descriptionController.text.trim(),
-        'longitude': '12311231',
-        'latitude': '12311231',
         'attributs': attributs,
         'createdBy': authProvider.currentUser?.username,
       };
 
       if (kDebugMode) {
-        print('📊 $__logName DONNÉES À ENVOYER:');
-        print('   - Code: ${equipmentData['code']}');
-        print('   - Code Parent: ${equipmentData['codeParent']}');
-        print('   - Feeder: ${equipmentData['feeder']}');
-        print('   - Famille (system_category): ${equipmentData['famille']}');
-        print('   - Zone: ${equipmentData['zone']}');
-        print('   - Entity: ${equipmentData['entity']}');
-        print('   - Unite: ${equipmentData['unite']}');
-        print('   - Centre Charge: ${equipmentData['centreCharge']}');
-        print('   - Description: ${equipmentData['description']}');
-        print('   - Attributs: ${attributs.length} éléments');
-        print('   - Créé par: ${equipmentData['createdBy']}');
+        print('📤 $__logName Données envoyées:');
+        print('   - feeder (code): ${equipmentData['feeder']}');
+        print('   - feederDescription: ${equipmentData['feederDescription']}');
       }
 
       await equipmentProvider.addEquipment(equipmentData);
 
-      if (kDebugMode) {
-        print('✅ $__logName Équipement ajouté avec succès');
-      }
-
-      if (mounted && Navigator.canPop(context)) {
+      if (mounted) {
         NotificationService.showSuccess(
           context,
-          title: '🎉 Succès',
-          message: 'Équipement ajouté avec succès !',
+          title: '✅ Succès',
+          message: 'Équipement ajouté !',
           showAction: false,
-          duration: const Duration(seconds: 2),
         );
-        await Future.delayed(const Duration(milliseconds: 800));
-        if (mounted) Navigator.pop(context, true);
+        Navigator.pop(context, true);
       }
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ $__logName Erreur lors de la sauvegarde: $e');
-      }
-
       if (mounted) {
         NotificationService.showError(
           context,
           title: '❌ Erreur',
-          message: 'Impossible d\'ajouter l\'équipement: $e',
+          message: 'Impossible d\'ajouter: $e',
           showAction: true,
           actionText: 'Réessayer',
           onActionPressed: _handleSave,
         );
       }
     } finally {
-      if (mounted) {
-        setState(() => _isUpdating = false);
-
-        if (kDebugMode) {
-          print('🏁 $__logName Fin sauvegarde (isUpdating: false)');
-        }
-      }
+      if (mounted) setState(() => _isUpdating = false);
     }
   }
 }

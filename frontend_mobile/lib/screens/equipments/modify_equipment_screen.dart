@@ -3,16 +3,21 @@ import 'package:appmobilegmao/provider/auth_provider.dart';
 import 'package:appmobilegmao/provider/equipment_provider.dart';
 import 'package:appmobilegmao/services/equipment_service.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
+import 'package:appmobilegmao/utils/required_fields_manager.dart';
 import 'package:appmobilegmao/widgets/custom_buttons.dart';
 import 'package:appmobilegmao/widgets/equipments/equipment_dropdown.dart';
+import 'package:appmobilegmao/widgets/equipments/equipment_text_field.dart';
 import 'package:appmobilegmao/widgets/notification_bar.dart';
+import 'package:appmobilegmao/widgets/required_fields_badge.dart';
 import 'package:appmobilegmao/widgets/tools.dart';
-import 'package:appmobilegmao/widgets/equipments/attributes_modal.dart'; // ✅ AJOUTÉ
+import 'package:appmobilegmao/widgets/equipments/attributes_modal.dart';
 import 'package:appmobilegmao/utils/selector_loader.dart';
 import 'package:appmobilegmao/utils/equipment_helpers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:appmobilegmao/utils/responsive.dart';
+import 'package:appmobilegmao/theme/responsive_spacing.dart';
 
 class ModifyEquipmentScreen extends StatefulWidget {
   final Map<String, String>? equipmentData;
@@ -29,9 +34,8 @@ class ModifyEquipmentScreen extends StatefulWidget {
 }
 
 class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
-  // Valeurs sélectionnées
-  String? selectedCodeParent,
-      selectedFeeder,
+  // ✅ SUPPRIMÉ: selectedCodeParent
+  String? selectedFeeder,
       selectedFamille,
       selectedZone,
       selectedEntity,
@@ -39,26 +43,21 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
       selectedCentreCharge;
   String? valueLongitude, valueLatitude;
 
-  // Contrôleurs et form
   final _formKey = GlobalKey<FormState>();
   final _descriptionFocusNode = FocusNode();
   final _descriptionController = TextEditingController();
 
-  // Structure harmonisée avec add_equipment_screen.dart
   Map<String, List<Map<String, dynamic>>> selectors = {};
 
-  // État de chargement
   bool _isLoading = true, _hasError = false, _isUpdating = false;
 
-  // État pour les attributs
   List<EquipmentAttribute> availableAttributes = [];
   Map<String, List<EquipmentAttribute>> attributeValuesBySpec = {};
   Map<String, String> selectedAttributeValues = {};
   bool _loadingAttributes = false;
 
-  // Variables pour stocker les valeurs initiales
-  String? _initialCodeParent,
-      _initialFeeder,
+  // ✅ SUPPRIMÉ: _initialCodeParent
+  String? _initialFeeder,
       _initialFamille,
       _initialZone,
       _initialEntity,
@@ -68,7 +67,8 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
   Map<String, String> _initialAttributeValues = {};
   bool _initialValuesSaved = false;
 
-  // Logging
+  RequiredFieldsConfig _requiredFieldsConfig = RequiredFieldsConfig.empty();
+
   static const String __logName = 'ModifyEquipmentScreen -';
 
   @override
@@ -95,10 +95,8 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
 
   void _onFieldChanged() => setState(() {});
 
-  // Vérifier s'il y a des changements par rapport aux valeurs initiales
   bool _hasChanges() {
-    if (selectedCodeParent != _initialCodeParent ||
-        selectedFeeder != _initialFeeder ||
+    if (selectedFeeder != _initialFeeder ||
         selectedFamille != _initialFamille ||
         selectedZone != _initialZone ||
         selectedEntity != _initialEntity ||
@@ -118,7 +116,6 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     return false;
   }
 
-  // ✅ Chargement harmonisé avec add_equipment_screen.dart
   Future<void> _loadSelectors() async {
     setState(() => _isLoading = true);
 
@@ -139,12 +136,10 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     }
   }
 
-  // ✅ Initialisation des champs
   void _initializeFields() {
     if (widget.equipmentData == null) return;
     final data = widget.equipmentData!;
 
-    // Fonction helper pour mapper les valeurs reçues avec les valeurs disponibles
     String? mapValueToDropdown(
       String? receivedValue,
       List<Map<String, dynamic>> availableItems,
@@ -176,11 +171,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     }
 
     selectedFeeder = mapValueToDropdown(
-      data['Feeder'],
-      selectors['feeders'] ?? [],
-    );
-    selectedCodeParent = mapValueToDropdown(
-      data['Code Parent'],
+      data['Feeder Description'],
       selectors['feeders'] ?? [],
     );
     selectedFamille = mapValueToDropdown(
@@ -207,11 +198,9 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     if (!_initialValuesSaved) _saveInitialValues();
   }
 
-  // ✅ Sauvegarder les valeurs initiales
   void _saveInitialValues() {
     if (_initialValuesSaved) return;
 
-    _initialCodeParent = selectedCodeParent;
     _initialFeeder = selectedFeeder;
     _initialFamille = selectedFamille;
     _initialZone = selectedZone;
@@ -227,55 +216,96 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final responsive = context.responsive;
+    final spacing = context.spacing;
+
     return Scaffold(
       backgroundColor: AppTheme.primaryColor,
-      body: Consumer<EquipmentProvider>(
-        builder:
-            (context, equipmentProvider, child) =>
-                _buildBody(equipmentProvider),
+      // ✅ MODIFIÉ: Augmenter la hauteur de l'AppBar
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(
+          responsive.spacing(70),
+        ), // ✅ Hauteur augmentée
+        child: AppBar(
+          titleSpacing: 0,
+          title: Padding(
+            padding: spacing.custom(
+              left: 4,
+              right: 16,
+            ), // ✅ AJOUTÉ: Espacement à gauche
+            child: Text(
+              'Modifier l\'équipement',
+              style: TextStyle(
+                fontFamily: AppTheme.fontMontserrat,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+                fontSize: responsive.sp(18),
+              ),
+            ),
+          ),
+          backgroundColor: AppTheme.secondaryColor,
+          elevation: 0,
+          leading: Padding(
+            padding: spacing.custom(
+              left: 16,
+              right: 8,
+            ), // ✅ MODIFIÉ: Espacement augmenté
+            child: IconButton(
+              padding: EdgeInsets.zero,
+              icon: Container(
+                padding: spacing.custom(all: 8),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor20,
+                  borderRadius: BorderRadius.circular(responsive.spacing(8)),
+                ),
+                child: Icon(
+                  Icons.arrow_back,
+                  color: Colors.white,
+                  size: responsive.iconSize(20),
+                ),
+              ),
+              onPressed: () {
+                if (kDebugMode) {
+                  print('⬅️ $__logName Retour');
+                }
+                Navigator.pop(context);
+              },
+              tooltip: 'Retour',
+            ),
+          ),
+        ),
       ),
-    );
-  }
+      body: Consumer<EquipmentProvider>(
+        builder: (context, equipmentProvider, child) {
+          if (_isLoading) return _buildLoadingState(responsive, spacing);
+          if (_hasError) return _buildErrorState(responsive, spacing);
 
-  Widget _buildBody(EquipmentProvider equipmentProvider) {
-    if (_isLoading) return _buildLoadingState();
-    if (_hasError) return _buildErrorState();
-
-    return Stack(
-      children: [
-        _buildCustomAppBar(),
-        Positioned(
-          top: 156,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          child: SingleChildScrollView(
+          return SingleChildScrollView(
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: spacing.custom(all: 16),
               child: Form(
                 key: _formKey,
                 child: Column(
                   children: [
-                    // ✅ FACTORISATION: Utiliser EquipmentFormFields (SANS le bouton attributs intégré)
-                    _buildInformationsSection(),
-                    const SizedBox(height: 40),
-                    _buildParentInfoSection(),
-                    const SizedBox(height: 40),
-                    _buildPositioningSection(),
-                    const SizedBox(height: 20),
-                    _buildActionButtons(),
-                    const SizedBox(height: 40),
+                    _buildInformationsSection(responsive, spacing),
+                    SizedBox(height: spacing.xlarge),
+                    _buildParentInfoSection(responsive, spacing),
+                    SizedBox(height: spacing.xlarge),
+                    _buildPositioningSection(responsive, spacing),
+                    SizedBox(height: spacing.medium),
+                    _buildActionButtons(responsive, spacing),
+                    SizedBox(height: spacing.xlarge),
                   ],
                 ),
               ),
             ),
-          ),
-        ),
-      ],
+          );
+        },
+      ),
     );
   }
 
-  Widget _buildLoadingState() {
+  Widget _buildLoadingState(Responsive responsive, ResponsiveSpacing spacing) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -283,13 +313,13 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
           const CircularProgressIndicator(
             valueColor: AlwaysStoppedAnimation<Color>(AppTheme.secondaryColor),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: spacing.medium),
           Text(
             'Chargement des données...',
             style: TextStyle(
               fontFamily: AppTheme.fontMontserrat,
               color: AppTheme.secondaryColor,
-              fontSize: 16,
+              fontSize: responsive.sp(16),
             ),
           ),
         ],
@@ -297,32 +327,32 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     );
   }
 
-  Widget _buildErrorState() {
+  Widget _buildErrorState(Responsive responsive, ResponsiveSpacing spacing) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.error_outline, size: 64, color: AppTheme.secondaryColor),
-          const SizedBox(height: 16),
+          SizedBox(height: spacing.medium),
           Text(
             'Erreur de chargement',
             style: TextStyle(
               fontFamily: AppTheme.fontMontserrat,
               fontWeight: FontWeight.bold,
               color: AppTheme.secondaryColor,
-              fontSize: 18,
+              fontSize: responsive.sp(18),
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: spacing.small),
           Text(
             'Impossible de charger les données',
             style: TextStyle(
               fontFamily: AppTheme.fontMontserrat,
               color: AppTheme.secondaryColor,
-              fontSize: 14,
+              fontSize: responsive.sp(14),
             ),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: spacing.xlarge),
           PrimaryButton(
             text: 'Réessayer',
             icon: Icons.refresh,
@@ -333,56 +363,19 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     );
   }
 
-  Widget _buildCustomAppBar() {
-    return Positioned(
-      top: 0,
-      left: 0,
-      right: 0,
-      child: Container(
-        height: 150,
-        decoration: const BoxDecoration(color: AppTheme.secondaryColor),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                IconButton(
-                  icon: const Icon(
-                    Icons.arrow_back,
-                    color: Colors.white,
-                    size: 28,
-                  ),
-                  onPressed: () => Navigator.pop(context),
-                ),
-                const Spacer(),
-                const Text(
-                  'Modifier l\'équipement',
-                  style: TextStyle(
-                    fontFamily: AppTheme.fontMontserrat,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                    fontSize: 20,
-                  ),
-                ),
-                const Spacer(),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ✅ FACTORISATION: Sections simplifiées avec EquipmentFormFields
-  Widget _buildInformationsSection() {
+  Widget _buildInformationsSection(
+    Responsive responsive,
+    ResponsiveSpacing spacing,
+  ) {
     return Column(
       children: [
-        Tools.buildFieldset('Informations'),
-        const SizedBox(height: 10),
+        Tools.buildFieldset(context, 'Informations'),
+        SizedBox(height: spacing.small),
         Row(
           children: [
             Expanded(
               child: Tools.buildText(
+                context,
                 label: 'Code',
                 value:
                     widget.equipmentData?['Code'] ??
@@ -390,7 +383,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                     '#12345',
               ),
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: spacing.small),
             Expanded(
               child: _buildDropdown(
                 label: 'Famille',
@@ -398,28 +391,95 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                   selectors['familles'] ?? [],
                 ),
                 selectedValue: selectedFamille,
-                onChanged: (v) => setState(() => selectedFamille = v),
+                onChanged: (v) {
+                  setState(() => selectedFamille = v);
+                  // ✅ AJOUT: Recharger la config si famille change
+                  if (v != null) {
+                    final familleCode = EquipmentHelpers.getCodeFromDescription(
+                      v,
+                      selectors['familles'] ?? [],
+                    );
+                    if (familleCode != null) {
+                      setState(() {
+                        _requiredFieldsConfig =
+                            RequiredFieldsManager.getRequiredFields(
+                              familleCode,
+                            );
+                      });
+                    }
+                  }
+                },
                 hintText: 'Rechercher une famille...',
+                responsive: responsive,
+                spacing: spacing,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 20),
-        _buildZoneEntityRow(),
-        const SizedBox(height: 20),
-        _buildUniteChargeRow(),
-        const SizedBox(height: 20),
-        Tools.buildTextField(
+        SizedBox(height: spacing.medium),
+        _buildZoneEntityRow(responsive, spacing),
+        SizedBox(height: spacing.medium),
+        _buildUniteChargeRow(responsive, spacing),
+        SizedBox(height: spacing.xlarge),
+
+        // ✅ Description avec compteur
+        EquipmentTextField(
           label: 'Description',
-          msgError: 'Veuillez entrer la description',
-          focusNode: _descriptionFocusNode,
+          hintText: 'Description de l\'équipement...',
           controller: _descriptionController,
+          focusNode: _descriptionFocusNode,
+          isRequired: false,
+          maxLength: 255,
+          keyboardType: TextInputType.multiline,
+          maxLines: 4,
+          minLines: 2,
+          showCounter: true,
         ),
+
+        // ✅ AJOUT: Badge des champs requis
+        if (_requiredFieldsConfig.hasRequiredAttributes) ...[
+          SizedBox(height: spacing.large),
+          RequiredFieldsBadge(
+            config: _requiredFieldsConfig,
+            onViewDetails: () {
+              if (availableAttributes.isNotEmpty) {
+                _showAttributesModal();
+              } else {
+                NotificationService.showInfo(
+                  context,
+                  title: '📋 Champs requis',
+                  message: _getRequiredFieldsMessage(),
+                  showAction: false,
+                );
+              }
+            },
+          ),
+        ],
       ],
     );
   }
 
-  Widget _buildZoneEntityRow() {
+  // ✅ AJOUT: Message des champs requis
+  String _getRequiredFieldsMessage() {
+    final fields = <String>[];
+    if (_requiredFieldsConfig.requiresFeeder) fields.add('• Feeder');
+    if (_requiredFieldsConfig.requiresNaturePoste) {
+      fields.add('• Nature du poste (attribut Statut)');
+    }
+    if (_requiredFieldsConfig.requiresCodeH) {
+      fields.add('• Code H (attribut Genie civil)');
+    }
+    if (_requiredFieldsConfig.requiresTension) {
+      fields.add('• Tension (attribut Structure poste)');
+    }
+    if (_requiredFieldsConfig.requiresCelluleType) {
+      fields.add('• Type de cellule');
+    }
+
+    return 'Champs obligatoires pour cette famille :\n\n${fields.join('\n')}';
+  }
+
+  Widget _buildZoneEntityRow(Responsive responsive, ResponsiveSpacing spacing) {
     return Row(
       children: [
         Expanded(
@@ -431,9 +491,11 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
             selectedValue: selectedZone,
             onChanged: (v) => setState(() => selectedZone = v),
             hintText: 'Rechercher une zone...',
+            responsive: responsive,
+            spacing: spacing,
           ),
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: spacing.small),
         Expanded(
           child: _buildDropdown(
             label: 'Entité',
@@ -443,13 +505,18 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
             selectedValue: selectedEntity,
             onChanged: (v) => setState(() => selectedEntity = v),
             hintText: 'Rechercher une entité...',
+            responsive: responsive,
+            spacing: spacing,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildUniteChargeRow() {
+  Widget _buildUniteChargeRow(
+    Responsive responsive,
+    ResponsiveSpacing spacing,
+  ) {
     return Row(
       children: [
         Expanded(
@@ -461,9 +528,11 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
             selectedValue: selectedUnite,
             onChanged: (v) => setState(() => selectedUnite = v),
             hintText: 'Rechercher une unité...',
+            responsive: responsive,
+            spacing: spacing,
           ),
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: spacing.small),
         Expanded(
           child: _buildDropdown(
             label: 'Centre de Charge',
@@ -473,90 +542,80 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
             selectedValue: selectedCentreCharge,
             onChanged: (v) => setState(() => selectedCentreCharge = v),
             hintText: 'Rechercher un centre...',
+            responsive: responsive,
+            spacing: spacing,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildParentInfoSection() {
+  Widget _buildParentInfoSection(
+    Responsive responsive,
+    ResponsiveSpacing spacing,
+  ) {
     return Column(
       children: [
-        Tools.buildFieldset('Informations parents'),
-        const SizedBox(height: 10),
+        Tools.buildFieldset(context, 'Informations parents'),
+        SizedBox(height: spacing.small),
+
+        // ✅ MODIFIÉ: Feeder prend toute la largeur (suppression de Info Feeder)
         _buildDropdown(
-          label: 'Code Parent',
+          label: 'Feeder',
           items: EquipmentHelpers.getSelectorsOptions(
             selectors['feeders'] ?? [],
-            codeKey: 'code',
           ),
-          selectedValue: selectedCodeParent,
-          onChanged: (v) => setState(() => selectedCodeParent = v),
-          hintText: 'Rechercher un code parent...',
-        ),
-        const SizedBox(height: 20),
-        Row(
-          children: [
-            Expanded(
-              child: _buildDropdown(
-                label: 'Feeder',
-                items: EquipmentHelpers.getSelectorsOptions(
-                  selectors['feeders'] ?? [],
-                ),
-                selectedValue: selectedFeeder,
-                onChanged: (v) => setState(() => selectedFeeder = v),
-                hintText: 'Rechercher un feeder...',
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Tools.buildText(
-                label: 'Info Feeder',
-                value: EquipmentHelpers.formatDescription(selectedFeeder ?? ''),
-              ),
-            ),
-          ],
+          selectedValue: selectedFeeder,
+          onChanged: (v) => setState(() => selectedFeeder = v),
+          hintText: 'Rechercher un feeder...',
+          responsive: responsive,
+          spacing: spacing,
         ),
       ],
     );
   }
 
-  Widget _buildPositioningSection() {
+  Widget _buildPositioningSection(
+    Responsive responsive,
+    ResponsiveSpacing spacing,
+  ) {
     return Column(
       children: [
-        Tools.buildFieldset('Informations de positionnement'),
-        const SizedBox(height: 10),
+        Tools.buildFieldset(context, 'Informations de positionnement'),
+        SizedBox(height: spacing.small),
         Row(
           children: [
             Expanded(
               child: Tools.buildText(
+                context,
                 label: 'Longitude',
                 value: valueLongitude ?? '12311231',
               ),
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: spacing.small),
             Expanded(
               child: Tools.buildText(
+                context,
                 label: 'Latitude',
                 value: valueLatitude ?? '12311231',
               ),
             ),
           ],
         ),
-        const SizedBox(height: 20),
-        _buildMapSection(),
-        const SizedBox(height: 20),
-        _buildAttributesButton(),
+        SizedBox(height: spacing.medium),
+        _buildMapSection(responsive, spacing),
+        SizedBox(height: spacing.medium),
+        _buildAttributesButton(responsive, spacing),
       ],
     );
   }
 
-  Widget _buildMapSection() {
+  Widget _buildMapSection(Responsive responsive, ResponsiveSpacing spacing) {
     return Container(
       width: double.infinity,
-      height: 200,
+      height: responsive.spacing(200),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(responsive.spacing(8)),
         image: const DecorationImage(
           image: AssetImage('assets/images/map.png'),
           fit: BoxFit.cover,
@@ -565,8 +624,8 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
         boxShadow: [
           BoxShadow(
             color: AppTheme.boxShadowColor,
-            blurRadius: 15,
-            offset: const Offset(0, 4),
+            blurRadius: responsive.spacing(15),
+            offset: Offset(0, responsive.spacing(4)),
           ),
         ],
       ),
@@ -574,7 +633,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
         children: [
           Container(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(responsive.spacing(8)),
               gradient: const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -586,24 +645,24 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text(
+                Text(
                   'Position actuelle',
                   style: TextStyle(
                     fontFamily: AppTheme.fontMontserrat,
                     fontWeight: FontWeight.bold,
                     color: AppTheme.secondaryColor,
-                    fontSize: 18,
+                    fontSize: responsive.sp(18),
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: spacing.small),
                 GestureDetector(
                   onTap: () {},
-                  child: const Text(
+                  child: Text(
                     'Toucher pour modifier',
                     style: TextStyle(
                       fontFamily: AppTheme.fontMontserrat,
                       color: AppTheme.secondaryColor,
-                      fontSize: 14,
+                      fontSize: responsive.sp(14),
                       decoration: TextDecoration.underline,
                     ),
                   ),
@@ -616,11 +675,14 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     );
   }
 
-  Widget _buildAttributesButton() {
+  Widget _buildAttributesButton(
+    Responsive responsive,
+    ResponsiveSpacing spacing,
+  ) {
     return GestureDetector(
       onTap: availableAttributes.isNotEmpty ? _showAttributesModal : null,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: spacing.custom(vertical: 12),
         child: Row(
           children: [
             Icon(
@@ -630,7 +692,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                       ? AppTheme.secondaryColor
                       : AppTheme.thirdColor,
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: spacing.small),
             Text(
               availableAttributes.isNotEmpty
                   ? 'Modifier les attributs (${availableAttributes.length})'
@@ -642,15 +704,15 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                     availableAttributes.isNotEmpty
                         ? AppTheme.secondaryColor
                         : AppTheme.thirdColor,
-                fontSize: 16,
+                fontSize: responsive.sp(16),
               ),
             ),
-            const SizedBox(width: 5),
+            SizedBox(width: spacing.tiny),
             Expanded(
               child: Container(
                 height: 1,
                 color: AppTheme.thirdColor,
-                margin: const EdgeInsets.only(top: 10),
+                margin: spacing.custom(top: 10),
               ),
             ),
           ],
@@ -659,13 +721,14 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     );
   }
 
-  // ✅ FACTORISATION: Utiliser le widget EquipmentDropdown existant
   Widget _buildDropdown({
     required String label,
     required List<String> items,
     required String? selectedValue,
     required Function(String?) onChanged,
     required String hintText,
+    required Responsive responsive,
+    required ResponsiveSpacing spacing,
   }) {
     return EquipmentDropdown(
       label: label,
@@ -679,7 +742,6 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     );
   }
 
-  // ✅ FACTORISATION: Utiliser AttributesModal existant
   void _showAttributesModal() {
     if (availableAttributes.isEmpty) return;
 
@@ -713,7 +775,6 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     );
   }
 
-  // ✅ Chargement des attributs (conservé car logique métier)
   Future<void> _loadAttributeSpecifications() async {
     for (final attr in availableAttributes) {
       if (attr.specification != null && attr.index != null) {
@@ -784,6 +845,24 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
           widget.equipmentData!['Code'] ?? widget.equipmentData!['code'] ?? '';
       if (equipmentCode.isEmpty) return;
 
+      // ✅ AJOUT: Charger la configuration des champs requis
+      final familleCode = EquipmentHelpers.getCodeFromDescription(
+        selectedFamille,
+        selectors['familles'] ?? [],
+      );
+
+      if (familleCode != null) {
+        setState(() {
+          _requiredFieldsConfig = RequiredFieldsManager.getRequiredFields(
+            familleCode,
+          );
+        });
+
+        if (kDebugMode) {
+          print('📋 $__logName Champs requis chargés pour $familleCode');
+        }
+      }
+
       final equipmentProvider = Provider.of<EquipmentProvider>(
         context,
         listen: false,
@@ -813,9 +892,46 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     }
   }
 
-  // ✅ Mise à jour (conservé car logique métier)
   Future<void> _handleUpdate() async {
     if (_isUpdating) return;
+
+    // ✅ AJOUT: Validation des champs requis avant mise à jour
+    if (!_canUpdateEquipment()) {
+      final attributesForValidation =
+          availableAttributes
+              .where((attr) => attr.id != null)
+              .map(
+                (attr) => {
+                  'name': attr.name ?? '',
+                  'value': selectedAttributeValues[attr.id!] ?? '',
+                },
+              )
+              .toList();
+
+      final validation = RequiredFieldsManager.validateRequiredFields(
+        config: _requiredFieldsConfig,
+        feeder: EquipmentHelpers.getCodeFromDescription(
+          selectedFeeder,
+          selectors['feeders'] ?? [],
+        ),
+        attributes: attributesForValidation,
+        clientName: null,
+        poste1: null,
+        poste2: null,
+      );
+
+      if (mounted) {
+        NotificationService.showError(
+          context,
+          title: '⚠️ Champs manquants',
+          message: validation.errorMessage,
+          showAction: true,
+          actionText: 'Remplir',
+          onActionPressed: _showAttributesModal,
+        );
+      }
+      return;
+    }
 
     setState(() => _isUpdating = true);
 
@@ -825,60 +941,73 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
         selectedAttributeValues,
       );
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final equipmentProvider = Provider.of<EquipmentProvider>(
+        context,
+        listen: false,
+      );
+
+      final cachedSelectors = equipmentProvider.cachedSelectors;
+
+      final feederCode = SelectorLoader.extractCodeFromTypedSelectors(
+        selectedFeeder,
+        'feeders',
+        cachedSelectors,
+      );
 
       final updatedData = {
         'code':
             widget.equipmentData!['Code'] ??
             widget.equipmentData!['code'] ??
             '',
-        'code_parent': EquipmentHelpers.getCodeFromDescription(
-          selectedCodeParent,
-          selectors['feeders'] ?? [],
-        ),
-        'famille': EquipmentHelpers.getCodeFromDescription(
+        // ✅ SUPPRIMÉ: 'code_parent': ...
+        'famille': SelectorLoader.extractCodeFromTypedSelectors(
           selectedFamille,
-          selectors['familles'] ?? [],
+          'familles',
+          cachedSelectors,
         ),
-        'zone': EquipmentHelpers.getCodeFromDescription(
+        'zone': SelectorLoader.extractCodeFromTypedSelectors(
           selectedZone,
-          selectors['zones'] ?? [],
+          'zones',
+          cachedSelectors,
         ),
-        'entity': EquipmentHelpers.getCodeFromDescription(
+        'entity': SelectorLoader.extractCodeFromTypedSelectors(
           selectedEntity,
-          selectors['entities'] ?? [],
+          'entities',
+          cachedSelectors,
         ),
-        'unite': EquipmentHelpers.getCodeFromDescription(
+        'unite': SelectorLoader.extractCodeFromTypedSelectors(
           selectedUnite,
-          selectors['unites'] ?? [],
+          'unites',
+          cachedSelectors,
         ),
-        'centre_charge': EquipmentHelpers.getCodeFromDescription(
+        'centre_charge': SelectorLoader.extractCodeFromTypedSelectors(
           selectedCentreCharge,
-          selectors['centreCharges'] ?? [],
+          'centreCharges',
+          cachedSelectors,
         ),
         'description': _descriptionController.text.trim(),
         'longitude': valueLongitude ?? '12311231',
         'latitude': valueLatitude ?? '12311231',
-        'feeder': EquipmentHelpers.getCodeFromDescription(
-          selectedFeeder,
-          selectors['feeders'] ?? [],
-        ),
+        'feeder': feederCode,
         'feeder_description': selectedFeeder,
-        'created_by': authProvider.currentUser?.username ?? 'mobile_app',
+        'created_by': authProvider.currentUser?.username ?? '',
         'attributs': attributs,
       };
+
+      if (kDebugMode) {
+        print('📤 $__logName Données de mise à jour:');
+        print('   - feeder (code): ${updatedData['feeder']}');
+        print('   - feeder_description: ${updatedData['feeder_description']}');
+      }
 
       final equipmentId =
           widget.equipmentData!['id'] ?? widget.equipmentData!['ID'] ?? '';
       if (equipmentId.isEmpty) throw Exception('ID de l\'équipement manquant');
 
-      await context.read<EquipmentProvider>().updateEquipment(
-        equipmentId,
-        updatedData,
-      );
+      await equipmentProvider.updateEquipment(equipmentId, updatedData);
       await Future.delayed(const Duration(milliseconds: 300));
 
       if (mounted) {
-        final equipmentProvider = context.read<EquipmentProvider>();
         await equipmentProvider.fetchEquipments(forceRefresh: false);
       }
 
@@ -910,11 +1039,44 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     }
   }
 
-  Widget _buildActionButtons() {
+  // ✅ AJOUT: Méthode de validation
+  bool _canUpdateEquipment() {
+    if (selectedFamille == null) {
+      return true; // Pas de famille = pas de validation
+    }
+
+    final attributesForValidation =
+        availableAttributes
+            .where((attr) => attr.id != null)
+            .map(
+              (attr) => {
+                'name': attr.name ?? '',
+                'value': selectedAttributeValues[attr.id!] ?? '',
+              },
+            )
+            .toList();
+
+    final validation = RequiredFieldsManager.validateRequiredFields(
+      config: _requiredFieldsConfig,
+      feeder: EquipmentHelpers.getCodeFromDescription(
+        selectedFeeder,
+        selectors['feeders'] ?? [],
+      ),
+      attributes: attributesForValidation,
+      clientName: null,
+      poste1: null,
+      poste2: null,
+    );
+
+    return validation.isValid;
+  }
+
+  Widget _buildActionButtons(Responsive responsive, ResponsiveSpacing spacing) {
     final hasChanges = _hasChanges();
+    final canUpdate = hasChanges && _canUpdateEquipment(); // ✅ AJOUT
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 0),
+      padding: spacing.custom(vertical: 0),
       child: Row(
         children: [
           Expanded(
@@ -923,30 +1085,32 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
               onPressed: _isUpdating ? null : () => Navigator.pop(context),
             ),
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: spacing.medium),
           Expanded(
             child:
                 _isUpdating
                     ? Container(
-                      height: 48,
+                      height: responsive.spacing(48),
                       decoration: BoxDecoration(
                         color: AppTheme.secondaryColor70,
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(
+                          responsive.spacing(8),
+                        ),
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           SizedBox(
-                            width: 20,
-                            height: 20,
+                            width: responsive.spacing(20),
+                            height: responsive.spacing(20),
                             child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
+                              strokeWidth: responsive.spacing(2),
+                              valueColor: const AlwaysStoppedAnimation<Color>(
                                 Colors.white,
                               ),
                             ),
                           ),
-                          SizedBox(width: 8),
+                          SizedBox(width: spacing.small),
                           Flexible(
                             child: Text(
                               'Modification...',
@@ -955,7 +1119,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                                 fontFamily: AppTheme.fontMontserrat,
                                 fontWeight: FontWeight.w600,
                                 color: Colors.white,
-                                fontSize: 16,
+                                fontSize: responsive.sp(16),
                               ),
                             ),
                           ),
@@ -963,21 +1127,25 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                       ),
                     )
                     : Container(
-                      height: 48,
+                      height: responsive.spacing(48),
                       decoration: BoxDecoration(
                         color:
-                            hasChanges
+                            canUpdate // ✅ MODIFIÉ
                                 ? AppTheme.secondaryColor
                                 : AppTheme.thirdColor50,
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(
+                          responsive.spacing(8),
+                        ),
                       ),
                       child: Material(
                         color: Colors.transparent,
                         child: InkWell(
-                          borderRadius: BorderRadius.circular(8),
-                          onTap: hasChanges ? _handleUpdate : null,
+                          borderRadius: BorderRadius.circular(
+                            responsive.spacing(8),
+                          ),
+                          onTap: canUpdate ? _handleUpdate : null, // ✅ MODIFIÉ
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            padding: spacing.custom(horizontal: 12),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               mainAxisSize: MainAxisSize.min,
@@ -985,27 +1153,29 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                                 Icon(
                                   Icons.save,
                                   color:
-                                      hasChanges
+                                      canUpdate // ✅ MODIFIÉ
                                           ? Colors.white
                                           : AppTheme.thirdColor,
-                                  size: 18,
+                                  size: responsive.iconSize(18),
                                 ),
-                                const SizedBox(width: 6),
+                                SizedBox(width: spacing.small),
                                 Flexible(
                                   child: Text(
-                                    hasChanges
-                                        ? 'Modifier'
-                                        : 'Aucun changement',
+                                    !hasChanges
+                                        ? 'Aucun changement'
+                                        : (!canUpdate
+                                            ? 'Champs manquants'
+                                            : 'Modifier'),
                                     overflow: TextOverflow.ellipsis,
                                     maxLines: 1,
                                     style: TextStyle(
                                       fontFamily: AppTheme.fontMontserrat,
                                       fontWeight: FontWeight.w600,
                                       color:
-                                          hasChanges
+                                          canUpdate
                                               ? Colors.white
                                               : AppTheme.thirdColor,
-                                      fontSize: 14,
+                                      fontSize: responsive.sp(14),
                                     ),
                                   ),
                                 ),

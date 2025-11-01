@@ -1,5 +1,7 @@
 import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:flutter/material.dart';
+import 'package:appmobilegmao/utils/responsive.dart';
+import 'package:appmobilegmao/theme/responsive_spacing.dart';
 
 abstract class Tools extends StatelessWidget {
   const Tools({super.key});
@@ -9,16 +11,27 @@ abstract class Tools extends StatelessWidget {
     return const Placeholder();
   }
 
-  static Widget buildVerticalDivider() {
+  static Widget buildVerticalDivider(BuildContext context) {
+    final spacing = ResponsiveSpacing.of(context);
+
     return Container(
-      height: 40,
+      height: spacing.xlarge, // ✅ Hauteur responsive (au lieu de 40)
       width: 1,
       color: const Color.fromRGBO(144, 144, 144, 0.3),
-      margin: const EdgeInsets.symmetric(horizontal: 8),
+      margin:
+          spacing
+              .horizontalPadding, // ✅ Margin responsive (au lieu de horizontal: 8)
     );
   }
 
-  static buildStatCard(String value, String label) {
+  static Widget buildStatCard(
+    BuildContext context,
+    String value,
+    String label,
+  ) {
+    final responsive = Responsive.of(context);
+    final spacing = ResponsiveSpacing.of(context);
+
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -28,17 +41,19 @@ abstract class Tools extends StatelessWidget {
             fontFamily: AppTheme.fontMontserrat,
             fontWeight: FontWeight.bold,
             color: AppTheme.secondaryColor,
-            fontSize: 16,
+            fontSize: responsive.sp(16), // ✅ Texte responsive
           ),
         ),
-        const SizedBox(height: 4),
+        SizedBox(
+          height: spacing.tiny,
+        ), // ✅ Espacement responsive (au lieu de 4)
         Text(
           label,
           style: TextStyle(
             fontFamily: AppTheme.fontRoboto,
             fontWeight: FontWeight.normal,
             color: AppTheme.secondaryColor,
-            fontSize: 14,
+            fontSize: responsive.sp(14), // ✅ Texte responsive
           ),
         ),
       ],
@@ -46,21 +61,25 @@ abstract class Tools extends StatelessWidget {
   }
 
   static Widget buildTextField({
+    required BuildContext context,
     required String label,
     required String msgError,
     FocusNode? focusNode,
     TextEditingController? controller,
     bool isRequired = false, // ✅ NOUVEAU: Paramètre pour rendre optionnel
   }) {
+    final responsive = Responsive.of(context);
+
     return TextFormField(
       focusNode: focusNode,
       controller: controller,
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(
+        labelStyle: TextStyle(
           color: AppTheme.secondaryColor,
           fontFamily: AppTheme.fontMontserrat,
           fontWeight: FontWeight.w600,
+          fontSize: responsive.sp(14), // ✅ Texte responsive (ajouté)
         ),
         border: const UnderlineInputBorder(),
         enabledBorder: const UnderlineInputBorder(
@@ -83,21 +102,32 @@ abstract class Tools extends StatelessWidget {
     );
   }
 
-  static Widget buildText({required String label, required String value}) {
+  static Widget buildText(
+    BuildContext context, {
+    required String label,
+    required String value,
+  }) {
+    final responsive = Responsive.of(context);
+    final spacing = ResponsiveSpacing.of(context);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 5),
+        SizedBox(
+          height: spacing.tiny,
+        ), // ✅ Espacement responsive (au lieu de 5)
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             color: AppTheme.secondaryColor,
             fontFamily: AppTheme.fontMontserrat,
             fontWeight: FontWeight.w600,
-            fontSize: 12,
+            fontSize: responsive.sp(12), // ✅ Texte responsive
           ),
         ),
-        const SizedBox(height: 2),
+        SizedBox(
+          height: spacing.tiny,
+        ), // ✅ Espacement responsive (au lieu de 2)
         Text(
           value.isNotEmpty ? value : '------',
           style: TextStyle(
@@ -107,10 +137,12 @@ abstract class Tools extends StatelessWidget {
                     : AppTheme.thirdColor,
             fontFamily: AppTheme.fontMontserrat,
             fontWeight: FontWeight.normal,
-            fontSize: 16,
+            fontSize: responsive.sp(16), // ✅ Texte responsive
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(
+          height: spacing.small,
+        ), // ✅ Espacement responsive (au lieu de 8)
         Container(
           height: 1,
           width: double.infinity,
@@ -120,26 +152,31 @@ abstract class Tools extends StatelessWidget {
     );
   }
 
-  static Widget buildFieldset(String title) {
+  static Widget buildFieldset(BuildContext context, String title) {
+    final responsive = Responsive.of(context);
+    final spacing = ResponsiveSpacing.of(context);
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: AppTheme.fontMontserrat,
             fontWeight: FontWeight.bold,
             color: AppTheme.secondaryColor,
-            fontSize: 18,
+            fontSize: responsive.sp(18), // ✅ Texte responsive
           ),
         ),
-        const SizedBox(width: 5),
+        SizedBox(width: spacing.tiny), // ✅ Espacement responsive (au lieu de 5)
         Expanded(
           child: Container(
             height: 1,
             width: double.infinity,
             color: AppTheme.thirdColor,
-            margin: const EdgeInsets.only(top: 10),
+            margin: EdgeInsets.only(
+              top: spacing.medium,
+            ), // ✅ Margin responsive (au lieu de top: 10)
           ),
         ),
       ],

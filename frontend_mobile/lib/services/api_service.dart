@@ -23,10 +23,13 @@ class ApiService {
   String? _authToken;
 
   static const Duration _timeout = Duration(seconds: 60);
-  static const int _defaultPort = 8000;
-  static const String _macIpAddress = '192.168.1.10';
-  // static const int _defaultPort = 9099;
-  // static const String _macIpAddress = 'https://srv-bddomtech';
+  // static const int _defaultPort = 8000;
+  // static const String _macIpAddress = '192.168.1.102';
+  static const int _defaultPort = 9099;
+  static const String _macIpAddress = 'domtec.senelec.sn';
+
+  get macIpAddress => _macIpAddress;
+  get defaultPort => _defaultPort;
 
   ApiService({int? port, String? customBaseUrl}) {
     baseUrl = customBaseUrl ?? _buildBaseUrl(port ?? _defaultPort);
@@ -44,13 +47,13 @@ class ApiService {
       ),
     );
     _setupInterceptors();
-    _loadAuthToken(); // async fire-and-forget: charge token si présent
+    _loadAuthToken();
   }
 
   String _buildBaseUrl(int port) {
     if (kIsWeb) return 'http://localhost:$port';
-    // Pour Android et iOS on utilise l'IP du Mac (comme demandé)
-    return 'http://$_macIpAddress:$port';
+    return 'https://$_macIpAddress:$port';
+    // return 'http://$_macIpAddress:$port';
   }
 
   Future<void> _loadAuthToken() async {
@@ -89,10 +92,42 @@ class ApiService {
           }
           handler.next(options);
         },
+        onResponse: (response, handler) {
+          // ✅ NOUVEAU: Vérifier si la réponse est du HTML au lieu de JSON
+          if (response.statusCode == 200) {
+            final contentType = response.headers.value('content-type');
+
+            // Détecter les réponses HTML (pare-feu WAF, erreurs serveur, etc.)
+            if (contentType != null && contentType.contains('text/html')) {
+              final responseText = response.data?.toString() ?? '';
+
+              // Vérifier si c'est une page de rejet
+              if (responseText.contains('Request Rejected') ||
+                  responseText.contains('<html>')) {
+                if (kDebugMode) {
+                  print('⚠️ ApiService: Réponse HTML détectée au lieu de JSON');
+                  print('Content-Type: $contentType');
+                }
+
+                // Transformer en erreur DioException
+                return handler.reject(
+                  DioException(
+                    requestOptions: response.requestOptions,
+                    response: response,
+                    type: DioExceptionType.badResponse,
+                    error:
+                        'La requête a été rejetée par le serveur (pare-feu ou filtre de sécurité)',
+                  ),
+                );
+              }
+            }
+          }
+
+          handler.next(response);
+        },
         onError: (error, handler) async {
           final resp = error.response;
           if (resp?.statusCode == 401) {
-            // tentative de refresh
             final refresh = await HiveService.getRefreshToken();
             if (refresh != null) {
               try {
@@ -104,14 +139,12 @@ class ApiService {
                 if (newToken != null) {
                   await HiveService.saveAccessToken(newToken);
                   setAuthToken(newToken);
-                  // rejouer la requête initiale
                   error.requestOptions.headers['Authorization'] =
                       'Bearer $newToken';
                   final retry = await _dio.fetch(error.requestOptions);
                   return handler.resolve(retry);
                 }
               } catch (_) {
-                // si échec refresh -> clear et laisser l'erreur remonter
                 await HiveService.clearAllCache();
                 clearAuthToken();
               }
@@ -211,6 +244,20 @@ class ApiService {
   ApiException _handleDioError(DioException e, String endpoint) {
     String message;
     final status = e.response?.statusCode ?? 0;
+
+    // ✅ NOUVEAU: Gestion spéciale pour les réponses HTML
+    if (e.type == DioExceptionType.badResponse && status == 200) {
+      final contentType = e.response?.headers.value('content-type');
+      if (contentType != null && contentType.contains('text/html')) {
+        message =
+            'La requête a été bloquée par un pare-feu ou un filtre de sécurité';
+        if (kDebugMode) {
+          print('⚠️ ApiService: Réponse HTML au lieu de JSON (WAF/Firewall)');
+        }
+        return ApiException(message, statusCode: 403, endpoint: endpoint);
+      }
+    }
+
     if (e.type == DioExceptionType.connectionTimeout) {
       message = 'Connexion impossible - vérifiez le réseau';
     } else if (e.type == DioExceptionType.receiveTimeout) {
@@ -234,7 +281,6 @@ class ApiService {
     return ApiException(message, statusCode: status, endpoint: endpoint);
   }
 
-  // utilitaires
   void setPort(int port) {
     baseUrl = _buildBaseUrl(port);
     _dio.options.baseUrl = baseUrl;

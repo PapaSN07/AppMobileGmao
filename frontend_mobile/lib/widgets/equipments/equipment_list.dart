@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:appmobilegmao/widgets/loading_indicator.dart';
 import 'package:appmobilegmao/widgets/empty_state.dart';
+import 'package:appmobilegmao/theme/responsive_spacing.dart';
 
 typedef ItemBuilder = Widget Function(int index);
 
@@ -20,6 +21,8 @@ class EquipmentList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final spacing = context.spacing;
+
     if (isLoading) return const LoadingIndicator();
     return RefreshIndicator(
       onRefresh: onRefresh,
@@ -36,7 +39,9 @@ class EquipmentList extends StatelessWidget {
                 itemCount: items.length,
                 itemBuilder:
                     (context, index) => Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
+                      padding: spacing.custom(
+                        bottom: 10,
+                      ), // ✅ Padding responsive
                       child: itemBuilder(items[index]),
                     ),
               ),

@@ -1,20 +1,25 @@
+import 'package:appmobilegmao/utils/upper_case_text_formatter.dart';
+import 'package:appmobilegmao/widgets/equipments/equipment_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:appmobilegmao/widgets/tools.dart';
 import 'package:appmobilegmao/widgets/equipments/equipment_dropdown.dart';
 import 'package:appmobilegmao/utils/equipment_helpers.dart';
+import 'package:appmobilegmao/utils/responsive.dart';
+import 'package:appmobilegmao/theme/responsive_spacing.dart';
+import 'package:flutter/services.dart';
 
 class EquipmentFormFields extends StatelessWidget {
-  final String? generatedCode;
   final String? selectedFamille;
   final String? selectedZone;
   final String? selectedEntity;
   final String? selectedUnite;
   final String? selectedCentreCharge;
-  final String? selectedCodeParent;
-  final String? selectedFeeder;
+  final String? selectedFeeder; // ✅ SIMPLIFIÉ: Une seule variable
   final TextEditingController descriptionController;
   final FocusNode descriptionFocusNode;
+  final TextEditingController abbreviationController;
+  final FocusNode abbreviationFocusNode;
   final List<Map<String, dynamic>> familles;
   final List<Map<String, dynamic>> zones;
   final List<Map<String, dynamic>> entities;
@@ -26,8 +31,7 @@ class EquipmentFormFields extends StatelessWidget {
   final Function(String?)? onEntityChanged;
   final Function(String?)? onUniteChanged;
   final Function(String?)? onCentreChargeChanged;
-  final Function(String?)? onCodeParentChanged;
-  final Function(String?)? onFeederChanged;
+  final Function(String?)? onFeederChanged; // ✅ RENOMMÉ
   final bool isCodeEditable;
   final bool showAttributesButton;
   final VoidCallback? onAttributesPressed;
@@ -35,16 +39,16 @@ class EquipmentFormFields extends StatelessWidget {
 
   const EquipmentFormFields({
     super.key,
-    this.generatedCode,
     required this.selectedFamille,
     required this.selectedZone,
     required this.selectedEntity,
     required this.selectedUnite,
     required this.selectedCentreCharge,
-    required this.selectedCodeParent,
-    required this.selectedFeeder,
+    required this.selectedFeeder, // ✅ SIMPLIFIÉ
     required this.descriptionController,
     required this.descriptionFocusNode,
+    required this.abbreviationController,
+    required this.abbreviationFocusNode,
     required this.familles,
     required this.zones,
     required this.entities,
@@ -56,8 +60,7 @@ class EquipmentFormFields extends StatelessWidget {
     this.onEntityChanged,
     this.onUniteChanged,
     this.onCentreChargeChanged,
-    this.onCodeParentChanged,
-    this.onFeederChanged,
+    this.onFeederChanged, // ✅ RENOMMÉ
     this.isCodeEditable = false,
     this.showAttributesButton = false,
     this.onAttributesPressed,
@@ -66,64 +69,79 @@ class EquipmentFormFields extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final responsive = context.responsive;
+    final spacing = context.spacing;
+
     return Column(
       children: [
         // Section Informations
-        Tools.buildFieldset('Informations'),
-        const SizedBox(height: 10),
-        _buildCodeAndFamilleRow(),
-        const SizedBox(height: 20),
-        _buildZoneAndEntityRow(),
-        const SizedBox(height: 20),
-        _buildUniteAndChargeRow(),
-        const SizedBox(height: 20),
-        Tools.buildTextField(
-          label: 'Description',
-          msgError: 'Veuillez entrer la description',
-          focusNode: descriptionFocusNode,
-          controller: descriptionController,
-          isRequired: false,
-        ),
-        const SizedBox(height: 40),
-
+        Tools.buildFieldset(context, 'Informations'), // ✅ Context ajouté
+        SizedBox(height: spacing.small), // ✅ Espacement responsive
+        _buildUniteAndFamilleRow(
+          context,
+          responsive,
+          spacing,
+        ), // ✅ Paramètres ajoutés
+        SizedBox(height: spacing.medium), // ✅ Espacement responsive
+        _buildZoneAndEntityRow(
+          context,
+          responsive,
+          spacing,
+        ), // ✅ Paramètres ajoutés
+        SizedBox(height: spacing.medium), // ✅ Espacement responsive
+        _buildCentreChargeAndAbbreviationRow(
+          context,
+          responsive,
+          spacing,
+        ), // ✅ Paramètres ajoutés
+        SizedBox(height: spacing.xlarge), // ✅ Espacement responsive
+        _buildDescriptionField(responsive, spacing), // ✅ Refactorisé en méthode
+        SizedBox(height: spacing.xlarge), // ✅ Espacement responsive
         // Section Informations parents
-        Tools.buildFieldset('Informations parents'),
-        const SizedBox(height: 10),
-        EquipmentDropdown(
-          label: 'Code Parent',
-          items: EquipmentHelpers.getSelectorsOptions(feeders, codeKey: 'code'),
-          selectedValue: selectedCodeParent,
-          onChanged: onCodeParentChanged,
-          hintText: 'Rechercher ou sélectionner un code parent...',
-          isRequired: false,
-        ),
-        const SizedBox(height: 20),
-        _buildFeederRow(),
-
+        Tools.buildFieldset(
+          context,
+          'Informations parents',
+        ), // ✅ Context ajouté
+        SizedBox(height: spacing.small), // ✅ Espacement responsive
+        _buildFeederRow(context, responsive, spacing), // ✅ Paramètres ajoutés
         // Bouton attributs si disponible
         if (showAttributesButton) ...[
-          const SizedBox(height: 40),
-          _buildAttributesButton(),
+          SizedBox(height: spacing.xlarge), // ✅ Espacement responsive
+          _buildAttributesButton(
+            context,
+            responsive,
+            spacing,
+          ), // ✅ Paramètres ajoutés
         ],
       ],
     );
   }
 
-  Widget _buildCodeAndFamilleRow() {
+  Widget _buildDescriptionField(
+    Responsive responsive,
+    ResponsiveSpacing spacing,
+  ) {
+    return EquipmentTextField(
+      label: 'Description',
+      hintText: 'Description de l\'équipement...',
+      controller: descriptionController,
+      focusNode: descriptionFocusNode,
+      isRequired: false,
+      maxLength: 255, // ✅ Limite à 255 caractères
+      keyboardType: TextInputType.multiline,
+      maxLines: 4, // ✅ Textarea de 4 lignes
+      minLines: 2, // ✅ Minimum 2 lignes visibles
+      showCounter: true, // ✅ Afficher le compteur
+    );
+  }
+
+  Widget _buildUniteAndFamilleRow(
+    BuildContext context,
+    Responsive responsive,
+    ResponsiveSpacing spacing,
+  ) {
     return Row(
       children: [
-        Expanded(
-          child:
-              isCodeEditable
-                  ? Tools.buildTextField(
-                    label: 'Code',
-                    msgError: 'Veuillez entrer le code',
-                    controller: TextEditingController(text: generatedCode),
-                    isRequired: true,
-                  )
-                  : Tools.buildText(label: 'Code', value: generatedCode ?? ''),
-        ),
-        const SizedBox(width: 10),
         Expanded(
           child: EquipmentDropdown(
             label: 'Famille',
@@ -135,11 +153,26 @@ class EquipmentFormFields extends StatelessWidget {
             isRequired: true,
           ),
         ),
+        SizedBox(width: spacing.small),
+        Expanded(
+          child: EquipmentDropdown(
+            label: 'Unité',
+            items: EquipmentHelpers.getSelectorsOptions(unites),
+            selectedValue: selectedUnite,
+            onChanged: onUniteChanged,
+            hintText: 'Rechercher une unité...',
+            isRequired: false,
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildZoneAndEntityRow() {
+  Widget _buildZoneAndEntityRow(
+    BuildContext context,
+    Responsive responsive,
+    ResponsiveSpacing spacing,
+  ) {
     return Row(
       children: [
         Expanded(
@@ -152,7 +185,7 @@ class EquipmentFormFields extends StatelessWidget {
             isRequired: false,
           ),
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: spacing.small), // ✅ Espacement responsive
         Expanded(
           child: EquipmentDropdown(
             label: 'Entité',
@@ -168,20 +201,13 @@ class EquipmentFormFields extends StatelessWidget {
     );
   }
 
-  Widget _buildUniteAndChargeRow() {
+  Widget _buildCentreChargeAndAbbreviationRow(
+    BuildContext context,
+    Responsive responsive,
+    ResponsiveSpacing spacing,
+  ) {
     return Row(
       children: [
-        Expanded(
-          child: EquipmentDropdown(
-            label: 'Unité',
-            items: EquipmentHelpers.getSelectorsOptions(unites),
-            selectedValue: selectedUnite,
-            onChanged: onUniteChanged,
-            hintText: 'Rechercher une unité...',
-            isRequired: false,
-          ),
-        ),
-        const SizedBox(width: 10),
         Expanded(
           child: EquipmentDropdown(
             label: 'Centre de Charge',
@@ -192,39 +218,65 @@ class EquipmentFormFields extends StatelessWidget {
             isRequired: false,
           ),
         ),
+        SizedBox(width: spacing.small), // ✅ Espacement responsive
+        Expanded(
+          child: EquipmentTextField(
+            label: 'Abréviation',
+            hintText: 'XXXXX',
+            controller: abbreviationController,
+            focusNode: abbreviationFocusNode,
+            isRequired: true,
+            maxLength: 5,
+            textCapitalization: TextCapitalization.characters,
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Requis';
+              }
+              if (value.length < 3) {
+                return 'Min 3 car.';
+              }
+              // ✅ Validation des caractères alphanumériques uniquement
+              if (!RegExp(r'^[A-Z0-9]+$').hasMatch(value)) {
+                return 'Lettres/chiffres uniquement';
+              }
+              return null;
+            },
+            // ✅ Formatage automatique en majuscules
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
+              UpperCaseTextFormatter(),
+            ],
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildFeederRow() {
-    return Row(
-      children: [
-        Expanded(
-          child: EquipmentDropdown(
-            label: 'Feeder',
-            items: EquipmentHelpers.getSelectorsOptions(feeders),
-            selectedValue: selectedFeeder,
-            onChanged: onFeederChanged,
-            hintText: 'Rechercher un feeder...',
-            isRequired: false,
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Tools.buildText(
-            label: 'Info Feeder',
-            value: EquipmentHelpers.formatDescription(selectedFeeder ?? ''),
-          ),
-        ),
-      ],
+  Widget _buildFeederRow(
+    BuildContext context,
+    Responsive responsive,
+    ResponsiveSpacing spacing,
+  ) {
+    // ✅ MODIFIÉ: Suppression du Row, feeder prend toute la largeur
+    return EquipmentDropdown(
+      label: 'Feeder',
+      items: EquipmentHelpers.getSelectorsOptions(feeders),
+      selectedValue: selectedFeeder,
+      onChanged: onFeederChanged,
+      hintText: 'Rechercher un feeder...',
+      isRequired: false,
     );
   }
 
-  Widget _buildAttributesButton() {
+  Widget _buildAttributesButton(
+    BuildContext context,
+    Responsive responsive,
+    ResponsiveSpacing spacing,
+  ) {
     return GestureDetector(
       onTap: attributesCount > 0 ? onAttributesPressed : null,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: spacing.custom(vertical: 12), // ✅ Padding responsive
         child: Row(
           children: [
             Icon(
@@ -233,8 +285,9 @@ class EquipmentFormFields extends StatelessWidget {
                   attributesCount > 0
                       ? AppTheme.secondaryColor
                       : AppTheme.thirdColor,
+              size: responsive.iconSize(16), // ✅ Icône responsive
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: spacing.small), // ✅ Espacement responsive
             Text(
               attributesCount > 0
                   ? 'Modifier les attributs ($attributesCount)'
@@ -246,15 +299,17 @@ class EquipmentFormFields extends StatelessWidget {
                     attributesCount > 0
                         ? AppTheme.secondaryColor
                         : AppTheme.thirdColor,
-                fontSize: 16,
+                fontSize: responsive.sp(16), // ✅ Texte responsive
               ),
             ),
-            const SizedBox(width: 5),
+            SizedBox(width: spacing.tiny), // ✅ Espacement responsive
             Expanded(
               child: Container(
                 height: 1,
                 color: AppTheme.thirdColor,
-                margin: const EdgeInsets.only(top: 10),
+                margin: EdgeInsets.only(
+                  top: spacing.medium,
+                ), // ✅ Margin responsive
               ),
             ),
           ],

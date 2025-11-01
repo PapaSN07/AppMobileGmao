@@ -30,6 +30,7 @@ class AppTheme {
   static const Color errorColor = Color(0xFFEF4444);
   static const Color errorColorDark = Color(0xFFDC2626);
   static const Color warningColor = Color(0xFFF59E0B);
+  static const Color warningColor10 = Color.fromRGBO(245, 158, 11, 0.1);
   static const Color warningColorDark = Color(0xFFD97706);
   static const Color infoColor =
       secondaryColor; // Utilise la couleur secondaire existante

@@ -3,6 +3,8 @@ import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:appmobilegmao/models/equipment_attribute.dart';
 import 'package:appmobilegmao/widgets/custom_buttons.dart';
 import 'package:dropdown_search/dropdown_search.dart';
+import 'package:appmobilegmao/utils/responsive.dart';
+import 'package:appmobilegmao/theme/responsive_spacing.dart';
 
 class AttributesModal extends StatelessWidget {
   final List<EquipmentAttribute> availableAttributes;
@@ -22,58 +24,71 @@ class AttributesModal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final responsive = context.responsive;
+    final spacing = context.spacing;
+
     return Container(
-      height: MediaQuery.of(context).size.height * 0.8,
-      decoration: const BoxDecoration(
+      height: responsive.hp(80), // ✅ Hauteur responsive
+      decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(30),
-          topRight: Radius.circular(30),
+          topLeft: Radius.circular(
+            responsive.spacing(30),
+          ), // ✅ Border radius responsive
+          topRight: Radius.circular(
+            responsive.spacing(30),
+          ), // ✅ Border radius responsive
         ),
       ),
       child: Column(
         children: [
           // Handle bar
           Container(
-            margin: const EdgeInsets.symmetric(vertical: 12),
-            height: 4,
-            width: 40,
+            margin: spacing.custom(vertical: 12), // ✅ Margin responsive
+            height: responsive.spacing(4), // ✅ Hauteur responsive
+            width: responsive.spacing(40), // ✅ Largeur responsive
             decoration: BoxDecoration(
               color: AppTheme.thirdColor,
-              borderRadius: BorderRadius.circular(2),
+              borderRadius: BorderRadius.circular(
+                responsive.spacing(2),
+              ), // ✅ Border radius responsive
             ),
           ),
 
           // Header
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: spacing.custom(horizontal: 20), // ✅ Padding responsive
             child: Row(
               children: [
                 SizedBox(
-                  width: 64,
-                  height: 34,
+                  width: responsive.spacing(64), // ✅ Largeur responsive
+                  height: responsive.spacing(34), // ✅ Hauteur responsive
                   child: ElevatedButton(
                     onPressed: () => Navigator.pop(context),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.secondaryColor,
                       padding: EdgeInsets.zero,
+                      minimumSize: Size(
+                        responsive.spacing(64),
+                        responsive.spacing(34),
+                      ), // ✅ Minimum size responsive
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.arrow_back,
-                      size: 20,
+                      size: responsive.iconSize(20), // ✅ Icône responsive
                       color: AppTheme.primaryColor,
                     ),
                   ),
                 ),
-                const SizedBox(width: 20),
-                const Expanded(
+                SizedBox(width: spacing.medium), // ✅ Espacement responsive
+                Expanded(
                   child: Text(
                     'Attributs',
                     style: TextStyle(
                       fontFamily: AppTheme.fontMontserrat,
                       fontWeight: FontWeight.bold,
                       color: AppTheme.secondaryColor,
-                      fontSize: 20,
+                      fontSize: responsive.sp(20), // ✅ Texte responsive
                     ),
                   ),
                 ),
@@ -81,16 +96,16 @@ class AttributesModal extends StatelessWidget {
             ),
           ),
 
-          const SizedBox(height: 20),
-
+          SizedBox(height: spacing.medium), // ✅ Espacement responsive
           // Loading ou contenu
           if (isLoading)
-            const Expanded(
+            Expanded(
               child: Center(
                 child: CircularProgressIndicator(
                   valueColor: AlwaysStoppedAnimation<Color>(
                     AppTheme.secondaryColor,
                   ),
+                  strokeWidth: responsive.spacing(4), // ✅ Épaisseur responsive
                 ),
               ),
             )
@@ -100,7 +115,9 @@ class AttributesModal extends StatelessWidget {
                 children: [
                   // Header colonnes
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    padding: spacing.custom(
+                      horizontal: 20,
+                    ), // ✅ Padding responsive
                     child: Row(
                       children: [
                         const Expanded(
@@ -115,7 +132,9 @@ class AttributesModal extends StatelessWidget {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 16),
+                        SizedBox(
+                          width: spacing.medium,
+                        ), // ✅ Espacement responsive
                         Expanded(
                           flex: 3,
                           child: Container(
@@ -127,17 +146,20 @@ class AttributesModal extends StatelessWidget {
                     ),
                   ),
 
-                  const SizedBox(height: 20),
-
+                  SizedBox(height: spacing.medium), // ✅ Espacement responsive
                   // Liste des attributs
                   Expanded(
                     child: ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      padding: spacing.custom(
+                        horizontal: 20,
+                      ), // ✅ Padding responsive
                       itemCount: availableAttributes.length,
                       itemBuilder: (context, index) {
                         return _buildAttributeRow(
                           availableAttributes[index],
                           context,
+                          responsive,
+                          spacing,
                         );
                       },
                     ),
@@ -145,7 +167,7 @@ class AttributesModal extends StatelessWidget {
 
                   // Boutons
                   Padding(
-                    padding: const EdgeInsets.all(20),
+                    padding: spacing.allPadding, // ✅ Padding responsive
                     child: Row(
                       children: [
                         Expanded(
@@ -154,7 +176,9 @@ class AttributesModal extends StatelessWidget {
                             onPressed: () => Navigator.pop(context),
                           ),
                         ),
-                        const SizedBox(width: 16),
+                        SizedBox(
+                          width: spacing.medium,
+                        ), // ✅ Espacement responsive
                         Expanded(
                           child: PrimaryButton(
                             text: 'Appliquer',
@@ -176,6 +200,8 @@ class AttributesModal extends StatelessWidget {
   Widget _buildAttributeRow(
     EquipmentAttribute attribute,
     BuildContext context,
+    Responsive responsive,
+    ResponsiveSpacing spacing,
   ) {
     final specKey = '${attribute.specification}_${attribute.index}';
     final availableValues = attributeValuesBySpec[specKey] ?? [];
@@ -185,22 +211,22 @@ class AttributesModal extends StatelessWidget {
         selectedAttributeValues[attribute.id ?? ''] ?? attribute.value;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
+      padding: spacing.custom(bottom: 20), // ✅ Padding responsive
       child: Row(
         children: [
           Expanded(
             flex: 2,
             child: Text(
               attribute.name ?? 'Attribut',
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: AppTheme.fontMontserrat,
                 fontWeight: FontWeight.w600,
                 color: AppTheme.secondaryColor,
-                fontSize: 16,
+                fontSize: responsive.sp(16), // ✅ Texte responsive
               ),
             ),
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: spacing.medium), // ✅ Espacement responsive
           Expanded(
             flex: 3,
             child: DropdownSearch<String>(
@@ -215,12 +241,14 @@ class AttributesModal extends StatelessWidget {
                 dropdownSearchDecoration: InputDecoration(
                   hintText: 'Sélectionner...',
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(
+                      responsive.spacing(8),
+                    ), // ✅ Border radius responsive
                   ),
-                  contentPadding: const EdgeInsets.symmetric(
+                  contentPadding: spacing.custom(
                     horizontal: 12,
                     vertical: 8,
-                  ),
+                  ), // ✅ Padding responsive
                 ),
               ),
               itemAsString: (String item) => item.isEmpty ? '(Vide)' : item,

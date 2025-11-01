@@ -1,4 +1,5 @@
 import 'package:appmobilegmao/screens/equipments/history_equipment_screen.dart';
+import 'package:appmobilegmao/utils/string_utils.dart';
 import 'package:appmobilegmao/widgets/custom_bottom_navigation_bar.dart';
 import 'package:appmobilegmao/widgets/custom_buttons.dart';
 import 'package:flutter/material.dart';
@@ -12,6 +13,8 @@ import 'package:appmobilegmao/screens/settings/menu_screen.dart';
 import 'package:appmobilegmao/screens/auth/login_screen.dart';
 import 'package:appmobilegmao/provider/auth_provider.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
+import 'package:appmobilegmao/utils/responsive.dart';
+import 'package:appmobilegmao/theme/responsive_spacing.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -83,7 +86,7 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
-  // ✅ NOUVELLE MÉTHODE: Obtenir la couleur de l'AppBar selon la page
+  // Obtenir la couleur de l'AppBar selon la page
   Color _getAppBarBackgroundColor() {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
@@ -104,7 +107,7 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
-  // ✅ NOUVELLE MÉTHODE: Obtenir la couleur du texte selon la page
+  // Obtenir la couleur du texte selon la page
   Color _getAppBarTextColor() {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
@@ -128,16 +131,22 @@ class _MainScreenState extends State<MainScreen> {
   void _openProfile() {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final user = authProvider.currentUser;
-
+    // ✅ UTILISATION: Parser le username avec la méthode utilitaire
+    final userInfo = StringUtils.parseUserName(user?.username);
     if (user != null) {
       Navigator.of(context).push(
         PageRouteBuilder(
           pageBuilder:
               (context, animation, secondaryAnimation) => ProfilMenu(
-                nom: user.username.split('.').last,
-                prenom: user.username.split('.').first,
+                nom: userInfo['nom']!,
+                prenom: userInfo['prenom']!,
                 email: user.email,
-                role: user.group ?? user.role ?? 'Utilisateur',
+                role:
+                    (user.group?.trim().isNotEmpty == true)
+                        ? user.group!.trim()
+                        : (user.role?.trim().isNotEmpty == true)
+                        ? user.role!.trim()
+                        : 'Utilisateur',
                 onLogout: _handleLogout,
               ),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
@@ -159,38 +168,58 @@ class _MainScreenState extends State<MainScreen> {
 
   // ✅ NOUVELLE MÉTHODE: Action conditionnelle pour le bouton de droite
   void _handleRightButtonAction() {
-    switch (_currentIndex) {
-      case 1: // Equipment
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (authProvider.isPrestataire) {
+      if (_currentIndex == 0) {
+        // Equipment pour Prestataire
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const AddEquipmentScreen()),
         );
-        break;
-      case 0: // Home
-      case 2: // OT
-      case 3: // DI
-      default:
-        // Pour les autres pages, ne rien faire ou ouvrir les notifications
-        break;
+      }
+    } else {
+      if (_currentIndex == 1) {
+        // Equipment pour LDAP
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const AddEquipmentScreen()),
+        );
+      }
     }
   }
 
   // ✅ NOUVELLE MÉTHODE: Obtenir l'icône du bouton de droite
   Widget _getRightButton() {
-    final user = Provider.of<AuthProvider>(context, listen: false).currentUser;
-    final textColor = _getAppBarTextColor();
-    final isHome = _currentIndex == 0;
+    final responsive = context.responsive;
+    final spacing = context.spacing;
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
-    if (_currentIndex == 1) {
+    final user = authProvider.currentUser;
+    final textColor = _getAppBarTextColor();
+    final isHome = authProvider.isPrestataire ? false : _currentIndex == 0;
+
+    bool shouldShowAddButton = false;
+    if (authProvider.isPrestataire) {
+      shouldShowAddButton = _currentIndex == 0;
+    } else {
+      shouldShowAddButton = _currentIndex == 1;
+    }
+
+    if (shouldShowAddButton) {
       // Page Equipment - Bouton +
       return IconButton(
+        padding: EdgeInsets.zero, // ✅ Supprime le padding interne
         icon: Container(
-          padding: const EdgeInsets.all(8),
+          padding: spacing.custom(all: 8),
           decoration: BoxDecoration(
-            color: isHome ? AppTheme.secondaryColor10 : AppTheme.primaryColor20,
-            borderRadius: BorderRadius.circular(8),
+            color: AppTheme.primaryColor20,
+            borderRadius: BorderRadius.circular(responsive.spacing(8)),
           ),
-          child: Icon(Icons.add, color: textColor, size: 20),
+          child: Icon(
+            Icons.add,
+            color: textColor,
+            size: responsive.iconSize(20),
+          ),
         ),
         onPressed: _handleRightButtonAction,
         tooltip: 'Ajouter un équipement',
@@ -198,60 +227,61 @@ class _MainScreenState extends State<MainScreen> {
     } else {
       // Autres pages - Affichage des infos utilisateur
       if (user != null) {
-        return Padding(
-          padding: const EdgeInsets.only(right: 16),
-          child: Center(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color:
-                        isHome
-                            ? AppTheme.secondaryColor10
-                            : AppTheme.primaryColor20,
-                    borderRadius: BorderRadius.circular(20),
+        return Center(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: spacing.custom(all: 8),
+                decoration: BoxDecoration(
+                  color:
+                      isHome
+                          ? AppTheme.secondaryColor10
+                          : AppTheme.primaryColor20,
+                  borderRadius: BorderRadius.circular(responsive.spacing(20)),
+                ),
+                child: Text(
+                  user.username
+                      .split('.')
+                      .map((part) => part[0].toUpperCase())
+                      .join(''),
+                  style: TextStyle(
+                    color: textColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: responsive.sp(14),
                   ),
-                  child: Text(
-                    user.username
-                        .split('.')
-                        .map((part) => part[0].toUpperCase())
-                        .join(''),
+                ),
+              ),
+              SizedBox(width: spacing.small),
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    user.username,
                     style: TextStyle(
                       color: textColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
+                      fontSize: responsive.sp(12),
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      user.username,
-                      style: TextStyle(
-                        color: textColor,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
+                  Text(
+                    (user.group?.trim().isNotEmpty == true)
+                        ? user.group!.trim()
+                        : (user.role?.trim().isNotEmpty == true)
+                        ? user.role!.trim()
+                        : 'Utilisateur',
+                    style: TextStyle(
+                      color:
+                          isHome
+                              ? textColor.withValues(alpha: 0.7)
+                              : textColor.withValues(alpha: 0.8),
+                      fontSize: responsive.sp(10),
                     ),
-                    Text(
-                      user.group ?? 'Utilisateur',
-                      style: TextStyle(
-                        color:
-                            isHome
-                                ? textColor.withValues(alpha: 0.7)
-                                : textColor.withValues(alpha: 0.8),
-                        fontSize: 10,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+                  ),
+                ],
+              ),
+            ],
           ),
         );
       }
@@ -260,6 +290,9 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Future<void> _handleLogout() async {
+    final responsive = context.responsive;
+    final spacing = context.spacing;
+
     // Afficher dialog de confirmation
     final shouldLogout = await showDialog<bool>(
       context: context,
@@ -267,26 +300,32 @@ class _MainScreenState extends State<MainScreen> {
       builder: (BuildContext context) {
         return AlertDialog(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(
+              responsive.spacing(16),
+            ), // ✅ Border radius responsive
           ),
           title: Row(
             children: [
-              Icon(Icons.logout, color: AppTheme.secondaryColor, size: 28),
-              const SizedBox(width: 12),
-              const Text(
+              Icon(
+                Icons.logout,
+                color: AppTheme.secondaryColor,
+                size: responsive.iconSize(28),
+              ), // ✅ Icône responsive
+              SizedBox(width: spacing.medium), // ✅ Espacement responsive
+              Text(
                 'Déconnexion',
                 style: TextStyle(
                   fontFamily: AppTheme.fontMontserrat,
                   fontWeight: FontWeight.w500,
-                  fontSize: 24,
+                  fontSize: responsive.sp(24), // ✅ Texte responsive
                   color: AppTheme.secondaryColor, // ✅ Couleur du titre
                 ),
               ),
             ],
           ),
-          content: const Text(
+          content: Text(
             'Êtes-vous sûr de vouloir vous déconnecter ?',
-            style: TextStyle(fontSize: 16),
+            style: TextStyle(fontSize: responsive.sp(16)), // ✅ Texte responsive
           ),
           actions: [
             Row(
@@ -297,8 +336,8 @@ class _MainScreenState extends State<MainScreen> {
                 SecondaryButton(
                   text: 'Annuler',
                   onPressed: () => Navigator.of(context).pop(false),
-                  width: 100,
-                  height: 42,
+                  width: responsive.spacing(100), // ✅ Largeur responsive
+                  height: responsive.spacing(42), // ✅ Hauteur responsive
                 ),
                 // const SizedBox(width: 5),
                 ElevatedButton(
@@ -307,7 +346,9 @@ class _MainScreenState extends State<MainScreen> {
                     backgroundColor: Colors.red,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(
+                        responsive.spacing(8),
+                      ), // ✅ Border radius responsive
                     ),
                   ),
                   child: const Text(
@@ -330,10 +371,12 @@ class _MainScreenState extends State<MainScreen> {
         builder:
             (context) => Center(
               child: Container(
-                padding: const EdgeInsets.all(20),
+                padding: spacing.allPadding, // ✅ Padding responsive
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(
+                    responsive.spacing(12),
+                  ), // ✅ Border radius responsive
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -343,10 +386,12 @@ class _MainScreenState extends State<MainScreen> {
                         AppTheme.secondaryColor,
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    const Text(
+                    SizedBox(height: spacing.medium), // ✅ Espacement responsive
+                    Text(
                       'Déconnexion en cours...',
-                      style: TextStyle(fontSize: 16),
+                      style: TextStyle(
+                        fontSize: responsive.sp(16),
+                      ), // ✅ Texte responsive
                     ),
                   ],
                 ),
@@ -390,7 +435,9 @@ class _MainScreenState extends State<MainScreen> {
               backgroundColor: Colors.red,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(
+                  responsive.spacing(8),
+                ), // ✅ Border radius responsive
               ),
             ),
           );
@@ -401,50 +448,78 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final responsive = context.responsive;
+    final spacing = context.spacing;
+
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
         final appBarBgColor = _getAppBarBackgroundColor();
         final textColor = _getAppBarTextColor();
-        final isHome = _currentIndex == 0;
+        final isHome = authProvider.isPrestataire ? false : _currentIndex == 0;
 
         return Scaffold(
           key: _scaffoldKey,
-          appBar: AppBar(
-            title: Text(
-              _getPageTitle(_currentIndex),
-              style: TextStyle(
-                fontFamily: AppTheme.fontMontserrat,
-                fontWeight: FontWeight.w600,
-                color: textColor, // ✅ CHANGÉ: Couleur conditionnelle
-                fontSize: 20,
+          // ✅ MODIFIÉ: Augmenter la hauteur de l'AppBar
+          appBar: PreferredSize(
+            preferredSize: Size.fromHeight(
+              responsive.spacing(70),
+            ), // ✅ Hauteur augmentée: 56 → 70
+            child: AppBar(
+              titleSpacing: 0,
+              title: Padding(
+                padding: spacing.custom(
+                  left: 4,
+                  right: 16,
+                ), // ✅ AJOUTÉ: Espacement à gauche
+                child: Text(
+                  _getPageTitle(_currentIndex),
+                  style: TextStyle(
+                    fontFamily: AppTheme.fontMontserrat,
+                    fontWeight: FontWeight.w600,
+                    color: textColor,
+                    fontSize: responsive.sp(18),
+                  ),
+                ),
               ),
-            ),
-            backgroundColor: appBarBgColor, // ✅ CHANGÉ: Couleur conditionnelle
-            elevation:
-                isHome ? 0.5 : 0, // ✅ AJOUTÉ: Légère ombre pour l'accueil
-            leading: Builder(
-              builder:
-                  (context) => IconButton(
-                    icon: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color:
-                            isHome
-                                ? AppTheme.secondaryColor10
-                                : AppTheme.primaryColor20,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        Icons.menu,
-                        color: textColor, // ✅ CHANGÉ: Couleur conditionnelle
-                        size: 20,
+              backgroundColor: appBarBgColor,
+              elevation: isHome ? 0.5 : 0,
+              leading: Padding(
+                padding: spacing.custom(
+                  left: 12,
+                  right: 4,
+                ), // ✅ MODIFIÉ: Espacement augmenté (12→16, 4→8)
+                child: IconButton(
+                  padding: EdgeInsets.zero,
+                  icon: Container(
+                    padding: spacing.custom(all: 8),
+                    decoration: BoxDecoration(
+                      color:
+                          isHome
+                              ? AppTheme.secondaryColor10
+                              : AppTheme.primaryColor20,
+                      borderRadius: BorderRadius.circular(
+                        responsive.spacing(8),
                       ),
                     ),
-                    onPressed: _openProfile,
-                    tooltip: 'Profil utilisateur',
+                    child: Icon(
+                      Icons.menu,
+                      color: textColor,
+                      size: responsive.iconSize(20),
+                    ),
                   ),
+                  onPressed: _openProfile,
+                  tooltip: 'Profil utilisateur',
+                ),
+              ),
+              actions: [
+                Padding(
+                  padding: spacing.custom(
+                    right: 16,
+                  ), // ✅ Espacement à droite maintenu
+                  child: _getRightButton(),
+                ),
+              ],
             ),
-            actions: [_getRightButton()], // ✅ CHANGÉ: Action conditionnelle
           ),
           body: IndexedStack(index: _currentIndex, children: _pages),
           bottomNavigationBar: CustomBottomNavigationBar(

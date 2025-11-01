@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
+import 'package:appmobilegmao/utils/responsive.dart';
+import 'package:appmobilegmao/theme/responsive_spacing.dart';
 
 enum NotificationType { success, error, warning, info }
 
@@ -250,20 +252,28 @@ class _NotificationBarContentState extends State<_NotificationBarContent>
 
   @override
   Widget build(BuildContext context) {
+    final responsive = context.responsive;
+    final spacing = context.spacing;
+
     return SlideTransition(
       position: _slideAnimation,
       child: GestureDetector(
         onTap: widget.onTap,
         child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          margin: spacing.custom(
+            horizontal: 16,
+            vertical: 8,
+          ), // ✅ Margin responsive
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(
+              responsive.spacing(12),
+            ), // ✅ Border radius responsive
             boxShadow: [
               BoxShadow(
                 color: const Color.fromRGBO(0, 0, 0, 0.1),
-                blurRadius: 8,
-                offset: const Offset(0, 4),
+                blurRadius: responsive.spacing(8), // ✅ Blur radius responsive
+                offset: Offset(0, responsive.spacing(4)), // ✅ Offset responsive
               ),
             ],
           ),
@@ -272,17 +282,16 @@ class _NotificationBarContentState extends State<_NotificationBarContent>
             children: [
               // Contenu principal
               Padding(
-                padding: const EdgeInsets.all(16),
+                padding: spacing.allPadding, // ✅ Padding responsive
                 child: Row(
                   children: [
                     // Icône
                     Icon(
                       NotificationBar._getIcon(widget.type),
                       color: NotificationBar._getColor(widget.type),
-                      size: 24,
+                      size: responsive.iconSize(24), // ✅ Icône responsive
                     ),
-                    const SizedBox(width: 12),
-
+                    SizedBox(width: spacing.medium), // ✅ Espacement responsive
                     // Contenu
                     Expanded(
                       child: Column(
@@ -294,16 +303,18 @@ class _NotificationBarContentState extends State<_NotificationBarContent>
                               fontFamily: AppTheme.fontMontserrat,
                               fontWeight: FontWeight.bold,
                               color: AppTheme.secondaryColor,
-                              fontSize: 16,
+                              fontSize: responsive.sp(16), // ✅ Texte responsive
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(
+                            height: spacing.tiny,
+                          ), // ✅ Espacement responsive
                           Text(
                             widget.message,
                             style: TextStyle(
                               fontFamily: AppTheme.fontMontserrat,
                               color: AppTheme.thirdColor,
-                              fontSize: 14,
+                              fontSize: responsive.sp(14), // ✅ Texte responsive
                             ),
                           ),
                         ],
@@ -312,7 +323,7 @@ class _NotificationBarContentState extends State<_NotificationBarContent>
 
                     // Bouton d'action (optionnel)
                     if (widget.showAction && widget.actionText != null) ...[
-                      const SizedBox(width: 8),
+                      SizedBox(width: spacing.small), // ✅ Espacement responsive
                       TextButton(
                         onPressed: widget.onActionPressed,
                         child: Text(
@@ -320,6 +331,7 @@ class _NotificationBarContentState extends State<_NotificationBarContent>
                           style: TextStyle(
                             color: NotificationBar._getColor(widget.type),
                             fontWeight: FontWeight.w600,
+                            fontSize: responsive.sp(14), // ✅ Texte responsive
                           ),
                         ),
                       ),
@@ -327,11 +339,11 @@ class _NotificationBarContentState extends State<_NotificationBarContent>
 
                     // Bouton de fermeture
                     if (widget.onClose != null) ...[
-                      const SizedBox(width: 8),
+                      SizedBox(width: spacing.small), // ✅ Espacement responsive
                       IconButton(
                         onPressed: widget.onClose,
                         icon: const Icon(Icons.close),
-                        iconSize: 20,
+                        iconSize: responsive.iconSize(20), // ✅ Icône responsive
                         color: AppTheme.thirdColor,
                       ),
                     ],
@@ -457,6 +469,9 @@ class NotificationService {
     BuildContext context,
     NotificationBar notification,
   ) {
+    final responsive = Responsive.of(context);
+    final spacing = ResponsiveSpacing.of(context);
+
     // Fermer la notification précédente si elle existe
     _hideCurrentNotification();
 
@@ -464,9 +479,9 @@ class NotificationService {
     _currentOverlay = OverlayEntry(
       builder:
           (context) => Positioned(
-            top: 50,
-            left: 16,
-            right: 16,
+            top: responsive.spacing(50), // ✅ Position top responsive
+            left: spacing.medium, // ✅ Position left responsive
+            right: spacing.medium, // ✅ Position right responsive
             child: Material(color: Colors.transparent, child: notification),
           ),
     );

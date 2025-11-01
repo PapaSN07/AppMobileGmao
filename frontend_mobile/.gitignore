@@ -48,4 +48,9 @@ flutter/
 .vscode/
 mocks/
 update_ip.sh
-note_ldap.md
+note_ldap.mdandroid/key.properties
+android/app/upload-keystore.jks
+AKS.md
+INSTALLATION.md
+codif.md
+codif_attr_possible.md
