@@ -1,0 +1,27 @@
+<div class="card mb-0" @fadeIn>
+    <div class="flex justify-between mb-4">
+        <div class="flex-1">
+            <span class="block text-muted-color font-medium mb-2">{{ title }}</span>
+
+            @if (loading) {
+            <div class="skeleton-loader h-8 w-24 rounded"></div>
+            } @else {
+            <div class="text-surface-900 dark:text-surface-0 font-medium text-xl">
+                {{ value | number }}
+            </div>
+            }
+        </div>
+
+        <div class="flex items-center justify-center rounded-border shrink-0" [style.background-color]="bgColor" [style.width.rem]="2.5" [style.height.rem]="2.5">
+            <i class="pi text-xl" [ngClass]="icon" [style.color]="color"></i>
+        </div>
+    </div>
+
+    @if (trend !== undefined && trend !== 0) {
+    <div class="flex items-center gap-2">
+        <i class="pi text-sm" [ngClass]="trend > 0 ? 'pi-arrow-up' : 'pi-arrow-down'" [style.color]="trend > 0 ? '#4caf50' : '#f44336'"></i>
+        <span class="font-medium text-sm" [style.color]="trend > 0 ? '#4caf50' : '#f44336'"> {{ trend > 0 ? '+' : '' }}{{ trend }}% </span>
+        <span class="text-muted-color text-sm">vs mois dernier</span>
+    </div>
+    }
+</div>

@@ -6,7 +6,7 @@ import { filter } from 'rxjs/operators';
 import { CommonModule } from '@angular/common';
 import { RippleModule } from 'primeng/ripple';
 import { MenuItem } from 'primeng/api';
-import { LayoutService } from '../core/services/state/layout.service';
+import { LayoutService } from './state/layout.service';
 
 @Component({
     selector: '[app-menuitem]',

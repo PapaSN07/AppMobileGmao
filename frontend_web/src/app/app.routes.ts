@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
+import { firstLoginGuard } from './core/guards';
 
 export const routes: Routes = [
     {
@@ -14,11 +15,17 @@ export const routes: Routes = [
             },
             {
                 path: 'dashboard',
-                loadComponent: () => import('./features/dashboard/dashboard').then((m) => m.Dashboard)
+                loadComponent: () => import('./features/dashboard/dashboard').then((m) => m.Dashboard),
+                canActivate: [authGuard, firstLoginGuard], 
             },
             {
                 path: 'equipment',
                 loadChildren: () => import('./features/equipment/equipment.routes').then((m) => m.EQUIPMENT_ROUTES)
+            },
+            {
+                path: 'prestataire-history',
+                loadComponent: () => import('./features/prestataire/prestataire-history/prestataire-history').then((m) => m.PrestataireHistory),
+                canActivate: [authGuard, firstLoginGuard],
             },
             {
                 path: 'parameter',

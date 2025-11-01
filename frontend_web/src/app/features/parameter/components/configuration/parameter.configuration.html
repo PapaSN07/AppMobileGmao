@@ -38,13 +38,14 @@
                         <div>
                             <p>Entité</p>
                             <p-autocomplete
+                                id="entity"
                                 name="selectedEntity"
                                 [(ngModel)]="selectedEntity"
                                 [virtualScroll]="true"
                                 [suggestions]="filteredItems"
                                 [virtualScrollItemSize]="40"
                                 (completeMethod)="filterItems($event)"
-                                optionLabel="name"
+                                optionLabel="code"
                                 [dropdown]="true"
                                 (onSelect)="selectedEntityError = false"
                                 (onBlur)="validateField('entity')"

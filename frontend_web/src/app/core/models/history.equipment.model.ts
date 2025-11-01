@@ -22,4 +22,5 @@ export interface EquipmentHistory {
     isNew?: boolean;
     isApproved?: boolean;
     isRejected?: boolean;
+    isDeleted?: boolean;
 }

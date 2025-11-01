@@ -1,10 +1,385 @@
-<div class="grid grid-cols-12 gap-8">
-    <app-stats-widget class="contents" />
-    <div class="col-span-12 xl:col-span-6">
-        <app-best-selling-widget />
-    </div>
-    <div class="col-span-12 xl:col-span-6">
-        <app-revenue-stream-widget />
-        <app-notifications-widget />
+<p-toast />
+
+<!-- ✅ En-tête avec style Senelec -->
+<div class="dashboard-header mb-6">
+    <div class="flex justify-between items-center flex-wrap gap-4">
+        <div class="header-content">
+            <div class="flex items-center gap-3 mb-2">
+                @if (!isAdmin()) {
+                    <div class="avatar-circle">
+                        <i class="pi pi-user text-2xl"></i>
+                    </div>
+                }
+                <div>
+                    <h1 class="text-3xl font-bold text-surface-900 dark:text-surface-0">
+                        @if (isAdmin()) {
+                            Tableau de bord des statistiques
+                        } @else {
+                            Bienvenue, {{ currentUsername() }}
+                        }
+                    </h1>
+                    <p class="text-muted-color text-sm flex items-center gap-2">
+                        <i class="pi pi-clock"></i>
+                        <span>{{ lastUpdated() }}</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <p-button 
+            icon="pi pi-refresh" 
+            [label]="isAdmin() ? 'Actualiser' : 'Actualiser mes données'"
+            [outlined]="true"
+            [loading]="loading()"
+            (onClick)="onRefresh()"
+            styleClass="refresh-btn"
+        />
     </div>
 </div>
+
+@if (loading()) {
+    <!-- ✅ Skeleton Loader élégant -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        @for (item of [1,2,3,4]; track item) {
+            <p-card styleClass="skeleton-card">
+                <p-skeleton width="100%" height="120px" borderRadius="12px" />
+            </p-card>
+        }
+    </div>
+} @else if (statistics()) {
+    @if (!isAdmin()) {
+        <!-- ✅ Dashboard PRESTATAIRE - Design épuré et moderne -->
+        
+        <!-- Cartes KPI avec design moderne -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <!-- Mes créations -->
+            <p-card styleClass="stat-card stat-primary">
+                <div class="stat-content">
+                    <div class="stat-header">
+                        <div class="stat-icon-wrapper icon-blue">
+                            <i class="pi pi-plus-circle"></i>
+                        </div>
+                        <p-tag 
+                            [value]="'Ce mois'" 
+                            severity="info" 
+                            [rounded]="true"
+                            styleClass="stat-tag"
+                        />
+                    </div>
+                    <div class="stat-body">
+                        <p class="stat-label">Mes créations</p>
+                        <h2 class="stat-value">{{ getUserCreations() }}</h2>
+                        <p class="stat-subtitle">Équipements créés</p>
+                    </div>
+                </div>
+            </p-card>
+
+            <!-- En attente -->
+            <p-card styleClass="stat-card stat-warning">
+                <div class="stat-content">
+                    <div class="stat-header">
+                        <div class="stat-icon-wrapper icon-orange">
+                            <i class="pi pi-hourglass"></i>
+                        </div>
+                        <p-tag 
+                            [value]="'Statut'" 
+                            severity="warning" 
+                            [rounded]="true"
+                            styleClass="stat-tag"
+                        />
+                    </div>
+                    <div class="stat-body">
+                        <p class="stat-label">En attente</p>
+                        <h2 class="stat-value">{{ statistics()!.equipment_stats.pending_validation }}</h2>
+                        <p class="stat-subtitle">À approuver</p>
+                    </div>
+                </div>
+            </p-card>
+
+            <!-- Approuvés -->
+            <p-card styleClass="stat-card stat-success">
+                <div class="stat-content">
+                    <div class="stat-header">
+                        <div class="stat-icon-wrapper icon-green">
+                            <i class="pi pi-check-circle"></i>
+                        </div>
+                        <p-tag 
+                            [value]="'Validé'" 
+                            severity="success" 
+                            [rounded]="true"
+                            styleClass="stat-tag"
+                        />
+                    </div>
+                    <div class="stat-body">
+                        <p class="stat-label">Approuvés</p>
+                        <h2 class="stat-value">{{ statistics()!.equipment_stats.approved_equipments }}</h2>
+                        <p class="stat-subtitle">Équipements validés</p>
+                    </div>
+                </div>
+            </p-card>
+
+            <!-- Modifications -->
+            <p-card styleClass="stat-card stat-info">
+                <div class="stat-content">
+                    <div class="stat-header">
+                        <div class="stat-icon-wrapper icon-cyan">
+                            <i class="pi pi-pencil"></i>
+                        </div>
+                        <p-tag 
+                            [value]="'Mises à jour'" 
+                            [rounded]="true"
+                            styleClass="stat-tag"
+                        />
+                    </div>
+                    <div class="stat-body">
+                        <p class="stat-label">Modifications</p>
+                        <h2 class="stat-value">{{ getUserModifications() }}</h2>
+                        <p class="stat-subtitle">Équipements modifiés</p>
+                    </div>
+                </div>
+            </p-card>
+        </div>
+
+        <!-- Section Mon Activité -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+            <!-- Carte Mon Activité -->
+            <div class="lg:col-span-2">
+                <p-card styleClass="activity-card">
+                    <ng-template pTemplate="header">
+                        <div class="card-header-custom">
+                            <div class="flex items-center gap-3">
+                                <div class="header-icon">
+                                    <i class="pi pi-chart-line"></i>
+                                </div>
+                                <div>
+                                    <h3 class="card-title">Mon activité récente</h3>
+                                    <p class="card-subtitle">Résumé de vos contributions</p>
+                                </div>
+                            </div>
+                        </div>
+                    </ng-template>
+
+                    @if (getUserStats().length > 0) {
+                        <div class="activity-content">
+                            @for (user of getUserStats(); track user.username) {
+                                <div class="activity-item">
+                                    <div class="flex items-center justify-between mb-4">
+                                        <div class="flex items-center gap-3">
+                                            <p-avatar 
+                                                [label]="user.username.charAt(0).toUpperCase()" 
+                                                shape="circle"
+                                                size="large"
+                                                styleClass="user-avatar"
+                                            />
+                                            <div>
+                                                <p class="user-name">{{ user.username }}</p>
+                                                <p class="user-role">Prestataire actif</p>
+                                            </div>
+                                        </div>
+                                        <p-tag 
+                                            value="Actif" 
+                                            severity="success" 
+                                            [rounded]="true"
+                                            icon="pi pi-check"
+                                        />
+                                    </div>
+
+                                    <div class="stats-grid">
+                                        <div class="mini-stat">
+                                            <div class="mini-stat-icon icon-green">
+                                                <i class="pi pi-plus"></i>
+                                            </div>
+                                            <div class="mini-stat-content">
+                                                <h4 class="mini-stat-value">{{ user.new_count || 0 }}</h4>
+                                                <p class="mini-stat-label">Créations</p>
+                                            </div>
+                                        </div>
+
+                                        <div class="mini-stat">
+                                            <div class="mini-stat-icon icon-blue">
+                                                <i class="pi pi-pencil"></i>
+                                            </div>
+                                            <div class="mini-stat-content">
+                                                <h4 class="mini-stat-value">{{ user.update_count || 0 }}</h4>
+                                                <p class="mini-stat-label">Modifications</p>
+                                            </div>
+                                        </div>
+
+                                        <div class="mini-stat">
+                                            <div class="mini-stat-icon icon-purple">
+                                                <i class="pi pi-chart-bar"></i>
+                                            </div>
+                                            <div class="mini-stat-content">
+                                                <h4 class="mini-stat-value">{{ (user.new_count || 0) + (user.update_count || 0) }}</h4>
+                                                <p class="mini-stat-label">Total</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    } @else {
+                        <div class="empty-state">
+                            <i class="pi pi-inbox"></i>
+                            <p>Aucune activité récente</p>
+                        </div>
+                    }
+                </p-card>
+            </div>
+
+            <!-- Carte Statistiques rapides -->
+            <div>
+                <p-card styleClass="quick-stats-card">
+                    <ng-template pTemplate="header">
+                        <div class="card-header-custom">
+                            <div class="flex items-center gap-3 ml-5">
+                                <div class="header-icon icon-green">
+                                    <i class="pi pi-bolt"></i>
+                                </div>
+                                <h3 class="card-title">Aperçu rapide</h3>
+                            </div>
+                        </div>
+                    </ng-template>
+
+                    <div class="quick-stats-content">
+                        <!-- Taux de validation -->
+                        <div class="quick-stat-item">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="stat-label-small">Taux de validation</span>
+                                <span class="stat-value-small">{{ getApprovalRate() }}%</span>
+                            </div>
+                            <p-progressBar 
+                                [value]="getApprovalRate()" 
+                                [showValue]="false"
+                                styleClass="progress-custom"
+                            />
+                        </div>
+
+                        <p-divider />
+
+                        <!-- En attente -->
+                        <div class="quick-stat-row">
+                            <div class="flex items-center gap-2">
+                                <i class="pi pi-hourglass text-orange-500"></i>
+                                <span class="stat-label-small">En attente</span>
+                            </div>
+                            <p-tag 
+                                [value]="statistics()!.equipment_stats.pending_validation.toString()" 
+                                severity="warning"
+                                [rounded]="true"
+                            />
+                        </div>
+
+                        <p-divider />
+
+                        <!-- Validés ce mois -->
+                        <div class="quick-stat-row">
+                            <div class="flex items-center gap-2">
+                                <i class="pi pi-check-circle text-green-500"></i>
+                                <span class="stat-label-small">Validés ce mois</span>
+                            </div>
+                            <p-tag 
+                                [value]="statistics()!.equipment_stats.approved_equipments.toString()" 
+                                severity="success"
+                                [rounded]="true"
+                            />
+                        </div>
+
+                        <p-divider />
+
+                        <!-- Total temporaire -->
+                        <div class="quick-stat-row">
+                            <div class="flex items-center gap-2">
+                                <i class="pi pi-database text-blue-500"></i>
+                                <span class="stat-label-small">Mes équipements</span>
+                            </div>
+                            <p-tag 
+                                [value]="statistics()!.equipment_stats.total_temp.toString()" 
+                                [rounded]="true"
+                            />
+                        </div>
+                    </div>
+                </p-card>
+            </div>
+        </div>
+
+        <!-- Carte de motivation -->
+        <p-card styleClass="motivation-card">
+            <div class="motivation-content">
+                <div class="motivation-icon">
+                    <i class="pi pi-trophy"></i>
+                </div>
+                <div class="motivation-text">
+                    <h4 class="motivation-title">Excellent travail !</h4>
+                    <p class="motivation-description">
+                        Vous avez contribué à <span class="highlight">{{ getUserCreations() + getUserModifications() }}</span> 
+                        opérations ce mois-ci. Continuez ainsi !
+                    </p>
+                </div>
+                <p-button 
+                    label="Voir les équipements" 
+                    icon="pi pi-arrow-right" 
+                    iconPos="right"
+                    [outlined]="true"
+                    routerLink="/equipment"
+                    styleClass="motivation-btn"
+                />
+            </div>
+        </p-card>
+
+    } @else {
+        <!-- ✅ Dashboard ADMIN (existant) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            @for (card of statsCards(); track card.title) {
+                <app-stats-card
+                    [title]="card.title"
+                    [value]="card.value"
+                    [icon]="card.icon"
+                    [color]="card.color"
+                    [bgColor]="card.bgColor"
+                    [trend]="card.trend"
+                    [loading]="loading()"
+                />
+            }
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            @if (canViewCharts() && statistics()!.stats_by_entity && statistics()!.stats_by_entity!.length > 0) {
+                <app-entity-chart [data]="statistics()!.stats_by_entity!" />
+            }
+            
+            @if (canViewCharts() && statistics()!.stats_by_family && statistics()!.stats_by_family!.length > 0) {
+                <app-family-chart [data]="statistics()!.stats_by_family!" />
+            }
+            
+            @if (statistics()!.stats_by_user && statistics()!.stats_by_user!.length > 0) {
+                <div [class.lg:col-span-2]="canViewCharts()">
+                    <app-user-stats-table 
+                        [data]="statistics()!.stats_by_user!" 
+                        [currentUser]="currentUsername()"
+                        [isAdmin]="isAdmin()"
+                    />
+                </div>
+            }
+        </div>
+    }
+} @else {
+    <!-- ✅ État vide élégant -->
+    <p-card styleClass="empty-state-card">
+        <div class="empty-state-large">
+            <div class="empty-icon">
+                <i class="pi pi-chart-line"></i>
+            </div>
+            <h3 class="empty-title">Aucune statistique disponible</h3>
+            <p class="empty-description">
+                Les statistiques seront affichées dès que vous commencerez à créer des équipements.
+            </p>
+            <p-button 
+                label="Créer un équipement" 
+                icon="pi pi-plus" 
+                routerLink="/equipment"
+                styleClass="mt-4"
+            />
+        </div>
+    </p-card>
+}

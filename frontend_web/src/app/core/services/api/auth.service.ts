@@ -5,24 +5,30 @@ import { environment } from '../../../../../environments/environment';
 import { Observable, tap, interval, Subscription } from 'rxjs';
 import { AuthResponse, DecodedToken, User } from '../../models/user.model';
 import { jwtDecode } from 'jwt-decode';
+import { WebSocketService } from '.';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-    private apiUrl = environment.apiUrlAuth;
+    private API_URL = environment.API_URL_AUTH;
     private tokenRefreshSubscription?: Subscription;
 
-    constructor(private http: HttpClient, private router: Router) {
+    constructor(private websocketService: WebSocketService, private http: HttpClient, private router: Router) {
         // Démarrer le rafraîchissement automatique au démarrage de l'app
         this.startTokenRefreshTimer();
     }
 
     login(username: string, password: string): Observable<AuthResponse> {
         const credentials = { username, password };
-        return this.http.post<AuthResponse>(`${this.apiUrl}/login`, credentials).pipe(
+        return this.http.post<AuthResponse>(`${this.API_URL}/login`, credentials).pipe(
             tap((response) => {
                 if (response.success) {
                     this.storeTokens(response);
                     this.startTokenRefreshTimer(); // Démarrer le timer après login
+
+                    // ✅ NOUVEAU : Connecter le WebSocket après login
+                    this.websocketService.connect().catch(err => {
+                        console.error('❌ Erreur connexion WebSocket après login:', err);
+                    });
                 }
             })
         );
@@ -101,7 +107,7 @@ export class AuthService {
 
     refreshToken(): Observable<AuthResponse> {
         const refreshToken = this.getRefreshToken();
-        return this.http.post<AuthResponse>(`${this.apiUrl}/refresh`, { refresh_token: refreshToken }).pipe(
+        return this.http.post<AuthResponse>(`${this.API_URL}/refresh`, { refresh_token: refreshToken }).pipe(
             tap((response) => {
                 if (response.success) {
                     sessionStorage.setItem('access_token', response.access_token);
@@ -173,25 +179,29 @@ export class AuthService {
     logout(): void {
         let user = this.getUser();
 
+        // ✅ NOUVEAU : Déconnecter le WebSocket avant logout
+        this.websocketService.disconnect();
+
         // Arrêter le timer de rafraîchissement
         this.stopTokenRefreshTimer();
 
-        this.http.post(`${this.apiUrl}/logout`, { username: user?.username }).subscribe({
+        this.http.post(`${this.API_URL}/logout`, { username: user?.username }).subscribe({
             next: () => {
-                sessionStorage.removeItem('access_token');
-                sessionStorage.removeItem('refresh_token');
-                sessionStorage.removeItem('user');
-                sessionStorage.removeItem('token_expiry');
+                this.clearSession();
                 this.router.navigate(['/auth/login']);
             },
             error: (err) => {
                 console.error('Erreur lors du logout', err);
-                sessionStorage.removeItem('access_token');
-                sessionStorage.removeItem('refresh_token');
-                sessionStorage.removeItem('user');
-                sessionStorage.removeItem('token_expiry');
+                this.clearSession();
                 this.router.navigate(['/auth/login']);
             }
         });
+    }
+
+    private clearSession(): void {
+        sessionStorage.removeItem('access_token');
+        sessionStorage.removeItem('refresh_token');
+        sessionStorage.removeItem('user');
+        sessionStorage.removeItem('token_expiry');
     }
 }

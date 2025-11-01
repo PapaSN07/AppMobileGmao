@@ -1,0 +1,11 @@
+<div class="card">
+    <div class="font-semibold text-xl mb-4">Top 10 Familles d'Équipements</div>
+    @if (data.length > 0) {
+    <p-chart type="doughnut" [data]="chartData" [options]="chartOptions" class="h-80" />
+    } @else {
+    <div class="text-center text-muted-color py-8">
+        <i class="pi pi-chart-pie text-4xl mb-4"></i>
+        <p>Aucune donnée disponible</p>
+    </div>
+    }
+</div>

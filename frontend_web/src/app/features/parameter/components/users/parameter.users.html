@@ -89,7 +89,7 @@
                     <td>{{ user.email || 'N/A' }}</td>
                     <td>{{ user.company || 'N/A' }}</td>
                     <td>{{ user.address || 'N/A' }}</td>
-                    <td>{{ (user.created_at | date:'dd/MM/yyyy HH:mm') || 'N/A' }}</td>
+                    <td>{{ (user.created_at | date:'dd/MM/yyyy') || 'N/A' }}</td>
                     <td>
                         @if(user.is_connected) {
                         <p-tag icon="pi pi-check" severity="success" rounded="true" />

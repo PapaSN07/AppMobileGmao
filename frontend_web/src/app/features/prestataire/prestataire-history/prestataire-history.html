@@ -1,0 +1,754 @@
+<p-toast />
+
+<!-- ✅ En-tête avec style Senelec -->
+<div class="history-header mb-6">
+    <div class="flex justify-between items-center flex-wrap gap-4">
+        <div class="header-content">
+            <div class="flex items-center gap-3 mb-2">
+                <div class="avatar-circle">
+                    <i class="pi pi-history text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-3xl font-bold text-surface-900 dark:text-surface-0 mb-1">
+                        Mon historique d'équipements
+                    </h1>
+                    <p class="text-muted-color text-sm flex items-center gap-2">
+                        <i class="pi pi-user"></i>
+                        <span>{{ currentUsername() }}</span>
+                        <span class="mx-2">•</span>
+                        <i class="pi pi-database"></i>
+                        <span>{{ stats().total }} équipements au total</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="flex gap-2">
+            <p-button 
+                icon="pi pi-refresh" 
+                label="Actualiser"
+                [outlined]="true"
+                [loading]="loading()"
+                (onClick)="onRefresh()"
+                severity="secondary"
+                styleClass="refresh-btn"
+            />
+        </div>
+    </div>
+</div>
+
+@if (loading()) {
+    <!-- ✅ Skeleton Loader élégant -->
+    <p-card styleClass="loading-card">
+        <div class="space-y-4">
+            @for (item of [1,2,3,4,5]; track item) {
+                <div class="flex gap-3 p-4 border border-surface-200 rounded-lg">
+                    <p-skeleton shape="circle" size="3rem" />
+                    <div class="flex-1 space-y-2">
+                        <p-skeleton width="100%" height="1.5rem" />
+                        <p-skeleton width="80%" height="1rem" />
+                        <p-skeleton width="60%" height="1rem" />
+                    </div>
+                </div>
+            }
+        </div>
+    </p-card>
+} @else {
+    <!-- ✅ Cartes KPI avec statistiques -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+        <!-- Total -->
+        <p-card styleClass="stat-card stat-primary">
+            <div class="stat-content">
+                <div class="stat-icon-wrapper icon-blue">
+                    <i class="pi pi-database"></i>
+                </div>
+                <div class="stat-body">
+                    <p class="stat-label">Total</p>
+                    <h2 class="stat-value">{{ stats().total }}</h2>
+                </div>
+            </div>
+        </p-card>
+
+        <!-- En attente -->
+        <p-card styleClass="stat-card stat-warning">
+            <div class="stat-content">
+                <div class="stat-icon-wrapper icon-orange">
+                    <i class="pi pi-hourglass"></i>
+                </div>
+                <div class="stat-body">
+                    <p class="stat-label">En attente</p>
+                    <h2 class="stat-value">{{ stats().pending }}</h2>
+                </div>
+            </div>
+        </p-card>
+
+        <!-- Approuvés -->
+        <p-card styleClass="stat-card stat-success">
+            <div class="stat-content">
+                <div class="stat-icon-wrapper icon-green">
+                    <i class="pi pi-check-circle"></i>
+                </div>
+                <div class="stat-body">
+                    <p class="stat-label">Approuvés</p>
+                    <h2 class="stat-value">{{ stats().approved }}</h2>
+                </div>
+            </div>
+        </p-card>
+
+        <!-- Rejetés -->
+        <p-card styleClass="stat-card stat-danger">
+            <div class="stat-content">
+                <div class="stat-icon-wrapper icon-red">
+                    <i class="pi pi-times-circle"></i>
+                </div>
+                <div class="stat-body">
+                    <p class="stat-label">Rejetés</p>
+                    <h2 class="stat-value">{{ stats().rejected }}</h2>
+                </div>
+            </div>
+        </p-card>
+
+        <!-- Archivés -->
+        <p-card styleClass="stat-card stat-secondary">
+            <div class="stat-content">
+                <div class="stat-icon-wrapper icon-gray">
+                    <i class="pi pi-archive"></i>
+                </div>
+                <div class="stat-body">
+                    <p class="stat-label">Archivés</p>
+                    <h2 class="stat-value">{{ stats().archived }}</h2>
+                </div>
+            </div>
+        </p-card>
+    </div>
+
+    <!-- ✅ Tabs pour séparer les équipements -->
+    <p-card styleClass="history-content-card">
+        <p-tabs [value]="0" styleClass="history-tabs">
+            <p-tablist>
+                <p-tab [value]="0">
+                    <div class="flex items-center gap-2">
+                        <i class="pi pi-hourglass"></i>
+                        <span>En cours</span>
+                        <p-chip 
+                            [label]="inProgressEquipments().length.toString()" 
+                            styleClass="chip-warning"
+                        />
+                    </div>
+                </p-tab>
+                <p-tab [value]="1">
+                    <div class="flex items-center gap-2">
+                        <i class="pi pi-check-circle"></i>
+                        <span>Approuvés</span>
+                        <p-chip 
+                            [label]="approvedEquipments().length.toString()" 
+                            styleClass="chip-success"
+                        />
+                    </div>
+                </p-tab>
+                <p-tab [value]="2">
+                    <div class="flex items-center gap-2">
+                        <i class="pi pi-times-circle"></i>
+                        <span>Rejetés</span>
+                        <p-chip 
+                            [label]="rejectedEquipments().length.toString()" 
+                            styleClass="chip-danger"
+                        />
+                    </div>
+                </p-tab>
+                <p-tab [value]="3">
+                    <div class="flex items-center gap-2">
+                        <i class="pi pi-archive"></i>
+                        <span>Archivés</span>
+                        <p-chip 
+                            [label]="archivedEquipments().length.toString()" 
+                            styleClass="chip-secondary"
+                        />
+                    </div>
+                </p-tab>
+            </p-tablist>
+
+            <p-tabpanels>
+                <!-- ✅ Tab En cours -->
+                <p-tabpanel [value]="0">
+                    <div class="mb-4">
+                        <p-iconfield iconPosition="left" styleClass="w-full">
+                            <p-inputicon styleClass="pi pi-search" />
+                            <input 
+                                pInputText 
+                                type="text" 
+                                placeholder="Rechercher un équipement..." 
+                                class="w-full"
+                                #inProgressSearch
+                                (input)="dt1.filterGlobal(inProgressSearch.value, 'contains')"
+                            />
+                        </p-iconfield>
+                    </div>
+
+                    <p-table 
+                        #dt1
+                        [value]="pendingEquipments()" 
+                        [rows]="10"
+                        [paginator]="true"
+                        [globalFilterFields]="['code', 'famille', 'entity', 'description']"
+                        [rowsPerPageOptions]="[10, 25, 50]"
+                        [showCurrentPageReport]="true"
+                        currentPageReportTemplate="Affichage de {first} à {last} sur {totalRecords} entrées"
+                        [expandedRowKeys]="expandedRows"
+                        dataKey="id"
+                        styleClass="p-datatable-sm"
+                    >
+                        <ng-template #header>
+                            <tr>
+                                <th style="width: 3rem"></th>
+                                <th pSortableColumn="code">
+                                    <div class="flex items-center gap-2">
+                                        Code
+                                        <p-sortIcon field="code" />
+                                    </div>
+                                </th>
+                                <th pSortableColumn="famille">
+                                    <div class="flex items-center gap-2">
+                                        Famille
+                                        <p-sortIcon field="famille" />
+                                    </div>
+                                </th>
+                                <th pSortableColumn="entity">
+                                    <div class="flex items-center gap-2">
+                                        Entité
+                                        <p-sortIcon field="entity" />
+                                    </div>
+                                </th>
+                                <th pSortableColumn="createdAt">
+                                    <div class="flex items-center gap-2">
+                                        Créé le
+                                        <p-sortIcon field="createdAt" />
+                                    </div>
+                                </th>
+                                <th>Statut</th>
+                                <th style="width: 8rem">Actions</th>
+                            </tr>
+                        </ng-template>
+
+                        <ng-template #body let-equipment let-expanded="expanded">
+                            <tr>
+                                <td>
+                                    <p-button 
+                                        type="button"
+                                        [icon]="expanded ? 'pi pi-chevron-down' : 'pi pi-chevron-right'"
+                                        [text]="true"
+                                        [rounded]="true"
+                                        severity="secondary"
+                                        size="small"
+                                        (onClick)="dt1.toggleRow(equipment, $event)"
+                                    />
+                                </td>
+                                <td>
+                                    <span class="font-semibold text-primary">{{ equipment.code }}</span>
+                                </td>
+                                <td>
+                                    <p-tag [value]="equipment.famille || 'N/A'" severity="secondary" />
+                                </td>
+                                <td>{{ equipment.entity || 'N/A' }}</td>
+                                <td>{{ equipment.createdAt | date:'dd/MM/yyyy HH:mm' }}</td>
+                                <td>
+                                    <p-tag 
+                                        [value]="getStatusLabel(equipment)" 
+                                        [severity]="getStatusSeverity(equipment)"
+                                        [icon]="getStatusIcon(equipment)"
+                                    />
+                                </td>
+                                <td>
+                                    <div class="flex gap-2">
+                                        <p-button 
+                                            icon="pi pi-eye" 
+                                            [rounded]="true"
+                                            [text]="true"
+                                            severity="info"
+                                            size="small"
+                                            pTooltip="Détails"
+                                            tooltipPosition="top"
+                                            (onClick)="viewDetails(equipment)"
+                                        />
+                                    </div>
+                                </td>
+                            </tr>
+                        </ng-template>
+
+                        <ng-template #rowexpansion let-equipment>
+                            <tr>
+                                <td colspan="7">
+                                    <div class="p-4 bg-surface-50 dark:bg-surface-800 rounded-lg">
+                                        <h5 class="font-semibold mb-3 text-primary">Informations détaillées</h5>
+                                        <div class="grid grid-cols-3 gap-4">
+                                            <div>
+                                                <span class="font-semibold">Zone:</span>
+                                                <span class="ml-2">{{ equipment.zone || 'N/A' }}</span>
+                                            </div>
+                                            <div>
+                                                <span class="font-semibold">Unité:</span>
+                                                <span class="ml-2">{{ equipment.unite || 'N/A' }}</span>
+                                            </div>
+                                            <div>
+                                                <span class="font-semibold">Centre Charge:</span>
+                                                <span class="ml-2">{{ equipment.centreCharge || 'N/A' }}</span>
+                                            </div>
+                                            <div>
+                                                <span class="font-semibold">Feeder:</span>
+                                                <span class="ml-2">{{ equipment.feeder || 'N/A' }}</span>
+                                            </div>
+                                            <div>
+                                                <span class="font-semibold">Localisation:</span>
+                                                <span class="ml-2">{{ equipment.localisation || 'N/A' }}</span>
+                                            </div>
+                                            <div>
+                                                <span class="font-semibold">Code Parent:</span>
+                                                <span class="ml-2">{{ equipment.codeParent || 'N/A' }}</span>
+                                            </div>
+                                        </div>
+                                        @if (equipment.description) {
+                                            <p-divider />
+                                            <div>
+                                                <span class="font-semibold">Description:</span>
+                                                <p class="mt-2 text-muted-color">{{ equipment.description }}</p>
+                                            </div>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        </ng-template>
+
+                        <ng-template #emptymessage>
+                            <tr>
+                                <td colspan="7">
+                                    <div class="empty-state-table">
+                                        <i class="pi pi-inbox"></i>
+                                        <p>Aucun équipement en cours</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        </ng-template>
+                    </p-table>
+                </p-tabpanel>
+
+                <!-- ✅ Tab Approuvés -->
+                <p-tabpanel [value]="1">
+                    <div class="mb-4">
+                        <p-iconfield iconPosition="left" styleClass="w-full">
+                            <p-inputicon styleClass="pi pi-search" />
+                            <input 
+                                pInputText 
+                                type="text" 
+                                placeholder="Rechercher un équipement approuvé..." 
+                                class="w-full"
+                                #approvedSearch
+                                (input)="dt2.filterGlobal(approvedSearch.value, 'contains')"
+                            />
+                        </p-iconfield>
+                    </div>
+
+                    <p-table 
+                        #dt2
+                        [value]="approvedEquipments()" 
+                        [rows]="10"
+                        [paginator]="true"
+                        [globalFilterFields]="['code', 'famille', 'entity', 'description']"
+                        [rowsPerPageOptions]="[10, 25, 50]"
+                        [showCurrentPageReport]="true"
+                        currentPageReportTemplate="Affichage de {first} à {last} sur {totalRecords} entrées"
+                        dataKey="id"
+                        styleClass="p-datatable-sm"
+                    >
+                        <ng-template #header>
+                            <tr>
+                                <th pSortableColumn="code">
+                                    <div class="flex items-center gap-2">
+                                        Code
+                                        <p-sortIcon field="code" />
+                                    </div>
+                                </th>
+                                <th pSortableColumn="famille">Famille</th>
+                                <th pSortableColumn="entity">Entité</th>
+                                <th pSortableColumn="updatedAt">Approuvé le</th>
+                                <th>Approuvé par</th>
+                                <th style="width: 8rem">Actions</th>
+                            </tr>
+                        </ng-template>
+
+                        <ng-template #body let-equipment>
+                            <tr>
+                                <td>
+                                    <span class="font-semibold text-primary">{{ equipment.code }}</span>
+                                </td>
+                                <td>
+                                    <p-tag [value]="equipment.famille || 'N/A'" severity="secondary" />
+                                </td>
+                                <td>{{ equipment.entity || 'N/A' }}</td>
+                                <td>{{ equipment.updatedAt | date:'dd/MM/yyyy HH:mm' }}</td>
+                                <td>
+                                    <div class="flex items-center gap-2">
+                                        <i class="pi pi-user text-green-600"></i>
+                                        <span>{{ equipment.judgedBy || 'N/A' }}</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <p-button 
+                                        icon="pi pi-eye" 
+                                        [rounded]="true"
+                                        [text]="true"
+                                        severity="success"
+                                        size="small"
+                                        pTooltip="Détails"
+                                        tooltipPosition="top"
+                                        (onClick)="viewDetails(equipment)"
+                                    />
+                                </td>
+                            </tr>
+                        </ng-template>
+
+                        <ng-template #emptymessage>
+                            <tr>
+                                <td colspan="6">
+                                    <div class="empty-state-table">
+                                        <i class="pi pi-check-circle"></i>
+                                        <p>Aucun équipement approuvé</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        </ng-template>
+                    </p-table>
+                </p-tabpanel>
+
+                <!-- ✅ Tab Rejetés -->
+                <p-tabpanel [value]="2">
+                    <div class="mb-4">
+                        <p-iconfield iconPosition="left" styleClass="w-full">
+                            <p-inputicon styleClass="pi pi-search" />
+                            <input 
+                                pInputText 
+                                type="text" 
+                                placeholder="Rechercher un équipement rejeté..." 
+                                class="w-full"
+                                #rejectedSearch
+                                (input)="dt3.filterGlobal(rejectedSearch.value, 'contains')"
+                            />
+                        </p-iconfield>
+                    </div>
+
+                    <p-table 
+                        #dt3
+                        [value]="rejectedEquipments()" 
+                        [rows]="10"
+                        [paginator]="true"
+                        [globalFilterFields]="['code', 'famille', 'entity', 'description']"
+                        [rowsPerPageOptions]="[10, 25, 50]"
+                        [showCurrentPageReport]="true"
+                        currentPageReportTemplate="Affichage de {first} à {last} sur {totalRecords} entrées"
+                        dataKey="id"
+                        styleClass="p-datatable-sm"
+                    >
+                        <ng-template #header>
+                            <tr>
+                                <th pSortableColumn="code">Code</th>
+                                <th pSortableColumn="famille">Famille</th>
+                                <th pSortableColumn="entity">Entité</th>
+                                <th pSortableColumn="updatedAt">Rejeté le</th>
+                                <th>Rejeté par</th>
+                                <th>Commentaire</th>
+                                <th style="width: 8rem">Actions</th>
+                            </tr>
+                        </ng-template>
+
+                        <ng-template #body let-equipment>
+                            <tr>
+                                <td>
+                                    <span class="font-semibold text-red-600">{{ equipment.code }}</span>
+                                </td>
+                                <td>
+                                    <p-tag [value]="equipment.famille || 'N/A'" severity="secondary" />
+                                </td>
+                                <td>{{ equipment.entity || 'N/A' }}</td>
+                                <td>{{ equipment.updatedAt | date:'dd/MM/yyyy HH:mm' }}</td>
+                                <td>
+                                    <div class="flex items-center gap-2">
+                                        <i class="pi pi-user text-red-600"></i>
+                                        <span>{{ equipment.judgedBy || 'N/A' }}</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="text-sm text-muted-color">
+                                        {{ equipment.commentaire || 'Aucun commentaire' }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <p-button 
+                                        icon="pi pi-eye" 
+                                        [rounded]="true"
+                                        [text]="true"
+                                        severity="danger"
+                                        size="small"
+                                        pTooltip="Détails"
+                                        tooltipPosition="top"
+                                        (onClick)="viewDetails(equipment)"
+                                    />
+                                </td>
+                            </tr>
+                        </ng-template>
+
+                        <ng-template #emptymessage>
+                            <tr>
+                                <td colspan="7">
+                                    <div class="empty-state-table">
+                                        <i class="pi pi-times-circle"></i>
+                                        <p>Aucun équipement rejeté</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        </ng-template>
+                    </p-table>
+                </p-tabpanel>
+
+                <!-- ✅ Tab Archivés -->
+                <p-tabpanel [value]="3">
+                    <div class="mb-4">
+                        <p-iconfield iconPosition="left" styleClass="w-full">
+                            <p-inputicon styleClass="pi pi-search" />
+                            <input 
+                                pInputText 
+                                type="text" 
+                                placeholder="Rechercher un équipement archivé..." 
+                                class="w-full"
+                                #archivedSearch
+                                (input)="dt4.filterGlobal(archivedSearch.value, 'contains')"
+                            />
+                        </p-iconfield>
+                    </div>
+
+                    <p-table 
+                        #dt4
+                        [value]="archivedEquipments()" 
+                        [rows]="10"
+                        [paginator]="true"
+                        [globalFilterFields]="['code', 'famille', 'entity', 'description']"
+                        [rowsPerPageOptions]="[10, 25, 50]"
+                        [showCurrentPageReport]="true"
+                        currentPageReportTemplate="Affichage de {first} à {last} sur {totalRecords} entrées"
+                        dataKey="id"
+                        styleClass="p-datatable-sm"
+                    >
+                        <ng-template #header>
+                            <tr>
+                                <th pSortableColumn="code">Code</th>
+                                <th pSortableColumn="famille">Famille</th>
+                                <th pSortableColumn="entity">Entité</th>
+                                <th pSortableColumn="dateHistoryCreatedAt">Archivé le</th>
+                                <th style="width: 8rem">Actions</th>
+                            </tr>
+                        </ng-template>
+
+                        <ng-template #body let-equipment>
+                            <tr>
+                                <td>
+                                    <span class="font-semibold text-muted-color">{{ equipment.code }}</span>
+                                </td>
+                                <td>
+                                    <p-tag [value]="equipment.famille || 'N/A'" severity="secondary" />
+                                </td>
+                                <td>{{ equipment.entity || 'N/A' }}</td>
+                                <td>{{ equipment.dateHistoryCreatedAt | date:'dd/MM/yyyy HH:mm' }}</td>
+                                <td>
+                                    <p-button 
+                                        icon="pi pi-eye" 
+                                        [rounded]="true"
+                                        [text]="true"
+                                        severity="secondary"
+                                        size="small"
+                                        pTooltip="Détails"
+                                        tooltipPosition="top"
+                                        (onClick)="viewDetails(equipment)"
+                                    />
+                                </td>
+                            </tr>
+                        </ng-template>
+
+                        <ng-template #emptymessage>
+                            <tr>
+                                <td colspan="5">
+                                    <div class="empty-state-table">
+                                        <i class="pi pi-archive"></i>
+                                        <p>Aucun équipement archivé</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        </ng-template>
+                    </p-table>
+                </p-tabpanel>
+            </p-tabpanels>
+        </p-tabs>
+    </p-card>
+}
+
+<!-- ✅ Modal de détails d'équipement -->
+<p-dialog 
+    [(visible)]="detailsDialog"
+    [modal]="true"
+    [style]="{width: '70rem'}"
+    [breakpoints]="{'960px': '90vw'}"
+    [draggable]="false"
+    [resizable]="false"
+    styleClass="equipment-details-dialog"
+>
+    <ng-template #header>
+        <div class="flex items-center gap-3">
+            <div class="dialog-icon">
+                <i class="pi pi-info-circle"></i>
+            </div>
+            <div>
+                <h3 class="text-xl font-bold">Détails de l'équipement</h3>
+                <p class="text-sm text-muted-color">{{ selectedEquipment()?.code }}</p>
+            </div>
+        </div>
+    </ng-template>
+
+    @if (selectedEquipment()) {
+        <div class="equipment-details-content">
+            <!-- Statut -->
+            <div class="mb-4 p-4 rounded-lg" [ngClass]="{
+                'bg-green-50 dark:bg-green-900/20': selectedEquipment()!.isApproved,
+                'bg-red-50 dark:bg-red-900/20': selectedEquipment()!.isRejected,
+                'bg-orange-50 dark:bg-orange-900/20': !selectedEquipment()!.isApproved && !selectedEquipment()!.isRejected && selectedEquipment()!.status === 'in_progress',
+                'bg-gray-50 dark:bg-gray-900/20': selectedEquipment()!.status === 'archived'
+            }">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <p-tag 
+                            [value]="getStatusLabel(selectedEquipment()!)" 
+                            [severity]="getStatusSeverity(selectedEquipment()!)"
+                            [icon]="getStatusIcon(selectedEquipment()!)"
+                            styleClass="text-lg"
+                        />
+                        @if (selectedEquipment()!.status === 'archived') {
+                            <span class="text-sm text-muted-color">
+                                Archivé le {{ selectedEquipment()!.dateHistoryCreatedAt | date:'dd/MM/yyyy HH:mm' }}
+                            </span>
+                        }
+                    </div>
+                    @if (selectedEquipment()!.judgedBy) {
+                        <div class="flex items-center gap-2">
+                            <i class="pi pi-user"></i>
+                            <span class="font-semibold">{{ selectedEquipment()!.judgedBy }}</span>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Informations générales -->
+            <div class="details-section">
+                <h4 class="section-title">Informations générales</h4>
+                <div class="details-grid">
+                    <div class="detail-item">
+                        <label>Code</label>
+                        <span>{{ selectedEquipment()!.code }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Famille</label>
+                        <span>{{ selectedEquipment()!.famille || 'N/A' }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Entité</label>
+                        <span>{{ selectedEquipment()!.entity || 'N/A' }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Zone</label>
+                        <span>{{ selectedEquipment()!.zone || 'N/A' }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Unité</label>
+                        <span>{{ selectedEquipment()!.unite || 'N/A' }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Centre Charge</label>
+                        <span>{{ selectedEquipment()!.centreCharge || 'N/A' }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Feeder</label>
+                        <span>{{ selectedEquipment()!.feeder || 'N/A' }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Localisation</label>
+                        <span>{{ selectedEquipment()!.localisation || 'N/A' }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Code Parent</label>
+                        <span>{{ selectedEquipment()!.codeParent || 'N/A' }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Créé le</label>
+                        <span>{{ selectedEquipment()!.createdAt | date:'dd/MM/yyyy HH:mm' }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Créé par</label>
+                        <span>{{ selectedEquipment()!.createdBy || 'N/A' }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Modifié le</label>
+                        <span>{{ selectedEquipment()!.updatedAt | date:'dd/MM/yyyy HH:mm' }}</span>
+                    </div>
+                    <div class="detail-item col-span-3">
+                        <label>Description</label>
+                        <p>{{ selectedEquipment()!.description || 'Aucune description' }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Attributs -->
+            @if (selectedEquipment()!.attributes && selectedEquipment()!.attributes!.length > 0) {
+                <div class="details-section">
+                    <h4 class="section-title">
+                        Attributs ({{ selectedEquipment()!.attributes!.length }})
+                    </h4>
+                    <p-table [value]="selectedEquipment()!.attributes!" styleClass="attributes-table">
+                        <ng-template #header>
+                            <tr>
+                                <th>Index</th>
+                                <th>Nom</th>
+                                <th>Valeur</th>
+                                <th>Spécification</th>
+                                <th>Description</th>
+                            </tr>
+                        </ng-template>
+                        <ng-template #body let-attr>
+                            <tr>
+                                <td>{{ attr.index || 'N/A' }}</td>
+                                <td><strong>{{ attr.name || 'N/A' }}</strong></td>
+                                <td><span class="text-primary font-semibold">{{ attr.value || 'N/A' }}</span></td>
+                                <td>{{ attr.specification || 'N/A' }}</td>
+                                <td>{{ attr.description || 'N/A' }}</td>
+                            </tr>
+                        </ng-template>
+                    </p-table>
+                </div>
+            }
+
+            <!-- Commentaire -->
+            @if (selectedEquipment()!.commentaire) {
+                <div class="details-section">
+                    <h4 class="section-title">Commentaire</h4>
+                    <div class="commentaire-box">
+                        <i class="pi pi-comment mr-2"></i>
+                        <p>{{ selectedEquipment()!.commentaire }}</p>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    <ng-template #footer>
+        <p-button 
+            label="Fermer" 
+            icon="pi pi-times"
+            (onClick)="hideDetails()"
+            severity="secondary"
+        />
+    </ng-template>
+</p-dialog>

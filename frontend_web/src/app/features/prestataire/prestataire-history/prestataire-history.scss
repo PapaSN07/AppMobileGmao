@@ -1,0 +1,298 @@
+:host {
+    display: block;
+
+    ::ng-deep {
+        // ✅ Variables Senelec
+        $primary-color: #015cc0;
+        $primary-light: rgba(1, 92, 192, 0.1);
+
+        // ✅ Animation d'entrée
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        // ✅ En-tête
+        .history-header {
+            animation: fadeInUp 0.4s ease-out;
+
+            .avatar-circle {
+                width: 64px;
+                height: 64px;
+                border-radius: 50%;
+                background: linear-gradient(135deg, $primary-light 0%, rgba(1, 92, 192, 0.05) 100%);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border: 2px solid rgba(1, 92, 192, 0.2);
+                color: $primary-color;
+            }
+        }
+
+        // ✅ Cartes de statistiques
+        .stat-card {
+            border-radius: 12px;
+            border: 1px solid var(--surface-border);
+            transition: all 0.3s ease;
+            animation: fadeInUp 0.5s ease-out;
+
+            &:hover {
+                transform: translateY(-4px);
+                box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+            }
+
+            .stat-content {
+                display: flex;
+                align-items: center;
+                gap: 1rem;
+                padding: 1rem;
+
+                .stat-icon-wrapper {
+                    width: 48px;
+                    height: 48px;
+                    border-radius: 10px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 1.5rem;
+
+                    &.icon-blue {
+                        background: rgba(1, 92, 192, 0.1);
+                        color: $primary-color;
+                    }
+
+                    &.icon-orange {
+                        background: rgba(255, 152, 0, 0.1);
+                        color: #ff9800;
+                    }
+
+                    &.icon-green {
+                        background: rgba(76, 175, 80, 0.1);
+                        color: #4caf50;
+                    }
+
+                    &.icon-red {
+                        background: rgba(244, 67, 54, 0.1);
+                        color: #f44336;
+                    }
+
+                    &.icon-gray {
+                        background: rgba(158, 158, 158, 0.1);
+                        color: #9e9e9e;
+                    }
+                }
+
+                .stat-body {
+                    .stat-label {
+                        font-size: 0.875rem;
+                        color: var(--text-color-secondary);
+                        margin-bottom: 0.25rem;
+                    }
+
+                    .stat-value {
+                        font-size: 2rem;
+                        font-weight: 700;
+                        color: var(--text-color);
+                        line-height: 1;
+                    }
+                }
+            }
+        }
+
+        // ✅ Carte principale
+        .history-content-card {
+            border-radius: 16px;
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        // ✅ Tabs personnalisés
+        .history-tabs {
+            .p-tablist {
+                border-bottom: 2px solid var(--surface-border);
+                margin-bottom: 1.5rem;
+            }
+
+            .p-tab {
+                .p-tab-header-content {
+                    padding: 1rem 1.5rem;
+                    font-weight: 600;
+                    transition: all 0.3s ease;
+
+                    &:hover {
+                        background: $primary-light;
+                    }
+                }
+
+                &[data-p-active="true"] {
+                    .p-tab-header-content {
+                        color: $primary-color;
+                        border-bottom: 3px solid $primary-color;
+                    }
+                }
+            }
+
+            .chip-warning {
+                background: rgba(255, 152, 0, 0.1);
+                color: #ff9800;
+            }
+
+            .chip-success {
+                background: rgba(76, 175, 80, 0.1);
+                color: #4caf50;
+            }
+
+            .chip-danger {
+                background: rgba(244, 67, 54, 0.1);
+                color: #f44336;
+            }
+
+            .chip-secondary {
+                background: rgba(158, 158, 158, 0.1);
+                color: #9e9e9e;
+            }
+        }
+
+        // ✅ État vide dans les tableaux
+        .empty-state-table {
+            text-align: center;
+            padding: 3rem 2rem;
+
+            i {
+                font-size: 3rem;
+                color: var(--text-color-secondary);
+                margin-bottom: 1rem;
+            }
+
+            p {
+                color: var(--text-color-secondary);
+                font-size: 1rem;
+            }
+        }
+
+        // ✅ Modal de détails
+        .equipment-details-dialog {
+            .dialog-icon {
+                width: 48px;
+                height: 48px;
+                border-radius: 10px;
+                background: $primary-light;
+                color: $primary-color;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 1.5rem;
+            }
+
+            .equipment-details-content {
+                .details-section {
+                    margin-bottom: 2rem;
+
+                    &:last-child {
+                        margin-bottom: 0;
+                    }
+
+                    .section-title {
+                        font-size: 1.125rem;
+                        font-weight: 600;
+                        color: $primary-color;
+                        margin-bottom: 1rem;
+                        padding-bottom: 0.5rem;
+                        border-bottom: 2px solid $primary-light;
+                    }
+
+                    .details-grid {
+                        display: grid;
+                        grid-template-columns: repeat(3, 1fr);
+                        gap: 1rem;
+
+                        .detail-item {
+                            &.col-span-3 {
+                                grid-column: span 3;
+                            }
+
+                            label {
+                                display: block;
+                                font-size: 0.875rem;
+                                font-weight: 600;
+                                color: var(--text-color-secondary);
+                                margin-bottom: 0.25rem;
+                            }
+
+                            span, p {
+                                font-size: 1rem;
+                                color: var(--text-color);
+                            }
+                        }
+                    }
+
+                    .attributes-table {
+                        font-size: 0.875rem;
+
+                        th {
+                            background: var(--surface-50);
+                            font-weight: 600;
+                        }
+                    }
+
+                    .commentaire-box {
+                        padding: 1rem;
+                        border-radius: 8px;
+                        background: var(--surface-50);
+                        border-left: 4px solid $primary-color;
+                        display: flex;
+                        align-items: start;
+                        gap: 0.5rem;
+
+                        i {
+                            color: $primary-color;
+                            margin-top: 0.25rem;
+                        }
+
+                        p {
+                            flex: 1;
+                            line-height: 1.6;
+                        }
+                    }
+                }
+            }
+        }
+
+        // ✅ Loading card
+        .loading-card {
+            border-radius: 16px;
+            animation: fadeInUp 0.5s ease-out;
+        }
+
+        // ✅ Responsive
+        @media (max-width: 768px) {
+            .stat-card .stat-content {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .equipment-details-dialog .details-grid {
+                grid-template-columns: 1fr !important;
+
+                .detail-item.col-span-3 {
+                    grid-column: span 1 !important;
+                }
+            }
+        }
+
+        // ✅ Dark mode
+        .dark-mode {
+            .stat-card,
+            .history-content-card,
+            .equipment-details-dialog {
+                background: var(--surface-900);
+                border-color: rgba(1, 92, 192, 0.3);
+            }
+        }
+    }
+}
