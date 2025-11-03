@@ -192,7 +192,7 @@ async def get_equipment_values(entity: str) -> Dict[str, Any]:
     
     try:
         hierarchy_result = get_hierarchy(entity)
-        cost_charges_result = get_centre_charges(entity, hierarchy_result)
+        cost_charges_result = get_centre_charges(entity)
         entities_result = get_entities(entity, hierarchy_result)
         familles_result = get_familles(entity, hierarchy_result)
         unites_result = get_unites(entity, hierarchy_result)

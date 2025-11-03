@@ -26,7 +26,7 @@ async def get_centre_charge_mobile(
     try:
         # Récupérer la hiérarchie dans la fonction
         hierarchy_result = get_hierarchy(entity)
-        result = get_centre_charges(entity=entity, hierarchy_result=hierarchy_result)
+        result = get_centre_charges(entity=entity)
         
         return {
             "status": "success",
