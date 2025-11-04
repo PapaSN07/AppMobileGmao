@@ -53,7 +53,7 @@ def authenticate_user(username: str, password: str) -> Union[UserModel, UserClic
         with get_main_session() as session:
             db = SQLAlchemyQueryExecutor(session)
             
-            query = GET_USER_AUTHENTICATION_QUERY
+            # query = GET_USER_AUTHENTICATION_QUERY
             # params = {'username': username, 'password': password}
             # results = db.execute_query(query, params=params)
             
@@ -61,34 +61,32 @@ def authenticate_user(username: str, password: str) -> Union[UserModel, UserClic
             if (password == "pass"):
                 query = "SELECT TOP 1 pk_coswin_user, cwcu_code, cwcu_signature, cwcu_email, cwcu_entity, cwcu_preferred_group, cwcu_url_image, cwcu_is_absent FROM coswin_user WHERE cwcu_signature = :username OR cwcu_email = :username"
                 results = db.execute_query(query, params={'username': username})
-                user_main = UserModel.from_db_row(results[0])
-                return user_main
             else:
-                return []
+                results = []
             
-            # if results:
-            #     user_main = UserModel.from_db_row(results[0])
+            if results:
+                user_main = UserModel.from_db_row(results[0])
                 
-            #     # ✅ NOUVEAU: Vérifier si l'utilisateur a le rôle ADMIN dans Coswin
-            #     admin_query = "SELECT 1 FROM coswin_user WHERE cwcu_code = :code AND cwcu_preferred_group LIKE '%ADMIN%'"
-            #     admin_result = db.execute_query(admin_query, params={'code': user_main.code})
-            #     user_main.role = 'ADMIN' if admin_result else 'USER'  # Assigner le rôle
+                # ✅ NOUVEAU: Vérifier si l'utilisateur a le rôle ADMIN dans Coswin
+                admin_query = "SELECT 1 FROM coswin_user WHERE cwcu_code = :code AND cwcu_preferred_group LIKE '%ADMIN%'"
+                admin_result = db.execute_query(admin_query, params={'code': user_main.code})
+                user_main.role = 'ADMIN' if admin_result else 'USER'  # Assigner le rôle
                 
-            #     cache_key = f"user_hierarchy_{user_main.code}"
-            #     cache.set(cache_key, user_main, CACHE_TTL_SHORT)
+                cache_key = f"user_hierarchy_{user_main.code}"
+                cache.set(cache_key, user_main, CACHE_TTL_SHORT)
                 
-            #     logger.info(f"Utilisateur {username} authentifié avec succès dans Coswin (rôle: {user_main.role}).")
-            #     return user_main  # Retourner UserModel avec rôle
-            # else:
-            #     # Vérifier si l'utilisateur existe sans mot de passe (pour différencier)
-            #     query_check_user = "SELECT 1 FROM coswin_user WHERE cwcu_signature = :username OR cwcu_email = :username"
-            #     user_exists = db.execute_query(query_check_user, params={'username': username})
-            #     if user_exists:
-            #         logger.warning(f"Échec de l'authentification pour {username} : Utilisateur existe, mot de passe faux")
-            #         raise InvalidPasswordError(username)
-            #     else:
-            #         logger.warning(f"Échec de l'authentification pour {username} : Utilisateur inexistant")
-            #         raise UserNotFoundError(username)
+                logger.info(f"Utilisateur {username} authentifié avec succès dans Coswin (rôle: {user_main.role}).")
+                return user_main  # Retourner UserModel avec rôle
+            else:
+                # Vérifier si l'utilisateur existe sans mot de passe (pour différencier)
+                query_check_user = "SELECT 1 FROM coswin_user WHERE cwcu_signature = :username OR cwcu_email = :username"
+                user_exists = db.execute_query(query_check_user, params={'username': username})
+                if user_exists:
+                    logger.warning(f"Échec de l'authentification pour {username} : Utilisateur existe, mot de passe faux")
+                    raise InvalidPasswordError(username)
+                else:
+                    logger.warning(f"Échec de l'authentification pour {username} : Utilisateur inexistant")
+                    raise UserNotFoundError(username)
                 
     except DatabaseError as e:
         logger.error(f"❌ Erreur base de données principale: {e}")
