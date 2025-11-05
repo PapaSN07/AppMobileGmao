@@ -95,7 +95,7 @@ FROM function_
 #   ================================================================================
 EQUIPMENT_INFINITE_QUERY = """
 SELECT 
-    e.pk_equipment, 
+    e.timestamp, 
     e.ereq_parent_equipment, 
     e.ereq_code, 
     e.ereq_category, 
@@ -106,7 +106,7 @@ SELECT
     e.ereq_description, 
     e.ereq_longitude, 
     e.ereq_latitude,
-    f.pk_equipment as feeder,
+    f.timestamp as feeder,
     f.ereq_description as feeder_description,
     -- Attributs (peuvent être NULL si pas d'attributs)
     a.pk_attribute as attr_id,
@@ -120,7 +120,7 @@ LEFT JOIN equipment f ON e.ereq_string2 = f.ereq_code
 LEFT JOIN equipment_specs es ON e.ereq_code = es.etes_equipment
 LEFT JOIN equipment_attribute ea ON es.pk_equipment_specs = ea.commonkey
 LEFT JOIN specification s ON es.etes_specification = s.cwsp_code
-LEFT JOIN attribute a ON (s.pk_specification = a.cwat_specification AND ea.INDX = a.CWAT_INDEX)
+LEFT JOIN attribute a ON (s.timestamp = a.cwat_specification AND ea.INDX = a.CWAT_INDEX)
 WHERE 1=1
 """
 
@@ -161,7 +161,7 @@ LEFT JOIN equipment f ON e.ereq_string2 = f.ereq_code
 LEFT JOIN equipment_specs es ON e.ereq_code = es.etes_equipment
 LEFT JOIN equipment_attribute ea ON es.pk_equipment_specs = ea.commonkey
 LEFT JOIN specification s ON es.etes_specification = s.cwsp_code
-LEFT JOIN attribute a ON (s.pk_specification = a.cwat_specification AND ea.INDX = a.CWAT_INDEX)
+LEFT JOIN attribute a ON (s.timestamp = a.cwat_specification AND ea.INDX = a.CWAT_INDEX)
 WHERE e.pk_equipment = :equipment_id
 """
 
@@ -176,7 +176,7 @@ FROM
     specification s
     JOIN category_specification cs ON cs.mdcs_specification = s.cwsp_code
     JOIN category r ON r.mdct_code = cs.mdcs_category
-    JOIN attribute a ON s.pk_specification = a.cwat_specification
+    JOIN attribute a ON s.timestamp = a.cwat_specification
 WHERE r.mdct_code = :code
 ORDER BY a.cwat_index
 """
