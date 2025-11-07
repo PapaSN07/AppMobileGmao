@@ -31,7 +31,7 @@ ORDER BY mdct_entity, mdct_description
 #   ================================================================================
 FEEDER_QUERY = """
 SELECT
-    pk_equipment,
+    timestamp,
     ereq_code,
     ereq_description,
     ereq_entity
@@ -127,9 +127,9 @@ FROM equipment e
 LEFT JOIN costcentre cc ON e.ereq_costcentre = cc.mdcc_code
 LEFT JOIN equipment f ON e.ereq_string2 = f.ereq_code
 LEFT JOIN equipment_specs es ON e.ereq_code = es.etes_equipment
-LEFT JOIN equipment_attribute ea ON es.pk_equipment_specs = ea.commonkey
+LEFT JOIN equipment_attribute ea ON es.timestamp_specs = ea.commonkey
 LEFT JOIN specification s ON es.etes_specification = s.cwsp_code
-LEFT JOIN attribute a ON (s.pk_specification = a.cwat_specification AND ea.INDX = a.CWAT_INDEX)
+LEFT JOIN attribute a ON (s.timestamp = a.cwat_specification AND ea.INDX = a.CWAT_INDEX)
 WHERE 1=1
 """
 
@@ -146,7 +146,7 @@ WHERE 1=1
 
 EQUIPMENT_ADD_QUERY = """
 INSERT INTO equipment (
-    pk_equipment,
+    timestamp,
     ereq_code,
     ereq_bar_code,
     ereq_description,
@@ -178,7 +178,7 @@ INSERT INTO equipment (
 
 EQUIPMENT_BY_ID_QUERY = """
 SELECT 
-    e.pk_equipment, 
+    e.timestamp, 
     e.ereq_parent_equipment, 
     e.ereq_code, 
     e.ereq_category, 
@@ -189,7 +189,7 @@ SELECT
     e.ereq_description, 
     e.ereq_longitude, 
     e.ereq_latitude,
-    f.pk_equipment as feeder,
+    f.timestamp as feeder,
     f.ereq_description as feeder_description,
     a.pk_attribute as attr_id,
     a.cwat_specification as attr_specification,
@@ -200,10 +200,10 @@ FROM equipment e
 LEFT JOIN costcentre cc ON e.ereq_costcentre = cc.mdcc_code
 LEFT JOIN equipment f ON e.ereq_string2 = f.ereq_code
 LEFT JOIN equipment_specs es ON e.ereq_code = es.etes_equipment
-LEFT JOIN equipment_attribute ea ON es.pk_equipment_specs = ea.commonkey
+LEFT JOIN equipment_attribute ea ON es.timestamp_specs = ea.commonkey
 LEFT JOIN specification s ON es.etes_specification = s.cwsp_code
-LEFT JOIN attribute a ON (s.pk_specification = a.cwat_specification AND ea.INDX = a.CWAT_INDEX)
-WHERE e.pk_equipment = :equipment_id
+LEFT JOIN attribute a ON (s.timestamp = a.cwat_specification AND ea.INDX = a.CWAT_INDEX)
+WHERE e.timestamp = :equipment_id
 """
 
 EQUIPMENT_UPDATE_QUERY = """
@@ -220,17 +220,17 @@ SET
     ereq_longitude = :longitude,
     ereq_latitude = :latitude,
     ereq_string2 = :feeder
-WHERE pk_equipment = :equipment_id
+WHERE timestamp = :equipment_id
 """
 
 UPDATE_EQUIPMENT_ATTRIBUTE_QUERY = """
 UPDATE equipment_attribute 
 SET etat_value = :value
 WHERE commonkey = (
-    SELECT es.pk_equipment_specs 
+    SELECT es.timestamp_specs 
     FROM equipment_specs es
     JOIN specification s ON es.etes_specification = s.cwsp_code
-    JOIN attribute a ON s.pk_specification = a.cwat_specification
+    JOIN attribute a ON s.timestamp = a.cwat_specification
     WHERE es.etes_equipment = :equipment_code
     AND a.cwat_name = :attribute_name
 )
@@ -238,7 +238,7 @@ AND indx = (
     SELECT a.cwat_index
     FROM equipment_specs es
     JOIN specification s ON es.etes_specification = s.cwsp_code
-    JOIN attribute a ON s.pk_specification = a.cwat_specification
+    JOIN attribute a ON s.timestamp = a.cwat_specification
     WHERE es.etes_equipment = :equipment_code
     AND a.cwat_name = :attribute_name
 )
@@ -254,9 +254,9 @@ SELECT
 FROM 
     equipment e
     JOIN equipment_specs es ON e.ereq_code = es.etes_equipment
-    JOIN equipment_attribute ea ON es.pk_equipment_specs = ea.commonkey
+    JOIN equipment_attribute ea ON es.timestamp_specs = ea.commonkey
     JOIN specification s ON es.etes_specification = s.cwsp_code
-    JOIN attribute a ON (s.pk_specification = a.cwat_specification AND ea.INDX = a.CWAT_INDEX)
+    JOIN attribute a ON (s.timestamp = a.cwat_specification AND ea.INDX = a.CWAT_INDEX)
 WHERE 
     e.ereq_code = :code
 ORDER BY a.cwat_name
@@ -265,7 +265,7 @@ ORDER BY a.cwat_name
 EQUIPMENT_T_SPECIFICATION_QUERY = """
 SELECT 
     cs.mdcs_specification,
-    s.pk_specification
+    s.timestamp
 FROM
     category c
     JOIN category_specification cs ON c.mdct_code = cs.mdcs_category
@@ -275,7 +275,7 @@ WHERE c.mdct_code LIKE :category
 
 EQUIPMENT_SPEC_ADD_QUERY = """
 INSERT INTO equipment_specs (
-    pk_equipment_specs,
+    timestamp_specs,
     etes_specification,
     etes_equipment,
     etes_release_date,
@@ -300,7 +300,7 @@ FROM
     specification s
     JOIN category_specification cs ON cs.mdcs_specification = s.cwsp_code
     JOIN category r ON r.mdct_code = cs.mdcs_category
-    JOIN attribute a ON s.pk_specification = a.cwat_specification
+    JOIN attribute a ON s.timestamp = a.cwat_specification
 WHERE r.mdct_code = :code
 ORDER BY a.cwat_index
 """
@@ -312,7 +312,7 @@ FROM
     specification s
     JOIN category_specification cs ON cs.mdcs_specification = s.cwsp_code
     JOIN category r ON r.mdct_code = cs.mdcs_category
-    JOIN attribute a ON s.pk_specification = a.cwat_specification
+    JOIN attribute a ON s.timestamp = a.cwat_specification
 WHERE r.mdct_code LIKE :category
 ORDER BY a.cwat_index
 """
@@ -348,7 +348,7 @@ SELECT DISTINCT a.cwat_index
 FROM specification s
 JOIN category_specification cs ON s.cwsp_code = cs.mdcs_specification  
 JOIN category r ON cs.mdcs_category = r.mdct_code
-JOIN attribute a ON s.pk_specification = a.cwat_specification
+JOIN attribute a ON s.timestamp = a.cwat_specification
 WHERE r.mdct_code LIKE :category
 ORDER BY a.cwat_index
 """
