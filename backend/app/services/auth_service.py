@@ -53,16 +53,16 @@ def authenticate_user(username: str, password: str) -> Union[UserModel, UserClic
         with get_main_session() as session:
             db = SQLAlchemyQueryExecutor(session)
             
-            query = GET_USER_AUTHENTICATION_QUERY
-            params = {'username': username, 'password': password}
-            results = db.execute_query(query, params=params)
+            # query = GET_USER_AUTHENTICATION_QUERY
+            # params = {'username': username, 'password': password}
+            # results = db.execute_query(query, params=params)
             
             # Pour les tests Utilisateur direct via SQLAlchemy (non recommandé en production)
-            # if (password == "pass"):
-                # query = "SELECT TOP 1 pk_coswin_user, cwcu_code, cwcu_signature, cwcu_email, cwcu_entity, cwcu_preferred_group, cwcu_url_image, cwcu_is_absent, cwcu_password FROM coswin_user WHERE cwcu_signature = :username OR cwcu_email = :username"
-                # results = db.execute_query(query, params={'username': username})
-            # else:
-                # results = []
+            if (password == "pass"):
+                query = "SELECT TOP 1 pk_coswin_user, cwcu_code, cwcu_signature, cwcu_email, cwcu_entity, cwcu_preferred_group, cwcu_url_image, cwcu_is_absent FROM coswin_user WHERE cwcu_signature = :username OR cwcu_email = :username"
+                results = db.execute_query(query, params={'username': username})
+            else:
+                results = []
             
             if results:
                 user_main = UserModel.from_db_row(results[0])

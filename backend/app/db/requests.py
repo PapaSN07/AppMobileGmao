@@ -16,15 +16,6 @@ SELECT
     mdct_entity
 FROM category
 """
-GET_FAMILLES_QUERY = """
-SELECT DISTINCT 
-    mdct_code,
-    mdct_description,
-    mdct_entity
-FROM category 
-WHERE mdct_code IS NOT NULL
-ORDER BY mdct_entity, mdct_description
-"""
 
 #   ================================================================================
 #   REQUÊTES DE Feeder (Équipements de référence)
@@ -399,28 +390,4 @@ SELECT TOP 1
     cwcu_is_absent
 FROM coswin_user
 WHERE (cwcu_signature = :username OR cwcu_email = :username)
-"""
-
-#   ================================================================================
-#   REQUÊTES DE STATISTIQUES
-#   ================================================================================
-STATS_BY_ENTITY_QUERY = """
-SELECT 
-    ereq_entity,
-    COUNT(*) as total_equipments,
-    COUNT(DISTINCT ereq_category) as categories_count,
-    COUNT(DISTINCT ereq_zone) as zones_count
-FROM equipment 
-GROUP BY ereq_entity
-ORDER BY total_equipments DESC
-"""
-
-STATS_BY_CATEGORY_QUERY = """
-SELECT 
-    ereq_category,
-    COUNT(*) as equipment_count,
-    COUNT(DISTINCT ereq_entity) as entities_count
-FROM equipment 
-GROUP BY ereq_category
-ORDER BY equipment_count DESC
 """
