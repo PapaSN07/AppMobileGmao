@@ -23,8 +23,9 @@ class ApiService {
   String? _authToken;
 
   static const Duration _timeout = Duration(seconds: 60);
+  static const Duration _receiveTimeout = Duration(seconds: 180);
   // static const int _defaultPort = 8000;
-  // static const String _macIpAddress = '192.168.1.102';
+  // static const String _macIpAddress = '172.20.10.4';
   static const int _defaultPort = 9099;
   static const String _macIpAddress = 'domtec.senelec.sn';
 
@@ -37,7 +38,7 @@ class ApiService {
       BaseOptions(
         baseUrl: baseUrl,
         connectTimeout: _timeout,
-        receiveTimeout: _timeout,
+        receiveTimeout: _receiveTimeout,
         sendTimeout: _timeout,
         headers: {
           'Content-Type': 'application/json',

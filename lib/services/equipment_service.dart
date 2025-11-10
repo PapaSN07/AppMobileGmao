@@ -393,19 +393,19 @@ class EquipmentService {
     }
   }
 
-  /// Met à jour un équipement existant avec ses attributs
+  /// ✅ CORRIGÉ: Met à jour un équipement existant (adapté à la vraie réponse API)
   Future<Equipment> updateEquipment(
     int equipmentId,
     Map<String, dynamic> equipmentData,
   ) async {
     try {
       if (kDebugMode) {
-        print('🔄 EquipmentService - Mise à jour équipement: $equipmentId');
-        print('📊 EquipmentService - Données envoyées: $equipmentData');
+        print('🔄 $__logName Mise à jour équipement: $equipmentId');
+        print('📊 $__logName Données envoyées: $equipmentData');
       }
 
       final response = await _apiService.post(
-        '/api/v1/mobile/equipments/$equipmentId',
+        '$__prefixURI/$equipmentId',
         data: equipmentData,
       );
 
@@ -434,13 +434,61 @@ class EquipmentService {
       }
 
       if (kDebugMode) {
-        print('✅ EquipmentService - Équipement mis à jour avec succès');
+        print('✅ $__logName Équipement mis à jour avec succès');
+        print('📋 $__logName Réponse API: $response');
       }
 
-      return Equipment.fromJson(response['equipment']);
+      // ✅ NOUVEAU: Gérer le cas où equipment est null (comme dans la vraie réponse)
+      final equipmentFromResponse = response['equipment'];
+
+      if (equipmentFromResponse != null &&
+          equipmentFromResponse is Map<String, dynamic>) {
+        // Cas 1: L'API renvoie l'équipement complet (idéal mais pas le cas actuel)
+        if (kDebugMode) {
+          print('📦 $__logName API a renvoyé l\'équipement complet');
+        }
+        return Equipment.fromJson(equipmentFromResponse);
+      } else {
+        // ✅ Cas 2: L'API ne renvoie PAS l'équipement (cas actuel)
+        // On reconstruit l'équipement à partir des données envoyées
+        if (kDebugMode) {
+          print(
+            '⚠️ $__logName API n\'a pas renvoyé l\'équipement, reconstruction manuelle',
+          );
+        }
+
+        return Equipment(
+          id: equipmentId.toString(),
+          code: equipmentData['code'] ?? '',
+          description: equipmentData['description'] ?? '',
+          famille: equipmentData['famille'] ?? '',
+          zone: equipmentData['zone'] ?? '',
+          entity: equipmentData['entity'] ?? '',
+          unite: equipmentData['unite'] ?? '',
+          centreCharge: equipmentData['centre_charge'] ?? '',
+          codeParent: equipmentData['code_parent'] ?? '',
+          feeder: equipmentData['feeder'] ?? '',
+          feederDescription: equipmentData['feeder_description'] ?? '',
+          longitude: equipmentData['longitude'] ?? '',
+          latitude: equipmentData['latitude'] ?? '',
+          // ✅ Reconstruire les attributs depuis equipmentData['attributs']
+          attributes:
+              (equipmentData['attributs'] as List?)?.map((attr) {
+                return EquipmentAttribute(
+                  id: attr['id']?.toString(),
+                  specification: attr['specification']?.toString() ?? '',
+                  index: attr['index']?.toString() ?? '',
+                  name: attr['name']?.toString() ?? '',
+                  value: attr['value']?.toString() ?? '',
+                  type: attr['type']?.toString(),
+                );
+              }).toList(),
+          cachedAt: DateTime.now(),
+        );
+      }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ EquipmentService - Erreur updateEquipment: $e');
+        print('❌ $__logName Erreur updateEquipment: $e');
       }
       rethrow;
     }

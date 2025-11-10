@@ -113,40 +113,6 @@ class AttributesModal extends StatelessWidget {
             Expanded(
               child: Column(
                 children: [
-                  // Header colonnes
-                  Padding(
-                    padding: spacing.custom(
-                      horizontal: 20,
-                    ), // ✅ Padding responsive
-                    child: Row(
-                      children: [
-                        const Expanded(
-                          flex: 2,
-                          child: Text(
-                            'Attribut',
-                            style: TextStyle(
-                              fontFamily: AppTheme.fontMontserrat,
-                              fontWeight: FontWeight.bold,
-                              color: AppTheme.secondaryColor,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ),
-                        SizedBox(
-                          width: spacing.medium,
-                        ), // ✅ Espacement responsive
-                        Expanded(
-                          flex: 3,
-                          child: Container(
-                            height: 1,
-                            color: AppTheme.thirdColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  SizedBox(height: spacing.medium), // ✅ Espacement responsive
                   // Liste des attributs
                   Expanded(
                     child: ListView.builder(

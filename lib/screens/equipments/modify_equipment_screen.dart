@@ -51,6 +51,11 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
 
   bool _isLoading = true, _hasError = false, _isUpdating = false;
 
+  // ✅ AJOUTÉ: Nouveau flag pour le chargement complet
+  bool _isFullyLoaded = false;
+  int _totalAttributesToLoad = 0;
+  int _attributesLoaded = 0;
+
   List<EquipmentAttribute> availableAttributes = [];
   Map<String, List<EquipmentAttribute>> attributeValuesBySpec = {};
   Map<String, String> selectedAttributeValues = {};
@@ -82,6 +87,10 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
         await _initializeAttributesFromParams();
       } else {
         await _loadEquipmentAttributes();
+      }
+      // ✅ AJOUTÉ: Marquer comme complètement chargé
+      if (mounted) {
+        setState(() => _isFullyLoaded = true);
       }
     });
   }
@@ -221,18 +230,12 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
 
     return Scaffold(
       backgroundColor: AppTheme.primaryColor,
-      // ✅ MODIFIÉ: Augmenter la hauteur de l'AppBar
       appBar: PreferredSize(
-        preferredSize: Size.fromHeight(
-          responsive.spacing(70),
-        ), // ✅ Hauteur augmentée
+        preferredSize: Size.fromHeight(responsive.spacing(70)),
         child: AppBar(
           titleSpacing: 0,
           title: Padding(
-            padding: spacing.custom(
-              left: 4,
-              right: 16,
-            ), // ✅ AJOUTÉ: Espacement à gauche
+            padding: spacing.custom(left: 4, right: 16),
             child: Text(
               'Modifier l\'équipement',
               style: TextStyle(
@@ -246,10 +249,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
           backgroundColor: AppTheme.secondaryColor,
           elevation: 0,
           leading: Padding(
-            padding: spacing.custom(
-              left: 16,
-              right: 8,
-            ), // ✅ MODIFIÉ: Espacement augmenté
+            padding: spacing.custom(left: 16, right: 8),
             child: IconButton(
               padding: EdgeInsets.zero,
               icon: Container(
@@ -277,7 +277,10 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
       ),
       body: Consumer<EquipmentProvider>(
         builder: (context, equipmentProvider, child) {
-          if (_isLoading) return _buildLoadingState(responsive, spacing);
+          // ✅ MODIFIÉ: Afficher le loader tant que pas complètement chargé
+          if (_isLoading || !_isFullyLoaded) {
+            return _buildLoadingState(responsive, spacing);
+          }
           if (_hasError) return _buildErrorState(responsive, spacing);
 
           return SingleChildScrollView(
@@ -305,26 +308,67 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     );
   }
 
+  // ✅ MODIFIÉ: Loader avec progression
   Widget _buildLoadingState(Responsive responsive, ResponsiveSpacing spacing) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(AppTheme.secondaryColor),
+          // ✅ Loader circulaire
+          SizedBox(
+            width: responsive.spacing(60),
+            height: responsive.spacing(60),
+            child: CircularProgressIndicator(
+              strokeWidth: responsive.spacing(4),
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                AppTheme.secondaryColor,
+              ),
+              // ✅ AJOUTÉ: Afficher la progression si disponible
+              value:
+                  _totalAttributesToLoad > 0
+                      ? _attributesLoaded / _totalAttributesToLoad
+                      : null,
+            ),
           ),
-          SizedBox(height: spacing.medium),
+          SizedBox(height: spacing.large),
+
+          // ✅ Message de chargement
           Text(
-            'Chargement des données...',
+            _getLoadingMessage(),
             style: TextStyle(
               fontFamily: AppTheme.fontMontserrat,
+              fontWeight: FontWeight.w600,
               color: AppTheme.secondaryColor,
               fontSize: responsive.sp(16),
             ),
           ),
+
+          // ✅ AJOUTÉ: Afficher la progression en texte
+          if (_totalAttributesToLoad > 0) ...[
+            SizedBox(height: spacing.small),
+            Text(
+              '$_attributesLoaded / $_totalAttributesToLoad attributs chargés',
+              style: TextStyle(
+                fontFamily: AppTheme.fontRoboto,
+                color: AppTheme.thirdColor,
+                fontSize: responsive.sp(14),
+              ),
+            ),
+          ],
         ],
       ),
     );
+  }
+
+  // ✅ AJOUTÉ: Message dynamique selon l'étape
+  String _getLoadingMessage() {
+    if (!_isFullyLoaded && _totalAttributesToLoad > 0) {
+      return 'Chargement des valeurs...';
+    }
+    if (_loadingAttributes) {
+      return 'Chargement des attributs...';
+    }
+    return 'Chargement des données...';
   }
 
   Widget _buildErrorState(Responsive responsive, ResponsiveSpacing spacing) {
@@ -776,6 +820,15 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
   }
 
   Future<void> _loadAttributeSpecifications() async {
+    // Compter les attributs à charger
+    _totalAttributesToLoad =
+        availableAttributes
+            .where((attr) => attr.specification != null && attr.index != null)
+            .length;
+    _attributesLoaded = 0;
+
+    if (mounted) setState(() {});
+
     for (final attr in availableAttributes) {
       if (attr.specification != null && attr.index != null) {
         final specKey = '${attr.specification}_${attr.index}';
@@ -787,9 +840,35 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
           );
           final values =
               result['attributes'] as List<EquipmentAttribute>? ?? [];
-          if (mounted) setState(() => attributeValuesBySpec[specKey] = values);
-        } catch (_) {}
+
+          if (mounted) {
+            setState(() {
+              attributeValuesBySpec[specKey] = values;
+              _attributesLoaded++;
+            });
+          }
+
+          if (kDebugMode) {
+            print(
+              '📦 $__logName Valeurs chargées pour ${attr.name}: ${values.length} options',
+            );
+          }
+        } catch (e) {
+          if (kDebugMode) {
+            print(
+              '⚠️ $__logName Erreur chargement valeurs pour ${attr.name}: $e',
+            );
+          }
+          // Incrémenter quand même pour ne pas bloquer
+          if (mounted) {
+            setState(() => _attributesLoaded++);
+          }
+        }
       }
+    }
+
+    if (kDebugMode) {
+      print('✅ $__logName Toutes les valeurs d\'attributs chargées');
     }
   }
 
@@ -827,10 +906,14 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
         });
 
         if (!_initialValuesSaved) _saveInitialValues();
+
+        // ✅ MODIFIÉ: Attendre que toutes les valeurs soient chargées
         await _loadAttributeSpecifications();
       }
     } catch (e) {
-      if (kDebugMode) print('❌ $__logName Erreur initialisation attributs: $e');
+      if (kDebugMode) {
+        print('❌ $__logName Erreur initialisation attributs: $e');
+      }
       await _loadEquipmentAttributes();
     }
   }
@@ -845,7 +928,6 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
           widget.equipmentData!['Code'] ?? widget.equipmentData!['code'] ?? '';
       if (equipmentCode.isEmpty) return;
 
-      // ✅ AJOUT: Charger la configuration des champs requis
       final familleCode = EquipmentHelpers.getCodeFromDescription(
         selectedFamille,
         selectors['familles'] ?? [],
@@ -885,7 +967,13 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
         });
 
         if (!_initialValuesSaved) _saveInitialValues();
+
+        // ✅ MODIFIÉ: Attendre que toutes les valeurs soient chargées
         await _loadAttributeSpecifications();
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ $__logName Erreur chargement attributs: $e');
       }
     } finally {
       if (mounted) setState(() => _loadingAttributes = false);
