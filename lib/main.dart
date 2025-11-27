@@ -1,13 +1,70 @@
+// Ignore unused imports while this temporary test main is active.
+// Revenir en arrière : décommentez le main original et supprimez cette ligne.
+// ignore_for_file: unused_import
+
 import 'package:appmobilegmao/provider/notification_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:overlay_support/overlay_support.dart';
 import 'package:provider/provider.dart';
 import 'package:appmobilegmao/screens/splash_screen.dart';
+import 'package:appmobilegmao/screens/ot_info_details_screen.dart';
 import 'package:appmobilegmao/provider/auth_provider.dart';
 import 'package:appmobilegmao/provider/equipment_provider.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:appmobilegmao/services/hive_service.dart';
+import 'package:appmobilegmao/models/order.dart';
 
+// ---------------- TEMPORARY TEST MAIN ----------------
+// Pour tester uniquement OTInfoDetailsScreen
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await HiveService.init();
+
+  runApp(const TestOTInfoApp());
+}
+
+class TestOTInfoApp extends StatelessWidget {
+  const TestOTInfoApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (context) => AuthProvider()..initialize(),
+        ),
+        ChangeNotifierProxyProvider<AuthProvider, EquipmentProvider>(
+          create:
+              (context) => EquipmentProvider(
+                Provider.of<AuthProvider>(context, listen: false),
+              ),
+          update: (context, authProvider, previousEquipmentProvider) {
+            if (previousEquipmentProvider == null) {
+              return EquipmentProvider(authProvider);
+            }
+            return previousEquipmentProvider;
+          },
+        ),
+        ChangeNotifierProvider(create: (_) => NotificationProvider()),
+      ],
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: 'Test - OT Info',
+        theme: ThemeData(
+          primaryColor: const Color(0xFF015CC0),
+          fontFamily: 'Roboto',
+          colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF015CC0)),
+          useMaterial3: true,
+        ),
+        // Charge l'OT mock par défaut
+        home: const OTInfoDetailsScreen(),
+      ),
+    );
+  }
+}
+
+/*
+// ---------------- MAIN ORIGINAL (COMMENTÉ) ----------------
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -48,6 +105,7 @@ void main() async {
     ),
   );
 }
+*/
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
