@@ -253,16 +253,21 @@ class ListItemCustom extends StatelessWidget {
     return GestureDetector(
       onTap: onTap ?? () => _showOverlay(context),
       child: Container(
-        padding: spacing.custom(horizontal: 10, vertical: 10),
+        padding: spacing.custom(
+          horizontal: 10,
+          vertical: 10,
+        ), // ✅ Padding responsive
         decoration: BoxDecoration(
           color: backgroundColor ?? AppTheme.secondaryColor,
-          borderRadius: BorderRadius.circular(responsive.spacing(20)),
+          borderRadius: BorderRadius.circular(
+            responsive.spacing(20),
+          ), // ✅ Border radius responsive
         ),
         // ✅ MODIFIÉ: Supprimer le Stack et les badges
         child: Row(
           children: [
             _buildIcon(responsive, spacing),
-            SizedBox(width: spacing.medium),
+            SizedBox(width: spacing.medium), // ✅ Espacement responsive
             Expanded(child: _buildContent(responsive, spacing)),
             _buildArrowIcon(responsive),
           ],
@@ -273,15 +278,17 @@ class ListItemCustom extends StatelessWidget {
 
   Widget _buildIcon(Responsive responsive, ResponsiveSpacing spacing) {
     return Container(
-      width: responsive.spacing(56),
-      height: responsive.spacing(56),
+      width: responsive.spacing(56), // ✅ Largeur responsive
+      height: responsive.spacing(56), // ✅ Hauteur responsive
       decoration: BoxDecoration(
         color: iconColor ?? AppTheme.primaryColor,
-        borderRadius: BorderRadius.circular(responsive.spacing(15)),
+        borderRadius: BorderRadius.circular(
+          responsive.spacing(15),
+        ), // ✅ Border radius responsive
       ),
       child: Icon(
         icon,
-        size: responsive.iconSize(30),
+        size: responsive.iconSize(30), // ✅ Icône responsive
         color: backgroundColor ?? AppTheme.secondaryColor,
       ),
     );
@@ -306,10 +313,10 @@ class ListItemCustom extends StatelessWidget {
             fontFamily: AppTheme.fontMontserrat,
             fontWeight: FontWeight.w600,
             color: textColor ?? AppTheme.primaryColor,
-            fontSize: responsive.sp(18),
+            fontSize: responsive.sp(18), // ✅ Texte responsive
           ),
         ),
-        SizedBox(width: spacing.small),
+        SizedBox(width: spacing.small), // ✅ Espacement responsive
         Expanded(
           child: Text(
             primaryText,
@@ -317,7 +324,7 @@ class ListItemCustom extends StatelessWidget {
               fontFamily: AppTheme.fontMontserrat,
               fontWeight: FontWeight.w600,
               color: textColor ?? AppTheme.primaryColor,
-              fontSize: responsive.sp(18),
+              fontSize: responsive.sp(18), // ✅ Texte responsive
             ),
             overflow: TextOverflow.ellipsis,
           ),
@@ -373,10 +380,10 @@ class ListItemCustom extends StatelessWidget {
               fontFamily: AppTheme.fontRoboto,
               fontWeight: FontWeight.normal,
               color: textColor ?? AppTheme.primaryColor,
-              fontSize: responsive.sp(12),
+              fontSize: responsive.sp(12), // ✅ Texte responsive
             ),
           ),
-          SizedBox(width: spacing.small),
+          SizedBox(width: spacing.small), // ✅ Espacement responsive
           Expanded(
             child: Text(
               field.value,
@@ -384,7 +391,7 @@ class ListItemCustom extends StatelessWidget {
                 fontFamily: AppTheme.fontRoboto,
                 fontWeight: FontWeight.normal,
                 color: textColor ?? AppTheme.primaryColor,
-                fontSize: responsive.sp(12),
+                fontSize: responsive.sp(12), // ✅ Texte responsive
               ),
               overflow: TextOverflow.ellipsis,
             ),
@@ -400,7 +407,7 @@ class ListItemCustom extends StatelessWidget {
       alignment: Alignment.center,
       child: Icon(
         Icons.arrow_back,
-        size: responsive.iconSize(24),
+        size: responsive.iconSize(24), // ✅ Icône responsive
         color: textColor ?? AppTheme.primaryColor,
       ),
     );

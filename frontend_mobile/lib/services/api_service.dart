@@ -23,8 +23,8 @@ class ApiService {
   String? _authToken;
 
   static const Duration _timeout = Duration(seconds: 60);
-  // static const int _defaultPort = 8000;
-  // static const String _macIpAddress = '192.168.1.102';
+  //static const int _defaultPort = 8000;
+  //static const String _macIpAddress = '10.0.0.2';
   static const int _defaultPort = 9099;
   static const String _macIpAddress = 'domtec.senelec.sn';
 
@@ -53,7 +53,7 @@ class ApiService {
   String _buildBaseUrl(int port) {
     if (kIsWeb) return 'http://localhost:$port';
     return 'https://$_macIpAddress:$port';
-    // return 'http://$_macIpAddress:$port';
+    //return 'http://$_macIpAddress:$port';
   }
 
   Future<void> _loadAuthToken() async {

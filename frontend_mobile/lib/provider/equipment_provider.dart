@@ -311,6 +311,10 @@ class EquipmentProvider extends ChangeNotifier {
     );
 
     await _equipmentService.addEquipment(equipment);
+    // final created = await _equipmentService.addEquipment(equipment);
+    // final createdMap = _toMap(created);
+    // _allEquipments.insert(0, createdMap);
+    // _equipments.insert(0, createdMap);
     notifyListeners();
   }
 
