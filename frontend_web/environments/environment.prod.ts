@@ -1,7 +1,6 @@
 export const environment = {
     PRODUCTION: true,
-    API_URL: 'http://srv-applisnlcprod:8000/api/v1/web',
-    API_URL_BASE: 'http://srv-applisnlcprod:8000',
-    API_URL_AUTH: 'http://srv-applisnlcprod:8000/api/v1/auth',
-    WEBSOCKET_URL: 'ws://srv-applisnlcprod:8000/ws/notifications'
+    API_URL: 'https://your-azure-api.azurewebsites.net/api',
+    API_URL_AUTH: 'https://your-azure-api.azurewebsites.net/api/v1/auth',
+    WEBSOCKET_URL: 'wss://votre-api-PRODUCTION.com/ws/notifications'
 };

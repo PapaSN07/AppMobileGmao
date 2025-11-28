@@ -88,7 +88,7 @@ export class EquipmentHistory implements OnInit {
     /**
      * ✅ NOUVEAU : Retourne le tag de statut selon l'état de l'équipement
      */
-    getStatusTag(equipment: Equipment): { severity: 'success' | 'secondary' | 'info' | 'warn' | 'danger' | 'contrast'; value: string; icon: string } {
+    getStatusTag(equipment: Equipment): { severity: string; value: string; icon: string } {
         if (equipment.isDeleted) {
             return { 
                 severity: 'danger', 
