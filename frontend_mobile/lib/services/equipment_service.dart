@@ -394,7 +394,7 @@ class EquipmentService {
   }
 
   /// Met à jour un équipement existant avec ses attributs
-    Future<Equipment> updateEquipment(
+  Future<Equipment> updateEquipment(
     int equipmentId,
     Map<String, dynamic> equipmentData,
   ) async {
@@ -403,20 +403,21 @@ class EquipmentService {
         print('🔄 EquipmentService - Mise à jour équipement: $equipmentId');
         print('📊 EquipmentService - Données envoyées: $equipmentData');
       }
-  
+
       final response = await _apiService.post(
         '/api/v1/mobile/equipments/$equipmentId',
         data: equipmentData,
       );
-  
+
       // ✅ CORRECTION: Vérifier le type de réponse avant de traiter
       if (response == null) {
         throw ApiException('Réponse vide du serveur');
       }
-  
+
       // ✅ Vérifier si la réponse est une String HTML au lieu d'un Map JSON
       if (response is String) {
-        if (response.contains('<html>') || response.contains('Request Rejected')) {
+        if (response.contains('<html>') ||
+            response.contains('Request Rejected')) {
           throw ApiException(
             'La requête a été bloquée par le pare-feu du serveur',
             statusCode: 403,
@@ -424,22 +425,66 @@ class EquipmentService {
         }
         throw ApiException('Réponse invalide du serveur (format inattendu)');
       }
-  
+
       // ✅ Vérifier si la réponse est bien un Map
       if (response is! Map<String, dynamic>) {
         throw ApiException(
           'Format de réponse invalide: ${response.runtimeType}',
         );
       }
-  
+
       if (kDebugMode) {
         print('✅ EquipmentService - Équipement mis à jour avec succès');
       }
-  
+
       return Equipment.fromJson(response['equipment']);
     } catch (e) {
       if (kDebugMode) {
         print('❌ EquipmentService - Erreur updateEquipment: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// Récupère l'historique des équipements créés par un prestataire
+  Future<List<HistoriqueEquipment>> getHistoriqueEquipmentPrestataire({
+    required String username,
+  }) async {
+    try {
+      if (kDebugMode) {
+        print('🔄 EquipmentService - Récupération historique pour: $username');
+      }
+
+      final response = await _apiService.get(
+        '$__prefixURI/historique/$username',
+      );
+
+      if (response == null) {
+        throw ApiException('Réponse vide du serveur');
+      }
+
+      if (response is! Map<String, dynamic>) {
+        throw ApiException(
+          'Format de réponse invalide: ${response.runtimeType}',
+        );
+      }
+
+      final List<dynamic> data = response['historique'] ?? [];
+      final historique =
+          data.map((json) => HistoriqueEquipment.fromJson(json)).toList();
+
+      if (kDebugMode) {
+        print(
+          '✅ EquipmentService - ${historique.length} équipements récupérés',
+        );
+      }
+
+      return historique;
+    } catch (e) {
+      if (kDebugMode) {
+        print(
+          '❌ EquipmentService - Erreur getHistoriqueEquipmentPrestataire: $e',
+        );
       }
       rethrow;
     }

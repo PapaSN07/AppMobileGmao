@@ -20,6 +20,7 @@ from app.routers.mobile.entity_router import entity_router
 from app.routers.web.entity_router import entity_router_web
 from app.routers.mobile.unite_router import unite_router
 from app.routers.mobile.zone_router import zone_router
+from app.routers.mobile.ot_router import ot_router
 from app.core.cache import cache
 from app.routers.websocket_router import router_ws
 from app.routers.notification_router import router_notification
@@ -35,22 +36,28 @@ async def lifespan(app: FastAPI):
     # Démarrage
     logger.info("🚀 Démarrage Equipment Mobile API")
     
+    # Test DB Principale
     try:
         with get_main_session() as session:
             db_connected = test_connection(session)
             if db_connected:
-                logger.info(f"✅ DB Principale Oracle: {'OK' if db_connected else 'KO'}")
+                logger.info("✅ DB Principale Oracle: OK")
             else:
-                logger.error("❌ Connexion à la DB Principale Oracle échouée")
-                raise Exception("Connexion à la DB Principale Oracle échouée")
+                logger.warning("⚠️ DB Principale Oracle: KO (mode dégradé)")
+    except Exception as e:
+        logger.warning(f"⚠️ DB Principale Oracle: KO - {str(e)[:100]}")
+    
+    # Test DB Temporaire
+    try:
         with get_temp_session() as session:
             db_connected = test_connection(session)
-            if not db_connected:
-                logger.error("❌ Connexion à la DB Temporaire MSSQL échouée")
-                raise Exception("Connexion à la DB Temporaire MSSQL échouée")
-            logger.info(f"✅ DB Temporaire MSSQL: {'OK' if db_connected else 'KO'}")
-    except Exception:
-        db_connected = False
+            if db_connected:
+                logger.info("✅ DB Temporaire MSSQL: OK")
+            else:
+                logger.warning("⚠️ DB Temporaire MSSQL: KO (mode dégradé)")
+    except Exception as e:
+        logger.warning(f"⚠️ DB Temporaire MSSQL: KO - {str(e)[:100]}")
+    
     logger.info(f"✅ Redis: {'OK' if cache.is_available else 'KO'}")
     
     yield
@@ -218,6 +225,7 @@ app.include_router(centre_charge_router, prefix=PREFIX_MOBILE)
 app.include_router(famille_router, prefix=PREFIX_MOBILE)
 app.include_router(unite_router, prefix=PREFIX_MOBILE)
 app.include_router(zone_router, prefix=PREFIX_MOBILE)
+app.include_router(ot_router, prefix=PREFIX_MOBILE)
 
 # Inclusion du routeur pour le web
 PREFIX_WEB = "/api/v1/web"
@@ -232,4 +240,9 @@ app.include_router(router_notification, tags=["Notifications"])
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    import os
+
+    host = os.getenv("HOST", "0.0.0.0")
+    port = int(os.getenv("PORT", "8003"))
+
+    uvicorn.run(app, host=host, port=port)

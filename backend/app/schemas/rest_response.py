@@ -1,5 +1,16 @@
 # Fonction utilitaire pour la pagination
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Generic, TypeVar
+from pydantic import BaseModel
+
+T = TypeVar('T')
+
+
+class RestResponse(BaseModel, Generic[T]):
+    """Réponse REST standardisée"""
+    success: bool = True
+    data: Optional[T] = None
+    message: Optional[str] = None
+    error: Optional[str] = None
 
 
 def create_pagination_response(pagination_result: Dict[str, Any]) -> Dict[str, Any]:

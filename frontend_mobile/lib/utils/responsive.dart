@@ -35,10 +35,17 @@ class Responsive {
   }
 
   /// Padding/Margin responsive (utilise le scale pour réduire sur petits écrans)
-  double spacing(double baseSize) => (baseSize * _scale).clamp(2.0, baseSize * 1.6);
+  double spacing(double baseSize) {
+    final scaled = baseSize * _scale;
+    final minValue = 2.0;
+    final maxValue = baseSize * 1.6;
+    // S'assurer que max >= min pour éviter l'erreur clamp
+    return scaled.clamp(minValue, maxValue > minValue ? maxValue : minValue);
+  }
 
   /// Taille d'icône responsive
-  double iconSize(double baseSize) => (baseSize * _scale).clamp(10.0, baseSize * 1.6);
+  double iconSize(double baseSize) =>
+      (baseSize * _scale).clamp(10.0, baseSize * 1.6);
 
   /// Largeur maximale pour le contenu (évite l'étirement sur grands écrans)
   double get maxContentWidth {

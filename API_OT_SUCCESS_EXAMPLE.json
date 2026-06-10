@@ -1,0 +1,78 @@
+{
+  "apiInfo": {
+    "baseUrl": "http://10.101.1.102:8083/ws/rest",
+    "authentication": "Basic Auth (Windows credentials)",
+    "username": "coswinws",
+    "password": "supervisor",
+    "requiredParams": {
+      "dataSource": "coswin",
+      "cwUser": "supervisor"
+    }
+  },
+  "testEndpoint": {
+    "method": "GET",
+    "url": "http://10.101.1.102:8083/ws/rest/workorders/2025248525?cwUser=supervisor&dataSource=coswin",
+    "curl": "curl -u coswinws:supervisor \"http://10.101.1.102:8083/ws/rest/workorders/2025248525?cwUser=supervisor&dataSource=coswin\"",
+    "status": 200,
+    "success": true
+  },
+  "workOrderExample": {
+    "pkWorkOrder": 250096,
+    "wowoCode": 2025248525,
+    "wowoUserStatus": "CL",
+    "wowoEquipment": "LM2701TPAGRI-TONSS",
+    "wowoJob": "CONF_JONC_RETRA_FROI",
+    "wowoJobType": "CORR",
+    "wowoJobClass": "HTA_S",
+    "wowoPriority": "URGENT",
+    "wowoActionEntity": "SDRBD",
+    "wowoRequestEntity": "SDRBD",
+    "wowoScheduleDate": "2025-11-25T00:00:00.000Z",
+    "wowoSupervisor": "6732",
+    "wowoCostcentre": "DD305",
+    "wowoTargetDate": "2025-11-26T01:30:00.000Z",
+    "wowoStartDate": "2025-11-25T23:00:00.000Z",
+    "wowoEndDate": "2025-11-26T01:30:00.000Z",
+    "wowoZone": "DAKAR",
+    "wowoFunction": "UMP-RBD",
+    "wowoFeedbackNote": "<b>#[El Hadji Amadou FALL] - 28-11-2025 11:39:30</b><br>OUVERTURE DE TRANCHEE...",
+    "wowoEquipmentDescription": "TRONCON LIGNE/CABLE POSTE PAGRIK - POSTE TONSSO",
+    "wowoString1": "7341",
+    "wowoString2": "562",
+    "wowoString4": "SENELEC",
+    "mdjbDescription": "CONFECTION DE JONCTION A FROID SUITE DEFAUT",
+    "mdusDescription": "CLOTURE",
+    "wowoActionEntityDescription": "SERVICE DE DISTRIBUTION RUFISQUE BARGNY DIAMNIADIO",
+    "wowoCostcentreDescription": "Service Distribution Rufisque Bargny Diamniadio",
+    "wowoJobClassDescription": "TRAVAUX SUR RESEAU SOUTERRAIN HTA",
+    "wowoJobTypeDescription": "CORRECTIF",
+    "wowoSupervisorDescription": "Mouhamadou Mansour KEBE"
+  },
+  "importantFields": {
+    "code": "wowoCode (integer)",
+    "status": "wowoUserStatus (string)",
+    "equipment": "wowoEquipment (string)",
+    "equipmentDescription": "wowoEquipmentDescription (string)",
+    "job": "wowoJob (string)",
+    "jobDescription": "mdjbDescription (string)",
+    "jobType": "wowoJobType (string)",
+    "priority": "wowoPriority (string)",
+    "supervisor": "wowoSupervisor (string)",
+    "supervisorName": "wowoSupervisorDescription (string)",
+    "zone": "wowoZone (string)",
+    "entity": "wowoActionEntity (string)",
+    "costCentre": "wowoCostcentre (string)",
+    "scheduleDate": "wowoScheduleDate (ISO 8601)",
+    "startDate": "wowoStartDate (ISO 8601)",
+    "endDate": "wowoEndDate (ISO 8601)",
+    "feedback": "wowoFeedbackNote (HTML string)"
+  },
+  "notes": [
+    "L'API nécessite TOUJOURS les paramètres cwUser et dataSource",
+    "Les dates sont au format ISO 8601 (ex: 2025-11-25T00:00:00.000Z)",
+    "Le feedback peut contenir du HTML (<b>, <br>, etc.)",
+    "wowoString1, wowoString2, wowoString4 sont des champs personnalisés SENELEC",
+    "L'authentification se fait via Windows credentials (Basic Auth)",
+    "Pas besoin de session - chaque requête est authentifiée"
+  ]
+}

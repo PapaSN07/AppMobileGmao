@@ -8,7 +8,7 @@ class OTService {
   final CacheService _cacheService = CacheService();
 
   // Configuration
-  static const bool useMockData = false; // Mettre à true pour tester sans API
+  static const bool useMockData = true; // Mettre à true pour tester sans API
   static const String ordersEndpoint = '/ws/rest/api/orders';
 
   OTService(this._apiService);

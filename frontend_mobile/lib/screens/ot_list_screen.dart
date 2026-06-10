@@ -3,7 +3,7 @@ import 'package:appmobilegmao/models/order.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:appmobilegmao/utils/responsive.dart';
 import 'package:appmobilegmao/theme/responsive_spacing.dart';
-import 'package:appmobilegmao/screens/ot_detail_screen.dart';
+import 'package:appmobilegmao/screens/ot_info_details_screen.dart';
 import 'package:appmobilegmao/widgets/custom_app_bar.dart';
 
 /// Écran qui affiche la liste des Ordres de Travail (OT)
@@ -33,40 +33,14 @@ class _OTListScreenState extends State<OTListScreen> {
     ),
   );
 
-  /// Navigation vers l'écran de détails d'un OT spécifique
+  /// Navigation vers l'écran d'informations détaillées d'un OT spécifique
   /// Principe SOLID: Single Responsibility - méthode dédiée à la navigation
   void _navigateToDetail(Order order) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => OTDetailScreen(order: order)),
-    );
-  }
-
-  /// Gestion des actions de la barre de navigation
-  /// Principe SOLID: méthodes séparées pour chaque action
-  void _handleHomeNavigation() {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Navigation vers Accueil')));
-    Navigator.pop(context);
-  }
-
-  void _handleOTNavigation() {
-    // Déjà sur la page OT
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Vous êtes sur la page OT')));
-  }
-
-  void _handleDINavigation() {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Navigation vers DI')));
-  }
-
-  void _handleEquipmentNavigation() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Navigation vers Équipements')),
+      MaterialPageRoute(
+        builder: (context) => OTInfoDetailsScreen(otNumber: order.code),
+      ),
     );
   }
 
@@ -133,15 +107,6 @@ class _OTListScreenState extends State<OTListScreen> {
                 );
               },
             ),
-          ),
-
-          // Barre de navigation en bas de l'écran
-          // Principe SOLID: widget séparé avec responsabilité unique
-          _BottomNavigationBar(
-            onHomePressed: _handleHomeNavigation,
-            onOTPressed: _handleOTNavigation,
-            onDIPressed: _handleDINavigation,
-            onEquipmentPressed: _handleEquipmentNavigation,
           ),
         ],
       ),
@@ -238,22 +203,29 @@ class _OTCard extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'Famille : ${order.famille}',
-                        style: TextStyle(
-                          fontFamily: AppTheme.fontRoboto,
-                          fontWeight: FontWeight.normal,
-                          color: Colors.white,
-                          fontSize: responsive.sp(12),
+                      Flexible(
+                        child: Text(
+                          'Famille : ${order.famille}',
+                          style: TextStyle(
+                            fontFamily: AppTheme.fontRoboto,
+                            fontWeight: FontWeight.normal,
+                            color: Colors.white,
+                            fontSize: responsive.sp(12),
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      Text(
-                        'Zone : ${order.zone}',
-                        style: TextStyle(
-                          fontFamily: AppTheme.fontRoboto,
-                          fontWeight: FontWeight.normal,
-                          color: Colors.white,
-                          fontSize: responsive.sp(12),
+                      SizedBox(width: spacing.tiny),
+                      Flexible(
+                        child: Text(
+                          'Zone : ${order.zone}',
+                          style: TextStyle(
+                            fontFamily: AppTheme.fontRoboto,
+                            fontWeight: FontWeight.normal,
+                            color: Colors.white,
+                            fontSize: responsive.sp(12),
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
@@ -264,142 +236,34 @@ class _OTCard extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'Entité : ${order.entity}',
-                        style: TextStyle(
-                          fontFamily: AppTheme.fontRoboto,
-                          fontWeight: FontWeight.normal,
-                          color: Colors.white,
-                          fontSize: responsive.sp(12),
+                      Flexible(
+                        child: Text(
+                          'Entité : ${order.entity}',
+                          style: TextStyle(
+                            fontFamily: AppTheme.fontRoboto,
+                            fontWeight: FontWeight.normal,
+                            color: Colors.white,
+                            fontSize: responsive.sp(12),
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      Text(
-                        'Center: ${order.centre}',
-                        style: TextStyle(
-                          fontFamily: AppTheme.fontRoboto,
-                          fontWeight: FontWeight.normal,
-                          color: Colors.white,
-                          fontSize: responsive.sp(12),
+                      SizedBox(width: spacing.tiny),
+                      Flexible(
+                        child: Text(
+                          'Center: ${order.centre}',
+                          style: TextStyle(
+                            fontFamily: AppTheme.fontRoboto,
+                            fontWeight: FontWeight.normal,
+                            color: Colors.white,
+                            fontSize: responsive.sp(12),
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
                   ),
                 ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Widget pour afficher la barre de navigation en bas de l'écran
-/// Principe SOLID: Single Responsibility - Gère uniquement l'affichage de la barre de navigation
-/// Principe DRY: Widget réutilisable séparé du code principal
-class _BottomNavigationBar extends StatelessWidget {
-  final VoidCallback onHomePressed;
-  final VoidCallback onOTPressed;
-  final VoidCallback onDIPressed;
-  final VoidCallback onEquipmentPressed;
-
-  const _BottomNavigationBar({
-    required this.onHomePressed,
-    required this.onOTPressed,
-    required this.onDIPressed,
-    required this.onEquipmentPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final spacing = context.spacing;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: AppTheme.secondaryColor,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      padding: spacing.custom(vertical: 12, horizontal: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          // Bouton Accueil
-          _NavButton(icon: Icons.home, label: 'Accueil', onTap: onHomePressed),
-
-          // Bouton OT (actif)
-          _NavButton(
-            icon: Icons.calendar_today,
-            label: 'OT',
-            onTap: onOTPressed,
-            isActive: true,
-          ),
-
-          // Bouton DI
-          _NavButton(
-            icon: Icons.precision_manufacturing,
-            label: 'DI',
-            onTap: onDIPressed,
-          ),
-
-          // Bouton Équipements
-          _NavButton(
-            icon: Icons.navigation,
-            label: 'Équipements',
-            onTap: onEquipmentPressed,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Widget pour un bouton de navigation individuel
-/// Principe SOLID: Single Responsibility - Gère uniquement l'affichage d'un bouton
-/// Principe DRY: Widget réutilisable pour tous les boutons de navigation
-class _NavButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  final bool isActive;
-
-  const _NavButton({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.isActive = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final responsive = context.responsive;
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: Colors.white, size: responsive.iconSize(24)),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontFamily: AppTheme.fontRoboto,
-                color: Colors.white,
-                fontSize: responsive.sp(12),
-                fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
               ),
             ),
           ],
