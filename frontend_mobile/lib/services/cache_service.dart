@@ -7,21 +7,23 @@ class CacheService {
   static const String _ordersKey = 'cached_orders';
   static const String _lastSyncKey = 'last_sync_time';
 
-  Future<void> cacheOrders(List<WorkOrder> orders) async {
+  Future<void> cacheOrders(List<WorkOrder> orders, {String key = ''}) async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      final storageKey = key.isEmpty ? _ordersKey : '${_ordersKey}_$key';
       final ordersJson = orders.map((o) => o.toJson()).toList();
-      await prefs.setString(_ordersKey, jsonEncode(ordersJson));
+      await prefs.setString(storageKey, jsonEncode(ordersJson));
       await prefs.setString(_lastSyncKey, DateTime.now().toIso8601String());
     } catch (e) {
       debugPrint('Erreur cache: $e');
     }
   }
 
-  Future<List<WorkOrder>?> getCachedOrders() async {
+  Future<List<WorkOrder>?> getCachedOrders({String key = ''}) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final ordersString = prefs.getString(_ordersKey);
+      final storageKey = key.isEmpty ? _ordersKey : '${_ordersKey}_$key';
+      final ordersString = prefs.getString(storageKey);
 
       if (ordersString == null) return null;
 
@@ -73,6 +75,8 @@ class CacheService {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_ordersKey);
+      await prefs.remove('${_ordersKey}_mine');
+      await prefs.remove('${_ordersKey}_all_open');
       await prefs.remove(_lastSyncKey);
     } catch (e) {
       debugPrint('Erreur effacement: $e');

@@ -2,7 +2,7 @@ import 'package:appmobilegmao/models/order.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:appmobilegmao/widgets/list_item.dart';
 import 'package:appmobilegmao/provider/auth_provider.dart';
-import 'package:appmobilegmao/screens/ot_list_screen.dart'; // ✅ Import du nouvel écran
+import 'package:appmobilegmao/screens/ot_work_orders_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:appmobilegmao/utils/responsive.dart';
@@ -139,10 +139,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _boxOne(Responsive responsive, ResponsiveSpacing spacing) {
     return GestureDetector(
       onTap: () {
-        // ✅ Navigation vers la page liste complète des OT
+        // Navigation vers la liste des OT par service
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => const OTListScreen()),
+          MaterialPageRoute(
+            builder: (context) => const OTWorkOrdersScreen(),
+          ),
         );
       },
       child: Container(

@@ -1,8 +1,12 @@
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
-# Charger les variables d'environnement
-load_dotenv('.env.prod')  # Utiliser .env.prod au lieu de .env
+# Charger uniquement la base .env.prod pour le runtime du backend.
+_base_dir = Path(__file__).resolve().parents[2]
+_env_prod_path = _base_dir / '.env.prod'
+
+load_dotenv(_env_prod_path, override=True)
 
 # Configuration de la base de données Oracle
 DB_NAME = os.getenv("DB_NAME")
@@ -47,8 +51,13 @@ DEFAULT_PASSWORD_PRESTATAIRE = os.getenv("DEFAULT_PASSWORD_PRESTATAIRE", "change
 OT_API_BASE_URL = os.getenv("OT_API_BASE_URL", "http://10.101.1.102:8083/ws/rest")
 OT_API_USERNAME = os.getenv("OT_API_USERNAME", "coswinws")
 OT_API_PASSWORD = os.getenv("OT_API_PASSWORD", "supervisor")
-OT_DATASOURCE = os.getenv("OT_DATASOURCE", "coswin")
-OT_CWUSER = os.getenv("OT_CWUSER", "supervisor")
+OT_DATASOURCE = os.getenv("OT_DATASOURCE", "Coswin")
+OT_CWUSER = os.getenv("OT_CWUSER", "coswinws")
+
+# Mode local OT: permet de continuer les tests sans dependre de l'API Coswin.
+OT_USE_LOCAL_MOCK = os.getenv("OT_USE_LOCAL_MOCK", "false").lower() == "true"
+# Chemin optionnel du fichier JSON local OT. Si vide, un chemin par defaut est utilise.
+OT_LOCAL_JSON_PATH = os.getenv("OT_LOCAL_JSON_PATH", "")
 
 # Vérification des variables obligatoires
 required_vars = [DB_USERNAME, DB_PASSWORD, DB_HOST, DB_PORT, TEMP_DB_USERNAME, TEMP_DB_PASSWORD, TEMP_DB_HOST, TEMP_DB_PORT]

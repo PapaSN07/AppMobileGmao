@@ -954,45 +954,77 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
         cachedSelectors,
       );
 
-      final updatedData = {
-        'code':
-            widget.equipmentData!['Code'] ??
-            widget.equipmentData!['code'] ??
-            '',
+      final existingCode =
+          widget.equipmentData!['Code'] ?? widget.equipmentData!['code'] ?? '';
+      final existingFamille =
+          widget.equipmentData!['Famille'] ?? widget.equipmentData!['famille'];
+      final existingZone =
+          widget.equipmentData!['Zone'] ?? widget.equipmentData!['zone'];
+      final existingEntity =
+          widget.equipmentData!['Entité'] ?? widget.equipmentData!['entity'];
+      final existingUnite =
+          widget.equipmentData!['Unité'] ?? widget.equipmentData!['unite'];
+      final existingCentre =
+          widget.equipmentData!['Centre'] ?? widget.equipmentData!['centre'];
+      final existingFeederDescription =
+          widget.equipmentData!['Feeder Description'] ??
+          widget.equipmentData!['feeder_description'];
+
+      final resolvedFamille =
+          SelectorLoader.extractCodeFromTypedSelectors(
+            selectedFamille,
+            'familles',
+            cachedSelectors,
+          ) ??
+          existingFamille;
+      final resolvedZone =
+          SelectorLoader.extractCodeFromTypedSelectors(
+            selectedZone,
+            'zones',
+            cachedSelectors,
+          ) ??
+          existingZone;
+      final resolvedEntity =
+          SelectorLoader.extractCodeFromTypedSelectors(
+            selectedEntity,
+            'entities',
+            cachedSelectors,
+          ) ??
+          existingEntity;
+      final resolvedUnite =
+          SelectorLoader.extractCodeFromTypedSelectors(
+            selectedUnite,
+            'unites',
+            cachedSelectors,
+          ) ??
+          existingUnite;
+      final resolvedCentre =
+          SelectorLoader.extractCodeFromTypedSelectors(
+            selectedCentreCharge,
+            'centreCharges',
+            cachedSelectors,
+          ) ??
+          existingCentre;
+
+      final updatedData = <String, dynamic>{
+        'code': existingCode,
         // ✅ SUPPRIMÉ: 'code_parent': ...
-        'famille': SelectorLoader.extractCodeFromTypedSelectors(
-          selectedFamille,
-          'familles',
-          cachedSelectors,
-        ),
-        'zone': SelectorLoader.extractCodeFromTypedSelectors(
-          selectedZone,
-          'zones',
-          cachedSelectors,
-        ),
-        'entity': SelectorLoader.extractCodeFromTypedSelectors(
-          selectedEntity,
-          'entities',
-          cachedSelectors,
-        ),
-        'unite': SelectorLoader.extractCodeFromTypedSelectors(
-          selectedUnite,
-          'unites',
-          cachedSelectors,
-        ),
-        'centre_charge': SelectorLoader.extractCodeFromTypedSelectors(
-          selectedCentreCharge,
-          'centreCharges',
-          cachedSelectors,
-        ),
+        'famille': resolvedFamille,
+        'zone': resolvedZone,
+        'entity': resolvedEntity,
+        'unite': resolvedUnite,
+        'centre_charge': resolvedCentre,
         'description': _descriptionController.text.trim(),
         'longitude': valueLongitude ?? '12311231',
         'latitude': valueLatitude ?? '12311231',
         'feeder': feederCode,
-        'feeder_description': selectedFeeder,
+        'feeder_description': selectedFeeder ?? existingFeederDescription,
         'created_by': authProvider.currentUser?.username ?? '',
         'attributs': attributs,
       };
+
+      // Eviter d'envoyer des clés nulles quand les sélecteurs ne sont pas chargés.
+      updatedData.removeWhere((_, value) => value == null);
 
       if (kDebugMode) {
         print('📤 $__logName Données de mise à jour:');
@@ -1007,7 +1039,9 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
       await equipmentProvider.updateEquipment(equipmentId, updatedData);
       await Future.delayed(const Duration(milliseconds: 300));
 
-      if (mounted) {
+      // En mode debug sans utilisateur connecté, fetchEquipments recharge
+      // le JSON local et écrase la modification visible en mémoire.
+      if (mounted && authProvider.currentUser?.entity != null) {
         await equipmentProvider.fetchEquipments(forceRefresh: false);
       }
 

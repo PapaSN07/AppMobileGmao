@@ -33,27 +33,36 @@ abstract class Tools extends StatelessWidget {
     final spacing = ResponsiveSpacing.of(context);
 
     return Column(
+      mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text(
-          value,
-          style: TextStyle(
-            fontFamily: AppTheme.fontMontserrat,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.secondaryColor,
-            fontSize: responsive.sp(16), // ✅ Texte responsive
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            value,
+            maxLines: 1,
+            style: TextStyle(
+              fontFamily: AppTheme.fontMontserrat,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.secondaryColor,
+              fontSize: responsive.sp(16), // ✅ Texte responsive
+            ),
           ),
         ),
         SizedBox(
           height: spacing.tiny,
         ), // ✅ Espacement responsive (au lieu de 4)
-        Text(
-          label,
-          style: TextStyle(
-            fontFamily: AppTheme.fontRoboto,
-            fontWeight: FontWeight.normal,
-            color: AppTheme.secondaryColor,
-            fontSize: responsive.sp(14), // ✅ Texte responsive
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            label,
+            maxLines: 1,
+            style: TextStyle(
+              fontFamily: AppTheme.fontRoboto,
+              fontWeight: FontWeight.normal,
+              color: AppTheme.secondaryColor,
+              fontSize: responsive.sp(14), // ✅ Texte responsive
+            ),
           ),
         ),
       ],

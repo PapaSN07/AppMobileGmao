@@ -4,8 +4,7 @@ from sqlalchemy.orm import declarative_base
 from typing import Any, Dict
 from sqlalchemy import Column, String, Text
 
-
-Base = declarative_base()
+from app.db.sqlalchemy.engine import Base
 
 class FamilleModel(Base):
     """Modèle SQLAlchemy pour les familles d'équipements."""

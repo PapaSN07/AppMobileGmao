@@ -23,16 +23,16 @@ class ApiService {
   String? _authToken;
 
   static const Duration _timeout = Duration(seconds: 60);
-  //static const int _defaultPort = 8000;
-  //static const String _macIpAddress = '10.0.0.2';
-  static const int _defaultPort = 9099;
-  static const String _macIpAddress = 'domtec.senelec.sn';
+  static const int _productionPort = 9099;
+  static const String _productionHost = 'domtec.senelec.sn';
+  static const int _localDevPort = 8003;
 
-  get macIpAddress => _macIpAddress;
-  get defaultPort => _defaultPort;
+  String get macIpAddress => _resolveHost();
+  int get defaultPort => _resolvePort();
 
   ApiService({int? port, String? customBaseUrl}) {
-    baseUrl = customBaseUrl ?? _buildBaseUrl(port ?? _defaultPort);
+    final resolvedPort = port ?? _resolvePort();
+    baseUrl = customBaseUrl ?? _buildBaseUrl(resolvedPort);
     _dio = Dio(
       BaseOptions(
         baseUrl: baseUrl,
@@ -50,10 +50,24 @@ class ApiService {
     _loadAuthToken();
   }
 
+  int _resolvePort() {
+    return kReleaseMode ? _productionPort : _localDevPort;
+  }
+
+  String _resolveHost() {
+    if (kReleaseMode) return _productionHost;
+    if (kIsWeb) return 'localhost';
+
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      return '10.0.2.2';
+    }
+
+    return 'localhost';
+  }
+
   String _buildBaseUrl(int port) {
-    if (kIsWeb) return 'http://localhost:$port';
-    return 'https://$_macIpAddress:$port';
-    //return 'http://$_macIpAddress:$port';
+    final scheme = kReleaseMode ? 'https' : 'http';
+    return '$scheme://${_resolveHost()}:$port';
   }
 
   Future<void> _loadAuthToken() async {
@@ -159,9 +173,17 @@ class ApiService {
   Future<dynamic> get(
     String endpoint, {
     Map<String, dynamic>? queryParameters,
+    Duration? timeout,
   }) async {
     try {
-      final r = await _dio.get(endpoint, queryParameters: queryParameters);
+      final options = timeout != null
+          ? Options(receiveTimeout: timeout, sendTimeout: timeout)
+          : null;
+      final r = await _dio.get(
+        endpoint,
+        queryParameters: queryParameters,
+        options: options,
+      );
       return r.data;
     } on DioException catch (e) {
       throw _handleDioError(e, endpoint);

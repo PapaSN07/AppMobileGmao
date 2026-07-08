@@ -158,18 +158,37 @@ async def update_equipment_mobile_partial_endpoint(
             raise HTTPException(status_code=400, detail="Aucun champ à mettre à jour fourni")
         
         # Effectuer la mise à jour
-        success = update_equipment_mobile(equipment_id, updates)
+        success, new_equipment_id = update_equipment_mobile(equipment_id, updates)
         
         if success:
             # Récupérer l'équipement mis à jour pour la réponse
-            updated_equipment = get_equipment_by_id(equipment_id)
+            updated_equipment = get_equipment_by_id(str(new_equipment_id))
+            equipment_payload = (
+                updated_equipment.to_dict()
+                if updated_equipment
+                else {
+                    "id": str(new_equipment_id or equipment_id),
+                    "code": updates.get("code", ""),
+                    "famille": updates.get("famille", ""),
+                    "zone": updates.get("zone", ""),
+                    "entity": updates.get("entity", ""),
+                    "unite": updates.get("unite", ""),
+                    "centreCharge": updates.get("centre_charge", ""),
+                    "description": updates.get("description", ""),
+                    "longitude": updates.get("longitude", ""),
+                    "latitude": updates.get("latitude", ""),
+                    "feeder": updates.get("feeder", ""),
+                    "feederDescription": updates.get("feeder_description", ""),
+                    "attributes": updates.get("attributs", []),
+                }
+            )
             
             return {
                 "status": "success", 
                 "message": f"Équipement modifié avec succès ({len(updates)} champs)",
                 "method": "POST",
                 "updated_fields": list(updates.keys()),
-                "equipment": updated_equipment.to_dict() if updated_equipment else None
+                "equipment": equipment_payload
             }
         else:
             raise HTTPException(status_code=500, detail="Erreur lors de la modification")

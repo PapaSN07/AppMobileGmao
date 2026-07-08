@@ -8,6 +8,9 @@ import 'package:appmobilegmao/provider/equipment_provider.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:appmobilegmao/services/hive_service.dart';
 
+// Auth normale: laisser false pour afficher l'écran de connexion quand nécessaire.
+const bool testMode = true; // Mettre à true pour sauter l'authentification (mode test)
+
 // ---------------- MAIN PRINCIPAL ----------------
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -84,7 +87,7 @@ class MyApp extends StatelessWidget {
           ),
         ),
         // ✅ Commencer par le Splash Screen
-        home: const SplashScreen(),
+        home: SplashScreen(testMode: testMode),
         debugShowCheckedModeBanner: false,
       ),
     );

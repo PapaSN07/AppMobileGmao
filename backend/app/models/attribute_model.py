@@ -13,7 +13,7 @@ class Attribute(Base):
     
     pk_attribute = Column(Integer, primary_key=True, autoincrement=True)
     cwat_index = Column(String(10), nullable=False)
-    cwat_specification = Column(Integer, ForeignKey('dbo.t_specification.pk_specification'))
+    cwat_specification = Column(Integer, ForeignKey('dbo.t_specification.pk_specification', use_alter=True, name='fk_attr_spec'), nullable=True)
     cwat_name = Column(String(255), nullable=False)
     cwat_type = Column(String(50), default='string')
 

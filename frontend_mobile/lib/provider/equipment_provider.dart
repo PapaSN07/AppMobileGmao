@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:appmobilegmao/models/centre_charge.dart';
 import 'package:appmobilegmao/models/entity.dart';
 import 'package:appmobilegmao/models/equipment_attribute.dart';
@@ -8,6 +10,7 @@ import 'package:appmobilegmao/models/unite.dart';
 import 'package:appmobilegmao/models/zone.dart';
 import 'package:appmobilegmao/provider/auth_provider.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:appmobilegmao/services/equipment_service.dart';
 import 'package:appmobilegmao/services/hive_service.dart';
@@ -53,6 +56,8 @@ class EquipmentProvider extends ChangeNotifier {
     if (entity != null && entity.isNotEmpty) {
       _filters['entity'] = entity;
       await fetchEquipments();
+    } else if (kDebugMode) {
+      await _loadDebugLocalEquipments();
     } else {
       _error = 'Utilisateur non connecté ou entité manquante';
       notifyListeners();
@@ -77,6 +82,10 @@ class EquipmentProvider extends ChangeNotifier {
       // ✅ Entity OBLIGATOIRE vient de l'utilisateur connecté
       final entity = _authProvider.currentUser?.entity;
       if (entity == null || entity.isEmpty) {
+        if (kDebugMode) {
+          await _loadDebugLocalEquipments();
+          return;
+        }
         throw Exception(
           'L\'entité est obligatoire pour charger les équipements. Veuillez vous reconnecter.',
         );
@@ -113,6 +122,11 @@ class EquipmentProvider extends ChangeNotifier {
         _allEquipments = response.items.map(_toMap).toList();
         _equipments = List.from(_allEquipments);
 
+        if (_equipments.isEmpty && kDebugMode) {
+          await _loadDebugLocalEquipments(entity: entity);
+          return;
+        }
+
         // Cache uniquement si pas de filtres autres que entity
         if (_filters.length == 1 && _filters.containsKey('entity')) {
           await HiveService.clearBox(HiveService.equipmentBox);
@@ -128,6 +142,15 @@ class EquipmentProvider extends ChangeNotifier {
       }
     } catch (e) {
       _error = e.toString();
+
+      if (kDebugMode) {
+        try {
+          await _loadDebugLocalEquipments(entity: _authProvider.currentUser?.entity);
+          _error = null;
+          return;
+        } catch (_) {}
+      }
+
       // Fallback cache
       final entity = _authProvider.currentUser?.entity;
       if (entity != null && entity.isNotEmpty) {
@@ -143,6 +166,28 @@ class EquipmentProvider extends ChangeNotifier {
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  Future<void> _loadDebugLocalEquipments({String? entity}) async {
+    final raw = await rootBundle.loadString('assets/data/equipment_debug.json');
+    final decoded = jsonDecode(raw) as List<dynamic>;
+
+    var equipments =
+        decoded
+            .whereType<Map<String, dynamic>>()
+            .map(Equipment.fromJson)
+            .toList();
+
+    if (entity != null && entity.isNotEmpty) {
+      equipments = equipments.where((eq) => eq.entity == entity).toList();
+    }
+
+    _allEquipments = equipments.map(_toMap).toList();
+    _equipments = List.from(_allEquipments);
+
+    if (kDebugMode) {
+      print('🧪 EquipmentProvider: fallback debug charge (${_equipments.length} équipements)');
     }
   }
 

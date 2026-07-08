@@ -7,7 +7,10 @@ import 'package:appmobilegmao/utils/responsive.dart';
 import 'package:appmobilegmao/theme/responsive_spacing.dart';
 
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key});
+  // 🔧 Mode test pour sauter l'authentification
+  final bool testMode;
+
+  const SplashScreen({super.key, this.testMode = false});
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
@@ -54,6 +57,29 @@ class _SplashScreenState extends State<SplashScreen>
 
   Future<void> _checkAuthentication() async {
     try {
+      // 🔧 En mode test, ignorer l'authentification
+      if (widget.testMode) {
+        if (mounted) {
+          Navigator.of(context).pushReplacement(
+            PageRouteBuilder(
+              pageBuilder:
+                  (context, animation, secondaryAnimation) =>
+                       MainScreen(),
+              transitionsBuilder: (
+                context,
+                animation,
+                secondaryAnimation,
+                child,
+              ) {
+                return FadeTransition(opacity: animation, child: child);
+              },
+              transitionDuration: const Duration(milliseconds: 500),
+            ),
+          );
+        }
+        return;
+      }
+
       final authService = AuthService();
       final isLoggedIn = authService.isLoggedIn();
 
@@ -64,7 +90,7 @@ class _SplashScreenState extends State<SplashScreen>
             PageRouteBuilder(
               pageBuilder:
                   (context, animation, secondaryAnimation) =>
-                      const MainScreen(),
+                       MainScreen(),
               transitionsBuilder: (
                 context,
                 animation,

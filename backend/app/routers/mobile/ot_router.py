@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, Query
 from typing import List, Optional, Dict, Any
 import logging
 
+
 from app.services.ot_service import ot_service
 from app.schemas.rest_response import RestResponse
 
@@ -21,36 +22,67 @@ ot_router = APIRouter(
 
 @ot_router.get(
     "/workorders",
-    summary="Liste tous les ordres de travail",
-    description="Récupère tous les ordres de travail depuis l'API Coswin",
+    summary="Liste les ordres de travail (filtrés, paginés)",
+    description=(
+        "Récupère une PAGE d'ordres de travail depuis l'API Coswin, filtrée "
+        "par technicien (scope='mine') ou service (scope='service'). "
+        "Retourne les OT de la page + un paginationContext pour charger la "
+        "page suivante via le bouton 'Suivant' dans l'app. "
+        "Les OT clôturés sont exclus par défaut."
+    ),
     response_model=RestResponse
 )
+
 async def get_all_workorders(
-    limit: Optional[int] = Query(None, description="Nombre maximum de résultats"),
-    offset: Optional[int] = Query(None, description="Offset pour la pagination"),
-    status: Optional[str] = Query(None, description="Filtrer par statut (ex: OPEN, CLOSED)")
+    scope: str = Query(
+        "mine",
+        description="'mine' (mes OT, nécessite supervisorCode) | 'service' (nécessite requestEntity) | 'all_open' (tous)",
+    ),
+    supervisorCode: Optional[str] = Query(
+        None, description="Code agent Coswin (wowoSupervisor) — requis si scope='mine'"
+    ),
+    requestEntity: Optional[str] = Query(
+        None, description="Code service Coswin (wowoRequestEntity), ex: 'SDDV', 'DTAE' — requis si scope='service'"
+    ),
+    excludeClosed: bool = Query(
+        True, description="Exclut les OT clôturés (wowoUserStatus == 'CL'). Activé par défaut."
+    ),
+    paginationContext: Optional[str] = Query(
+        None, description="Token Coswin pour charger la page suivante (fourni par la réponse précédente)."
+    ),
 ):
     """
-    Récupère la liste de tous les ordres de travail
-    
+    Récupère UNE PAGE d'ordres de travail filtrée.
+
     **Paramètres:**
-    - limit: Nombre maximum de résultats à retourner
-    - offset: Offset pour la pagination
-    - status: Filtrer par statut de l'ordre de travail
-    
+    - scope='mine' + supervisorCode: "mes OT" (filtre wowoSupervisor)
+    - scope='service' + requestEntity: OT d'un service (filtre wowoRequestEntity)
+    - scope='all_open': tous les OT, sans filtre technicien/service
+    - excludeClosed: exclut les OT au statut "CL" (clôturé), activé par défaut
+    - paginationContext: token renvoyé par la page précédente pour charger la suivante
+
     **Retour:**
-    - Liste des ordres de travail avec leurs détails
+    - workorders: liste des OT de cette page
+    - paginationContext: token pour la page suivante (null si fin)
+    - hasMore: true s'il reste des pages disponibles
     """
     try:
-        workorders = await ot_service.get_all_workorders(
-            limit=limit,
-            offset=offset,
-            status=status
+        result = await ot_service.get_all_workorders(
+            scope=scope,
+            supervisor_code=supervisorCode,
+            request_entity=requestEntity,
+            exclude_closed=excludeClosed,
+            pagination_context=paginationContext,
         )
-        
+
+        workorders = result["workorders"]
         return RestResponse(
             success=True,
-            data=workorders,
+            data={
+                "workorders": workorders,
+                "paginationContext": result["paginationContext"],
+                "hasMore": result["hasMore"],
+            },
             message=f"{len(workorders)} ordres de travail récupérés"
         )
     except HTTPException as e:
@@ -427,3 +459,181 @@ async def get_workforce_by_workorder(code: str):
             status_code=500,
             detail=f"Erreur lors de la récupération de la main d'œuvre: {str(e)}"
         )
+
+
+# ========== OT TAB DATA ==========
+
+@ot_router.get(
+    "/workorders/{code}/actions",
+    summary="Actions d'un ordre de travail",
+    description="Récupère les actions associées à un ordre de travail",
+    response_model=RestResponse,
+)
+async def get_actions_by_workorder(code: str):
+    """Récupère les actions d'un ordre de travail."""
+    try:
+        actions = await ot_service.get_actions_by_workorder(code)
+        return RestResponse(
+            success=True,
+            data=actions,
+            message=f"{len(actions)} actions récupérées pour l'OT {code}"
+        )
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Erreur lors de la récupération des actions de l'OT {code}: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erreur lors de la récupération des actions: {str(e)}"
+        )
+
+
+@ot_router.get(
+    "/workorders/{code}/allocatedemployees",
+    summary="Employés alloués à un ordre de travail",
+    description="Récupère la liste des employés alloués à un ordre de travail",
+    response_model=RestResponse,
+)
+async def get_allocated_employees_by_workorder(code: str):
+    """Récupère les employés alloués d'un ordre de travail."""
+    try:
+        employees = await ot_service.get_allocated_employees_by_workorder(code)
+        return RestResponse(
+            success=True,
+            data=employees,
+            message=f"{len(employees)} employés alloués récupérés pour l'OT {code}"
+        )
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Erreur lors de la récupération des employés alloués de l'OT {code}: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erreur lors de la récupération des employés alloués: {str(e)}"
+        )
+
+
+@ot_router.get(
+    "/workorders/{code}/employeefeedbacks",
+    summary="Commentaires employés d'un ordre de travail",
+    description="Récupère les feedbacks saisis sur un ordre de travail",
+    response_model=RestResponse,
+)
+async def get_employee_feedbacks_by_workorder(code: str):
+    """Récupère les commentaires employés d'un ordre de travail."""
+    try:
+        feedbacks = await ot_service.get_employee_feedbacks_by_workorder(code)
+        return RestResponse(
+            success=True,
+            data=feedbacks,
+            message=f"{len(feedbacks)} commentaires récupérés pour l'OT {code}"
+        )
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Erreur lors de la récupération des commentaires de l'OT {code}: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erreur lors de la récupération des commentaires: {str(e)}"
+        )
+
+
+@ot_router.get(
+    "/workorders/{code}/stockused",
+    summary="Stock utilisé d'un ordre de travail",
+    description="Récupère le stock utilisé sur un ordre de travail",
+    response_model=RestResponse,
+)
+async def get_stock_used_by_workorder(code: str):
+    """Récupère le stock utilisé sur un ordre de travail."""
+    try:
+        stock_used = await ot_service.get_stock_used_by_workorder(code)
+        return RestResponse(
+            success=True,
+            data=stock_used,
+            message=f"{len(stock_used)} lignes de stock récupérées pour l'OT {code}"
+        )
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Erreur lors de la récupération du stock utilisé de l'OT {code}: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erreur lors de la récupération du stock utilisé: {str(e)}"
+        )
+
+
+@ot_router.get(
+    "/workorders/{code}/attributes",
+    summary="Attributs d'un ordre de travail",
+    description="Récupère les attributs associés à un ordre de travail",
+    response_model=RestResponse,
+)
+async def get_attributes_by_workorder(code: str):
+    """Récupère les attributs d'un ordre de travail."""
+    try:
+        attributes = await ot_service.get_attributes_by_workorder(code)
+        return RestResponse(
+            success=True,
+            data=attributes,
+            message=f"{len(attributes)} attributs récupérés pour l'OT {code}"
+        )
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Erreur lors de la récupération des attributs de l'OT {code}: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erreur lors de la récupération des attributs: {str(e)}"
+        )
+
+
+@ot_router.get(
+    "/workorders/{code}/facilitiesused",
+    summary="Moyens utilisés d'un ordre de travail",
+    description="Récupère les moyens (véhicules, outils) affectés à un ordre de travail",
+    response_model=RestResponse,
+)
+async def get_facilities_used_by_workorder(code: str):
+    """Récupère les moyens utilisés d'un ordre de travail."""
+    try:
+        facilities = await ot_service.get_facilities_used_by_workorder(code)
+        return RestResponse(
+            success=True,
+            data=facilities,
+            message=f"{len(facilities)} moyens récupérés pour l'OT {code}"
+        )
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Erreur lors de la récupération des moyens de l'OT {code}: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erreur lors de la récupération des moyens: {str(e)}"
+        )
+
+
+@ot_router.get(
+    "/workorders/{code}/services",
+    summary="Services utilisés d'un ordre de travail",
+    description="Récupère les services (sous-traitance, prestations) associés à un ordre de travail",
+    response_model=RestResponse,
+)
+async def get_services_by_workorder(code: str):
+    """Récupère les services utilisés d'un ordre de travail."""
+    try:
+        services = await ot_service.get_services_used_by_workorder(code)
+        return RestResponse(
+            success=True,
+            data=services,
+            message=f"{len(services)} services récupérés pour l'OT {code}"
+        )
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Erreur lors de la récupération des services de l'OT {code}: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erreur lors de la récupération des services: {str(e)}"
+        )
+

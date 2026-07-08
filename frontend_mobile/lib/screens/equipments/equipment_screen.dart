@@ -177,10 +177,12 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
           left: 20,
           right: 20,
           child: Container(
-            height: 90,
+            constraints: BoxConstraints(
+              minHeight: responsive.spacing(84),
+            ),
             padding: spacing.custom(
               horizontal: 10,
-              vertical: 20,
+              vertical: 12,
             ), // ✅ Padding responsive
             decoration: BoxDecoration(
               color: Colors.white,
@@ -206,7 +208,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                 Tools.buildStatCard(
                   context,
                   equipmentProvider.equipments.length.toString(),
-                  equipmentProvider.equipments.isEmpty
+                  equipmentProvider.equipments.length > 1
                       ? 'Équipements'
                       : 'Équipement'
                 ),

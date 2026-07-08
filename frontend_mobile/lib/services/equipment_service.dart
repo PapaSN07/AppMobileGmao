@@ -437,7 +437,43 @@ class EquipmentService {
         print('✅ EquipmentService - Équipement mis à jour avec succès');
       }
 
-      return Equipment.fromJson(response['equipment']);
+      final equipmentJson = response['equipment'];
+      if (equipmentJson is Map<String, dynamic>) {
+        return Equipment.fromJson(equipmentJson);
+      }
+
+      // Certains endpoints renvoient equipment: null même en succès.
+      // On reconstruit localement l'objet pour maintenir le flux UI/provider.
+        final rawAttributes =
+          equipmentData['attributs'] is List
+            ? (equipmentData['attributs'] as List)
+            : const <dynamic>[];
+        final sanitizedAttributes =
+          rawAttributes
+            .whereType<Map<String, dynamic>>()
+            .map(EquipmentAttribute.fromJson)
+            .toList();
+
+      if (kDebugMode) {
+        print('⚠️ EquipmentService - Réponse sans equipment, fallback local');
+      }
+
+      return Equipment(
+        id: equipmentId.toString(),
+        codeParent: equipmentData['code_parent']?.toString() ?? '',
+        feeder: equipmentData['feeder']?.toString() ?? '',
+        feederDescription: equipmentData['feeder_description']?.toString() ?? '',
+        code: equipmentData['code']?.toString() ?? '',
+        famille: equipmentData['famille']?.toString() ?? '',
+        zone: equipmentData['zone']?.toString() ?? '',
+        entity: equipmentData['entity']?.toString() ?? '',
+        unite: equipmentData['unite']?.toString() ?? '',
+        centreCharge: equipmentData['centre_charge']?.toString() ?? '',
+        description: equipmentData['description']?.toString() ?? '',
+        longitude: equipmentData['longitude']?.toString() ?? '',
+        latitude: equipmentData['latitude']?.toString() ?? '',
+        attributes: sanitizedAttributes,
+      );
     } catch (e) {
       if (kDebugMode) {
         print('❌ EquipmentService - Erreur updateEquipment: $e');

@@ -21,6 +21,8 @@ class ListItemCustom extends StatelessWidget {
   final List<Map<String, dynamic>>? attributes;
   final Widget? topRightBadges; // ✅ Pour l'overlay uniquement
   final Widget? bottomLeftBadge; // ✅ Pour l'overlay uniquement
+  final Widget? statusBadge; // ✅ Pour l'affichage principal
+  final VoidCallback? onDetailsTap; // ✅ Bouton détails pour l'overlay
 
   const ListItemCustom({
     super.key,
@@ -39,6 +41,8 @@ class ListItemCustom extends StatelessWidget {
     this.attributes,
     this.topRightBadges,
     this.bottomLeftBadge,
+    this.statusBadge,
+    this.onDetailsTap,
   });
 
   // Constructeur pour les équipements
@@ -106,6 +110,8 @@ class ListItemCustom extends StatelessWidget {
     required String description,
     String overlayTitle = 'Détails de l\'ordre',
     VoidCallback? onTap,
+    Widget? statusBadge,
+    VoidCallback? onDetailsTap,
   }) {
     return ListItemCustom(
       id: id,
@@ -130,6 +136,8 @@ class ListItemCustom extends StatelessWidget {
       overlayTitle: overlayTitle,
       showModifyButton: false,
       onTap: onTap,
+      statusBadge: statusBadge,
+      onDetailsTap: onDetailsTap,
     );
   }
 
@@ -329,6 +337,10 @@ class ListItemCustom extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
           ),
         ),
+        if (statusBadge != null) ...[
+          SizedBox(width: spacing.small),
+          statusBadge!,
+        ],
       ],
     );
   }
@@ -441,6 +453,7 @@ class ListItemCustom extends StatelessWidget {
             showModifyButton: showModifyButton,
             topBadges: topRightBadges, // ✅ Passé à l'overlay
             statusBadge: bottomLeftBadge, // ✅ Passé à l'overlay
+            onDetailsPressed: onDetailsTap, // ✅ Callback détails
           ),
         );
       },

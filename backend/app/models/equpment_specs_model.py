@@ -4,7 +4,7 @@ from sqlalchemy.orm import declarative_base
 from typing import Any, Dict
 from sqlalchemy import Column, String
 
-Base = declarative_base()
+from app.db.sqlalchemy.engine import Base
 
 class EquipmentSpecs(Base):
     """Modèle SQLAlchemy pour equipment_specs selon EQUIPMENT_SPEC_ADD_QUERY"""

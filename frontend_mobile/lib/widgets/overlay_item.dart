@@ -14,6 +14,7 @@ class OverlayContent extends StatelessWidget {
   final List<Map<String, dynamic>>? moreData;
   final Widget? topBadges;
   final Widget? statusBadge;
+  final VoidCallback? onDetailsPressed; // ✅ Callback pour voir les détails complets
 
   const OverlayContent({
     super.key,
@@ -25,6 +26,7 @@ class OverlayContent extends StatelessWidget {
     this.moreData,
     this.topBadges,
     this.statusBadge,
+    this.onDetailsPressed,
   });
 
   @override
@@ -46,6 +48,7 @@ class OverlayContent extends StatelessWidget {
 
         _buildContent(responsive, spacing),
         if (showModifyButton) _buildActionButtons(context, responsive, spacing),
+        if (onDetailsPressed != null) _buildDetailsButton(context, responsive, spacing),
       ],
     );
   }
@@ -242,6 +245,27 @@ class OverlayContent extends StatelessWidget {
                   ),
             ),
           );
+        },
+      ),
+    );
+  }
+
+  Widget _buildDetailsButton(
+    BuildContext context,
+    Responsive responsive,
+    ResponsiveSpacing spacing,
+  ) {
+    return Container(
+      margin: EdgeInsets.only(top: spacing.large),
+      child: PrimaryButton(
+        text: 'Détails',
+        icon: Icons.info_outline,
+        width: double.infinity,
+        onPressed: () {
+          Navigator.of(context).pop(); // Close overlay dialog
+          if (onDetailsPressed != null) {
+            onDetailsPressed!();
+          }
         },
       ),
     );

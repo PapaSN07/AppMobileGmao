@@ -254,10 +254,6 @@ def update_equipment_mobile(equipment_id: str, updates: Dict[str, Any]) -> tuple
             logger.error("Code équipement obligatoire dans les mises à jour")
             return (False, None)
         
-        if not updates.get('famille'):
-            logger.error("Famille équipement obligatoire dans les mises à jour")
-            return (False, None)
-
         # Utiliser SQLAlchemy session temporaire (MSSQL)
         with get_temp_session() as session:
             try:
@@ -265,46 +261,61 @@ def update_equipment_mobile(equipment_id: str, updates: Dict[str, Any]) -> tuple
                 existing_equipment = session.query(EquipmentClicClac).filter_by(
                     code=updates['code']
                 ).first()
-                
                 if existing_equipment:
-                    logger.error(f"Équipement avec le code {updates['code']} existe déjà dans ClicClac")
-                    return (False, None)
+                    # Mise à jour idempotente: réutiliser la ligne existante au lieu d'échouer.
+                    new_equipment = existing_equipment
+                    logger.info(f"Mise à jour de l'équipement existant ClicClac: {updates['code']}")
+                else:
+                    # 2) Créer l'équipement ClicClac avec les données mises à jour
+                    new_equipment = EquipmentClicClac(
+                        code=updates.get('code', ''),
+                        code_parent=updates.get('code_parent', ''),
+                        famille=updates.get('famille', ''),
+                        zone=updates.get('zone', ''),
+                        entity=updates.get('entity', ''),
+                        unite=updates.get('unite', ''),
+                        centre_charge=updates.get('centre_charge', ''),
+                        description=updates.get('description', ''),
+                        longitude=str(updates.get('longitude')) if updates.get('longitude') else None,
+                        latitude=str(updates.get('latitude')) if updates.get('latitude') else None,
+                        feeder=updates.get('feeder', ''),
+                        feeder_description=updates.get('feeder_description', ''),
+                        info=updates.get('info', ''),
+                        etat=updates.get('etat', 'NORMAL'),
+                        type=updates.get('type', '0. Technique'),
+                        localisation=updates.get('localisation', ''),
+                        niveau=updates.get('niveau', 1),
+                        n_serie=updates.get('n_serie', ''),
+                        created_by=updates.get('created_by', ''),
+                        judged_by=updates.get('judged_by', ''),
+                        is_update=True,
+                        is_new=False,
+                        is_approved=updates.get('is_approved', False)
+                    )
+                    session.add(new_equipment)
+                    session.flush()  # Pour obtenir l'ID auto-généré
 
-                # 2) Créer l'équipement ClicClac avec les données mises à jour
-                new_equipment = EquipmentClicClac(
-                    code=updates.get('code', ''),
-                    code_parent=updates.get('code_parent', ''),
-                    famille=updates.get('famille', ''),
-                    zone=updates.get('zone', ''),
-                    entity=updates.get('entity', ''),
-                    unite=updates.get('unite', ''),
-                    centre_charge=updates.get('centre_charge', ''),
-                    description=updates.get('description', ''),
-                    longitude=str(updates.get('longitude')) if updates.get('longitude') else None,
-                    latitude=str(updates.get('latitude')) if updates.get('latitude') else None,
-                    feeder=updates.get('feeder', ''),
-                    feeder_description=updates.get('feeder_description', ''),
-                    info=updates.get('info', ''),
-                    etat=updates.get('etat', 'NORMAL'),
-                    type=updates.get('type', '0. Technique'),
-                    localisation=updates.get('localisation', ''),
-                    niveau=updates.get('niveau', 1),
-                    n_serie=updates.get('n_serie', ''),
-                    created_by=updates.get('created_by', ''),
-                    judged_by=updates.get('judged_by', ''),
-                    is_update=True,  # Marquer comme mise à jour
-                    is_new=False,
-                    is_approved=updates.get('is_approved', False)
-                )
-                
-                logger.info(f"Création équipement ClicClac avec les données: {updates}")
-                logger.info(f"Détails équipement: {new_equipment}")
-                
-                session.add(new_equipment)
-                session.flush()  # Pour obtenir l'ID auto-généré
+                # Mettre à jour uniquement les champs présents dans la requête.
+                updatable_fields = [
+                    'code_parent', 'famille', 'zone', 'entity', 'unite',
+                    'centre_charge', 'description', 'feeder', 'feeder_description',
+                    'info', 'etat', 'type', 'localisation', 'niveau',
+                    'n_serie', 'created_by', 'judged_by', 'is_approved'
+                ]
+                for field in updatable_fields:
+                    if field in updates and updates[field] is not None:
+                        setattr(new_equipment, field, updates[field])
 
-                equipment_id_new = int(new_equipment.id) if new_equipment.id is not None else None # type: ignore
-                logger.info(f"1) Équipement mis à jour {equipment_id_new} - {new_equipment.code} créé dans ClicClac")
+                if 'longitude' in updates:
+                    new_equipment.longitude = str(updates.get('longitude')) if updates.get('longitude') else None
+                if 'latitude' in updates:
+                    new_equipment.latitude = str(updates.get('latitude')) if updates.get('latitude') else None
+
+                new_equipment.is_update = True
+                new_equipment.is_new = False
+
+                equipment_id_new = int(new_equipment.id) if new_equipment.id is not None else None  # type: ignore
+                logger.info(f"1) Équipement mis à jour {equipment_id_new} - {new_equipment.code}")
 
                 # 3) Créer les attributs si fournis dans updates
                 attributes_data = updates.get('attributs', [])
@@ -315,7 +326,7 @@ def update_equipment_mobile(equipment_id: str, updates: Dict[str, Any]) -> tuple
                         try:
                             new_attribute = AttributeClicClac(
                                 specification=attr_data.get('specification', ''),
-                                famille=updates['famille'],
+                                famille=updates.get('famille') or new_equipment.famille or '',
                                 indx=int(attr_data.get('index', 0)),
                                 attribute_name=attr_data.get('name', ''),
                                 value=str(attr_data.get('value', '')) if attr_data.get('value') is not None else None,

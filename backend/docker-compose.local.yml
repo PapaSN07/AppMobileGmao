@@ -1,0 +1,62 @@
+version: '3.8'
+
+# ─────────────────────────────────────────────────────
+#  Environnement LOCAL de développement
+#  SQL Server 2022 + Redis
+#
+#  Démarrage :
+#    docker-compose -f docker-compose.local.yml up -d
+#
+#  Connexion SSMS / Azure Data Studio :
+#    Server  : localhost,1433
+#    Login   : sa
+#    Password: GmaoLocal123!
+# ─────────────────────────────────────────────────────
+
+services:
+
+  sqlserver-local:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: gmao_sqlserver_local
+    environment:
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: "GmaoLocal123!"
+      MSSQL_PID: "Developer"
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+      - ./scripts/sql:/scripts/sql          # Scripts d'init montés dans le conteneur
+    networks:
+      - gmao-local
+    healthcheck:
+      test:
+        - CMD
+        - /opt/mssql-tools18/bin/sqlcmd
+        - -S
+        - localhost
+        - -U
+        - sa
+        - -P
+        - GmaoLocal123!
+        - -Q
+        - SELECT 1
+        - -No
+      interval: 15s
+      retries: 10
+      start_period: 40s
+
+  redis-local:
+    image: redis:7-alpine
+    container_name: gmao_redis_local
+    ports:
+      - "6379:6379"
+    networks:
+      - gmao-local
+
+volumes:
+  sqlserver_data:
+
+networks:
+  gmao-local:
+    driver: bridge

@@ -17,7 +17,9 @@ import 'package:appmobilegmao/utils/responsive.dart';
 import 'package:appmobilegmao/theme/responsive_spacing.dart';
 
 class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
+  final int initialIndex;
+
+  const MainScreen({super.key, this.initialIndex = 0});
 
   @override
   State<MainScreen> createState() => _MainScreenState();
@@ -30,6 +32,7 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
+    _currentIndex = widget.initialIndex;
   }
 
   // Retirer _pages initialisé dans initState, au lieu de ça : getter dynamique
@@ -453,9 +456,11 @@ class _MainScreenState extends State<MainScreen> {
 
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
+        final pages = _pages;
+        final effectiveIndex = _currentIndex.clamp(0, pages.length - 1);
         final appBarBgColor = _getAppBarBackgroundColor();
         final textColor = _getAppBarTextColor();
-        final isHome = authProvider.isPrestataire ? false : _currentIndex == 0;
+        final isHome = authProvider.isPrestataire ? false : effectiveIndex == 0;
 
         return Scaffold(
           key: _scaffoldKey,
@@ -472,7 +477,7 @@ class _MainScreenState extends State<MainScreen> {
                   right: 16,
                 ), // ✅ AJOUTÉ: Espacement à gauche
                 child: Text(
-                  _getPageTitle(_currentIndex),
+                  _getPageTitle(effectiveIndex),
                   style: TextStyle(
                     fontFamily: AppTheme.fontMontserrat,
                     fontWeight: FontWeight.w600,
@@ -521,9 +526,9 @@ class _MainScreenState extends State<MainScreen> {
               ],
             ),
           ),
-          body: IndexedStack(index: _currentIndex, children: _pages),
+          body: IndexedStack(index: effectiveIndex, children: pages),
           bottomNavigationBar: CustomBottomNavigationBar(
-            currentIndex: _currentIndex,
+            currentIndex: effectiveIndex,
             onTap: _onTabTapped,
           ),
         );

@@ -6,6 +6,9 @@ import 'package:appmobilegmao/theme/responsive_spacing.dart';
 import 'package:appmobilegmao/widgets/custom_bottom_navigation_bar.dart';
 import 'package:appmobilegmao/widgets/custom_app_bar.dart';
 import 'package:appmobilegmao/screens/fichier_lie_screen.dart';
+import 'package:appmobilegmao/screens/main_screen.dart';
+import 'package:appmobilegmao/services/ot_service.dart';
+import 'package:appmobilegmao/services/api_service.dart';
 
 /// Écran qui affiche les détails d'un Ordre de Travail (OT) avec des onglets
 /// Principe SOLID: Single Responsibility - Cet écran gère l'affichage des détails OT avec navigation par onglets
@@ -23,6 +26,7 @@ class _OTDetailScreenState extends State<OTDetailScreen>
     with SingleTickerProviderStateMixin {
   // Contrôleur pour gérer les onglets (TabBar et TabBarView)
   late TabController _tabController;
+  late final OTService _otService;
 
   // Index de l'onglet actuellement sélectionné (0 = Détails, 1 = Mode Opératoire, etc.)
   int _currentTabIndex = 0;
@@ -33,6 +37,7 @@ class _OTDetailScreenState extends State<OTDetailScreen>
   @override
   void initState() {
     super.initState();
+    _otService = OTService(ApiService());
     // Initialisation du TabController avec 6 onglets
     _tabController = TabController(length: 6, vsync: this);
 
@@ -55,10 +60,12 @@ class _OTDetailScreenState extends State<OTDetailScreen>
 
   /// Gestion du clic sur un élément de la barre de navigation en bas
   void _onBottomNavTapped(int index) {
-    setState(() {
-      _currentBottomIndex = index;
-    });
-    // TODO: Ajouter la navigation vers d'autres écrans selon l'index
+    if (index == _currentBottomIndex) return;
+
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => MainScreen(initialIndex: index)),
+      (route) => false,
+    );
   }
 
   @override
@@ -86,16 +93,16 @@ class _OTDetailScreenState extends State<OTDetailScreen>
         children: [
           // Onglet 1: Détails (contenu du formulaire)
           _DetailsTab(order: widget.order),
-          // Onglet 2: Mode Opératoire (vide pour l'instant)
-          _ModeOperatoireTab(),
-          // Onglet 3: Commentaires (vide pour l'instant)
-          _CommentairesTab(),
-          // Onglet 4: Mains d'œuvre (vide pour l'instant)
-          _MainsOeuvreTab(),
-          // Onglet 5: Matériel (vide pour l'instant)
-          _MaterielTab(),
-          // Onglet 6: Sous d'attributs (vide pour l'instant)
-          _SousAttributsTab(),
+          // Onglet 2: Mode Opératoire (actions Coswin)
+          _ModeOperatoireTab(otCode: widget.order.code, otService: _otService),
+          // Onglet 3: Commentaires (employeefeedbacks Coswin)
+          _CommentairesTab(otCode: widget.order.code, otService: _otService),
+          // Onglet 4: Mains d'œuvre (allocatedemployees Coswin)
+          _MainsOeuvreTab(otCode: widget.order.code, otService: _otService),
+          // Onglet 5: Matériel (stockused Coswin)
+          _MaterielTab(otCode: widget.order.code, otService: _otService),
+          // Onglet 6: Sous d'attributs (attributes Coswin)
+          _SousAttributsTab(otCode: widget.order.code, otService: _otService),
         ],
       ),
       // Barre de navigation en bas de l'écran
@@ -125,71 +132,163 @@ class _DetailsTabState extends State<_DetailsTab> {
   @override
   void initState() {
     super.initState();
-    _tauxRealisationController = TextEditingController(text: '0%');
+    try {
+      _tauxRealisationController = TextEditingController(text: '0%');
+    } catch (e) {
+      debugPrint('Erreur initState _DetailsTab: $e');
+    }
   }
 
   @override
   void dispose() {
-    _tauxRealisationController.dispose();
+    try {
+      _tauxRealisationController.dispose();
+    } catch (e) {
+      debugPrint('Erreur dispose _DetailsTab: $e');
+    }
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final spacing = context.spacing;
-
-    return SingleChildScrollView(
-      padding: spacing.custom(horizontal: 20, vertical: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Champ "Taux de réalisation"
-          const Text(
-            'Taux de réalisation',
-            style: TextStyle(
-              color: Color(0xFF015CC0),
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
+    try {
+      return SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildDetailField(
+              label: 'Code OT',
+              value: widget.order.code,
+              spacing: spacing,
             ),
-          ),
-          const SizedBox(height: 4),
-          Container(
-            decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(color: Colors.grey.shade300, width: 1),
+            const SizedBox(height: 16),
+            _buildDetailField(
+              label: 'Description',
+              value: widget.order.description,
+              spacing: spacing,
+            ),
+            const SizedBox(height: 16),
+            _buildDetailField(
+              label: 'Famille / Classe',
+              value: widget.order.famille,
+              spacing: spacing,
+            ),
+            const SizedBox(height: 16),
+            _buildDetailField(
+              label: 'Zone',
+              value: widget.order.zone,
+              spacing: spacing,
+            ),
+            const SizedBox(height: 16),
+            _buildDetailField(
+              label: 'Entité',
+              value: widget.order.entity,
+              spacing: spacing,
+            ),
+            const SizedBox(height: 16),
+            _buildDetailField(
+              label: 'Centre de charge',
+              value: widget.order.centre,
+              spacing: spacing,
+            ),
+            const SizedBox(height: 16),
+            // Champ "Taux de réalisation"
+            const Text(
+              'Taux de réalisation',
+              style: TextStyle(
+                color: Color(0xFF015CC0),
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
               ),
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: _tauxRealisationController,
-                    readOnly: true,
-                    style: const TextStyle(
-                      color: Color(0xFF9E9E9E),
-                      fontSize: 14,
+            const SizedBox(height: 4),
+            Container(
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade300, width: 1),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _tauxRealisationController,
+                      readOnly: true,
+                      style: const TextStyle(
+                        color: Color(0xFF9E9E9E),
+                        fontSize: 14,
+                      ),
+                      decoration: const InputDecoration(
+                        isDense: true,
+                        contentPadding: EdgeInsets.symmetric(vertical: 8),
+                        border: InputBorder.none,
+                      ),
+                      onTap: () => _showTauxRealisationPicker(context),
                     ),
-                    decoration: const InputDecoration(
-                      isDense: true,
-                      contentPadding: EdgeInsets.symmetric(vertical: 8),
-                      border: InputBorder.none,
-                    ),
+                  ),
+                  InkWell(
                     onTap: () => _showTauxRealisationPicker(context),
+                    child: const Icon(
+                      Icons.arrow_drop_down,
+                      color: Color(0xFF015CC0),
+                      size: 24,
+                    ),
                   ),
-                ),
-                InkWell(
-                  onTap: () => _showTauxRealisationPicker(context),
-                  child: const Icon(
-                    Icons.arrow_drop_down,
-                    color: Color(0xFF015CC0),
-                    size: 24,
-                  ),
-                ),
-              ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      debugPrint('Erreur build _DetailsTab: $e');
+      return Center(
+        child: Text('Erreur: $e'),
+      );
+    }
+  }
+
+  /// Widget réutilisable pour afficher un champ de détail en lecture seule
+  Widget _buildDetailField({
+    required String label,
+    required String value,
+    required ResponsiveSpacing spacing,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Color(0xFF015CC0),
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Container(
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: Colors.grey.shade300, width: 1),
             ),
           ),
-        ],
-      ),
+          child: TextFormField(
+            initialValue: value,
+            readOnly: true,
+            style: const TextStyle(
+              color: Color(0xFF9E9E9E),
+              fontSize: 14,
+            ),
+            decoration: const InputDecoration(
+              isDense: true,
+              contentPadding: EdgeInsets.symmetric(vertical: 8),
+              border: InputBorder.none,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -241,239 +340,209 @@ class _DetailsTabState extends State<_DetailsTab> {
 /// Onglet "Mode Opératoire" - Affiche les prérequis et permet d'ajouter des fichiers
 /// Principe SOLID: Single Responsibility - Gère uniquement l'affichage du mode opératoire
 class _ModeOperatoireTab extends StatelessWidget {
-  // Liste des prérequis à afficher (données d'exemple)
-  final List<String> prerequis = [
-    "Charger/recharger/compléter le transport lors le chargement est défectueux",
-    "Décharger/décontaminer les entités contaminées en les prenant en charge",
-    "Débrancher et remonter le transport par les pieds de barre des crochets",
-    "Suivre/assister les travaux de l'excavation",
-    "Retirer et stocker les terres souillées",
-    "Remettre l'escalat dans l'armement et le serrer pour respecter le temps",
-    "Mettre/retirer les cottes ou les tubes de chutes",
-    "Fixer les plaques du chantier en toiture pour dévider ou distribuer les actions",
-    "Installer l'asteiment avec mégaconcontre",
-    "Poser les conduits/bacs pour le remplissage/découpage le couloir",
-    "Localiser les zones de service",
-    "Canaliser et marquer/précondre le défaut ou les chutes",
-    "Dédouler et identifier le tronçon par les exécutions de chauffe selon leurs locations",
-    "Bloquer/remonter et adonner la cote des réglages",
-    "Localiser les marches précisées pour définir les",
-    "Resserrer à vide/coller les trous",
-    "Surveiller et bloquer le refroidissement",
-    "Installer/éteindre la mégaconcontre",
-    "Relancer le poste pour découvrir des têtes",
-  ];
+  final String otCode;
+  final OTService otService;
+
+  const _ModeOperatoireTab({Key? key, required this.otCode, required this.otService}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final spacing = context.spacing;
-    final responsive = context.responsive;
+    return FutureBuilder<List<dynamic>>(
+      future: otService.getOperations(otCode),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator(color: Color(0xFF015CC0)));
+        }
+        if (snapshot.hasError) {
+          return Center(child: Text('Erreur: ${snapshot.error}', style: const TextStyle(color: Colors.red)));
+        }
+        
+        final list = snapshot.data ?? [];
+        final prerequis = list.map((op) => op['opopDescription']?.toString() ?? op['opopJobDescription']?.toString() ?? 'Opération sans description').toList();
+        
+        if (prerequis.isEmpty) {
+          return const Center(
+            child: Text('Aucun mode opératoire pour cet OT', style: TextStyle(fontSize: 16, color: Colors.grey)),
+          );
+        }
 
-    return Column(
-      children: [
-        // Liste scrollable des prérequis
-        Expanded(
-          child: SingleChildScrollView(
-            padding: spacing.custom(horizontal: 20, vertical: 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Titre "Prérequis"
-                Text(
-                  'Prérequis',
-                  style: TextStyle(
-                    fontFamily: AppTheme.fontMontserrat,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.secondaryColor,
-                    fontSize: responsive.sp(18),
-                  ),
-                ),
-                SizedBox(height: spacing.medium),
-
-                // Liste des prérequis avec des puces numérotées
-                ...prerequis.asMap().entries.map((entry) {
-                  int index = entry.key;
-                  String prerequis = entry.value;
-                  return Padding(
-                    padding: spacing.custom(bottom: 12),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Numéro de la puce
-                        Text(
-                          '${index + 1}. ',
-                          style: TextStyle(
-                            fontFamily: AppTheme.fontMontserrat,
-                            fontWeight: FontWeight.w600,
-                            color: AppTheme.secondaryColor,
-                            fontSize: responsive.sp(14),
-                          ),
-                        ),
-                        // Texte du prérequis
-                        Expanded(
-                          child: Text(
-                            prerequis,
-                            style: TextStyle(
-                              fontFamily: AppTheme.fontMontserrat,
-                              fontWeight: FontWeight.normal,
-                              color: AppTheme.secondaryColor,
-                              fontSize: responsive.sp(14),
-                              height: 1.4,
-                            ),
-                          ),
-                        ),
-                      ],
+        return Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Prérequis / Étapes',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF015CC0),
+                        fontSize: 18,
+                      ),
                     ),
-                  );
-                }).toList(),
-              ],
-            ),
-          ),
-        ),
-
-        // Bouton "Retour" en bas avec icône de trombone (ajout de fichiers)
-        _ModeOperatoireBottomButton(),
-      ],
-    );
-  }
-}
-
-/// Widget qui affiche le bouton en bas de l'onglet Mode Opératoire
-/// Principe SOLID: Single Responsibility - Gère uniquement l'affichage du bouton avec icône
-class _ModeOperatoireBottomButton extends StatelessWidget {
-  /// Gestion du clic sur l'icône de trombone (ajout de fichiers)
-  void _handleAttachFile(BuildContext context) {
-    // TODO: Implémenter la logique d'ajout de fichiers
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Ajout de fichiers (à implémenter)')),
-    );
-  }
-
-  /// Gestion du clic sur le bouton Retour
-  void _handleBack(BuildContext context) {
-    Navigator.pop(context);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final spacing = context.spacing;
-    final responsive = context.responsive;
-
-    return Container(
-      color: Colors.white,
-      padding: spacing.custom(horizontal: 20, vertical: 10, bottom: 20),
-      child: Row(
-        children: [
-          // Bouton avec icône de trombone pour ajouter des fichiers
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppTheme.primaryColor, width: 2),
-            ),
-            child: IconButton(
-              icon: Icon(
-                Icons.attach_file,
-                color: AppTheme.primaryColor,
-                size: responsive.iconSize(24),
-              ),
-              onPressed: () => _handleAttachFile(context),
-            ),
-          ),
-          SizedBox(width: spacing.medium),
-
-          // Bouton "Retour" qui prend le reste de l'espace
-          Expanded(
-            child: ElevatedButton(
-              onPressed: () => _handleBack(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(vertical: responsive.hp(1.8)),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                elevation: 2,
-              ),
-              child: Text(
-                'Retour',
-                style: TextStyle(
-                  fontFamily: AppTheme.fontMontserrat,
-                  fontWeight: FontWeight.w600,
-                  fontSize: responsive.sp(16),
+                    const SizedBox(height: 16),
+                    ...prerequis.asMap().entries.map((entry) {
+                      int index = entry.key;
+                      String text = entry.value;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${index + 1}. ',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF015CC0),
+                                fontSize: 14,
+                              ),
+                            ),
+                            Expanded(
+                              child: Text(
+                                text,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.normal,
+                                  color: Color(0xFF015CC0),
+                                  fontSize: 14,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ],
                 ),
               ),
             ),
-          ),
-        ],
-      ),
+          ],
+        );
+      },
     );
   }
 }
 
 /// Onglet "Commentaires" - Affiche les commentaires et les pièces jointes
 /// Principe SOLID: Single Responsibility - Gère uniquement l'affichage des commentaires et pièces jointes
-class _CommentairesTab extends StatefulWidget {
-  @override
-  State<_CommentairesTab> createState() => _CommentairesTabState();
-}
+class _CommentairesTab extends StatelessWidget {
+  final String otCode;
+  final OTService otService;
 
-class _CommentairesTabState extends State<_CommentairesTab> {
-  // Liste dynamique des pièces jointes
-  int nombrePiecesJointes = 3;
-
-  // Méthode pour ajouter une nouvelle pièce jointe
-  void _ajouterPieceJointe() {
-    setState(() {
-      nombrePiecesJointes++;
-    });
-  }
-
-  // Méthode pour supprimer une pièce jointe
-  void _supprimerPieceJointe(int index) {
-    // Ne pas supprimer s'il n'y a qu'une seule pièce jointe
-    if (nombrePiecesJointes > 1) {
-      setState(() {
-        nombrePiecesJointes--;
-      });
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Au moins une pièce jointe doit être présente'),
-        ),
-      );
-    }
-  }
+  const _CommentairesTab({Key? key, required this.otCode, required this.otService}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final spacing = context.spacing;
+    return FutureBuilder<List<dynamic>>(
+      future: otService.getDocuments(otCode),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator(color: Color(0xFF015CC0)));
+        }
+        if (snapshot.hasError) {
+          return Center(child: Text('Erreur: ${snapshot.error}', style: const TextStyle(color: Colors.red)));
+        }
 
-    return Column(
-      children: [
-        // Barre d'actions en haut avec les 3 icônes
-        _CommentairesActionBar(onAddTap: _ajouterPieceJointe),
+        final list = snapshot.data ?? [];
+        if (list.isEmpty) {
+          return const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.comment_bank, size: 64, color: Color(0xFF015CC0)),
+                SizedBox(height: 16),
+                Text('Aucun commentaire pour cet OT', style: TextStyle(fontSize: 16, color: Colors.grey)),
+              ],
+            ),
+          );
+        }
 
-        // Contenu scrollable avec les pièces jointes et leurs commentaires
-        Expanded(
-          child: ListView.builder(
-            padding: spacing.custom(horizontal: 20, vertical: 20),
-            itemCount: nombrePiecesJointes,
-            itemBuilder: (context, index) {
-              return Padding(
-                padding: spacing.custom(bottom: 20),
-                child: _CommentaireWithAttachmentItem(
-                  onDelete: () => _supprimerPieceJointe(index),
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: list.length,
+          itemBuilder: (context, index) {
+            final fb         = list[index];
+            final name       = fb['reemDescription']?.toString() ?? fb['woefEmployee']?.toString() ?? 'Intervenant';
+            final empCode    = fb['reemCode']?.toString() ?? fb['woefEmployee']?.toString() ?? '';
+            final start      = _formatDate(fb['woefStartDate']);
+            final end        = _formatDate(fb['woefEndDate']);
+            final actualH    = fb['woefActualHours']?.toString() ?? '0';
+            final totalH     = fb['woefTotalHours']?.toString() ?? '0';
+            final status     = fb['woefUserStatus']?.toString() ?? '';
+
+            return Card(
+              margin: const EdgeInsets.only(bottom: 10),
+              elevation: 1,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // En-tête : nom + badge statut
+                    Row(
+                      children: [
+                        const Icon(Icons.person, color: Color(0xFF015CC0), size: 18),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '$name ($empCode)',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                          ),
+                        ),
+                        if (status.isNotEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF015CC0).withAlpha(20),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(status,
+                              style: const TextStyle(color: Color(0xFF015CC0), fontSize: 12, fontWeight: FontWeight.bold)),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    // Horaires
+                    Row(
+                      children: [
+                        const Icon(Icons.schedule, size: 14, color: Colors.grey),
+                        const SizedBox(width: 4),
+                        Text(start, style: const TextStyle(fontSize: 12)),
+                        const Text(' → ', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                        Text(end, style: const TextStyle(fontSize: 12)),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    // Heures réalisées / totales
+                    Row(
+                      children: [
+                        const Icon(Icons.timer_outlined, size: 14, color: Color(0xFF015CC0)),
+                        const SizedBox(width: 4),
+                        Text('Réalisé : $actualH h',
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF015CC0))),
+                        const SizedBox(width: 16),
+                        const Icon(Icons.timelapse, size: 14, color: Colors.grey),
+                        const SizedBox(width: 4),
+                        Text('Total : $totalH h', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                      ],
+                    ),
+                  ],
                 ),
-              );
-            },
-          ),
-        ),
-
-        // Bouton "Retour" en bas
-        _CommentairesBottomButton(),
-      ],
+              ),
+            );
+          },
+        );
+      },
     );
+  }
+
+  /// Formate une date ISO Coswin en 'YYYY-MM-DD HH:MM'
+  String _formatDate(dynamic raw) {
+    final s = raw?.toString() ?? '';
+    if (s.isEmpty) return '';
+    return s.replaceAll('T', ' ').substring(0, s.length > 16 ? 16 : s.length);
   }
 }
 
@@ -744,6 +813,11 @@ class _CommentairesBottomButton extends StatelessWidget {
 /// Onglet "Mains d'œuvre" - Affiche la liste des employés affectés avec sous-onglets
 /// Principe SOLID: Single Responsibility - Gère uniquement l'affichage des mains d'œuvre
 class _MainsOeuvreTab extends StatefulWidget {
+  final String otCode;
+  final OTService otService;
+
+  const _MainsOeuvreTab({Key? key, required this.otCode, required this.otService}) : super(key: key);
+
   @override
   State<_MainsOeuvreTab> createState() => _MainsOeuvreTabState();
 }
@@ -751,52 +825,53 @@ class _MainsOeuvreTab extends StatefulWidget {
 class _MainsOeuvreTabState extends State<_MainsOeuvreTab>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-
-  // Liste des employés (données d'exemple inspirées de l'image)
-  final List<Map<String, dynamic>> employes = [
-    {
-      'employe': 'EXTERNE',
-      'description': 'EXTERNE',
-      'dateDebut': '22/10/2025 00:00',
-      'dateFin': '22/10/2025 05:00',
-      'heuresRealisees': '5.00',
-      'etatOT': 'AV',
-      'ressource': 'RDEF',
-      'heuresPlanifiees': '0.00',
-      'heuresJour': '10.00',
-      'taux': 'Taux normal',
-    },
-    {
-      'employe': 'EXTERNE',
-      'description': 'EXTERNE',
-      'dateDebut': '22/10/2025 00:00',
-      'dateFin': '22/10/2025 05:00',
-      'heuresRealisees': '5.00',
-      'etatOT': 'AV',
-      'ressource': 'RDEF',
-      'heuresPlanifiees': '0.00',
-      'heuresJour': '10.00',
-      'taux': 'Taux normal',
-    },
-    {
-      'employe': '5893',
-      'description': 'Mbaye NIANG',
-      'dateDebut': '22/10/2025 00:00',
-      'dateFin': '22/10/2025 05:00',
-      'heuresRealisees': '5.00',
-      'etatOT': 'AV',
-      'ressource': 'ELEC',
-      'heuresPlanifiees': '0.00',
-      'heuresJour': '5.00',
-      'taux': 'Taux normal',
-    },
-  ];
+  List<Map<String, dynamic>> employes = [];
+  bool _isLoading = true;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
-    // Initialisation du TabController avec 2 onglets (index 1 = Employés Alloués)
-    _tabController = TabController(length: 2, vsync: this, initialIndex: 1);
+    _tabController = TabController(length: 2, vsync: this, initialIndex: 0);
+    _loadWorkforce();
+  }
+
+  Future<void> _loadWorkforce() async {
+    try {
+      final list = await widget.otService.getWorkforce(widget.otCode);
+      setState(() {
+        // Champs Coswin employeeAllocatedViewwoEmpAllocView confirmés :
+        // reemDescription (nom), reemCode (code employé), woeaResource,
+        // woeaAllocationDate, woeaPlannedHours, woeaIsPlanned
+        employes = list.map((item) {
+          final isPlanned = item['woeaIsPlanned'] == true ? 'Planifié' : 'Non planifié';
+          return {
+            'employe':          item['reemCode']?.toString() ?? item['woeaEmployee']?.toString() ?? '',
+            'description':      item['reemDescription']?.toString() ?? item['woeaResource']?.toString() ?? 'Intervenant',
+            'dateDebut':        _formatDate(item['woeaAllocationDate']),
+            'dateFin':          '',
+            'heuresRealisees':  '0',
+            'etatOT':           isPlanned,
+            'ressource':        item['woeaResource']?.toString() ?? 'RDEF',
+            'heuresPlanifiees': item['woeaPlannedHours']?.toString() ?? '0',
+            'heuresJour':       '0',
+            'taux':             'Taux normal',
+          };
+        }).toList();
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
+
+  String _formatDate(dynamic raw) {
+    final s = raw?.toString() ?? '';
+    if (s.isEmpty) return '';
+    return s.replaceAll('T', ' ').substring(0, s.length > 16 ? 16 : s.length);
   }
 
   @override
@@ -807,27 +882,23 @@ class _MainsOeuvreTabState extends State<_MainsOeuvreTab>
 
   @override
   Widget build(BuildContext context) {
-    final spacing = context.spacing;
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator(color: Color(0xFF015CC0)));
+    }
+    if (_error != null) {
+      return Center(child: Text('Erreur: $_error', style: const TextStyle(color: Colors.red)));
+    }
 
     return Column(
       children: [
-        // Barre d'actions avec icônes et "Sélect. une action"
         _MainsOeuvreActionBar(),
-
-        // Barre avec "Action" et champ de recherche
         _ActionSearchBar(),
-
-        // Onglets Intervenants / Employés Alloués / Ressources (fonctionnels)
         _MainsOeuvreTabBar(tabController: _tabController),
-
-        // Contenu des onglets
         Expanded(
           child: TabBarView(
             controller: _tabController,
             children: [
-              // Onglet Intervenants
               _IntervenantsContent(employes: employes),
-              // Onglet Employés Alloués (par défaut)
               _EmployesAllouesContent(employes: employes),
             ],
           ),
@@ -923,8 +994,11 @@ class _EmployesAllouesContent extends StatefulWidget {
 class _EmployesAllouesContentState extends State<_EmployesAllouesContent> {
   bool _showDetails = false; // État pour afficher ou masquer les détails
 
-  void _toggleDetails() {
+  Map<String, dynamic>? _selectedEmployee;
+
+  void _toggleDetails([Map<String, dynamic>? employee]) {
     setState(() {
+      _selectedEmployee = employee;
       _showDetails = !_showDetails;
     });
   }
@@ -935,8 +1009,11 @@ class _EmployesAllouesContentState extends State<_EmployesAllouesContent> {
     final responsive = context.responsive;
 
     if (_showDetails) {
-      // Affiche le formulaire de détails
-      return _EmployesAllouesDetailsTab(onBack: _toggleDetails);
+      // Affiche le formulaire de détails avec les données de l'employé sélectionné
+      return _EmployesAllouesDetailsTab(
+        onBack: () => _toggleDetails(null),
+        initialData: _selectedEmployee,
+      );
     }
 
     // Affiche directement le tableau des employés alloués (image fournie)
@@ -947,34 +1024,46 @@ class _EmployesAllouesContentState extends State<_EmployesAllouesContent> {
 
         // Liste scrollable des employés
         Expanded(
-          child: ListView.builder(
-            padding: EdgeInsets.zero,
-            itemCount: widget.employes.length,
-            itemBuilder: (context, index) {
-              final employe = widget.employes[index];
-              return _EmployesAllouesRow(
-                index: index + 1,
-                employe: employe['employe'] ?? '',
-                description: employe['description'] ?? '',
-                dateAllocation: employe['dateDebut'] ?? '',
-                heuresAllouees: employe['heuresRealisees'] ?? '3.00',
-                etatAllocation: employe['etatOT'] ?? '0. Non réalisé',
-                etatRejet: '0. Pas d\'objection',
-                aPermis: '0. Non',
-                numeroSequence: '',
-              );
-            },
-          ),
+          child: widget.employes.isEmpty
+              ? const Center(child: Text('Aucun employé alloué pour cet OT', style: TextStyle(color: Colors.grey)))
+              : ListView.builder(
+                  padding: EdgeInsets.zero,
+                  itemCount: widget.employes.length,
+                  itemBuilder: (context, index) {
+                    final employe = widget.employes[index];
+                    return GestureDetector(
+                      onTap: () => _toggleDetails(employe),
+                      behavior: HitTestBehavior.opaque,
+                      child: _EmployesAllouesRow(
+                        index: index + 1,
+                        employe: employe['employe'] ?? '',
+                        description: employe['description'] ?? '',
+                        dateAllocation: employe['dateDebut'] ?? '',
+                        heuresAllouees: employe['heuresPlanifiees'] ?? '0',
+                        etatAllocation: employe['etatOT'] ?? '0. Non réalisé',
+                        etatRejet: '0. Pas d\'objection',
+                        aPermis: '0. Non',
+                        numeroSequence: '',
+                      ),
+                    );
+                  },
+                ),
         ),
 
-        // Bouton DÉTAILS en bas
+        // Bouton DÉTAILS en bas (ouvre le premier employé s'il y en a)
         Container(
           color: Colors.white,
           padding: spacing.custom(horizontal: 20, vertical: 10, bottom: 20),
           child: SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: _toggleDetails,
+              onPressed: () {
+                if (widget.employes.isNotEmpty) {
+                  _toggleDetails(widget.employes.first);
+                } else {
+                  _toggleDetails(null);
+                }
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF015CC0),
                 foregroundColor: Colors.white,
@@ -1005,8 +1094,9 @@ class _EmployesAllouesContentState extends State<_EmployesAllouesContent> {
 /// Principe DRY: Réutilise les patterns de formulaire existants
 class _EmployesAllouesDetailsTab extends StatefulWidget {
   final VoidCallback onBack;
+  final Map<String, dynamic>? initialData;
 
-  const _EmployesAllouesDetailsTab({required this.onBack});
+  const _EmployesAllouesDetailsTab({required this.onBack, this.initialData});
 
   @override
   State<_EmployesAllouesDetailsTab> createState() =>
@@ -1027,11 +1117,20 @@ class _EmployesAllouesDetailsTabState
   @override
   void initState() {
     super.initState();
-    // Initialisation des contrôleurs avec données d'exemple
-    _employeController = TextEditingController(text: '5893');
-    _dateAllocationController = TextEditingController(text: '22/10/2025 07:30');
-    _heuresAlloueesController = TextEditingController(text: '3.00');
-    _etatAllocationController = TextEditingController(text: '0. Non réalisé');
+    final data = widget.initialData;
+    // Initialisation des contrôleurs avec données réelles si disponibles, sinon exemples
+    _employeController = TextEditingController(
+      text: data != null ? '${data['employe']} - ${data['description']}' : '5893 - SENELEC',
+    );
+    _dateAllocationController = TextEditingController(
+      text: data != null ? (data['dateDebut']?.toString() ?? '') : '22/10/2025 07:30',
+    );
+    _heuresAlloueesController = TextEditingController(
+      text: data != null ? (data['heuresPlanifiees']?.toString() ?? '0') : '3.00',
+    );
+    _etatAllocationController = TextEditingController(
+      text: data != null ? (data['etatOT']?.toString() ?? '0. Non réalisé') : '0. Non réalisé',
+    );
     _etatRejetController = TextEditingController(text: '0. Pas d\'objection');
     _aPermisController = TextEditingController(text: '0. Non');
     _numeroSequenceController = TextEditingController();
@@ -1048,6 +1147,7 @@ class _EmployesAllouesDetailsTabState
     _numeroSequenceController.dispose();
     super.dispose();
   }
+
 
   /// Affiche le sélecteur de date
   Future<void> _selectDate() async {
@@ -1261,20 +1361,23 @@ class _EmployesAllouesActionBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        _ActionIconButton(icon: Icons.arrow_back_ios, onPressed: () {}),
-        _ActionIconButton(icon: Icons.arrow_forward_ios, onPressed: () {}),
-        _ActionIconButton(icon: Icons.add, onPressed: () {}),
-        _ActionIconButton(icon: Icons.copy, onPressed: () {}),
-        _ActionIconButton(icon: Icons.remove_red_eye, onPressed: () {}),
-        _ActionIconButton(icon: Icons.refresh, onPressed: () {}),
-        _ActionIconButton(icon: Icons.delete, onPressed: () {}),
-        _ActionIconButton(icon: Icons.filter_list, onPressed: () {}),
-        _ActionIconButton(icon: Icons.search, onPressed: () {}),
-        _ActionIconButton(icon: Icons.find_replace, onPressed: () {}),
-        _ActionIconButton(icon: Icons.help_outline, onPressed: () {}),
-      ],
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          _ActionIconButton(icon: Icons.arrow_back_ios, onPressed: () {}),
+          _ActionIconButton(icon: Icons.arrow_forward_ios, onPressed: () {}),
+          _ActionIconButton(icon: Icons.add, onPressed: () {}),
+          _ActionIconButton(icon: Icons.copy, onPressed: () {}),
+          _ActionIconButton(icon: Icons.remove_red_eye, onPressed: () {}),
+          _ActionIconButton(icon: Icons.refresh, onPressed: () {}),
+          _ActionIconButton(icon: Icons.delete, onPressed: () {}),
+          _ActionIconButton(icon: Icons.filter_list, onPressed: () {}),
+          _ActionIconButton(icon: Icons.search, onPressed: () {}),
+          _ActionIconButton(icon: Icons.find_replace, onPressed: () {}),
+          _ActionIconButton(icon: Icons.help_outline, onPressed: () {}),
+        ],
+      ),
     );
   }
 }
@@ -1764,25 +1867,34 @@ class _MainsOeuvreActionBar extends StatelessWidget {
       padding: spacing.custom(horizontal: 15, vertical: 8),
       child: Row(
         children: [
-          Text(
-            'Sélect. une action',
-            style: TextStyle(
-              fontFamily: AppTheme.fontMontserrat,
-              fontWeight: FontWeight.w600,
-              color: const Color(0xFF015CC0),
-              fontSize: responsive.sp(14),
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  Text(
+                    'Sélect. une action',
+                    style: TextStyle(
+                      fontFamily: AppTheme.fontMontserrat,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF015CC0),
+                      fontSize: responsive.sp(14),
+                    ),
+                  ),
+                  SizedBox(width: spacing.small),
+                  // Icônes d'action
+                  _ActionIconButton(icon: Icons.add, onPressed: () {}),
+                  _ActionIconButton(icon: Icons.close, onPressed: () {}),
+                  _ActionIconButton(icon: Icons.refresh, onPressed: () {}),
+                  _ActionIconButton(icon: Icons.list, onPressed: () {}),
+                  _ActionIconButton(icon: Icons.grid_view, onPressed: () {}),
+                  _ActionIconButton(icon: Icons.view_column, onPressed: () {}),
+                  _ActionIconButton(icon: Icons.help_outline, onPressed: () {}),
+                ],
+              ),
             ),
           ),
           SizedBox(width: spacing.small),
-          // Icônes d'action
-          _ActionIconButton(icon: Icons.add, onPressed: () {}),
-          _ActionIconButton(icon: Icons.close, onPressed: () {}),
-          _ActionIconButton(icon: Icons.refresh, onPressed: () {}),
-          _ActionIconButton(icon: Icons.list, onPressed: () {}),
-          _ActionIconButton(icon: Icons.grid_view, onPressed: () {}),
-          _ActionIconButton(icon: Icons.view_column, onPressed: () {}),
-          _ActionIconButton(icon: Icons.help_outline, onPressed: () {}),
-          const Spacer(),
           // Icône d'horloge à droite
           Icon(
             Icons.access_time,
@@ -2166,6 +2278,11 @@ class _EmployesAllouesRow extends StatelessWidget {
 /// Principe SOLID: Single Responsibility - Gère uniquement l'affichage du matériel
 /// Principe DRY: Réutilise le pattern TabController comme _MainsOeuvreTab
 class _MaterielTab extends StatefulWidget {
+  final String otCode;
+  final OTService otService;
+
+  const _MaterielTab({Key? key, required this.otCode, required this.otService}) : super(key: key);
+
   @override
   State<_MaterielTab> createState() => _MaterielTabState();
 }
@@ -2199,9 +2316,9 @@ class _MaterielTabState extends State<_MaterielTab>
             controller: _tabController,
             children: [
               // Onglet MOYENS
-              _MoyensTab(),
+              _MoyensTab(otCode: widget.otCode, otService: widget.otService),
               // Onglet STOCK (avec sous-onglets Pièces et Services)
-              _StockTab(),
+              _StockTab(otCode: widget.otCode, otService: widget.otService),
             ],
           ),
         ),
@@ -2248,6 +2365,11 @@ class _MaterielTabBar extends StatelessWidget {
 /// Principe SOLID: Single Responsibility - Gère uniquement l'onglet Stock
 /// Principe DRY: Réutilise le pattern TabController
 class _StockTab extends StatefulWidget {
+  final String otCode;
+  final OTService otService;
+
+  const _StockTab({Key? key, required this.otCode, required this.otService}) : super(key: key);
+
   @override
   State<_StockTab> createState() => _StockTabState();
 }
@@ -2281,9 +2403,9 @@ class _StockTabState extends State<_StockTab>
             controller: _subTabController,
             children: [
               // Sous-onglet PIÈCES
-              _StockPiecesTab(),
+              _StockPiecesTab(otCode: widget.otCode, otService: widget.otService),
               // Sous-onglet SERVICES
-              _StockServicesTab(),
+              _StockServicesTab(otCode: widget.otCode, otService: widget.otService),
             ],
           ),
         ),
@@ -2294,6 +2416,7 @@ class _StockTabState extends State<_StockTab>
 
 /// Widget pour afficher la barre de sous-onglets Stock (Pièces / Services)
 /// Principe SOLID: Single Responsibility - Gère uniquement l'affichage des sous-onglets
+/// Principe DRY: Réutilise le pattern de _StockSubTabBar
 class _StockSubTabBar extends StatelessWidget {
   final TabController tabController;
 
@@ -2325,10 +2448,13 @@ class _StockSubTabBar extends StatelessWidget {
   }
 }
 
-/// Onglet MOYENS - Affiche le tableau des moyens avec formulaire
-/// Principe SOLID: Single Responsibility - Gère uniquement les moyens
-/// Principe DRY: Réutilise le pattern de _EmployesAllouesContent
+/// Onglet MOYENS - Affiche le tableau des moyens depuis les API réelles
 class _MoyensTab extends StatefulWidget {
+  final String otCode;
+  final OTService otService;
+
+  const _MoyensTab({Key? key, required this.otCode, required this.otService}) : super(key: key);
+
   @override
   State<_MoyensTab> createState() => _MoyensTabState();
 }
@@ -2336,49 +2462,19 @@ class _MoyensTab extends StatefulWidget {
 class _MoyensTabState extends State<_MoyensTab> {
   bool _showDetails = false;
 
-  // Liste du matériel (données d'exemple)
-  final List<Map<String, dynamic>> materiels = [
-    {
-      'moyen': 'VEHICULE LEGER',
-      'equipement': 'AA-555-BA',
-      'dateDebut': '22/10/2025 00:00',
-      'tempsUtilise': '7.00',
-    },
-    {
-      'moyen': 'VEHICULE LOURD',
-      'equipement': 'EX 0704',
-      'dateDebut': '22/10/2025 00:00',
-      'tempsUtilise': '1.00',
-    },
-  ];
+  Map<String, dynamic>? _selectedMoyen;
 
-  void _toggleDetails() {
+  void _toggleDetails([Map<String, dynamic>? moyen]) {
     setState(() {
+      _selectedMoyen = moyen;
       _showDetails = !_showDetails;
     });
   }
 
-  /// Calcule la date de fin en ajoutant le temps utilisé à la date de début
-  String _calculateDateFin(String dateDebut, String tempsUtilise) {
-    try {
-      final parts = dateDebut.split(' ');
-      final dateParts = parts[0].split('/');
-
-      if (dateParts.length >= 3) {
-        final day = int.parse(dateParts[0]);
-        final month = int.parse(dateParts[1]);
-        final year = int.parse(dateParts[2]);
-
-        DateTime debut = DateTime(year, month, day);
-        final heures = double.parse(tempsUtilise);
-        final fin = debut.add(Duration(hours: heures.toInt()));
-
-        return '${fin.day.toString().padLeft(2, '0')}/${fin.month.toString().padLeft(2, '0')}/${fin.year} ${fin.hour.toString().padLeft(2, '0')}:00';
-      }
-    } catch (e) {
-      return '00/00/0000 00:00';
-    }
-    return '00/00/0000 00:00';
+  String _formatDate(dynamic raw) {
+    final s = raw?.toString() ?? '';
+    if (s.isEmpty) return '';
+    return s.replaceAll('T', ' ').substring(0, s.length > 16 ? 16 : s.length);
   }
 
   @override
@@ -2386,49 +2482,83 @@ class _MoyensTabState extends State<_MoyensTab> {
     final spacing = context.spacing;
 
     if (_showDetails) {
-      return _MoyensDetailsTab(onBack: _toggleDetails);
+      return _MoyensDetailsTab(
+        onBack: () => _toggleDetails(null),
+        initialData: _selectedMoyen,
+      );
     }
 
-    return Column(
-      children: [
-        // Barre d'icônes d'action
-        _MaterielActionBar(onAddTap: _toggleDetails),
-        SizedBox(height: spacing.small),
-        // En-tête du tableau
-        _MoyensTableHeader(),
-        // Liste des matériels
-        Expanded(
-          child: ListView.builder(
-            itemCount: materiels.length,
-            itemBuilder: (context, index) {
-              final materiel = materiels[index];
-              final dateDebut = materiel['dateDebut'] ?? '22/10/2025 00:00';
-              final tempsUtilise = materiel['tempsUtilise'] ?? '0.00';
-              final dateFin = _calculateDateFin(dateDebut, tempsUtilise);
+    return FutureBuilder<List<dynamic>>(
+      future: widget.otService.getMoyens(widget.otCode),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator(color: Color(0xFF015CC0)));
+        }
+        if (snapshot.hasError) {
+          return Center(child: Text('Erreur: ${snapshot.error}', style: const TextStyle(color: Colors.red)));
+        }
 
-              return _MoyensRow(
-                index: index,
-                moyen: materiel['moyen'] ?? '',
-                equipement: materiel['equipement'] ?? '',
-                dateDebut: dateDebut,
-                tempsUtilise: tempsUtilise,
-                dateFin: dateFin,
-              );
-            },
-          ),
-        ),
-      ],
+        final list = snapshot.data ?? [];
+        if (list.isEmpty) {
+          return const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.commute, size: 64, color: Color(0xFF015CC0)),
+                SizedBox(height: 16),
+                Text('Aucun moyen utilisé pour cet OT', style: TextStyle(fontSize: 16, color: Colors.grey)),
+              ],
+            ),
+          );
+        }
+
+        return Column(
+          children: [
+            _MaterielActionBar(onAddTap: () => _toggleDetails(list.isNotEmpty ? list.first : null)),
+            SizedBox(height: spacing.small),
+            _MoyensTableHeader(),
+            Expanded(
+              child: ListView.builder(
+                itemCount: list.length,
+                itemBuilder: (context, index) {
+                  final item         = list[index];
+                  final moyen        = item['wofuFacility']?.toString() ?? '';
+                  final equipement   = item['wofuEquipment']?.toString() ?? item['reemDescription']?.toString() ?? moyen;
+                  final dateDebut    = _formatDate(item['wofuStartDate'] ?? item['wofuAllocationDate'] ?? '');
+                  final tempsUtilise = item['wofuDuration']?.toString() ?? item['wofuQuantity']?.toString() ?? '0.00';
+                  final dateFin      = _formatDate(item['wofuEndDate'] ?? '');
+
+                  return GestureDetector(
+                    onTap: () => _toggleDetails(item),
+                    behavior: HitTestBehavior.opaque,
+                    child: _MoyensRow(
+                      index: index,
+                      moyen: moyen,
+                      equipement: equipement,
+                      dateDebut: dateDebut.isNotEmpty ? dateDebut : '-',
+                      tempsUtilise: tempsUtilise,
+                      dateFin: dateFin.isNotEmpty ? dateFin : '-',
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
+
 
 /// Widget pour afficher le formulaire de détails des moyens
 /// Principe SOLID: Single Responsibility - Gère uniquement l'affichage du formulaire
 /// Principe DRY: Réutilise _EmployeFormField
 class _MoyensDetailsTab extends StatefulWidget {
   final VoidCallback onBack;
+  final Map<String, dynamic>? initialData;
 
-  const _MoyensDetailsTab({required this.onBack});
+  const _MoyensDetailsTab({required this.onBack, this.initialData});
 
   @override
   State<_MoyensDetailsTab> createState() => _MoyensDetailsTabState();
@@ -2441,14 +2571,27 @@ class _MoyensDetailsTabState extends State<_MoyensDetailsTab> {
   late TextEditingController _tempsUtiliseController;
   late TextEditingController _dateFinController;
 
+  String _formatDate(dynamic raw) {
+    final s = raw?.toString() ?? '';
+    if (s.isEmpty) return '';
+    return s.replaceAll('T', ' ').substring(0, s.length > 16 ? 16 : s.length);
+  }
+
   @override
   void initState() {
     super.initState();
-    _moyenController = TextEditingController();
-    _equipementController = TextEditingController(text: 'AA-555-BA');
-    _dateDebutController = TextEditingController(text: '21/10/2025 07:30');
-    _tempsUtiliseController = TextEditingController(text: '0.00');
-    _dateFinController = TextEditingController(text: '21/10/2025 07:30');
+    final data = widget.initialData;
+    final moyen        = data?['wofuFacility']?.toString() ?? '';
+    final equipement   = data?['reemDescription']?.toString() ?? moyen;
+    final dateDebut    = _formatDate(data?['wofuStartDate'] ?? data?['wofuAllocationDate'] ?? '');
+    final tempsUtilise = data?['wofuDuration']?.toString() ?? data?['wofuQuantity']?.toString() ?? '0.00';
+    final dateFin      = _formatDate(data?['wofuEndDate'] ?? '');
+
+    _moyenController = TextEditingController(text: moyen.isNotEmpty ? moyen : 'VEHICULE');
+    _equipementController = TextEditingController(text: equipement.isNotEmpty ? equipement : 'AA-555-BA');
+    _dateDebutController = TextEditingController(text: dateDebut.isNotEmpty ? dateDebut : '21/10/2025 07:30');
+    _tempsUtiliseController = TextEditingController(text: tempsUtilise);
+    _dateFinController = TextEditingController(text: dateFin.isNotEmpty ? dateFin : '21/10/2025 07:30');
   }
 
   @override
@@ -2758,21 +2901,66 @@ class _MoyensRow extends StatelessWidget {
 /// Principe SOLID: Single Responsibility - Gère uniquement les pièces
 /// Principe DRY: Réutilise le pattern de _MoyensTab
 class _StockPiecesTab extends StatefulWidget {
+  final String otCode;
+  final OTService otService;
+
+  const _StockPiecesTab({Key? key, required this.otCode, required this.otService}) : super(key: key);
+
   @override
   State<_StockPiecesTab> createState() => _StockPiecesTabState();
 }
 
 class _StockPiecesTabState extends State<_StockPiecesTab> {
   bool _showDetails = false;
+  List<Map<String, dynamic>> pieces = [];
+  bool _isLoading = true;
+  String? _error;
 
-  // Liste des pièces (données d'exemple)
-  final List<Map<String, dynamic>> pieces = [
-    {'article': 'HUILE MOTEUR 5W30', 'quantiteUtilise': '2.00'},
-    {'article': 'FILTRE À AIR', 'quantiteUtilise': '1.00'},
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadParts();
+  }
 
-  void _toggleDetails() {
+  Future<void> _loadParts() async {
+    try {
+      final list = await widget.otService.getParts(widget.otCode);
+      setState(() {
+        // Champs Coswin stockUsedViewwoStockView :
+        // wosyPart, wosyDescription, wosyUsedQuantity, wosyUnit, etc.
+        pieces = list.map((item) {
+          final partCode = item['wosyPart']?.toString()
+              ?? item['wosyCode']?.toString()
+              ?? item['stockPart']?.toString()
+              ?? '';
+          final description = item['wosyDescription']?.toString()
+              ?? item['partDescription']?.toString()
+              ?? partCode;
+          final label = description.isNotEmpty ? description : partCode;
+          final qty = item['wosyUsedQuantity']?.toString()
+              ?? item['wosyQuantity']?.toString()
+              ?? item['usedQuantity']?.toString()
+              ?? '0';
+          return {
+            'article': label.isNotEmpty ? label : 'Article',
+            'quantiteUtilise': qty,
+          };
+        }).toList();
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
+
+  Map<String, dynamic>? _selectedPiece;
+
+  void _toggleDetails([Map<String, dynamic>? piece]) {
     setState(() {
+      _selectedPiece = piece;
       _showDetails = !_showDetails;
     });
   }
@@ -2781,30 +2969,43 @@ class _StockPiecesTabState extends State<_StockPiecesTab> {
   Widget build(BuildContext context) {
     final spacing = context.spacing;
 
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator(color: Color(0xFF015CC0)));
+    }
+    if (_error != null) {
+      return Center(child: Text('Erreur: $_error', style: const TextStyle(color: Colors.red)));
+    }
+
     if (_showDetails) {
-      return _StockPiecesDetailsTab(onBack: _toggleDetails);
+      return _StockPiecesDetailsTab(
+        onBack: () => _toggleDetails(null),
+        initialData: _selectedPiece,
+      );
     }
 
     return Column(
       children: [
-        // Barre d'icônes d'action
-        _MaterielActionBar(onAddTap: _toggleDetails),
+        _MaterielActionBar(onAddTap: () => _toggleDetails(pieces.isNotEmpty ? pieces.first : null)),
         SizedBox(height: spacing.small),
-        // En-tête du tableau
         _StockPiecesTableHeader(),
-        // Liste des pièces
         Expanded(
-          child: ListView.builder(
-            itemCount: pieces.length,
-            itemBuilder: (context, index) {
-              final piece = pieces[index];
-              return _StockPiecesRow(
-                index: index,
-                article: piece['article'] ?? '',
-                quantiteUtilise: piece['quantiteUtilise'] ?? '0.00',
-              );
-            },
-          ),
+          child: pieces.isEmpty
+              ? const Center(child: Text('Aucune pièce de rechange pour cet OT', style: TextStyle(color: Colors.grey)))
+              : ListView.builder(
+                  itemCount: pieces.length,
+                  itemBuilder: (context, index) {
+                    final piece = pieces[index];
+                    return GestureDetector(
+                      onTap: () => _toggleDetails(piece),
+                      behavior: HitTestBehavior.opaque,
+                      child: _StockPiecesRow(
+                        index: index,
+                        article: piece['article'] ?? '',
+                        quantiteUtilise: piece['quantiteUtilise'] ?? '0.00',
+                      ),
+                    );
+                  },
+                ),
         ),
       ],
     );
@@ -2816,8 +3017,9 @@ class _StockPiecesTabState extends State<_StockPiecesTab> {
 /// Principe DRY: Réutilise _EmployeFormField
 class _StockPiecesDetailsTab extends StatefulWidget {
   final VoidCallback onBack;
+  final Map<String, dynamic>? initialData;
 
-  const _StockPiecesDetailsTab({required this.onBack});
+  const _StockPiecesDetailsTab({required this.onBack, this.initialData});
 
   @override
   State<_StockPiecesDetailsTab> createState() => _StockPiecesDetailsTabState();
@@ -2830,9 +3032,11 @@ class _StockPiecesDetailsTabState extends State<_StockPiecesDetailsTab> {
   @override
   void initState() {
     super.initState();
-    _articleController = TextEditingController();
-    _quantiteUtiliseController = TextEditingController(text: '0.00');
+    final data = widget.initialData;
+    _articleController = TextEditingController(text: data?['article'] ?? 'PIECE DE RECHANGE');
+    _quantiteUtiliseController = TextEditingController(text: data?['quantiteUtilise'] ?? '0.00');
   }
+
 
   @override
   void dispose() {
@@ -2999,29 +3203,72 @@ class _StockPiecesRow extends StatelessWidget {
 /// Principe SOLID: Single Responsibility - Gère uniquement les services
 /// Principe DRY: Réutilise le pattern de _MoyensTab
 class _StockServicesTab extends StatefulWidget {
+  final String otCode;
+  final OTService otService;
+
+  const _StockServicesTab({required this.otCode, required this.otService});
+
   @override
   State<_StockServicesTab> createState() => _StockServicesTabState();
 }
 
 class _StockServicesTabState extends State<_StockServicesTab> {
   bool _showDetails = false;
+  List<Map<String, dynamic>> services = [];
+  bool _isLoading = true;
+  String? _error;
 
-  // Liste des services (données d'exemple)
-  final List<Map<String, dynamic>> services = [
-    {
-      'article': 'SERVICE MAINTENANCE',
-      'quantitePlanifiee': '10.00',
-      'quantiteConsommee': '8.00',
-    },
-    {
-      'article': 'SERVICE DIAGNOSTIC',
-      'quantitePlanifiee': '5.00',
-      'quantiteConsommee': '5.00',
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadServices();
+  }
 
-  void _toggleDetails() {
+  Future<void> _loadServices() async {
+    try {
+      final list = await widget.otService.getServices(widget.otCode);
+      setState(() {
+        services = list.map((item) {
+          final serviceCode = item['woseService']?.toString()
+              ?? item['woseCode']?.toString()
+              ?? item['service']?.toString()
+              ?? '';
+          final description = item['woseDescription']?.toString()
+              ?? item['serviceDescription']?.toString()
+              ?? serviceCode;
+          final label = description.isNotEmpty ? description : serviceCode;
+          
+          final qtyPlan = item['wosePlannedQuantity']?.toString()
+              ?? item['woseQuantity']?.toString()
+              ?? item['wosePlannedTime']?.toString()
+              ?? '0.00';
+              
+          final qtyCons = item['woseUsedQuantity']?.toString()
+              ?? item['woseActualQuantity']?.toString()
+              ?? item['woseActualTime']?.toString()
+              ?? qtyPlan;
+          
+          return {
+            'article': label.isNotEmpty ? label : 'Service',
+            'quantitePlanifiee': qtyPlan,
+            'quantiteConsommee': qtyCons,
+          };
+        }).toList();
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
+
+  Map<String, dynamic>? _selectedService;
+
+  void _toggleDetails([Map<String, dynamic>? service]) {
     setState(() {
+      _selectedService = service;
       _showDetails = !_showDetails;
     });
   }
@@ -3030,31 +3277,47 @@ class _StockServicesTabState extends State<_StockServicesTab> {
   Widget build(BuildContext context) {
     final spacing = context.spacing;
 
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator(color: Color(0xFF015CC0)));
+    }
+    if (_error != null) {
+      return Center(child: Text('Erreur: $_error', style: const TextStyle(color: Colors.red)));
+    }
+
     if (_showDetails) {
-      return _StockServicesDetailsTab(onBack: _toggleDetails);
+      return _StockServicesDetailsTab(
+        onBack: () => _toggleDetails(null),
+        initialData: _selectedService,
+      );
     }
 
     return Column(
       children: [
         // Barre d'icônes d'action
-        _MaterielActionBar(onAddTap: _toggleDetails),
+        _MaterielActionBar(onAddTap: () => _toggleDetails(services.isNotEmpty ? services.first : null)),
         SizedBox(height: spacing.small),
         // En-tête du tableau
         _StockServicesTableHeader(),
         // Liste des services
         Expanded(
-          child: ListView.builder(
-            itemCount: services.length,
-            itemBuilder: (context, index) {
-              final service = services[index];
-              return _StockServicesRow(
-                index: index,
-                article: service['article'] ?? '',
-                quantitePlanifiee: service['quantitePlanifiee'] ?? '0.00',
-                quantiteConsommee: service['quantiteConsommee'] ?? '0.00',
-              );
-            },
-          ),
+          child: services.isEmpty
+              ? const Center(child: Text('Aucun service pour cet OT', style: TextStyle(color: Colors.grey)))
+              : ListView.builder(
+                  itemCount: services.length,
+                  itemBuilder: (context, index) {
+                    final service = services[index];
+                    return GestureDetector(
+                      onTap: () => _toggleDetails(service),
+                      behavior: HitTestBehavior.opaque,
+                      child: _StockServicesRow(
+                        index: index,
+                        article: service['article'] ?? '',
+                        quantitePlanifiee: service['quantitePlanifiee'] ?? '0.00',
+                        quantiteConsommee: service['quantiteConsommee'] ?? '0.00',
+                      ),
+                    );
+                  },
+                ),
         ),
       ],
     );
@@ -3066,8 +3329,9 @@ class _StockServicesTabState extends State<_StockServicesTab> {
 /// Principe DRY: Réutilise _EmployeFormField
 class _StockServicesDetailsTab extends StatefulWidget {
   final VoidCallback onBack;
+  final Map<String, dynamic>? initialData;
 
-  const _StockServicesDetailsTab({required this.onBack});
+  const _StockServicesDetailsTab({required this.onBack, this.initialData});
 
   @override
   State<_StockServicesDetailsTab> createState() =>
@@ -3082,10 +3346,12 @@ class _StockServicesDetailsTabState extends State<_StockServicesDetailsTab> {
   @override
   void initState() {
     super.initState();
-    _articleController = TextEditingController();
-    _quantitePlanifieeController = TextEditingController(text: '0.00');
-    _quantiteConsommeeController = TextEditingController(text: '0.00');
+    final data = widget.initialData;
+    _articleController = TextEditingController(text: data?['article'] ?? 'SERVICE');
+    _quantitePlanifieeController = TextEditingController(text: data?['quantitePlanifiee'] ?? '0.00');
+    _quantiteConsommeeController = TextEditingController(text: data?['quantiteConsommee'] ?? '0.00');
   }
+
 
   @override
   void dispose() {
@@ -3401,191 +3667,95 @@ class _MaterielRow extends StatelessWidget {
 /// Principe SOLID: Single Responsibility - Gère uniquement l'affichage des attributs
 /// Principe DRY: Réutilise le pattern de _MoyensTab
 class _SousAttributsTab extends StatefulWidget {
+  final String otCode;
+  final OTService otService;
+
+  const _SousAttributsTab({Key? key, required this.otCode, required this.otService}) : super(key: key);
+
   @override
   State<_SousAttributsTab> createState() => _SousAttributsTabState();
 }
 
 class _SousAttributsTabState extends State<_SousAttributsTab> {
-  bool _showDetails = false;
-
-  // Liste des attributs (données d'exemple inspirées de l'image)
-  // Chaque attribut peut avoir 'etat', 'verifie' ou 'attributMaj' coché (un seul à la fois)
-  final List<Map<String, dynamic>> attributs = [
-    {
-      'classeAttribut': '3',
-      'attribut': 'PUISSANCE EN KVA',
-      'valeur': '400',
-      'unite': '',
-      'symboleUnite': '',
-      'valeurEtalon': '',
-      'selectedCheckbox':
-          'etat', // Peut être: 'etat', 'verifie', 'attributMaj', ou null
-    },
-    {
-      'classeAttribut': '3',
-      'attribut': 'Numéro de série',
-      'valeur': '',
-      'unite': '',
-      'symboleUnite': '',
-      'valeurEtalon': '',
-      'selectedCheckbox': null,
-    },
-    {
-      'classeAttribut': '3',
-      'attribut': 'Tension de service US (V)',
-      'valeur': 'B2',
-      'unite': '',
-      'symboleUnite': '',
-      'valeurEtalon': '',
-      'selectedCheckbox': null,
-    },
-    {
-      'classeAttribut': '3',
-      'attribut': 'Type',
-      'valeur': 'H59',
-      'unite': '',
-      'symboleUnite': '',
-      'valeurEtalon': '',
-      'selectedCheckbox': null,
-    },
-    {
-      'classeAttribut': '3',
-      'attribut': 'Tension en KV',
-      'valeur': '30',
-      'unite': '',
-      'symboleUnite': '',
-      'valeurEtalon': '',
-      'selectedCheckbox': null,
-    },
-    {
-      'classeAttribut': '3',
-      'attribut': 'Numéro ordre',
-      'valeur': '',
-      'unite': '',
-      'symboleUnite': '',
-      'valeurEtalon': '',
-      'selectedCheckbox': null,
-    },
-    {
-      'classeAttribut': '3',
-      'attribut': 'Broche',
-      'valeur': 'EMBROCHABLE',
-      'unite': '',
-      'symboleUnite': '',
-      'valeurEtalon': '',
-      'selectedCheckbox': null,
-    },
-    {
-      'classeAttribut': '3',
-      'attribut': 'Position curseur',
-      'valeur': '2',
-      'unite': '',
-      'symboleUnite': '',
-      'valeurEtalon': '',
-      'selectedCheckbox': null,
-    },
-    {
-      'classeAttribut': '3',
-      'attribut': 'Fournisseur',
-      'valeur': '',
-      'unite': '',
-      'symboleUnite': '',
-      'valeurEtalon': '',
-      'selectedCheckbox': null,
-    },
-    {
-      'classeAttribut': '3',
-      'attribut': 'Constructeur',
-      'valeur': '',
-      'unite': '',
-      'symboleUnite': '',
-      'valeurEtalon': '',
-      'selectedCheckbox': null,
-    },
-    {
-      'classeAttribut': '3',
-      'attribut': 'Date mise en service',
-      'valeur': '',
-      'unite': '',
-      'symboleUnite': '',
-      'valeurEtalon': '',
-      'selectedCheckbox': null,
-    },
-    {
-      'classeAttribut': '3',
-      'attribut': 'Année de fabrication',
-      'valeur': '',
-      'unite': '',
-      'symboleUnite': '',
-      'valeurEtalon': '',
-      'selectedCheckbox': null,
-    },
-  ];
-
-  void _toggleDetails() {
-    setState(() {
-      _showDetails = !_showDetails;
-    });
-  }
-
-  /// Change la checkbox sélectionnée pour un attribut donné
-  /// Principe SOLID: Single Responsibility - Gère uniquement le changement d'état
-  void _onCheckboxChanged(int index, String checkboxType) {
-    setState(() {
-      final currentSelection = attributs[index]['selectedCheckbox'];
-      // Si la même checkbox est cliquée, on la décoche
-      if (currentSelection == checkboxType) {
-        attributs[index]['selectedCheckbox'] = null;
-      } else {
-        // Sinon on coche la nouvelle checkbox
-        attributs[index]['selectedCheckbox'] = checkboxType;
-      }
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
-    final spacing = context.spacing;
+    return FutureBuilder<List<dynamic>>(
+      future: widget.otService.getAttributes(widget.otCode),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator(color: Color(0xFF015CC0)));
+        }
+        if (snapshot.hasError) {
+          return Center(child: Text('Erreur: ${snapshot.error}', style: const TextStyle(color: Colors.red)));
+        }
 
-    if (_showDetails) {
-      return _AttributsDetailsTab(onBack: _toggleDetails);
-    }
+        final list = snapshot.data ?? [];
+        if (list.isEmpty) {
+          return const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.list_alt, size: 64, color: Color(0xFF015CC0)),
+                SizedBox(height: 16),
+                Text('Aucun sous-attribut pour cet OT', style: TextStyle(fontSize: 16, color: Colors.grey)),
+              ],
+            ),
+          );
+        }
 
-    return Column(
-      children: [
-        // Barre d'icônes d'action
-        _MaterielActionBar(onAddTap: _toggleDetails),
-        SizedBox(height: spacing.small),
-        // Champs d'en-tête (Numéro de jeu, Créateur, Date)
-        _AttributsHeaderFields(),
-        SizedBox(height: spacing.medium),
-        // En-tête du tableau
-        _AttributsTableHeader(),
-        // Liste des attributs
-        Expanded(
-          child: ListView.builder(
-            itemCount: attributs.length,
-            itemBuilder: (context, index) {
-              final attribut = attributs[index];
-              return _AttributsRow(
-                index: index,
-                classeAttribut: attribut['classeAttribut'] ?? '',
-                attribut: attribut['attribut'] ?? '',
-                valeur: attribut['valeur'] ?? '',
-                unite: attribut['unite'] ?? '',
-                symboleUnite: attribut['symboleUnite'] ?? '',
-                valeurEtalon: attribut['valeurEtalon'] ?? '',
-                selectedCheckbox: attribut['selectedCheckbox'],
-                onCheckboxChanged:
-                    (checkboxType) => _onCheckboxChanged(index, checkboxType),
-              );
-            },
-          ),
-        ),
-      ],
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: list.length,
+          itemBuilder: (context, index) {
+            final attr = list[index];
+            // Champs Coswin : woatName, woatValue, woatDescription, woatUnit, woatUnitSymbol
+            final name       = attr['woatName']?.toString() ?? 'Attribut';
+            final value      = attr['woatValue']?.toString() ?? '';
+            final equipment  = attr['woatDescription']?.toString() ?? '';
+            final unit       = attr['woatUnitSymbol']?.toString() ?? '';
+            final displayVal = value.isNotEmpty ? (unit.isNotEmpty ? '$value $unit' : value) : '-';
+            return Card(
+              margin: const EdgeInsets.only(bottom: 8),
+              elevation: 1,
+              child: ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: const Color(0xFF015CC0).withAlpha(20),
+                  child: Text(
+                    '${index + 1}',
+                    style: const TextStyle(color: Color(0xFF015CC0), fontWeight: FontWeight.bold, fontSize: 12),
+                  ),
+                ),
+                title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                subtitle: equipment.isNotEmpty
+                    ? Text(equipment, style: const TextStyle(fontSize: 11, color: Colors.grey))
+                    : null,
+                trailing: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: value.isNotEmpty
+                        ? const Color(0xFF015CC0).withAlpha(20)
+                        : Colors.grey.withAlpha(30),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    displayVal,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: value.isNotEmpty ? const Color(0xFF015CC0) : Colors.grey,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }
+
+
 
 /// Widget pour afficher les champs d'en-tête des attributs
 /// Principe SOLID: Single Responsibility - Gère uniquement l'affichage des champs d'en-tête

@@ -193,7 +193,7 @@ async def health():
         try:
             with get_main_session() as session:
                 db = SQLAlchemyQueryExecutor(session)
-                db.execute_query("SELECT 1 FROM DUAL")
+                db.execute_query("SELECT 1")
         except Exception as e:
             logger.error(f"DB Health check failed: {e}")
             db_ok = False

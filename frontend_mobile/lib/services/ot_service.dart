@@ -1,15 +1,36 @@
 import 'package:appmobilegmao/services/api_service.dart';
 import 'package:appmobilegmao/services/cache_service.dart';
+import 'package:appmobilegmao/services/hive_service.dart';
 import 'package:appmobilegmao/models/work_order.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+
+/// Résultat d'un appel paginé à la liste des OT.
+class OTPageResult {
+  /// OT de cette page (filtrés selon le scope demandé).
+  final List<WorkOrder> workorders;
+
+  /// Token Coswin pour charger la page suivante (null si fin des données).
+  final String? paginationContext;
+
+  /// True s'il reste des pages disponibles côté Coswin.
+  final bool hasMore;
+
+  const OTPageResult({
+    required this.workorders,
+    required this.paginationContext,
+    required this.hasMore,
+  });
+}
 
 class OTService {
   final ApiService _apiService;
   final CacheService _cacheService = CacheService();
 
   // Configuration
-  static const bool useMockData = true; // Mettre à true pour tester sans API
-  static const String ordersEndpoint = '/ws/rest/api/orders';
+  // Mettre a false pour utiliser l'API backend en temps reel.
+  static const bool useMockData = false;
+  // Endpoint backend FastAPI qui proxy vers Coswin OT.
+  static const String ordersEndpoint = '/api/v1/mobile/ot/workorders';
 
   OTService(this._apiService);
 
@@ -21,12 +42,6 @@ class OTService {
 
   /// Récupérer les détails d'un OT par son numéro
   Future<WorkOrder> getOTDetails(String otNumber) async {
-    // MODE TEST - DONNÉES MOCKÉES
-    if (useMockData) {
-      await Future.delayed(const Duration(seconds: 1));
-      return _getMockOrderDetails();
-    }
-
     // MODE RÉEL AVEC CACHE
     final hasInternet = await hasInternetConnection();
 
@@ -44,7 +59,9 @@ class OTService {
     try {
       print('🌐 Chargement depuis l\'API: $ordersEndpoint/$otNumber');
       final response = await _apiService.get('$ordersEndpoint/$otNumber');
-      final order = WorkOrder.fromJson(response);
+      // Le backend renvoie un wrapper { success, data, message }.
+      final payload = _extractDataPayload(response);
+      final order = WorkOrder.fromJson(payload);
 
       await _cacheService.cacheOrderDetails(otNumber, order);
       print('✅ OT $otNumber sauvegardé en cache');
@@ -61,71 +78,165 @@ class OTService {
     }
   }
 
-  /// Récupérer tous les OT
-  Future<List<WorkOrder>> getAllOrders() async {
-    // MODE TEST
-    if (useMockData) {
-      await Future.delayed(const Duration(seconds: 1));
-      return [_getMockOrderDetails()];
-    }
+  /// Timeout étendu pour la récupération de liste d'OT.
+  /// Chaque page Coswin prend ~9 secondes, on laisse 60s pour une page.
+  static const Duration _listOrdersTimeout = Duration(seconds: 60);
 
-    // MODE RÉEL
+  /// Récupère UNE PAGE d'OT filtrée selon le scope demandé.
+  ///
+  /// - scope='mine': OT du technicien connecté (wowoSupervisor=code).
+  /// - scope='service': OT d'un service Coswin (wowoRequestEntity).
+  /// - scope='all_open': tous les OT non clôturés.
+  ///
+  /// [paginationContext] : token renvoyé par la page précédente pour
+  /// charger la page suivante (null = première page).
+  ///
+  /// Retourne un [OTPageResult] avec les OT, le token pour la page
+  /// suivante, et un booléen [hasMore].
+  Future<OTPageResult> getOrdersPage({
+    String scope = 'mine',
+    String? supervisorCode,
+    String? requestEntity,
+    bool excludeClosed = true,
+    String? paginationContext,
+  }) async {
     final hasInternet = await hasInternetConnection();
 
     if (!hasInternet) {
-      final cachedOrders = await _cacheService.getCachedOrders();
+      // En mode hors-ligne, on renvoie le cache sans pagination.
+      final cacheKey = _cacheKeyFor(scope, supervisorCode, requestEntity);
+      final cachedOrders = await _cacheService.getCachedOrders(key: cacheKey);
       if (cachedOrders != null && cachedOrders.isNotEmpty) {
-        print('📱 ${cachedOrders.length} OT chargés depuis le cache');
-        return cachedOrders;
+        print('📱 ${cachedOrders.length} OT chargés depuis le cache ($cacheKey)');
+        return OTPageResult(
+          workorders: cachedOrders,
+          paginationContext: null,
+          hasMore: false,
+        );
       }
       throw Exception('Aucune connexion Internet et données non disponibles');
     }
 
-    try {
-      print('🌐 Chargement depuis l\'API: $ordersEndpoint');
-      final response = await _apiService.get(ordersEndpoint);
+    final Map<String, dynamic> queryParameters = {
+      'scope': scope,
+      'excludeClosed': excludeClosed,
+    };
 
-      List<WorkOrder> orders;
-      if (response is List) {
-        orders = response.map((json) => WorkOrder.fromJson(json)).toList();
-      } else if (response is Map && response.containsKey('data')) {
-        final List<dynamic> data = response['data'];
-        orders = data.map((json) => WorkOrder.fromJson(json)).toList();
-      } else {
-        throw Exception('Format de réponse inattendu');
+    if (scope == 'mine') {
+      final code = supervisorCode ?? HiveService.getCurrentUser()?.code;
+      if (code == null || code.isEmpty) {
+        throw Exception(
+          'Code agent introuvable pour l\'utilisateur connecté : '
+          'impossible de filtrer "mes OT"',
+        );
+      }
+      queryParameters['supervisorCode'] = code;
+    } else if (scope == 'service') {
+      if (requestEntity == null || requestEntity.isEmpty) {
+        throw Exception('Code service requis (requestEntity) pour scope="service"');
+      }
+      queryParameters['requestEntity'] = requestEntity;
+    }
+
+    if (paginationContext != null) {
+      queryParameters['paginationContext'] = paginationContext;
+    }
+
+    try {
+      print('🌐 Chargement page OT: $ordersEndpoint?$queryParameters');
+      final response = await _apiService.get(
+        ordersEndpoint,
+        queryParameters: queryParameters,
+        timeout: _listOrdersTimeout,
+      );
+      final payload = _extractDataPayload(response);
+
+      // Nouvelle structure : { workorders: [...], paginationContext: "...", hasMore: bool }
+      if (payload is Map<String, dynamic> && payload.containsKey('workorders')) {
+        final rawList = payload['workorders'] as List<dynamic>? ?? [];
+        final orders = rawList.map((json) => WorkOrder.fromJson(json)).toList();
+        final nextContext = payload['paginationContext'] as String?;
+        final hasMore = payload['hasMore'] as bool? ?? false;
+
+        // Met en cache la première page pour l'usage hors-ligne.
+        if (paginationContext == null && orders.isNotEmpty) {
+          final cacheKey = _cacheKeyFor(scope, supervisorCode, requestEntity);
+          await _cacheService.cacheOrders(orders, key: cacheKey);
+        }
+
+        print('✅ ${orders.length} OT reçus, hasMore=$hasMore');
+        return OTPageResult(
+          workorders: orders,
+          paginationContext: nextContext,
+          hasMore: hasMore,
+        );
       }
 
-      await _cacheService.cacheOrders(orders);
-      print('✅ ${orders.length} OT sauvegardés en cache');
+      // Fallback : ancienne structure liste plate (compatibilité).
+      if (payload is List) {
+        final orders = payload.map((json) => WorkOrder.fromJson(json)).toList();
+        return OTPageResult(workorders: orders, paginationContext: null, hasMore: false);
+      }
 
-      return orders;
+      throw Exception('Format de réponse OT inattendu');
     } catch (e) {
       print('❌ Erreur API: $e');
-      final cachedOrders = await _cacheService.getCachedOrders();
+      final cacheKey = _cacheKeyFor(scope, supervisorCode, requestEntity);
+      final cachedOrders = await _cacheService.getCachedOrders(key: cacheKey);
       if (cachedOrders != null && cachedOrders.isNotEmpty) {
-        print(
-          '📱 ${cachedOrders.length} OT chargés depuis le cache (après erreur API)',
+        print('📱 ${cachedOrders.length} OT depuis le cache (après erreur API)');
+        return OTPageResult(
+          workorders: cachedOrders,
+          paginationContext: null,
+          hasMore: false,
         );
-        return cachedOrders;
       }
       throw Exception('Erreur lors de la récupération des OT: $e');
     }
   }
 
-  /// Mettre à jour un OT
-  Future<void> updateOT(int pkWorkOrder, Map<String, dynamic> data) async {
-    if (useMockData) {
-      await Future.delayed(const Duration(seconds: 1));
-      return;
-    }
+  /// Raccourci rétrocompatible : récupère TOUTES les pages et les concatène.
+  /// À n'utiliser que si vous avez besoin de la liste complète en une seule fois
+  /// (ex: ot_info_details_screen). Préférez [getOrdersPage] pour l'affichage paginé.
+  Future<List<WorkOrder>> getAllOrders({
+    String scope = 'mine',
+    String? supervisorCode,
+    String? requestEntity,
+    bool excludeClosed = true,
+  }) async {
+    final result = await getOrdersPage(
+      scope: scope,
+      supervisorCode: supervisorCode,
+      requestEntity: requestEntity,
+      excludeClosed: excludeClosed,
+    );
+    return result.workorders;
+  }
 
+  String _cacheKeyFor(
+    String scope,
+    String? supervisorCode,
+    String? requestEntity,
+  ) {
+    switch (scope) {
+      case 'mine':
+        return 'mine_${supervisorCode ?? HiveService.getCurrentUser()?.code ?? ''}';
+      case 'service':
+        return 'service_${requestEntity ?? ''}';
+      default:
+        return 'all_open';
+    }
+  }
+
+  /// Mettre à jour un OT
+  Future<void> updateOT(int workOrderCode, Map<String, dynamic> data) async {
     final hasInternet = await hasInternetConnection();
     if (!hasInternet) {
       throw Exception('Aucune connexion Internet pour mettre à jour l\'OT');
     }
 
     try {
-      await _apiService.put('$ordersEndpoint/$pkWorkOrder', data: data);
+      await _apiService.put('$ordersEndpoint/$workOrderCode', data: data);
 
       // Invalider le cache
       await _cacheService.clearCache();
@@ -140,6 +251,126 @@ class OTService {
     await _cacheService.clearCache();
   }
 
+  /// Récupérer les opérations (mode opératoire) d'un OT
+  Future<List<dynamic>> getOperations(String otCode) async {
+    final hasInternet = await hasInternetConnection();
+    if (!hasInternet) return [];
+    try {
+      final response = await _apiService.get('$ordersEndpoint/$otCode/operations');
+      final payload = _extractDataPayload(response);
+      return payload is List ? payload : [];
+    } catch (e) {
+      print('❌ Erreur getOperations: $e');
+      return [];
+    }
+  }
+
+  /// Récupérer la main d'œuvre affectée à un OT
+  Future<List<dynamic>> getWorkforce(String otCode) async {
+    final hasInternet = await hasInternetConnection();
+    if (!hasInternet) return [];
+    try {
+      final response = await _apiService.get('$ordersEndpoint/$otCode/workforce');
+      final payload = _extractDataPayload(response);
+      return payload is List ? payload : [];
+    } catch (e) {
+      print('❌ Erreur getWorkforce: $e');
+      return [];
+    }
+  }
+
+  /// Récupérer les pièces de rechange d'un OT
+  Future<List<dynamic>> getParts(String otCode) async {
+    final hasInternet = await hasInternetConnection();
+    if (!hasInternet) return [];
+    try {
+      final response = await _apiService.get('$ordersEndpoint/$otCode/parts');
+      final payload = _extractDataPayload(response);
+      return payload is List ? payload : [];
+    } catch (e) {
+      print('❌ Erreur getParts: $e');
+      return [];
+    }
+  }
+
+  /// Récupérer les services utilisés d'un OT (prestations de services / sous-traitance)
+  Future<List<dynamic>> getServices(String otCode) async {
+    final hasInternet = await hasInternetConnection();
+    if (!hasInternet) return [];
+    try {
+      final response = await _apiService.get('$ordersEndpoint/$otCode/services');
+      final payload = _extractDataPayload(response);
+      return payload is List ? payload : [];
+    } catch (e) {
+      print('❌ Erreur getServices: $e');
+      return [];
+    }
+  }
+
+  /// Récupérer les commentaires/feedbacks d'un OT (employeefeedbacks Coswin)
+  Future<List<dynamic>> getDocuments(String otCode) async {
+    final hasInternet = await hasInternetConnection();
+    if (!hasInternet) return [];
+    try {
+      final response = await _apiService.get('$ordersEndpoint/$otCode/documents');
+      final payload = _extractDataPayload(response);
+      return payload is List ? payload : [];
+    } catch (e) {
+      print('❌ Erreur getDocuments: $e');
+      return [];
+    }
+  }
+
+  /// Récupérer les sous-attributs d'un OT (attributes Coswin)
+  Future<List<dynamic>> getAttributes(String otCode) async {
+    final hasInternet = await hasInternetConnection();
+    if (!hasInternet) return [];
+    try {
+      final response = await _apiService.get('$ordersEndpoint/$otCode/attributes');
+      final payload = _extractDataPayload(response);
+      return payload is List ? payload : [];
+    } catch (e) {
+      print('❌ Erreur getAttributes: $e');
+      return [];
+    }
+  }
+
+  /// Récupérer les moyens d'un OT (facilitiesused Coswin)
+  Future<List<dynamic>> getMoyens(String otCode) async {
+    final hasInternet = await hasInternetConnection();
+    if (!hasInternet) return [];
+    try {
+      final response = await _apiService.get('$ordersEndpoint/$otCode/facilitiesused');
+      final payload = _extractDataPayload(response);
+      return payload is List ? payload : [];
+    } catch (e) {
+      print('❌ Erreur getMoyens: $e');
+      return [];
+    }
+  }
+
+
+  dynamic _extractDataPayload(dynamic response) {
+    // Accepte les reponses directes et les reponses enveloppees par le backend.
+    if (response is Map<String, dynamic>) {
+      // Si le backend renvoie une erreur (ex: 401), propager un message explicite.
+      if (response.containsKey('detail') && response['detail'] != null) {
+        throw Exception(response['detail'].toString());
+      }
+
+      // Certains services renvoient un message d'erreur via "message".
+      if (response.containsKey('message') && !response.containsKey('data')) {
+        throw Exception(response['message'].toString());
+      }
+
+      if (response.containsKey('data')) {
+        return response['data'];
+      }
+    }
+
+    return response;
+  }
+
   /// Obtenir l'état du cache
   Future<Map<String, dynamic>> getCacheStatus() async {
     final lastSync = await _cacheService.getLastSyncTime();
@@ -150,43 +381,5 @@ class OTService {
       'cachedOrdersCount': cachedOrders?.length ?? 0,
       'hasCache': cachedOrders != null && cachedOrders.isNotEmpty,
     };
-  }
-
-  /// Données mockées pour tester sans API
-  WorkOrder _getMockOrderDetails() {
-    return WorkOrder.fromJson({
-      "pkWorkOrder": 248095,
-      "wowoCode": 2025246533,
-      "wowoUserStatus": "CR",
-      "wowoEquipment": "LM0805PAMK5TUR1",
-      "wowoJob": "REMP_FUS-BT+REMP_COS",
-      "wowoJobType": "CORR",
-      "wowoJobClass": "POSTE",
-      "wowoPriority": null,
-      "wowoActionEntity": "SDPG",
-      "wowoRequestEntity": "SDPG",
-      "wowoScheduleDate": "2025-11-11T00:00:00.000Z",
-      "wowoSupervisor": "5286",
-      "wowoCostcentre": "DD304",
-      "wowoTargetDate": "2025-11-11T00:00:00.000Z",
-      "wowoStartDate": null,
-      "wowoEndDate": null,
-      "wowoJobRequest": "DI00054258",
-      "wowoZone": "DAKAR",
-      "wowoFunction": "UMP-PG",
-      "wowoFeedbackNote": "Poste sale, poussiéreux et mal éclairée",
-      "wowoEquipmentDescription": "POSTE PA MALIKA 5 - TABLEAU BT 1",
-      "wowoActionEntityDescription":
-          "SERVICE DE DISTRIBUTION PIKINE GUEDIAWAYE",
-      "wowoCostcentreDescription": "Service Distribution Pikine Guédiawaye",
-      "wowoJobClassDescription": "TRAVAUX SUR LES EQUIPEMENTS DU POSTE HTA/BT",
-      "wowoJobTypeDescription": "CORRECTIF",
-      "wowoSupervisorDescription": "ERIC DASYLVA CARDOZO",
-      "mdjbDescription": "REMPLACEMENT FUSIBLE BT ET REMPLACEMENT COSSE",
-      "wowoString1": "7318",
-      "wowoString2": "523",
-      "wowoString4": "SENELEC",
-      "mdusDescription": "CREE",
-    });
   }
 }
