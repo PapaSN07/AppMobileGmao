@@ -9,6 +9,7 @@ import 'package:appmobilegmao/screens/fichier_lie_screen.dart';
 import 'package:appmobilegmao/screens/main_screen.dart';
 import 'package:appmobilegmao/services/ot_service.dart';
 import 'package:appmobilegmao/services/api_service.dart';
+import 'package:appmobilegmao/services/hive_service.dart';
 
 /// Écran qui affiche les détails d'un Ordre de Travail (OT) avec des onglets
 /// Principe SOLID: Single Responsibility - Cet écran gère l'affichage des détails OT avec navigation par onglets
@@ -133,7 +134,10 @@ class _DetailsTabState extends State<_DetailsTab> {
   void initState() {
     super.initState();
     try {
-      _tauxRealisationController = TextEditingController(text: '0%');
+      final rate = widget.order.completionRate;
+      _tauxRealisationController = TextEditingController(
+        text: rate != null ? '${rate.toInt()}%' : '0%',
+      );
     } catch (e) {
       debugPrint('Erreur initState _DetailsTab: $e');
     }
@@ -225,15 +229,6 @@ class _DetailsTabState extends State<_DetailsTab> {
                         contentPadding: EdgeInsets.symmetric(vertical: 8),
                         border: InputBorder.none,
                       ),
-                      onTap: () => _showTauxRealisationPicker(context),
-                    ),
-                  ),
-                  InkWell(
-                    onTap: () => _showTauxRealisationPicker(context),
-                    child: const Icon(
-                      Icons.arrow_drop_down,
-                      color: Color(0xFF015CC0),
-                      size: 24,
                     ),
                   ),
                 ],
@@ -339,53 +334,235 @@ class _DetailsTabState extends State<_DetailsTab> {
 
 /// Onglet "Mode Opératoire" - Affiche les prérequis et permet d'ajouter des fichiers
 /// Principe SOLID: Single Responsibility - Gère uniquement l'affichage du mode opératoire
-class _ModeOperatoireTab extends StatelessWidget {
+class _ModeOperatoireTab extends StatefulWidget {
   final String otCode;
   final OTService otService;
 
   const _ModeOperatoireTab({Key? key, required this.otCode, required this.otService}) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<List<dynamic>>(
-      future: otService.getOperations(otCode),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator(color: Color(0xFF015CC0)));
-        }
-        if (snapshot.hasError) {
-          return Center(child: Text('Erreur: ${snapshot.error}', style: const TextStyle(color: Colors.red)));
-        }
-        
-        final list = snapshot.data ?? [];
-        final prerequis = list.map((op) => op['opopDescription']?.toString() ?? op['opopJobDescription']?.toString() ?? 'Opération sans description').toList();
-        
-        if (prerequis.isEmpty) {
-          return const Center(
-            child: Text('Aucun mode opératoire pour cet OT', style: TextStyle(fontSize: 16, color: Colors.grey)),
-          );
-        }
+  State<_ModeOperatoireTab> createState() => _ModeOperatoireTabState();
+}
 
-        return Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Prérequis / Étapes',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF015CC0),
-                        fontSize: 18,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    ...prerequis.asMap().entries.map((entry) {
+class _ModeOperatoireTabState extends State<_ModeOperatoireTab> {
+  List<dynamic> _operations = [];
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadOperations();
+  }
+
+  Future<void> _loadOperations() async {
+    setState(() => _isLoading = true);
+    try {
+      final list = await widget.otService.getOperations(widget.otCode);
+      setState(() {
+        _operations = list;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _showAddDialog() {
+    final formKey = GlobalKey<FormState>();
+    final descController = TextEditingController();
+    final durationController = TextEditingController(text: '1.0');
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Ajouter une étape'),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: descController,
+                  decoration: const InputDecoration(labelText: 'Description de l\'opération *'),
+                  validator: (v) => v == null || v.isEmpty ? 'Champ requis' : null,
+                ),
+                TextFormField(
+                  controller: durationController,
+                  decoration: const InputDecoration(labelText: 'Durée (heures)'),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Annuler'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (formKey.currentState?.validate() ?? false) {
+                  Navigator.pop(context);
+                  try {
+                    await widget.otService.createOperation(widget.otCode, {
+                      "operationCode": "OP_${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}",
+                      "opopDescription": descController.text.trim(),
+                      "opopJobDescription": descController.text.trim(),
+                      "duration": double.tryParse(durationController.text) ?? 1.0,
+                    });
+                    _loadOperations();
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+                  }
+                }
+              },
+              child: const Text('Ajouter'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showEditDialog(Map<String, dynamic> op) {
+    final formKey = GlobalKey<FormState>();
+    final desc = op['opopDescription']?.toString() ?? op['opopJobDescription']?.toString() ?? '';
+    final descController = TextEditingController(text: desc);
+    final durationController = TextEditingController(text: (op['duration'] ?? 1.0).toString());
+    final pk = op['pkOperation'] as int;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Modifier l\'étape'),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: descController,
+                  decoration: const InputDecoration(labelText: 'Description de l\'opération *'),
+                  validator: (v) => v == null || v.isEmpty ? 'Champ requis' : null,
+                ),
+                TextFormField(
+                  controller: durationController,
+                  decoration: const InputDecoration(labelText: 'Durée (heures)'),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Annuler'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (formKey.currentState?.validate() ?? false) {
+                  Navigator.pop(context);
+                  try {
+                    await widget.otService.updateOperation(widget.otCode, pk, {
+                      "operationCode": op['operationCode'] ?? 'OP',
+                      "opopDescription": descController.text.trim(),
+                      "opopJobDescription": descController.text.trim(),
+                      "duration": double.tryParse(durationController.text) ?? 1.0,
+                    });
+                    _loadOperations();
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+                  }
+                }
+              },
+              child: const Text('Enregistrer'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _confirmDelete(int pk) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Supprimer l\'étape'),
+          content: const Text('Voulez-vous supprimer cette étape du mode opératoire ?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Annuler'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () async {
+                Navigator.pop(context);
+                try {
+                  await widget.otService.deleteOperation(widget.otCode, pk);
+                  _loadOperations();
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+                }
+              },
+              child: const Text('Supprimer', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator(color: Color(0xFF015CC0)));
+    }
+    if (_error != null) {
+      return Center(child: Text('Erreur: $_error', style: const TextStyle(color: Colors.red)));
+    }
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Prérequis / Étapes',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF015CC0),
+                  fontSize: 18,
+                ),
+              ),
+              // Bouton d'ajout masqué en mode lecture seule
+            ],
+          ),
+        ),
+        Expanded(
+          child: _operations.isEmpty
+              ? const Center(
+                  child: Text('Aucun mode opératoire pour cet OT', style: TextStyle(fontSize: 16, color: Colors.grey)),
+                )
+              : SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: _operations.asMap().entries.map((entry) {
                       int index = entry.key;
-                      String text = entry.value;
+                      final op = entry.value;
+                      String text = op['opopDescription']?.toString() ?? op['opopJobDescription']?.toString() ?? 'Opération sans description';
+                      final pk = op['pkOperation'] as int;
+
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 12),
                         child: Row(
@@ -414,131 +591,327 @@ class _ModeOperatoireTab extends StatelessWidget {
                         ),
                       );
                     }).toList(),
-                  ],
+                  ),
                 ),
-              ),
-            ),
-          ],
-        );
-      },
+        ),
+      ],
     );
   }
 }
 
 /// Onglet "Commentaires" - Affiche les commentaires et les pièces jointes
 /// Principe SOLID: Single Responsibility - Gère uniquement l'affichage des commentaires et pièces jointes
-class _CommentairesTab extends StatelessWidget {
+class _CommentairesTab extends StatefulWidget {
   final String otCode;
   final OTService otService;
 
   const _CommentairesTab({Key? key, required this.otCode, required this.otService}) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<List<dynamic>>(
-      future: otService.getDocuments(otCode),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator(color: Color(0xFF015CC0)));
-        }
-        if (snapshot.hasError) {
-          return Center(child: Text('Erreur: ${snapshot.error}', style: const TextStyle(color: Colors.red)));
-        }
+  State<_CommentairesTab> createState() => _CommentairesTabState();
+}
 
-        final list = snapshot.data ?? [];
-        if (list.isEmpty) {
-          return const Center(
+class _CommentairesTabState extends State<_CommentairesTab> {
+  List<dynamic> _comments = [];
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadComments();
+  }
+
+  Future<void> _loadComments() async {
+    setState(() => _isLoading = true);
+    try {
+      final list = await widget.otService.getDocuments(widget.otCode);
+      setState(() {
+        _comments = list;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _showAddDialog() {
+    final formKey = GlobalKey<FormState>();
+    final contentController = TextEditingController();
+    final currentUser = HiveService.getCurrentUser();
+    final authorController = TextEditingController(text: currentUser?.code ?? '5893');
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Ajouter un commentaire'),
+          content: Form(
+            key: formKey,
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.comment_bank, size: 64, color: Color(0xFF015CC0)),
-                SizedBox(height: 16),
-                Text('Aucun commentaire pour cet OT', style: TextStyle(fontSize: 16, color: Colors.grey)),
+                TextFormField(
+                  controller: contentController,
+                  decoration: const InputDecoration(labelText: 'Commentaire *'),
+                  maxLines: 3,
+                  validator: (v) => v == null || v.isEmpty ? 'Champ requis' : null,
+                ),
+                TextFormField(
+                  controller: authorController,
+                  decoration: const InputDecoration(labelText: 'Auteur / Code Employé *'),
+                  validator: (v) => v == null || v.isEmpty ? 'Champ requis' : null,
+                ),
               ],
             ),
-          );
-        }
-
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: list.length,
-          itemBuilder: (context, index) {
-            final fb         = list[index];
-            final name       = fb['reemDescription']?.toString() ?? fb['woefEmployee']?.toString() ?? 'Intervenant';
-            final empCode    = fb['reemCode']?.toString() ?? fb['woefEmployee']?.toString() ?? '';
-            final start      = _formatDate(fb['woefStartDate']);
-            final end        = _formatDate(fb['woefEndDate']);
-            final actualH    = fb['woefActualHours']?.toString() ?? '0';
-            final totalH     = fb['woefTotalHours']?.toString() ?? '0';
-            final status     = fb['woefUserStatus']?.toString() ?? '';
-
-            return Card(
-              margin: const EdgeInsets.only(bottom: 10),
-              elevation: 1,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // En-tête : nom + badge statut
-                    Row(
-                      children: [
-                        const Icon(Icons.person, color: Color(0xFF015CC0), size: 18),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            '$name ($empCode)',
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                          ),
-                        ),
-                        if (status.isNotEmpty)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF015CC0).withAlpha(20),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(status,
-                              style: const TextStyle(color: Color(0xFF015CC0), fontSize: 12, fontWeight: FontWeight.bold)),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    // Horaires
-                    Row(
-                      children: [
-                        const Icon(Icons.schedule, size: 14, color: Colors.grey),
-                        const SizedBox(width: 4),
-                        Text(start, style: const TextStyle(fontSize: 12)),
-                        const Text(' → ', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                        Text(end, style: const TextStyle(fontSize: 12)),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    // Heures réalisées / totales
-                    Row(
-                      children: [
-                        const Icon(Icons.timer_outlined, size: 14, color: Color(0xFF015CC0)),
-                        const SizedBox(width: 4),
-                        Text('Réalisé : $actualH h',
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF015CC0))),
-                        const SizedBox(width: 16),
-                        const Icon(Icons.timelapse, size: 14, color: Colors.grey),
-                        const SizedBox(width: 4),
-                        Text('Total : $totalH h', style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Annuler'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (formKey.currentState?.validate() ?? false) {
+                  Navigator.pop(context);
+                  try {
+                    await widget.otService.createDocument(widget.otCode, {
+                      "woefEmployee": authorController.text.trim(),
+                      "reemDescription": "Intervenant",
+                      "woefUserStatus": contentController.text.trim(),
+                      "woefStartDate": DateTime.now().toIso8601String(),
+                      "woefEndDate": DateTime.now().toIso8601String(),
+                    });
+                    _loadComments();
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+                  }
+                }
+              },
+              child: const Text('Ajouter'),
+            ),
+          ],
         );
       },
     );
   }
 
-  /// Formate une date ISO Coswin en 'YYYY-MM-DD HH:MM'
+  void _showEditDialog(Map<String, dynamic> comment) {
+    final formKey = GlobalKey<FormState>();
+    final contentController = TextEditingController(text: comment['woefUserStatus']?.toString() ?? '');
+    final currentUser = HiveService.getCurrentUser();
+    final authorController = TextEditingController(
+      text: comment['woefEmployee']?.toString() ?? comment['reemCode']?.toString() ?? (currentUser?.code ?? '5893')
+    );
+    final pk = comment['pkComment'] as int;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Modifier le commentaire'),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: contentController,
+                  decoration: const InputDecoration(labelText: 'Commentaire *'),
+                  maxLines: 3,
+                  validator: (v) => v == null || v.isEmpty ? 'Champ requis' : null,
+                ),
+                TextFormField(
+                  controller: authorController,
+                  decoration: const InputDecoration(labelText: 'Auteur / Code Employé *'),
+                  validator: (v) => v == null || v.isEmpty ? 'Champ requis' : null,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Annuler'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (formKey.currentState?.validate() ?? false) {
+                  Navigator.pop(context);
+                  try {
+                    await widget.otService.updateDocument(widget.otCode, pk, {
+                      "woefEmployee": authorController.text.trim(),
+                      "reemDescription": comment['reemDescription'] ?? "Intervenant",
+                      "woefUserStatus": contentController.text.trim(),
+                      "woefStartDate": comment['woefStartDate'] ?? DateTime.now().toIso8601String(),
+                      "woefEndDate": comment['woefEndDate'] ?? DateTime.now().toIso8601String(),
+                    });
+                    _loadComments();
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+                  }
+                }
+              },
+              child: const Text('Enregistrer'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _confirmDelete(int pk) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Supprimer le commentaire'),
+          content: const Text('Voulez-vous supprimer ce commentaire ?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Annuler'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () async {
+                Navigator.pop(context);
+                try {
+                  await widget.otService.deleteDocument(widget.otCode, pk);
+                  _loadComments();
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+                }
+              },
+              child: const Text('Supprimer', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator(color: Color(0xFF015CC0)));
+    }
+    if (_error != null) {
+      return Center(child: Text('Erreur: $_error', style: const TextStyle(color: Colors.red)));
+    }
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Commentaires / Rapports',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF015CC0),
+                  fontSize: 18,
+                ),
+              ),
+              // Bouton d'ajout masqué en mode lecture seule
+            ],
+          ),
+        ),
+        Expanded(
+          child: _comments.isEmpty
+              ? const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.comment_bank, size: 64, color: Color(0xFF015CC0)),
+                      SizedBox(height: 16),
+                      Text('Aucun commentaire pour cet OT', style: TextStyle(fontSize: 16, color: Colors.grey)),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _comments.length,
+                  itemBuilder: (context, index) {
+                    final fb         = _comments[index];
+                    final name       = fb['reemDescription']?.toString() ?? fb['woefEmployee']?.toString() ?? 'Intervenant';
+                    final empCode    = fb['reemCode']?.toString() ?? fb['woefEmployee']?.toString() ?? '';
+                    final start      = _formatDate(fb['woefStartDate']);
+                    final end        = _formatDate(fb['woefEndDate']);
+                    final actualH    = fb['woefActualHours']?.toString() ?? '0';
+                    final totalH     = fb['woefTotalHours']?.toString() ?? '0';
+                    final status     = fb['woefUserStatus']?.toString() ?? '';
+                    final pk         = fb['pkComment'] as int;
+
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      elevation: 1,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.person, color: Color(0xFF015CC0), size: 18),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    '$name ($empCode)',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                  ),
+                                ),
+                                if (status.isNotEmpty)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF015CC0).withAlpha(20),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(status,
+                                      style: const TextStyle(color: Color(0xFF015CC0), fontSize: 12, fontWeight: FontWeight.bold)),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                const Icon(Icons.schedule, size: 14, color: Colors.grey),
+                                const SizedBox(width: 4),
+                                Text(start, style: const TextStyle(fontSize: 12)),
+                                const Text(' → ', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                                Text(end, style: const TextStyle(fontSize: 12)),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                const Icon(Icons.timer_outlined, size: 14, color: Color(0xFF015CC0)),
+                                const SizedBox(width: 4),
+                                Text('Réalisé : $actualH h',
+                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF015CC0))),
+                                const SizedBox(width: 16),
+                                const Icon(Icons.timelapse, size: 14, color: Colors.grey),
+                                const SizedBox(width: 4),
+                                Text('Total : $totalH h', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+
   String _formatDate(dynamic raw) {
     final s = raw?.toString() ?? '';
     if (s.isEmpty) return '';
@@ -840,12 +1213,10 @@ class _MainsOeuvreTabState extends State<_MainsOeuvreTab>
     try {
       final list = await widget.otService.getWorkforce(widget.otCode);
       setState(() {
-        // Champs Coswin employeeAllocatedViewwoEmpAllocView confirmés :
-        // reemDescription (nom), reemCode (code employé), woeaResource,
-        // woeaAllocationDate, woeaPlannedHours, woeaIsPlanned
         employes = list.map((item) {
           final isPlanned = item['woeaIsPlanned'] == true ? 'Planifié' : 'Non planifié';
           return {
+            'pk':               item['pkWorkforce'] as int,
             'employe':          item['reemCode']?.toString() ?? item['woeaEmployee']?.toString() ?? '',
             'description':      item['reemDescription']?.toString() ?? item['woeaResource']?.toString() ?? 'Intervenant',
             'dateDebut':        _formatDate(item['woeaAllocationDate']),
@@ -866,6 +1237,168 @@ class _MainsOeuvreTabState extends State<_MainsOeuvreTab>
         _isLoading = false;
       });
     }
+  }
+
+  void _showAddDialog() {
+    final formKey = GlobalKey<FormState>();
+    final codeController = TextEditingController();
+    final nameController = TextEditingController();
+    final hoursController = TextEditingController(text: '1.0');
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Affecter un intervenant'),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: codeController,
+                  decoration: const InputDecoration(labelText: 'Code employé *'),
+                  validator: (v) => v == null || v.isEmpty ? 'Champ requis' : null,
+                ),
+                TextFormField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: 'Nom de l\'employé *'),
+                  validator: (v) => v == null || v.isEmpty ? 'Champ requis' : null,
+                ),
+                TextFormField(
+                  controller: hoursController,
+                  decoration: const InputDecoration(labelText: 'Heures planifiées'),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Annuler'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (formKey.currentState?.validate() ?? false) {
+                  Navigator.pop(context);
+                  try {
+                    await widget.otService.createWorkforce(widget.otCode, {
+                      "woeaEmployee": codeController.text.trim(),
+                      "woeaResource": nameController.text.trim(),
+                      "woeaPlannedHours": double.tryParse(hoursController.text) ?? 1.0,
+                      "woeaAllocationDate": DateTime.now().toIso8601String(),
+                      "woeaIsPlanned": true,
+                    });
+                    _loadWorkforce();
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+                  }
+                }
+              },
+              child: const Text('Affecter'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showEditDialog(Map<String, dynamic> emp) {
+    final formKey = GlobalKey<FormState>();
+    final codeController = TextEditingController(text: emp['employe']?.toString() ?? '');
+    final nameController = TextEditingController(text: emp['description']?.toString() ?? '');
+    final hoursController = TextEditingController(text: emp['heuresPlanifiees']?.toString() ?? '1.0');
+    final pk = emp['pk'] as int;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Modifier l\'affectation'),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: codeController,
+                  decoration: const InputDecoration(labelText: 'Code employé *'),
+                  validator: (v) => v == null || v.isEmpty ? 'Champ requis' : null,
+                ),
+                TextFormField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: 'Nom de l\'employé *'),
+                  validator: (v) => v == null || v.isEmpty ? 'Champ requis' : null,
+                ),
+                TextFormField(
+                  controller: hoursController,
+                  decoration: const InputDecoration(labelText: 'Heures planifiées'),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Annuler'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (formKey.currentState?.validate() ?? false) {
+                  Navigator.pop(context);
+                  try {
+                    await widget.otService.updateWorkforce(widget.otCode, pk, {
+                      "woeaEmployee": codeController.text.trim(),
+                      "woeaResource": nameController.text.trim(),
+                      "woeaPlannedHours": double.tryParse(hoursController.text) ?? 1.0,
+                      "woeaAllocationDate": DateTime.now().toIso8601String(),
+                      "woeaIsPlanned": true,
+                    });
+                    _loadWorkforce();
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+                  }
+                }
+              },
+              child: const Text('Enregistrer'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _confirmDelete(int pk) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Supprimer l\'affectation'),
+          content: const Text('Voulez-vous retirer cet intervenant de l\'OT ?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Annuler'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () async {
+                Navigator.pop(context);
+                try {
+                  await widget.otService.deleteWorkforce(widget.otCode, pk);
+                  _loadWorkforce();
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+                }
+              },
+              child: const Text('Supprimer', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   String _formatDate(dynamic raw) {
@@ -891,14 +1424,18 @@ class _MainsOeuvreTabState extends State<_MainsOeuvreTab>
 
     return Column(
       children: [
-        _MainsOeuvreActionBar(),
+        _MainsOeuvreActionBar(onAddPressed: _showAddDialog),
         _ActionSearchBar(),
         _MainsOeuvreTabBar(tabController: _tabController),
         Expanded(
           child: TabBarView(
             controller: _tabController,
             children: [
-              _IntervenantsContent(employes: employes),
+              _IntervenantsContent(
+                employes: employes,
+                onEdit: _showEditDialog,
+                onDelete: _confirmDelete,
+              ),
               _EmployesAllouesContent(employes: employes),
             ],
           ),
@@ -946,8 +1483,44 @@ class _MainsOeuvreTabBar extends StatelessWidget {
 /// Principe SOLID: Single Responsibility - Gère uniquement le contenu de l'onglet Intervenants
 class _IntervenantsContent extends StatelessWidget {
   final List<Map<String, dynamic>> employes;
+  final Function(Map<String, dynamic>) onEdit;
+  final Function(int) onDelete;
 
-  const _IntervenantsContent({required this.employes});
+  const _IntervenantsContent({
+    required this.employes,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  void _showRowOptions(BuildContext context, Map<String, dynamic> emp) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.edit, color: Colors.blue),
+                title: const Text('Modifier'),
+                onTap: () {
+                  Navigator.pop(context);
+                  onEdit(emp);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete, color: Colors.red),
+                title: const Text('Supprimer'),
+                onTap: () {
+                  Navigator.pop(context);
+                  onDelete(emp['pk'] as int);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -964,12 +1537,16 @@ class _IntervenantsContent extends StatelessWidget {
             itemCount: employes.length,
             itemBuilder: (context, index) {
               final employe = employes[index];
-              return _EmployeRow(
-                index: index + 1,
-                employe: employe['employe']!,
-                description: employe['description']!,
-                dateDebut: employe['dateDebut']!,
-                dateFin: employe['dateFin']!,
+              return GestureDetector(
+                onTap: null,
+                behavior: HitTestBehavior.opaque,
+                child: _EmployeRow(
+                  index: index + 1,
+                  employe: employe['employe']!,
+                  description: employe['description']!,
+                  dateDebut: employe['dateDebut']!,
+                  dateFin: employe['dateFin']!,
+                ),
               );
             },
           ),
@@ -1107,6 +1684,7 @@ class _EmployesAllouesDetailsTabState
     extends State<_EmployesAllouesDetailsTab> {
   // Contrôleurs pour les champs du formulaire
   late TextEditingController _employeController;
+  late TextEditingController _descriptionController;
   late TextEditingController _dateAllocationController;
   late TextEditingController _heuresAlloueesController;
   late TextEditingController _etatAllocationController;
@@ -1118,9 +1696,14 @@ class _EmployesAllouesDetailsTabState
   void initState() {
     super.initState();
     final data = widget.initialData;
+    final currentUser = HiveService.getCurrentUser();
+    
     // Initialisation des contrôleurs avec données réelles si disponibles, sinon exemples
     _employeController = TextEditingController(
-      text: data != null ? '${data['employe']} - ${data['description']}' : '5893 - SENELEC',
+      text: data != null ? '${data['employe']}' : '${currentUser?.code ?? "5893"}',
+    );
+    _descriptionController = TextEditingController(
+      text: data != null ? (data['description']?.toString() ?? '') : (currentUser?.username ?? 'Intervenant'),
     );
     _dateAllocationController = TextEditingController(
       text: data != null ? (data['dateDebut']?.toString() ?? '') : '22/10/2025 07:30',
@@ -1139,6 +1722,7 @@ class _EmployesAllouesDetailsTabState
   @override
   void dispose() {
     _employeController.dispose();
+    _descriptionController.dispose();
     _dateAllocationController.dispose();
     _heuresAlloueesController.dispose();
     _etatAllocationController.dispose();
@@ -1208,7 +1792,7 @@ class _EmployesAllouesDetailsTabState
                     Expanded(
                       child: _EmployeFormField(
                         label: 'Description de l\'employé',
-                        controller: TextEditingController(text: 'Mbaye NIANG'),
+                        controller: _descriptionController,
                         readOnly: true,
                       ),
                     ),
@@ -1361,24 +1945,7 @@ class _EmployesAllouesActionBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          _ActionIconButton(icon: Icons.arrow_back_ios, onPressed: () {}),
-          _ActionIconButton(icon: Icons.arrow_forward_ios, onPressed: () {}),
-          _ActionIconButton(icon: Icons.add, onPressed: () {}),
-          _ActionIconButton(icon: Icons.copy, onPressed: () {}),
-          _ActionIconButton(icon: Icons.remove_red_eye, onPressed: () {}),
-          _ActionIconButton(icon: Icons.refresh, onPressed: () {}),
-          _ActionIconButton(icon: Icons.delete, onPressed: () {}),
-          _ActionIconButton(icon: Icons.filter_list, onPressed: () {}),
-          _ActionIconButton(icon: Icons.search, onPressed: () {}),
-          _ActionIconButton(icon: Icons.find_replace, onPressed: () {}),
-          _ActionIconButton(icon: Icons.help_outline, onPressed: () {}),
-        ],
-      ),
-    );
+    return const SizedBox.shrink();
   }
 }
 
@@ -1591,7 +2158,7 @@ class _EmployeDetailsTab extends StatelessWidget {
               Expanded(
                 child: _DetailField(
                   label: '',
-                  value: employe['description'] ?? 'Mbaye NIANG',
+                  value: employe['description'] ?? 'Intervenant',
                   readOnly: true,
                 ),
               ),
@@ -1857,53 +2424,13 @@ class _RessourcesContent extends StatelessWidget {
 /// Principe SOLID: Single Responsibility - Gère uniquement l'affichage de la barre d'actions avec icônes
 /// Principe DRY: Réutilise le pattern des autres barres d'action
 class _MainsOeuvreActionBar extends StatelessWidget {
+  final VoidCallback onAddPressed;
+
+  const _MainsOeuvreActionBar({required this.onAddPressed});
+
   @override
   Widget build(BuildContext context) {
-    final spacing = context.spacing;
-    final responsive = context.responsive;
-
-    return Container(
-      color: Colors.grey[100],
-      padding: spacing.custom(horizontal: 15, vertical: 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  Text(
-                    'Sélect. une action',
-                    style: TextStyle(
-                      fontFamily: AppTheme.fontMontserrat,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF015CC0),
-                      fontSize: responsive.sp(14),
-                    ),
-                  ),
-                  SizedBox(width: spacing.small),
-                  // Icônes d'action
-                  _ActionIconButton(icon: Icons.add, onPressed: () {}),
-                  _ActionIconButton(icon: Icons.close, onPressed: () {}),
-                  _ActionIconButton(icon: Icons.refresh, onPressed: () {}),
-                  _ActionIconButton(icon: Icons.list, onPressed: () {}),
-                  _ActionIconButton(icon: Icons.grid_view, onPressed: () {}),
-                  _ActionIconButton(icon: Icons.view_column, onPressed: () {}),
-                  _ActionIconButton(icon: Icons.help_outline, onPressed: () {}),
-                ],
-              ),
-            ),
-          ),
-          SizedBox(width: spacing.small),
-          // Icône d'horloge à droite
-          Icon(
-            Icons.access_time,
-            color: AppTheme.secondaryColor,
-            size: responsive.iconSize(24),
-          ),
-        ],
-      ),
-    );
+    return const SizedBox.shrink();
   }
 }
 
@@ -1940,32 +2467,7 @@ class _ActionIconButton extends StatelessWidget {
 class _ActionSearchBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final spacing = context.spacing;
-    final responsive = context.responsive;
-
-    return Container(
-      color: Colors.white,
-      padding: spacing.custom(horizontal: 15, vertical: 10),
-      child: TextField(
-        decoration: InputDecoration(
-          labelText: 'Action',
-          labelStyle: TextStyle(
-            color: AppTheme.secondaryColor,
-            fontSize: responsive.sp(14),
-          ),
-          border: OutlineInputBorder(
-            borderSide: BorderSide(color: AppTheme.thirdColor),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: AppTheme.thirdColor),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: const Color(0xFF015CC0), width: 2),
-          ),
-          contentPadding: spacing.custom(horizontal: 12, vertical: 10),
-        ),
-      ),
-    );
+    return const SizedBox.shrink();
   }
 }
 
@@ -2779,29 +3281,7 @@ class _MaterielActionBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final spacing = context.spacing;
-
-    return Container(
-      color: Colors.grey[200],
-      padding: spacing.custom(horizontal: 20, vertical: 10),
-      child: Row(
-        children: [
-          _ActionIconButton(icon: Icons.add, onPressed: onAddTap),
-          SizedBox(width: spacing.small),
-          _ActionIconButton(icon: Icons.refresh, onPressed: () {}),
-          SizedBox(width: spacing.small),
-          _ActionIconButton(icon: Icons.check, onPressed: () {}),
-          SizedBox(width: spacing.small),
-          _ActionIconButton(icon: Icons.close, onPressed: () {}),
-          SizedBox(width: spacing.small),
-          _ActionIconButton(icon: Icons.insert_chart, onPressed: () {}),
-          SizedBox(width: spacing.small),
-          _ActionIconButton(icon: Icons.view_module, onPressed: () {}),
-          SizedBox(width: spacing.small),
-          _ActionIconButton(icon: Icons.help_outline, onPressed: () {}),
-        ],
-      ),
-    );
+    return const SizedBox.shrink();
   }
 }
 
@@ -2926,8 +3406,6 @@ class _StockPiecesTabState extends State<_StockPiecesTab> {
     try {
       final list = await widget.otService.getParts(widget.otCode);
       setState(() {
-        // Champs Coswin stockUsedViewwoStockView :
-        // wosyPart, wosyDescription, wosyUsedQuantity, wosyUnit, etc.
         pieces = list.map((item) {
           final partCode = item['wosyPart']?.toString()
               ?? item['wosyCode']?.toString()
@@ -2942,6 +3420,8 @@ class _StockPiecesTabState extends State<_StockPiecesTab> {
               ?? item['usedQuantity']?.toString()
               ?? '0';
           return {
+            'pk': item['pkPart'] as int,
+            'partCode': partCode,
             'article': label.isNotEmpty ? label : 'Article',
             'quantiteUtilise': qty,
           };
@@ -2978,14 +3458,17 @@ class _StockPiecesTabState extends State<_StockPiecesTab> {
 
     if (_showDetails) {
       return _StockPiecesDetailsTab(
+        otCode: widget.otCode,
+        otService: widget.otService,
         onBack: () => _toggleDetails(null),
+        onSaved: _loadParts,
         initialData: _selectedPiece,
       );
     }
 
     return Column(
       children: [
-        _MaterielActionBar(onAddTap: () => _toggleDetails(pieces.isNotEmpty ? pieces.first : null)),
+        _MaterielActionBar(onAddTap: () => _toggleDetails(null)),
         SizedBox(height: spacing.small),
         _StockPiecesTableHeader(),
         Expanded(
@@ -3012,37 +3495,127 @@ class _StockPiecesTabState extends State<_StockPiecesTab> {
   }
 }
 
-/// Widget pour afficher le formulaire de détails des pièces
-/// Principe SOLID: Single Responsibility - Gère uniquement l'affichage du formulaire
-/// Principe DRY: Réutilise _EmployeFormField
 class _StockPiecesDetailsTab extends StatefulWidget {
+  final String otCode;
+  final OTService otService;
   final VoidCallback onBack;
+  final VoidCallback onSaved;
   final Map<String, dynamic>? initialData;
 
-  const _StockPiecesDetailsTab({required this.onBack, this.initialData});
+  const _StockPiecesDetailsTab({
+    required this.otCode,
+    required this.otService,
+    required this.onBack,
+    required this.onSaved,
+    this.initialData,
+  });
 
   @override
   State<_StockPiecesDetailsTab> createState() => _StockPiecesDetailsTabState();
 }
 
 class _StockPiecesDetailsTabState extends State<_StockPiecesDetailsTab> {
+  late TextEditingController _partCodeController;
   late TextEditingController _articleController;
   late TextEditingController _quantiteUtiliseController;
+  bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
     final data = widget.initialData;
-    _articleController = TextEditingController(text: data?['article'] ?? 'PIECE DE RECHANGE');
-    _quantiteUtiliseController = TextEditingController(text: data?['quantiteUtilise'] ?? '0.00');
+    _partCodeController = TextEditingController(text: data?['partCode'] ?? '');
+    _articleController = TextEditingController(text: data?['article'] ?? '');
+    _quantiteUtiliseController = TextEditingController(text: data?['quantiteUtilise'] ?? '1.0');
   }
-
 
   @override
   void dispose() {
+    _partCodeController.dispose();
     _articleController.dispose();
     _quantiteUtiliseController.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleSave() async {
+    final partCode = _partCodeController.text.trim();
+    final article = _articleController.text.trim();
+    final qty = double.tryParse(_quantiteUtiliseController.text) ?? 1.0;
+
+    if (partCode.isEmpty || article.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Veuillez remplir le code article et la description.')),
+      );
+      return;
+    }
+
+    setState(() => _isSaving = true);
+    try {
+      if (widget.initialData == null) {
+        // Ajouter
+        await widget.otService.createPart(widget.otCode, {
+          "wosyPart": partCode,
+          "wosyCode": partCode,
+          "wosyDescription": article,
+          "wosyUsedQuantity": qty,
+          "wosyQuantity": qty,
+          "wosyUnit": "U",
+        });
+      } else {
+        // Modifier
+        final pk = widget.initialData!['pk'] as int;
+        await widget.otService.updatePart(widget.otCode, pk, {
+          "wosyPart": partCode,
+          "wosyCode": partCode,
+          "wosyDescription": article,
+          "wosyUsedQuantity": qty,
+          "wosyQuantity": qty,
+          "wosyUnit": "U",
+        });
+      }
+      widget.onSaved();
+      widget.onBack();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur lors de l\'enregistrement: $e')));
+    } finally {
+      setState(() => _isSaving = false);
+    }
+  }
+
+  void _confirmDelete() {
+    final pk = widget.initialData!['pk'] as int;
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Supprimer la pièce'),
+          content: const Text('Voulez-vous retirer cette pièce de rechange de l\'OT ?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Annuler'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () async {
+                Navigator.pop(context);
+                setState(() => _isSaving = true);
+                try {
+                  await widget.otService.deletePart(widget.otCode, pk);
+                  widget.onSaved();
+                  widget.onBack();
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur lors de la suppression: $e')));
+                } finally {
+                  setState(() => _isSaving = false);
+                }
+              },
+              child: const Text('Supprimer', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -3058,59 +3631,62 @@ class _StockPiecesDetailsTabState extends State<_StockPiecesDetailsTab> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _MaterielActionBar(onAddTap: () {}),
-                SizedBox(height: spacing.large),
-
-                // Ligne 1: Article et Quantité utilisée
                 Row(
                   children: [
                     Expanded(
                       child: _EmployeFormField(
-                        label: 'Article',
-                        controller: _articleController,
-                        hasDropdown: true,
+                        label: 'Code Article *',
+                        controller: _partCodeController,
+                        readOnly: true,
                       ),
                     ),
                     SizedBox(width: spacing.medium),
                     Expanded(
                       child: _EmployeFormField(
-                        label: 'Quantité utilisée',
+                        label: 'Quantité utilisée *',
                         controller: _quantiteUtiliseController,
+                        readOnly: true,
                       ),
                     ),
                   ],
+                ),
+                SizedBox(height: spacing.medium),
+                _EmployeFormField(
+                  label: 'Description Article *',
+                  controller: _articleController,
+                  readOnly: true,
                 ),
               ],
             ),
           ),
         ),
 
-        // Bouton Retour en bas
+        // Actions en bas
         Container(
           color: Colors.white,
           padding: spacing.custom(horizontal: 20, vertical: 10, bottom: 20),
-          child: SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: widget.onBack,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF015CC0),
-                foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(vertical: responsive.hp(1.8)),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+          child: Row(
+            children: [
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: widget.onBack,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF015CC0),
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(vertical: responsive.hp(1.8)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  child: Text(
+                    'Retour',
+                    style: TextStyle(
+                      fontFamily: AppTheme.fontMontserrat,
+                      fontWeight: FontWeight.w600,
+                      fontSize: responsive.sp(14),
+                    ),
+                  ),
                 ),
-                elevation: 2,
               ),
-              child: Text(
-                'Retour',
-                style: TextStyle(
-                  fontFamily: AppTheme.fontMontserrat,
-                  fontWeight: FontWeight.w600,
-                  fontSize: responsive.sp(16),
-                ),
-              ),
-            ),
+            ],
           ),
         ),
       ],
@@ -3677,80 +4253,279 @@ class _SousAttributsTab extends StatefulWidget {
 }
 
 class _SousAttributsTabState extends State<_SousAttributsTab> {
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<List<dynamic>>(
-      future: widget.otService.getAttributes(widget.otCode),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator(color: Color(0xFF015CC0)));
-        }
-        if (snapshot.hasError) {
-          return Center(child: Text('Erreur: ${snapshot.error}', style: const TextStyle(color: Colors.red)));
-        }
+  List<dynamic> _attributes = [];
+  bool _isLoading = true;
+  String? _error;
 
-        final list = snapshot.data ?? [];
-        if (list.isEmpty) {
-          return const Center(
+  @override
+  void initState() {
+    super.initState();
+    _loadAttributes();
+  }
+
+  Future<void> _loadAttributes() async {
+    setState(() => _isLoading = true);
+    try {
+      final list = await widget.otService.getAttributes(widget.otCode);
+      setState(() {
+        _attributes = list;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _showAddDialog() {
+    final formKey = GlobalKey<FormState>();
+    final nameController = TextEditingController();
+    final valController = TextEditingController();
+    final descController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Ajouter un sous-attribut'),
+          content: Form(
+            key: formKey,
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.list_alt, size: 64, color: Color(0xFF015CC0)),
-                SizedBox(height: 16),
-                Text('Aucun sous-attribut pour cet OT', style: TextStyle(fontSize: 16, color: Colors.grey)),
+                TextFormField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: 'Nom de l\'attribut *'),
+                  validator: (v) => v == null || v.isEmpty ? 'Champ requis' : null,
+                ),
+                TextFormField(
+                  controller: valController,
+                  decoration: const InputDecoration(labelText: 'Valeur *'),
+                  validator: (v) => v == null || v.isEmpty ? 'Champ requis' : null,
+                ),
+                TextFormField(
+                  controller: descController,
+                  decoration: const InputDecoration(labelText: 'Description'),
+                ),
               ],
             ),
-          );
-        }
-
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: list.length,
-          itemBuilder: (context, index) {
-            final attr = list[index];
-            // Champs Coswin : woatName, woatValue, woatDescription, woatUnit, woatUnitSymbol
-            final name       = attr['woatName']?.toString() ?? 'Attribut';
-            final value      = attr['woatValue']?.toString() ?? '';
-            final equipment  = attr['woatDescription']?.toString() ?? '';
-            final unit       = attr['woatUnitSymbol']?.toString() ?? '';
-            final displayVal = value.isNotEmpty ? (unit.isNotEmpty ? '$value $unit' : value) : '-';
-            return Card(
-              margin: const EdgeInsets.only(bottom: 8),
-              elevation: 1,
-              child: ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: const Color(0xFF015CC0).withAlpha(20),
-                  child: Text(
-                    '${index + 1}',
-                    style: const TextStyle(color: Color(0xFF015CC0), fontWeight: FontWeight.bold, fontSize: 12),
-                  ),
-                ),
-                title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                subtitle: equipment.isNotEmpty
-                    ? Text(equipment, style: const TextStyle(fontSize: 11, color: Colors.grey))
-                    : null,
-                trailing: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: value.isNotEmpty
-                        ? const Color(0xFF015CC0).withAlpha(20)
-                        : Colors.grey.withAlpha(30),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    displayVal,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: value.isNotEmpty ? const Color(0xFF015CC0) : Colors.grey,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-              ),
-            );
-          },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Annuler'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (formKey.currentState?.validate() ?? false) {
+                  Navigator.pop(context);
+                  try {
+                    await widget.otService.createAttribute(widget.otCode, {
+                      "woatName": nameController.text.trim(),
+                      "woatValue": valController.text.trim(),
+                      "woatDescription": descController.text.trim(),
+                    });
+                    _loadAttributes();
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+                  }
+                }
+              },
+              child: const Text('Ajouter'),
+            ),
+          ],
         );
       },
+    );
+  }
+
+  void _showEditDialog(Map<String, dynamic> attr) {
+    final formKey = GlobalKey<FormState>();
+    final nameController = TextEditingController(text: attr['woatName']?.toString() ?? '');
+    final valController = TextEditingController(text: attr['woatValue']?.toString() ?? '');
+    final descController = TextEditingController(text: attr['woatDescription']?.toString() ?? '');
+    final pk = attr['pkAttribute'] as int;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Modifier le sous-attribut'),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: 'Nom de l\'attribut *'),
+                  validator: (v) => v == null || v.isEmpty ? 'Champ requis' : null,
+                ),
+                TextFormField(
+                  controller: valController,
+                  decoration: const InputDecoration(labelText: 'Valeur *'),
+                  validator: (v) => v == null || v.isEmpty ? 'Champ requis' : null,
+                ),
+                TextFormField(
+                  controller: descController,
+                  decoration: const InputDecoration(labelText: 'Description'),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Annuler'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (formKey.currentState?.validate() ?? false) {
+                  Navigator.pop(context);
+                  try {
+                    await widget.otService.updateAttribute(widget.otCode, pk, {
+                      "woatName": nameController.text.trim(),
+                      "woatValue": valController.text.trim(),
+                      "woatDescription": descController.text.trim(),
+                    });
+                    _loadAttributes();
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+                  }
+                }
+              },
+              child: const Text('Enregistrer'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _confirmDelete(int pk) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Supprimer l\'attribut'),
+          content: const Text('Voulez-vous supprimer ce sous-attribut ?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Annuler'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () async {
+                Navigator.pop(context);
+                try {
+                  await widget.otService.deleteAttribute(widget.otCode, pk);
+                  _loadAttributes();
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+                }
+              },
+              child: const Text('Supprimer', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator(color: Color(0xFF015CC0)));
+    }
+    if (_error != null) {
+      return Center(child: Text('Erreur: $_error', style: const TextStyle(color: Colors.red)));
+    }
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Sous-attributs',
+                style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF015CC0), fontSize: 16),
+              ),
+              // Bouton d'ajout masqué en mode lecture seule
+            ],
+          ),
+        ),
+        Expanded(
+          child: _attributes.isEmpty
+              ? const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.list_alt, size: 64, color: Color(0xFF015CC0)),
+                      SizedBox(height: 16),
+                      Text('Aucun sous-attribut pour cet OT', style: TextStyle(fontSize: 16, color: Colors.grey)),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _attributes.length,
+                  itemBuilder: (context, index) {
+                    final attr = _attributes[index];
+                    final name       = attr['woatName']?.toString() ?? 'Attribut';
+                    final value      = attr['woatValue']?.toString() ?? '';
+                    final equipment  = attr['woatDescription']?.toString() ?? '';
+                    final unit       = attr['woatUnitSymbol']?.toString() ?? '';
+                    final displayVal = value.isNotEmpty ? (unit.isNotEmpty ? '$value $unit' : value) : '-';
+                    final pk         = attr['pkAttribute'] as int;
+
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      elevation: 1,
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: const Color(0xFF015CC0).withAlpha(20),
+                          child: Text(
+                            '${index + 1}',
+                            style: const TextStyle(color: Color(0xFF015CC0), fontWeight: FontWeight.bold, fontSize: 12),
+                          ),
+                        ),
+                        title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                        subtitle: equipment.isNotEmpty
+                            ? Text(equipment, style: const TextStyle(fontSize: 11, color: Colors.grey))
+                            : null,
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: value.isNotEmpty
+                                    ? const Color(0xFF015CC0).withAlpha(20)
+                                    : Colors.grey.withAlpha(30),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                displayVal,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: value.isNotEmpty ? const Color(0xFF015CC0) : Colors.grey,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
     );
   }
 }

@@ -2,6 +2,7 @@ import 'package:appmobilegmao/models/work_order.dart';
 import 'package:appmobilegmao/models/order.dart';
 import 'package:appmobilegmao/provider/auth_provider.dart';
 import 'package:appmobilegmao/screens/ot_detail_screen.dart';
+import 'package:appmobilegmao/screens/ot_create_screen.dart';
 import 'package:appmobilegmao/screens/ot_info_details_screen.dart';
 import 'package:appmobilegmao/services/api_service.dart';
 import 'package:appmobilegmao/services/ot_service.dart';
@@ -34,6 +35,7 @@ class OTWorkOrdersScreen extends StatefulWidget {
 class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
   static const Set<String> _closedStatuses = {
     'CL',
+    'TE',
     'CLOSE',
     'CLOSED',
     'TERMINE',
@@ -54,6 +56,11 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
   String _selectedService = '';
   String _searchQuery = '';
   String? _errorMessage;
+  
+  // Variables de pagination
+  String? _paginationContext;
+  bool _hasMore = false;
+  bool _isLoadingMore = false;
 
   @override
   void initState() {
@@ -146,10 +153,12 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      _paginationContext = null;
+      _hasMore = false;
     });
 
     try {
-      final orders = await _otService.getAllOrders(
+      final result = await _otService.getOrdersPage(
         scope: 'service',
         requestEntity: service,
         excludeClosed: _hideClosedOrders,
@@ -157,7 +166,9 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
 
       setState(() {
         _selectedService = service;
-        _orders = orders;
+        _orders = result.workorders;
+        _paginationContext = result.paginationContext;
+        _hasMore = result.hasMore;
         _isLoading = false;
       });
     } catch (e) {
@@ -165,11 +176,48 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
         _orders = [];
         _isLoading = false;
         _errorMessage = e.toString();
+        _paginationContext = null;
+        _hasMore = false;
       });
     }
   }
 
-  void _openDetails(WorkOrder order) {
+  Future<void> _loadMoreOrders() async {
+    if (_isLoadingMore || !_hasMore || _paginationContext == null) return;
+
+    setState(() {
+      _isLoadingMore = true;
+    });
+
+    try {
+      final service = _serviceController.text.trim();
+      final result = await _otService.getOrdersPage(
+        scope: 'service',
+        requestEntity: service,
+        excludeClosed: _hideClosedOrders,
+        paginationContext: _paginationContext,
+      );
+
+      setState(() {
+        _orders.addAll(result.workorders);
+        _paginationContext = result.paginationContext;
+        _hasMore = result.hasMore;
+        _isLoadingMore = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoadingMore = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erreur lors du chargement des OT supplémentaires: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _openDetails(WorkOrder order) async {
     final uiOrder = Order(
       id: order.pkWorkOrder.toString(),
       icon: Icons.assignment,
@@ -184,12 +232,255 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
       description: order.wowoJob.isNotEmpty
           ? order.wowoJob
           : (order.wowoEquipmentDescription.isNotEmpty ? order.wowoEquipmentDescription : '-'),
+      // MODIFICATION: Formater le statut en toutes lettres (ex: OUVERT (OUV))
+      status: Order.formatStatus(order.wowoUserStatus, order.mdusDescription),
+      // MODIFICATION: Passer le taux de realisation reel de l'OT
+      completionRate: order.wowoCompletionRate,
     );
 
-    Navigator.of(context).push(
+    final refresh = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => OTDetailScreen(order: uiOrder),
       ),
+    );
+
+    if (refresh == true) {
+      _loadOrders();
+    }
+  }
+
+  void _showOTActionMenu(WorkOrder order) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'OT N° ${order.wowoCode}',
+                style: const TextStyle(
+                  fontFamily: AppTheme.fontMontserrat,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: AppTheme.secondaryColor,
+                ),
+              ),
+              const SizedBox(height: 12),
+              ListTile(
+                leading: const Icon(Icons.edit, color: Colors.blue),
+                title: const Text('Modifier l\'OT'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => OTCreateScreen(orderToEdit: order),
+                    ),
+                  );
+                  if (result == true) {
+                    _loadOrders();
+                  }
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete, color: Colors.red),
+                title: const Text('Supprimer l\'OT'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _confirmDeleteOT(order);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showEditOTDialog(WorkOrder order) {
+    final formKey = GlobalKey<FormState>();
+    final jobController = TextEditingController(text: order.wowoJob);
+    final eqController = TextEditingController(text: order.wowoEquipment);
+    final supervisorController = TextEditingController(text: order.wowoSupervisor ?? '');
+    final zoneController = TextEditingController(text: order.wowoZone ?? '');
+    final entityController = TextEditingController(text: order.wowoRequestEntity);
+    final rateController = TextEditingController(text: order.wowoCompletionRate?.toString() ?? '0');
+    final jobClassController = TextEditingController(text: order.wowoJobClass);
+    String priority = order.wowoPriority?.trim().toUpperCase() ?? 'URGENT';
+    if (!['URGENT', 'MOYEN', 'BAS'].contains(priority)) {
+      priority = 'URGENT';
+    }
+    String status = order.wowoUserStatus.trim().toUpperCase();
+    if (!['OUV', 'CR', 'CL', 'TE'].contains(status)) {
+      status = 'OUV';
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text('Modifier l\'OT ${order.wowoCode}'),
+              content: SingleChildScrollView(
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextFormField(
+                        controller: jobController,
+                        decoration: const InputDecoration(labelText: 'Description / Travail *'),
+                        validator: (value) => value == null || value.isEmpty ? 'Ce champ est obligatoire' : null,
+                      ),
+                      TextFormField(
+                        controller: eqController,
+                        decoration: const InputDecoration(labelText: 'Équipement *'),
+                        validator: (value) => value == null || value.isEmpty ? 'Ce champ est obligatoire' : null,
+                      ),
+                      TextFormField(
+                        controller: supervisorController,
+                        decoration: const InputDecoration(labelText: 'Technicien / Superviseur *'),
+                        validator: (value) => value == null || value.isEmpty ? 'Ce champ est obligatoire' : null,
+                      ),
+                      TextFormField(
+                        controller: zoneController,
+                        decoration: const InputDecoration(labelText: 'Zone'),
+                      ),
+                      TextFormField(
+                        controller: entityController,
+                        decoration: const InputDecoration(labelText: 'Entité / Service'),
+                      ),
+                      TextFormField(
+                        controller: rateController,
+                        decoration: const InputDecoration(labelText: 'Taux de réalisation (%)'),
+                        keyboardType: TextInputType.number,
+                      ),
+                      TextFormField(
+                        controller: jobClassController,
+                        decoration: const InputDecoration(labelText: 'Classe de travail'),
+                      ),
+                      DropdownButtonFormField<String>(
+                        value: priority,
+                        decoration: const InputDecoration(labelText: 'Priorité'),
+                        items: ['URGENT', 'MOYEN', 'BAS'].map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
+                        onChanged: (val) {
+                          if (val != null) setDialogState(() => priority = val);
+                        },
+                      ),
+                      DropdownButtonFormField<String>(
+                        value: status,
+                        decoration: const InputDecoration(labelText: 'Statut'),
+                        items: [
+                          DropdownMenuItem(value: 'OUV', child: const Text('OUVERT (OUV)')),
+                          DropdownMenuItem(value: 'CR', child: const Text('CRÉÉ (CR)')),
+                          DropdownMenuItem(value: 'TE', child: const Text('RÉALISÉ (TE)')),
+                          DropdownMenuItem(value: 'CL', child: const Text('CLÔTURÉ (CL)')),
+                        ].toList(),
+                        onChanged: (val) {
+                          if (val != null) setDialogState(() => status = val);
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Annuler'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (formKey.currentState?.validate() ?? false) {
+                      Navigator.pop(context);
+                      setState(() => _isLoading = true);
+                      try {
+                        final data = {
+                          "wowoUserStatus": status,
+                          "wowoEquipment": eqController.text.trim(),
+                          "wowoJob": jobController.text.trim(),
+                          "wowoJobClass": jobClassController.text.trim(),
+                          "wowoPriority": priority,
+                          "wowoActionEntity": entityController.text.trim(),
+                          "wowoRequestEntity": entityController.text.trim(),
+                          "wowoSupervisor": supervisorController.text.trim(),
+                          "wowoZone": zoneController.text.trim(),
+                          "wowoCompletionRate": double.tryParse(rateController.text.trim()) ?? 0.0,
+                        };
+
+                        await _otService.updateOT(order.wowoCode, data);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('OT mis à jour avec succès !')),
+                        );
+                        _loadOrders();
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Erreur: $e')),
+                        );
+                        setState(() => _isLoading = false);
+                      }
+                    }
+                  },
+                  child: const Text('Enregistrer'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _confirmDeleteOT(WorkOrder order) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Confirmation de suppression'),
+          content: Text('Voulez-vous vraiment supprimer l\'OT N° ${order.wowoCode} ? Cette action est irréversible.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Annuler'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                setState(() => _isLoading = true);
+                try {
+                  await _otService.deleteOT(order.wowoCode);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('OT supprimé avec succès !')),
+                  );
+                  _loadOrders();
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Erreur lors de la suppression: $e')),
+                  );
+                  setState(() => _isLoading = false);
+                }
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+              child: const Text('Supprimer'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -307,7 +598,6 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
                               setState(() {
                                 _hideClosedOrders = value;
                               });
-                              _loadOrders();
                             },
                           ),
                         ],
@@ -318,6 +608,151 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
               : const SizedBox.shrink(),
         ),
       ],
+    );
+  }
+
+  void _showAddOTDialog() {
+    final formKey = GlobalKey<FormState>();
+    final codeController = TextEditingController();
+    final jobController = TextEditingController();
+    final eqController = TextEditingController(text: 'POSTE_A_AGRIK');
+    final supervisorController = TextEditingController(text: '5286');
+    final jobClassController = TextEditingController(text: 'POSTE');
+    final zoneController = TextEditingController(text: 'DAKAR');
+    final entityController = TextEditingController(text: _selectedService.isNotEmpty ? _selectedService : 'DTAE');
+    final rateController = TextEditingController(text: '0');
+    String priority = 'URGENT';
+    String status = 'OUV';
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Créer un Ordre de Travail (OT)'),
+              content: SingleChildScrollView(
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextFormField(
+                        controller: codeController,
+                        decoration: const InputDecoration(labelText: 'Code OT (laisser vide pour générer)'),
+                        keyboardType: TextInputType.number,
+                      ),
+                      TextFormField(
+                        controller: jobController,
+                        decoration: const InputDecoration(labelText: 'Description / Travail *'),
+                        validator: (value) => value == null || value.isEmpty ? 'Ce champ est obligatoire' : null,
+                      ),
+                      TextFormField(
+                        controller: eqController,
+                        decoration: const InputDecoration(labelText: 'Équipement *'),
+                        validator: (value) => value == null || value.isEmpty ? 'Ce champ est obligatoire' : null,
+                      ),
+                      TextFormField(
+                        controller: supervisorController,
+                        decoration: const InputDecoration(labelText: 'Technicien / Superviseur *'),
+                        validator: (value) => value == null || value.isEmpty ? 'Ce champ est obligatoire' : null,
+                      ),
+                      TextFormField(
+                        controller: zoneController,
+                        decoration: const InputDecoration(labelText: 'Zone'),
+                      ),
+                      TextFormField(
+                        controller: entityController,
+                        decoration: const InputDecoration(labelText: 'Entité / Service'),
+                      ),
+                      TextFormField(
+                        controller: rateController,
+                        decoration: const InputDecoration(labelText: 'Taux de réalisation (%)'),
+                        keyboardType: TextInputType.number,
+                      ),
+                      TextFormField(
+                        controller: jobClassController,
+                        decoration: const InputDecoration(labelText: 'Classe de travail'),
+                      ),
+                      DropdownButtonFormField<String>(
+                        value: priority,
+                        decoration: const InputDecoration(labelText: 'Priorité'),
+                        items: ['URGENT', 'MOYEN', 'BAS'].map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
+                        onChanged: (val) {
+                          if (val != null) setDialogState(() => priority = val);
+                        },
+                      ),
+                      DropdownButtonFormField<String>(
+                        value: status,
+                        decoration: const InputDecoration(labelText: 'Statut de départ'),
+                        items: [
+                          DropdownMenuItem(value: 'OUV', child: const Text('OUVERT (OUV)')),
+                          DropdownMenuItem(value: 'CR', child: const Text('CRÉÉ (CR)')),
+                        ].toList(),
+                        onChanged: (val) {
+                          if (val != null) setDialogState(() => status = val);
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Annuler'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (formKey.currentState?.validate() ?? false) {
+                      Navigator.pop(context);
+                      setState(() => _isLoading = true);
+                      try {
+                        final authProvider = context.read<AuthProvider>();
+                        final currentUser = authProvider.currentUser;
+                        final currentService = entityController.text.trim();
+
+                        final data = {
+                          "wowoUserStatus": status,
+                          "wowoEquipment": eqController.text.trim(),
+                          "wowoJob": jobController.text.trim(),
+                          "wowoJobType": "CORR",
+                          "wowoJobClass": jobClassController.text.trim(),
+                          "wowoPriority": priority,
+                          "wowoActionEntity": currentService,
+                          "wowoRequestEntity": currentService,
+                          "wowoSupervisor": supervisorController.text.trim(),
+                          "wowoCostcentre": "DD304",
+                          "wowoZone": zoneController.text.trim(),
+                          "wowoFunction": "UMP-PG",
+                          "wowoEquipmentDescription": "Équipement de test créé par mobile",
+                          "wowoCompletionRate": double.tryParse(rateController.text.trim()) ?? 0.0,
+                        };
+
+                        if (codeController.text.trim().isNotEmpty) {
+                          data["wowoCode"] = int.parse(codeController.text.trim());
+                        }
+
+                        await _otService.createOT(data);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('OT créé avec succès en base locale !')),
+                        );
+                        _loadOrders();
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Erreur: $e')),
+                        );
+                        setState(() => _isLoading = false);
+                      }
+                    }
+                  },
+                  child: const Text('Créer'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -357,16 +792,42 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
                                   message: 'Aucun OT ouvert ne correspond à ce service.',
                                   icon: Icons.assignment_late,
                                 )
-                              : RefreshIndicator(
-                                  onRefresh: _loadOrders,
-                                  child: ListView.separated(
-                                    physics: const AlwaysScrollableScrollPhysics(),
-                                    itemCount: visibleOrders.length,
-                                    separatorBuilder: (_, __) => SizedBox(height: spacing.small),
-                                    itemBuilder: (context, index) {
-                                      final order = visibleOrders[index];
-                                      final isClosed = _closedStatuses.contains(order.wowoUserStatus.trim().toUpperCase());
-                                      return ListItemCustom.order(
+                              : ListView.separated(
+                                  physics: const AlwaysScrollableScrollPhysics(),
+                                  itemCount: visibleOrders.length + (_hasMore ? 1 : 0),
+                                  separatorBuilder: (_, __) => SizedBox(height: spacing.small),
+                                  itemBuilder: (context, index) {
+                                    if (index == visibleOrders.length) {
+                                      return Padding(
+                                        padding: const EdgeInsets.symmetric(vertical: 16.0),
+                                        child: Center(
+                                          child: _isLoadingMore
+                                              ? const CircularProgressIndicator()
+                                              : ElevatedButton.icon(
+                                                  onPressed: _loadMoreOrders,
+                                                  icon: const Icon(Icons.add),
+                                                  label: const Text("Charger plus d'OT"),
+                                                  style: ElevatedButton.styleFrom(
+                                                    backgroundColor: AppTheme.secondaryColor,
+                                                    foregroundColor: Colors.white,
+                                                    shape: RoundedRectangleBorder(
+                                                      borderRadius: BorderRadius.circular(12),
+                                                    ),
+                                                    padding: const EdgeInsets.symmetric(
+                                                      horizontal: 24,
+                                                      vertical: 12,
+                                                    ),
+                                                  ),
+                                                ),
+                                        ),
+                                      );
+                                    }
+
+                                    final order = visibleOrders[index];
+                                    final isClosed = _closedStatuses.contains(order.wowoUserStatus.trim().toUpperCase());
+                                    return GestureDetector(
+                                      onLongPress: () => _showOTActionMenu(order),
+                                      child: ListItemCustom.order(
                                         code: order.wowoCode.toString(),
                                         famille: order.wowoJobType.isNotEmpty
                                             ? order.wowoJobType
@@ -378,6 +839,7 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
                                         description: order.wowoJob.isNotEmpty
                                             ? order.wowoJob
                                             : (order.wowoEquipmentDescription.isNotEmpty ? order.wowoEquipmentDescription : '-'),
+                                        status: Order.formatStatus(order.wowoUserStatus, order.mdusDescription),
                                         onDetailsTap: () => _openDetails(order),
                                         statusBadge: Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -394,9 +856,9 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
                                             ),
                                           ),
                                         ),
-                                      );
-                                    },
-                                  ),
+                                      ),
+                                    );
+                                  },
                                 ),
                 ),
               ],
@@ -458,6 +920,19 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
       return Scaffold(
         backgroundColor: AppTheme.primaryColor,
         body: mainContent,
+        floatingActionButton: FloatingActionButton(
+          onPressed: () async {
+            final result = await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const OTCreateScreen()),
+            );
+            if (result == true) {
+              _loadOrders();
+            }
+          },
+          backgroundColor: AppTheme.secondaryColor,
+          child: const Icon(Icons.add, color: Colors.white),
+        ),
       );
     } else {
       return Scaffold(
@@ -469,6 +944,19 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
         ),
         body: SafeArea(
           child: mainContent,
+        ),
+        floatingActionButton: FloatingActionButton(
+          onPressed: () async {
+            final result = await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const OTCreateScreen()),
+            );
+            if (result == true) {
+              _loadOrders();
+            }
+          },
+          backgroundColor: AppTheme.secondaryColor,
+          child: const Icon(Icons.add, color: Colors.white),
         ),
       );
     }

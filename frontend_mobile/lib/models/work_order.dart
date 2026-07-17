@@ -21,6 +21,9 @@ class WorkOrder {
   final String? wowoFunction;
   final String? wowoFeedbackNote;
 
+  // Taux de réalisation
+  final double? wowoCompletionRate; // ✅ AJOUTÉ
+
   // Descriptions
   final String wowoEquipmentDescription;
   final String? wowoActionEntityDescription;
@@ -68,10 +71,14 @@ class WorkOrder {
     this.wowoString2,
     this.wowoString4,
     this.mdusDescription,
+    this.wowoCompletionRate, // ✅ AJOUTÉ
   });
 
   factory WorkOrder.fromJson(Map<String, dynamic> json) {
     return WorkOrder(
+      wowoCompletionRate: json['wowoCompletionRate'] != null
+          ? (json['wowoCompletionRate'] as num).toDouble()
+          : null, // ✅ AJOUTÉ
       pkWorkOrder: json['pkWorkOrder'] ?? 0,
       wowoCode: json['wowoCode'] ?? 0,
       wowoUserStatus: json['wowoUserStatus'] ?? '',
@@ -139,6 +146,7 @@ class WorkOrder {
       'wowoString2': wowoString2,
       'wowoString4': wowoString4,
       'mdusDescription': mdusDescription,
+      'wowoCompletionRate': wowoCompletionRate, // ✅ AJOUTÉ
     };
   }
 

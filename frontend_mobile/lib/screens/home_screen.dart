@@ -30,6 +30,8 @@ class _HomeScreenState extends State<HomeScreen> {
       unite: 'Unité OT $index',
       centre: 'Centre OT $index',
       description: 'Description de l\'ordre de travail OT $index',
+      status: 'OUV',
+      completionRate: 25.0 * index,
     ),
   );
 
@@ -45,6 +47,8 @@ class _HomeScreenState extends State<HomeScreen> {
       unite: 'Unité DI $index',
       centre: 'Centre DI $index',
       description: 'Description de la demande d\'intervention DI $index',
+      status: 'CREE',
+      completionRate: 10.0 * index,
     ),
   );
 

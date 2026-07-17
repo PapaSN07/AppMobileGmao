@@ -30,6 +30,9 @@ class _OTListScreenState extends State<OTListScreen> {
       unite: 'Unité $index',
       centre: 'Dakar',
       description: 'Description de l\'ordre de travail $index',
+      status: 'OUV',
+      // MODIFICATION: Taux de realisation fictif pour les donnees de demonstration
+      completionRate: 45.0,
     ),
   );
 

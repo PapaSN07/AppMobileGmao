@@ -26,6 +26,18 @@ class OTInfoDetailsScreen extends StatefulWidget {
 }
 
 class _OTInfoDetailsScreenState extends State<OTInfoDetailsScreen> {
+  static const Set<String> _closedStatuses = {
+    'CL',
+    'TE',
+    'CLOSE',
+    'CLOSED',
+    'TERMINE',
+    'TERMINEE',
+    'TERMINATED',
+    'FINI',
+    'FINISHED',
+  };
+
   late final OTService _otService;
   bool _isLoading = true;
   WorkOrder? _selectedWorkOrder;
@@ -101,6 +113,10 @@ class _OTInfoDetailsScreenState extends State<OTInfoDetailsScreen> {
       unite: '',
       centre: _selectedWorkOrder!.wowoCostcentre,
       description: _selectedWorkOrder!.wowoEquipmentDescription,
+      // MODIFICATION: Formater le statut en toutes lettres (ex: OUVERT (OUV))
+      status: Order.formatStatus(_selectedWorkOrder!.wowoUserStatus, _selectedWorkOrder!.mdusDescription),
+      // MODIFICATION: Passer le taux de realisation reel de l'OT
+      completionRate: _selectedWorkOrder!.wowoCompletionRate,
     );
 
     Navigator.push(
@@ -334,6 +350,8 @@ class _OTInfoDetailsScreenState extends State<OTInfoDetailsScreen> {
                           order.wowoCode.toString() ==
                               _selectedWorkOrder?.wowoCode.toString();
 
+                      final isClosed = _closedStatuses.contains(order.wowoUserStatus.trim().toUpperCase());
+
                       return Padding(
                         padding: spacing.custom(bottom: 10),
                         child: GestureDetector(
@@ -369,6 +387,22 @@ class _OTInfoDetailsScreenState extends State<OTInfoDetailsScreen> {
                               centre: order.wowoCostcentre,
                               // Description complète de l'équipement
                               description: order.wowoEquipmentDescription,
+                              status: Order.formatStatus(order.wowoUserStatus, order.mdusDescription),
+                              statusBadge: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: isClosed ? Colors.red.shade50 : Colors.green.shade50,
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: Text(
+                                  order.wowoUserStatus.isEmpty ? 'INCONNU' : order.wowoUserStatus,
+                                  style: TextStyle(
+                                    color: isClosed ? Colors.red.shade700 : Colors.green.shade700,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
                         ),

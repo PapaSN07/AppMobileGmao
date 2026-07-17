@@ -1,0 +1,4 @@
+from app.repositories.base import AbstractWorkOrderRepository
+from app.repositories.local_sql import LocalSQLWorkOrderRepository
+from app.repositories.coswin_api import CoswinAPIWorkOrderRepository
+from app.repositories.dependency import get_workorder_repository

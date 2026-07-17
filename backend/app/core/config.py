@@ -54,8 +54,9 @@ OT_API_PASSWORD = os.getenv("OT_API_PASSWORD", "supervisor")
 OT_DATASOURCE = os.getenv("OT_DATASOURCE", "Coswin")
 OT_CWUSER = os.getenv("OT_CWUSER", "coswinws")
 
+DATA_SOURCE = os.getenv("DATA_SOURCE", "coswin").lower()
 # Mode local OT: permet de continuer les tests sans dependre de l'API Coswin.
-OT_USE_LOCAL_MOCK = os.getenv("OT_USE_LOCAL_MOCK", "false").lower() == "true"
+OT_USE_LOCAL_MOCK = (os.getenv("OT_USE_LOCAL_MOCK", "false").lower() == "true") or (DATA_SOURCE == "local")
 # Chemin optionnel du fichier JSON local OT. Si vide, un chemin par defaut est utilise.
 OT_LOCAL_JSON_PATH = os.getenv("OT_LOCAL_JSON_PATH", "")
 

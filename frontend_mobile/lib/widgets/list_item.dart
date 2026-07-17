@@ -108,6 +108,7 @@ class ListItemCustom extends StatelessWidget {
     required String unite,
     required String centre,
     required String description,
+    String? status, // ✅ AJOUTÉ: Statut/État textuel de l'OT
     String overlayTitle = 'Détails de l\'ordre',
     VoidCallback? onTap,
     Widget? statusBadge,
@@ -126,6 +127,7 @@ class ListItemCustom extends StatelessWidget {
       ],
       overlayDetails: {
         'Code': code,
+        if (status != null && status.isNotEmpty) 'État': status, // ✅ AJOUTÉ
         'Famille': famille,
         'Zone': zone,
         'Entité': entity,

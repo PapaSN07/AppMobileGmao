@@ -26,6 +26,11 @@ class ApiService {
   static const int _productionPort = 9099;
   static const String _productionHost = 'domtec.senelec.sn';
   static const int _localDevPort = 8003;
+  // IP locale du PC de développement (pour tests sur vrai téléphone)
+  // Changer si l'IP change (voir: ipconfig → Adresse IPv4)
+  // MODIFICATION: Utilisation de l'adresse specifique de l'emulateur Android 10.0.2.2.
+  // Elle redirige automatiquement vers le localhost de votre PC et ne change jamais.
+  static const String _localDevHost = '10.0.2.2';
 
   String get macIpAddress => _resolveHost();
   int get defaultPort => _resolvePort();
@@ -59,7 +64,9 @@ class ApiService {
     if (kIsWeb) return 'localhost';
 
     if (defaultTargetPlatform == TargetPlatform.android) {
-      return '10.0.2.2';
+      // 10.0.2.2 = uniquement pour l'émulateur Android
+      // Pour un vrai téléphone, utiliser l'IP locale du PC
+      return _localDevHost;
     }
 
     return 'localhost';

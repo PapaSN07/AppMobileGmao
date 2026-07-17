@@ -107,9 +107,18 @@ class OTService {
       final cacheKey = _cacheKeyFor(scope, supervisorCode, requestEntity);
       final cachedOrders = await _cacheService.getCachedOrders(key: cacheKey);
       if (cachedOrders != null && cachedOrders.isNotEmpty) {
-        print('📱 ${cachedOrders.length} OT chargés depuis le cache ($cacheKey)');
+        // Dédoublonner par wowoCode pour nettoyer un historique de cache potentiellement pollué
+        final seenCodes = <int>{};
+        final uniqueOrders = <WorkOrder>[];
+        for (final order in cachedOrders) {
+          if (!seenCodes.contains(order.wowoCode)) {
+            seenCodes.add(order.wowoCode);
+            uniqueOrders.add(order);
+          }
+        }
+        print('📱 ${uniqueOrders.length} OT uniques chargés depuis le cache ($cacheKey)');
         return OTPageResult(
-          workorders: cachedOrders,
+          workorders: uniqueOrders,
           paginationContext: null,
           hasMore: false,
         );
@@ -155,18 +164,29 @@ class OTService {
       if (payload is Map<String, dynamic> && payload.containsKey('workorders')) {
         final rawList = payload['workorders'] as List<dynamic>? ?? [];
         final orders = rawList.map((json) => WorkOrder.fromJson(json)).toList();
+        
+        // Dédoublonner par wowoCode pour éviter toute duplication visuelle sur l'UI
+        final seenCodes = <int>{};
+        final uniqueOrders = <WorkOrder>[];
+        for (final order in orders) {
+          if (!seenCodes.contains(order.wowoCode)) {
+            seenCodes.add(order.wowoCode);
+            uniqueOrders.add(order);
+          }
+        }
+
         final nextContext = payload['paginationContext'] as String?;
         final hasMore = payload['hasMore'] as bool? ?? false;
 
         // Met en cache la première page pour l'usage hors-ligne.
-        if (paginationContext == null && orders.isNotEmpty) {
+        if (paginationContext == null && uniqueOrders.isNotEmpty) {
           final cacheKey = _cacheKeyFor(scope, supervisorCode, requestEntity);
-          await _cacheService.cacheOrders(orders, key: cacheKey);
+          await _cacheService.cacheOrders(uniqueOrders, key: cacheKey);
         }
 
-        print('✅ ${orders.length} OT reçus, hasMore=$hasMore');
+        print('✅ ${uniqueOrders.length} OT uniques reçus, hasMore=$hasMore');
         return OTPageResult(
-          workorders: orders,
+          workorders: uniqueOrders,
           paginationContext: nextContext,
           hasMore: hasMore,
         );
@@ -175,7 +195,15 @@ class OTService {
       // Fallback : ancienne structure liste plate (compatibilité).
       if (payload is List) {
         final orders = payload.map((json) => WorkOrder.fromJson(json)).toList();
-        return OTPageResult(workorders: orders, paginationContext: null, hasMore: false);
+        final seenCodes = <int>{};
+        final uniqueOrders = <WorkOrder>[];
+        for (final order in orders) {
+          if (!seenCodes.contains(order.wowoCode)) {
+            seenCodes.add(order.wowoCode);
+            uniqueOrders.add(order);
+          }
+        }
+        return OTPageResult(workorders: uniqueOrders, paginationContext: null, hasMore: false);
       }
 
       throw Exception('Format de réponse OT inattendu');
@@ -184,9 +212,18 @@ class OTService {
       final cacheKey = _cacheKeyFor(scope, supervisorCode, requestEntity);
       final cachedOrders = await _cacheService.getCachedOrders(key: cacheKey);
       if (cachedOrders != null && cachedOrders.isNotEmpty) {
-        print('📱 ${cachedOrders.length} OT depuis le cache (après erreur API)');
+        // Dédoublonner par wowoCode pour nettoyer un historique de cache potentiellement pollué
+        final seenCodes = <int>{};
+        final uniqueOrders = <WorkOrder>[];
+        for (final order in cachedOrders) {
+          if (!seenCodes.contains(order.wowoCode)) {
+            seenCodes.add(order.wowoCode);
+            uniqueOrders.add(order);
+          }
+        }
+        print('📱 ${uniqueOrders.length} OT uniques depuis le cache (après erreur API)');
         return OTPageResult(
-          workorders: cachedOrders,
+          workorders: uniqueOrders,
           paginationContext: null,
           hasMore: false,
         );
@@ -243,6 +280,45 @@ class OTService {
       print('✅ OT mis à jour et cache effacé');
     } catch (e) {
       throw Exception('Erreur lors de la mise à jour: $e');
+    }
+  }
+
+  /// Créer un nouvel OT
+  Future<WorkOrder> createOT(Map<String, dynamic> data) async {
+    final hasInternet = await hasInternetConnection();
+    if (!hasInternet) {
+      throw Exception('Aucune connexion Internet pour créer l\'OT');
+    }
+
+    try {
+      final response = await _apiService.post(ordersEndpoint, data: data);
+      final payload = _extractDataPayload(response);
+      final newOrder = WorkOrder.fromJson(payload);
+
+      // Invalider le cache
+      await _cacheService.clearCache();
+      print('✅ OT créé et cache effacé');
+      return newOrder;
+    } catch (e) {
+      throw Exception('Erreur lors de la création de l\'OT: $e');
+    }
+  }
+
+  /// Supprimer un OT
+  Future<void> deleteOT(int workOrderCode) async {
+    final hasInternet = await hasInternetConnection();
+    if (!hasInternet) {
+      throw Exception('Aucune connexion Internet pour supprimer l\'OT');
+    }
+
+    try {
+      await _apiService.delete('$ordersEndpoint/$workOrderCode');
+
+      // Invalider le cache
+      await _cacheService.clearCache();
+      print('✅ OT supprimé et cache effacé');
+    } catch (e) {
+      throw Exception('Erreur lors de la suppression de l\'OT: $e');
     }
   }
 
@@ -349,6 +425,172 @@ class OTService {
     }
   }
 
+
+  // ========== SUB-RESOURCES CRUD ==========
+  Future<void> createOperation(String otCode, Map<String, dynamic> data) async {
+    final hasInternet = await hasInternetConnection();
+    if (!hasInternet) throw Exception('Hors ligne : opération impossible');
+    try {
+      await _apiService.post('$ordersEndpoint/$otCode/operations', data: data);
+      await _cacheService.clearCache();
+    } catch (e) {
+      throw Exception('Erreur ajout opération: $e');
+    }
+  }
+
+  Future<void> updateOperation(String otCode, int pk, Map<String, dynamic> data) async {
+    final hasInternet = await hasInternetConnection();
+    if (!hasInternet) throw Exception('Hors ligne : opération impossible');
+    try {
+      await _apiService.put('$ordersEndpoint/$otCode/operations/$pk', data: data);
+      await _cacheService.clearCache();
+    } catch (e) {
+      throw Exception('Erreur modification opération: $e');
+    }
+  }
+
+  Future<void> deleteOperation(String otCode, int pk) async {
+    final hasInternet = await hasInternetConnection();
+    if (!hasInternet) throw Exception('Hors ligne : opération impossible');
+    try {
+      await _apiService.delete('$ordersEndpoint/$otCode/operations/$pk');
+      await _cacheService.clearCache();
+    } catch (e) {
+      throw Exception('Erreur suppression opération: $e');
+    }
+  }
+
+  Future<void> createDocument(String otCode, Map<String, dynamic> data) async {
+    final hasInternet = await hasInternetConnection();
+    if (!hasInternet) throw Exception('Hors ligne : opération impossible');
+    try {
+      await _apiService.post('$ordersEndpoint/$otCode/documents', data: data);
+      await _cacheService.clearCache();
+    } catch (e) {
+      throw Exception('Erreur ajout commentaire: $e');
+    }
+  }
+
+  Future<void> updateDocument(String otCode, int pk, Map<String, dynamic> data) async {
+    final hasInternet = await hasInternetConnection();
+    if (!hasInternet) throw Exception('Hors ligne : opération impossible');
+    try {
+      await _apiService.put('$ordersEndpoint/$otCode/documents/$pk', data: data);
+      await _cacheService.clearCache();
+    } catch (e) {
+      throw Exception('Erreur modification commentaire: $e');
+    }
+  }
+
+  Future<void> deleteDocument(String otCode, int pk) async {
+    final hasInternet = await hasInternetConnection();
+    if (!hasInternet) throw Exception('Hors ligne : opération impossible');
+    try {
+      await _apiService.delete('$ordersEndpoint/$otCode/documents/$pk');
+      await _cacheService.clearCache();
+    } catch (e) {
+      throw Exception('Erreur suppression commentaire: $e');
+    }
+  }
+
+  Future<void> createWorkforce(String otCode, Map<String, dynamic> data) async {
+    final hasInternet = await hasInternetConnection();
+    if (!hasInternet) throw Exception('Hors ligne : opération impossible');
+    try {
+      await _apiService.post('$ordersEndpoint/$otCode/workforce', data: data);
+      await _cacheService.clearCache();
+    } catch (e) {
+      throw Exception('Erreur ajout main d\'œuvre: $e');
+    }
+  }
+
+  Future<void> updateWorkforce(String otCode, int pk, Map<String, dynamic> data) async {
+    final hasInternet = await hasInternetConnection();
+    if (!hasInternet) throw Exception('Hors ligne : opération impossible');
+    try {
+      await _apiService.put('$ordersEndpoint/$otCode/workforce/$pk', data: data);
+      await _cacheService.clearCache();
+    } catch (e) {
+      throw Exception('Erreur modification main d\'œuvre: $e');
+    }
+  }
+
+  Future<void> deleteWorkforce(String otCode, int pk) async {
+    final hasInternet = await hasInternetConnection();
+    if (!hasInternet) throw Exception('Hors ligne : opération impossible');
+    try {
+      await _apiService.delete('$ordersEndpoint/$otCode/workforce/$pk');
+      await _cacheService.clearCache();
+    } catch (e) {
+      throw Exception('Erreur suppression main d\'œuvre: $e');
+    }
+  }
+
+  Future<void> createPart(String otCode, Map<String, dynamic> data) async {
+    final hasInternet = await hasInternetConnection();
+    if (!hasInternet) throw Exception('Hors ligne : opération impossible');
+    try {
+      await _apiService.post('$ordersEndpoint/$otCode/parts', data: data);
+      await _cacheService.clearCache();
+    } catch (e) {
+      throw Exception('Erreur ajout article: $e');
+    }
+  }
+
+  Future<void> updatePart(String otCode, int pk, Map<String, dynamic> data) async {
+    final hasInternet = await hasInternetConnection();
+    if (!hasInternet) throw Exception('Hors ligne : opération impossible');
+    try {
+      await _apiService.put('$ordersEndpoint/$otCode/parts/$pk', data: data);
+      await _cacheService.clearCache();
+    } catch (e) {
+      throw Exception('Erreur modification article: $e');
+    }
+  }
+
+  Future<void> deletePart(String otCode, int pk) async {
+    final hasInternet = await hasInternetConnection();
+    if (!hasInternet) throw Exception('Hors ligne : opération impossible');
+    try {
+      await _apiService.delete('$ordersEndpoint/$otCode/parts/$pk');
+      await _cacheService.clearCache();
+    } catch (e) {
+      throw Exception('Erreur suppression article: $e');
+    }
+  }
+
+  Future<void> createAttribute(String otCode, Map<String, dynamic> data) async {
+    final hasInternet = await hasInternetConnection();
+    if (!hasInternet) throw Exception('Hors ligne : opération impossible');
+    try {
+      await _apiService.post('$ordersEndpoint/$otCode/attributes', data: data);
+      await _cacheService.clearCache();
+    } catch (e) {
+      throw Exception('Erreur ajout attribut: $e');
+    }
+  }
+
+  Future<void> updateAttribute(String otCode, int pk, Map<String, dynamic> data) async {
+    final hasInternet = await hasInternetConnection();
+    if (!hasInternet) throw Exception('Hors ligne : opération impossible');
+    try {
+      await _apiService.put('$ordersEndpoint/$otCode/attributes/$pk', data: data);
+      await _cacheService.clearCache();
+    } catch (e) {
+      throw Exception('Erreur modification attribut: $e');
+    }
+  }
+
+  Future<void> deleteAttribute(String otCode, int pk) async {
+    final hasInternet = await hasInternetConnection();
+    if (!hasInternet) throw Exception('Hors ligne : opération impossible');
+    try {
+      await _apiService.delete('$ordersEndpoint/$otCode/attributes/$pk');
+      await _cacheService.clearCache();
+    } catch (e) {
+      throw Exception('Erreur suppression attribut: $e');
+    }
+  }
 
   dynamic _extractDataPayload(dynamic response) {
     // Accepte les reponses directes et les reponses enveloppees par le backend.

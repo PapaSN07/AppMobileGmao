@@ -7,7 +7,12 @@ from typing import List, Optional, Dict, Any
 import logging
 
 
-from app.services.ot_service import ot_service
+from app.services.ot_service import OTService
+from app.repositories.dependency import get_workorder_repository
+from fastapi import Depends
+
+async def get_ot_service(repo = Depends(get_workorder_repository)) -> OTService:
+    return OTService(repo)
 from app.schemas.rest_response import RestResponse
 
 logger = logging.getLogger(__name__)
@@ -50,6 +55,7 @@ async def get_all_workorders(
     paginationContext: Optional[str] = Query(
         None, description="Token Coswin pour charger la page suivante (fourni par la réponse précédente)."
     ),
+    ot_service: OTService = Depends(get_ot_service)
 ):
     """
     Récupère UNE PAGE d'ordres de travail filtrée.
@@ -101,7 +107,7 @@ async def get_all_workorders(
     description="Récupère les détails d'un ordre de travail par son code",
     response_model=RestResponse
 )
-async def get_workorder_by_code(code: str):
+async def get_workorder_by_code(code: str, ot_service: OTService = Depends(get_ot_service)):
     """
     Récupère les détails complets d'un ordre de travail
     
@@ -141,7 +147,7 @@ async def get_workorder_by_code(code: str):
     description="Crée un nouvel ordre de travail dans Coswin",
     response_model=RestResponse
 )
-async def create_workorder(workorder_data: Dict[str, Any]):
+async def create_workorder(workorder_data: Dict[str, Any], ot_service: OTService = Depends(get_ot_service)):
     """
     Crée un nouvel ordre de travail
     
@@ -176,7 +182,7 @@ async def create_workorder(workorder_data: Dict[str, Any]):
     description="Met à jour un ordre de travail existant",
     response_model=RestResponse
 )
-async def update_workorder(code: str, workorder_data: Dict[str, Any]):
+async def update_workorder(code: str, workorder_data: Dict[str, Any], ot_service: OTService = Depends(get_ot_service)):
     """
     Met à jour un ordre de travail existant
     
@@ -213,7 +219,7 @@ async def update_workorder(code: str, workorder_data: Dict[str, Any]):
     description="Supprime un ordre de travail",
     response_model=RestResponse
 )
-async def delete_workorder(code: str):
+async def delete_workorder(code: str, ot_service: OTService = Depends(get_ot_service)):
     """
     Supprime un ordre de travail
     
@@ -249,7 +255,7 @@ async def delete_workorder(code: str):
     description="Récupère tous les équipements depuis l'API Coswin",
     response_model=RestResponse
 )
-async def get_all_equipment():
+async def get_all_equipment(ot_service: OTService = Depends(get_ot_service)):
     """Récupère la liste de tous les équipements"""
     try:
         equipment = await ot_service.get_all_equipment()
@@ -275,7 +281,7 @@ async def get_all_equipment():
     description="Récupère les détails d'un équipement par son code",
     response_model=RestResponse
 )
-async def get_equipment_by_code(code: str):
+async def get_equipment_by_code(code: str, ot_service: OTService = Depends(get_ot_service)):
     """Récupère les détails d'un équipement"""
     try:
         equipment = await ot_service.get_equipment_by_code(code)
@@ -303,7 +309,7 @@ async def get_equipment_by_code(code: str):
     description="Récupère tous les emplacements depuis l'API Coswin",
     response_model=RestResponse
 )
-async def get_all_locations():
+async def get_all_locations(ot_service: OTService = Depends(get_ot_service)):
     """Récupère la liste de tous les emplacements"""
     try:
         locations = await ot_service.get_all_locations()
@@ -329,7 +335,7 @@ async def get_all_locations():
     description="Récupère les détails d'un emplacement par son code",
     response_model=RestResponse
 )
-async def get_location_by_code(code: str):
+async def get_location_by_code(code: str, ot_service: OTService = Depends(get_ot_service)):
     """Récupère les détails d'un emplacement"""
     try:
         location = await ot_service.get_location_by_code(code)
@@ -357,7 +363,7 @@ async def get_location_by_code(code: str):
     description="Récupère les opérations associées à un ordre de travail",
     response_model=RestResponse
 )
-async def get_operations_by_workorder(code: str):
+async def get_operations_by_workorder(code: str, ot_service: OTService = Depends(get_ot_service)):
     """Récupère les opérations d'un ordre de travail"""
     try:
         operations = await ot_service.get_operations_by_workorder(code)
@@ -385,7 +391,7 @@ async def get_operations_by_workorder(code: str):
     description="Récupère les pièces de rechange associées à un ordre de travail",
     response_model=RestResponse
 )
-async def get_parts_by_workorder(code: str):
+async def get_parts_by_workorder(code: str, ot_service: OTService = Depends(get_ot_service)):
     """Récupère les pièces de rechange d'un ordre de travail"""
     try:
         parts = await ot_service.get_parts_by_workorder(code)
@@ -413,7 +419,7 @@ async def get_parts_by_workorder(code: str):
     description="Récupère les documents associés à un ordre de travail",
     response_model=RestResponse
 )
-async def get_documents_by_workorder(code: str):
+async def get_documents_by_workorder(code: str, ot_service: OTService = Depends(get_ot_service)):
     """Récupère les documents d'un ordre de travail"""
     try:
         documents = await ot_service.get_documents_by_workorder(code)
@@ -441,7 +447,7 @@ async def get_documents_by_workorder(code: str):
     description="Récupère la main d'œuvre affectée à un ordre de travail",
     response_model=RestResponse
 )
-async def get_workforce_by_workorder(code: str):
+async def get_workforce_by_workorder(code: str, ot_service: OTService = Depends(get_ot_service)):
     """Récupère la main d'œuvre affectée à un ordre de travail"""
     try:
         workforce = await ot_service.get_workforce_by_workorder(code)
@@ -469,7 +475,7 @@ async def get_workforce_by_workorder(code: str):
     description="Récupère les actions associées à un ordre de travail",
     response_model=RestResponse,
 )
-async def get_actions_by_workorder(code: str):
+async def get_actions_by_workorder(code: str, ot_service: OTService = Depends(get_ot_service)):
     """Récupère les actions d'un ordre de travail."""
     try:
         actions = await ot_service.get_actions_by_workorder(code)
@@ -494,7 +500,7 @@ async def get_actions_by_workorder(code: str):
     description="Récupère la liste des employés alloués à un ordre de travail",
     response_model=RestResponse,
 )
-async def get_allocated_employees_by_workorder(code: str):
+async def get_allocated_employees_by_workorder(code: str, ot_service: OTService = Depends(get_ot_service)):
     """Récupère les employés alloués d'un ordre de travail."""
     try:
         employees = await ot_service.get_allocated_employees_by_workorder(code)
@@ -519,7 +525,7 @@ async def get_allocated_employees_by_workorder(code: str):
     description="Récupère les feedbacks saisis sur un ordre de travail",
     response_model=RestResponse,
 )
-async def get_employee_feedbacks_by_workorder(code: str):
+async def get_employee_feedbacks_by_workorder(code: str, ot_service: OTService = Depends(get_ot_service)):
     """Récupère les commentaires employés d'un ordre de travail."""
     try:
         feedbacks = await ot_service.get_employee_feedbacks_by_workorder(code)
@@ -544,7 +550,7 @@ async def get_employee_feedbacks_by_workorder(code: str):
     description="Récupère le stock utilisé sur un ordre de travail",
     response_model=RestResponse,
 )
-async def get_stock_used_by_workorder(code: str):
+async def get_stock_used_by_workorder(code: str, ot_service: OTService = Depends(get_ot_service)):
     """Récupère le stock utilisé sur un ordre de travail."""
     try:
         stock_used = await ot_service.get_stock_used_by_workorder(code)
@@ -569,7 +575,7 @@ async def get_stock_used_by_workorder(code: str):
     description="Récupère les attributs associés à un ordre de travail",
     response_model=RestResponse,
 )
-async def get_attributes_by_workorder(code: str):
+async def get_attributes_by_workorder(code: str, ot_service: OTService = Depends(get_ot_service)):
     """Récupère les attributs d'un ordre de travail."""
     try:
         attributes = await ot_service.get_attributes_by_workorder(code)
@@ -594,7 +600,7 @@ async def get_attributes_by_workorder(code: str):
     description="Récupère les moyens (véhicules, outils) affectés à un ordre de travail",
     response_model=RestResponse,
 )
-async def get_facilities_used_by_workorder(code: str):
+async def get_facilities_used_by_workorder(code: str, ot_service: OTService = Depends(get_ot_service)):
     """Récupère les moyens utilisés d'un ordre de travail."""
     try:
         facilities = await ot_service.get_facilities_used_by_workorder(code)
@@ -619,7 +625,7 @@ async def get_facilities_used_by_workorder(code: str):
     description="Récupère les services (sous-traitance, prestations) associés à un ordre de travail",
     response_model=RestResponse,
 )
-async def get_services_by_workorder(code: str):
+async def get_services_by_workorder(code: str, ot_service: OTService = Depends(get_ot_service)):
     """Récupère les services utilisés d'un ordre de travail."""
     try:
         services = await ot_service.get_services_used_by_workorder(code)
@@ -636,4 +642,129 @@ async def get_services_by_workorder(code: str):
             status_code=500,
             detail=f"Erreur lors de la récupération des services: {str(e)}"
         )
-
+
+# ========== OPERATIONS CRUD ==========
+@ot_router.post("/workorders/{code}/operations", response_model=RestResponse)
+async def create_operation(code: str, data: Dict[str, Any], ot_service: OTService = Depends(get_ot_service)):
+    try:
+        res = await ot_service.create_operation(code, data)
+        return RestResponse(success=True, data=res, message="Opération ajoutée avec succès")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@ot_router.put("/workorders/{code}/operations/{pk}", response_model=RestResponse)
+async def update_operation(code: str, pk: int, data: Dict[str, Any], ot_service: OTService = Depends(get_ot_service)):
+    try:
+        res = await ot_service.update_operation(code, pk, data)
+        return RestResponse(success=True, data=res, message="Opération mise à jour avec succès")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@ot_router.delete("/workorders/{code}/operations/{pk}", response_model=RestResponse)
+async def delete_operation(code: str, pk: int, ot_service: OTService = Depends(get_ot_service)):
+    try:
+        res = await ot_service.delete_operation(code, pk)
+        return RestResponse(success=True, data=res, message="Opération supprimée avec succès")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ========== DOCUMENTS CRUD ==========
+@ot_router.post("/workorders/{code}/documents", response_model=RestResponse)
+async def create_document(code: str, data: Dict[str, Any], ot_service: OTService = Depends(get_ot_service)):
+    try:
+        res = await ot_service.create_document(code, data)
+        return RestResponse(success=True, data=res, message="Commentaire ajouté avec succès")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@ot_router.put("/workorders/{code}/documents/{pk}", response_model=RestResponse)
+async def update_document(code: str, pk: int, data: Dict[str, Any], ot_service: OTService = Depends(get_ot_service)):
+    try:
+        res = await ot_service.update_document(code, pk, data)
+        return RestResponse(success=True, data=res, message="Commentaire mis à jour avec succès")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@ot_router.delete("/workorders/{code}/documents/{pk}", response_model=RestResponse)
+async def delete_document(code: str, pk: int, ot_service: OTService = Depends(get_ot_service)):
+    try:
+        res = await ot_service.delete_document(code, pk)
+        return RestResponse(success=True, data=res, message="Commentaire supprimé avec succès")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ========== WORKFORCE CRUD ==========
+@ot_router.post("/workorders/{code}/workforce", response_model=RestResponse)
+async def create_workforce(code: str, data: Dict[str, Any], ot_service: OTService = Depends(get_ot_service)):
+    try:
+        res = await ot_service.create_workforce(code, data)
+        return RestResponse(success=True, data=res, message="Main d'œuvre ajoutée avec succès")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@ot_router.put("/workorders/{code}/workforce/{pk}", response_model=RestResponse)
+async def update_workforce(code: str, pk: int, data: Dict[str, Any], ot_service: OTService = Depends(get_ot_service)):
+    try:
+        res = await ot_service.update_workforce(code, pk, data)
+        return RestResponse(success=True, data=res, message="Main d'œuvre mise à jour avec succès")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@ot_router.delete("/workorders/{code}/workforce/{pk}", response_model=RestResponse)
+async def delete_workforce(code: str, pk: int, ot_service: OTService = Depends(get_ot_service)):
+    try:
+        res = await ot_service.delete_workforce(code, pk)
+        return RestResponse(success=True, data=res, message="Main d'œuvre supprimée avec succès")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ========== PARTS CRUD ==========
+@ot_router.post("/workorders/{code}/parts", response_model=RestResponse)
+async def create_part(code: str, data: Dict[str, Any], ot_service: OTService = Depends(get_ot_service)):
+    try:
+        res = await ot_service.create_part(code, data)
+        return RestResponse(success=True, data=res, message="Article ajouté avec succès")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@ot_router.put("/workorders/{code}/parts/{pk}", response_model=RestResponse)
+async def update_part(code: str, pk: int, data: Dict[str, Any], ot_service: OTService = Depends(get_ot_service)):
+    try:
+        res = await ot_service.update_part(code, pk, data)
+        return RestResponse(success=True, data=res, message="Article mis à jour avec succès")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@ot_router.delete("/workorders/{code}/parts/{pk}", response_model=RestResponse)
+async def delete_part(code: str, pk: int, ot_service: OTService = Depends(get_ot_service)):
+    try:
+        res = await ot_service.delete_part(code, pk)
+        return RestResponse(success=True, data=res, message="Article supprimé avec succès")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ========== ATTRIBUTES CRUD ==========
+@ot_router.post("/workorders/{code}/attributes", response_model=RestResponse)
+async def create_attribute(code: str, data: Dict[str, Any], ot_service: OTService = Depends(get_ot_service)):
+    try:
+        res = await ot_service.create_attribute(code, data)
+        return RestResponse(success=True, data=res, message="Attribut ajouté avec succès")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@ot_router.put("/workorders/{code}/attributes/{pk}", response_model=RestResponse)
+async def update_attribute(code: str, pk: int, data: Dict[str, Any], ot_service: OTService = Depends(get_ot_service)):
+    try:
+        res = await ot_service.update_attribute(code, pk, data)
+        return RestResponse(success=True, data=res, message="Attribut mis à jour avec succès")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@ot_router.delete("/workorders/{code}/attributes/{pk}", response_model=RestResponse)
+async def delete_attribute(code: str, pk: int, ot_service: OTService = Depends(get_ot_service)):
+    try:
+        res = await ot_service.delete_attribute(code, pk)
+        return RestResponse(success=True, data=res, message="Attribut supprimé avec succès")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+

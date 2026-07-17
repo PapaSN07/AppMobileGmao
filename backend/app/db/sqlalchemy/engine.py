@@ -65,6 +65,33 @@ temp_engine = create_temp_engine()
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=main_engine, future=True)
 SessionLocalTemp = sessionmaker(autocommit=False, autoflush=False, bind=temp_engine, future=True)
 
+# Engine and Session for coswin_mock (isolated development)
+def create_mock_engine():
+    """Crée l'engine pour coswin_mock (simulation OT)"""
+    url = _make_odbc_engine_url(DB_USERNAME, DB_PASSWORD, DB_HOST, DB_PORT, "coswin_mock")
+    engine = create_engine(
+        url,
+        poolclass=QueuePool,
+        pool_size=5,
+        max_overflow=10,
+        pool_pre_ping=True,
+        echo=False,
+        future=True
+    )
+    logger.info("✅ Engine coswin_mock créé")
+    return engine
+
+mock_engine = create_mock_engine()
+SessionLocalMock = sessionmaker(autocommit=False, autoflush=False, bind=mock_engine, future=True)
+
+def get_mock_db_session():
+    """Session pour coswin_mock (simulation OT)"""
+    db = SessionLocalMock()
+    try:
+        yield db
+    finally:
+        db.close()
+
 def get_db_session():
     """Session pour gmao_backend (lecture)"""
     db = SessionLocal()
