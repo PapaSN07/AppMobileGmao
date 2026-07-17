@@ -537,7 +537,10 @@ class LocalSQLWorkOrderRepository(AbstractWorkOrderRepository):
                 "woeaResource": r.employee_name,
                 "woeaAllocationDate": datetime.now().isoformat() + "Z",
                 "woeaIsPlanned": True,
-                "woeaPlannedHours": r.hours_planned
+                "woeaPlannedHours": r.hours_planned,
+                "woeaQualificationRejection": "0. Pas d'objection",
+                "woeaWorkPermit": "0. Non",
+                "woeaSequence": str(r.pk_workforce)
             }
             for r in rows
         ]

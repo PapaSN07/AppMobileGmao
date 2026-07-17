@@ -1227,6 +1227,18 @@ class _MainsOeuvreTabState extends State<_MainsOeuvreTab>
             'heuresPlanifiees': item['woeaPlannedHours']?.toString() ?? '0',
             'heuresJour':       '0',
             'taux':             'Taux normal',
+            'etatRejet':        item['woeaQualifRejection']?.toString()
+                               ?? item['woeaQualificationRejection']?.toString()
+                               ?? item['woeaQualifRej']?.toString()
+                               ?? '',
+            'aPermis':          item['woeaWorkPermit']?.toString()
+                               ?? item['woeaPermit']?.toString()
+                               ?? item['woeaHasPermit']?.toString()
+                               ?? '',
+            'sequence':         item['woeaSequence']?.toString()
+                               ?? item['woeaSeq']?.toString()
+                               ?? item['woeaSequenceNumber']?.toString()
+                               ?? '',
           };
         }).toList();
         _isLoading = false;
@@ -1714,9 +1726,19 @@ class _EmployesAllouesDetailsTabState
     _etatAllocationController = TextEditingController(
       text: data != null ? (data['etatOT']?.toString() ?? '0. Non réalisé') : '0. Non réalisé',
     );
-    _etatRejetController = TextEditingController(text: '0. Pas d\'objection');
-    _aPermisController = TextEditingController(text: '0. Non');
-    _numeroSequenceController = TextEditingController();
+    _etatRejetController = TextEditingController(
+      text: data != null && data['etatRejet'] != null && data['etatRejet'].toString().isNotEmpty
+          ? data['etatRejet'].toString()
+          : '0. Pas d\'objection',
+    );
+    _aPermisController = TextEditingController(
+      text: data != null && data['aPermis'] != null && data['aPermis'].toString().isNotEmpty
+          ? data['aPermis'].toString()
+          : '0. Non',
+    );
+    _numeroSequenceController = TextEditingController(
+      text: data != null && data['sequence'] != null ? data['sequence'].toString() : '',
+    );
   }
 
   @override
