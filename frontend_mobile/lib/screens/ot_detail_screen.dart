@@ -643,57 +643,164 @@ class _CommentairesTabState extends State<_CommentairesTab> {
     final contentController = TextEditingController();
     final currentUser = HiveService.getCurrentUser();
     final authorController = TextEditingController(text: currentUser?.code ?? '5893');
+    DateTime startDate = DateTime.now().subtract(const Duration(hours: 1));
+    DateTime endDate = DateTime.now();
+
+    final startDateController = TextEditingController(
+      text: '${startDate.year}-${startDate.month.toString().padLeft(2, '0')}-${startDate.day.toString().padLeft(2, '0')} ${startDate.hour.toString().padLeft(2, '0')}:${startDate.minute.toString().padLeft(2, '0')}'
+    );
+    final endDateController = TextEditingController(
+      text: '${endDate.year}-${endDate.month.toString().padLeft(2, '0')}-${endDate.day.toString().padLeft(2, '0')} ${endDate.hour.toString().padLeft(2, '0')}:${endDate.minute.toString().padLeft(2, '0')}'
+    );
+
+    double actualHours = (endDate.difference(startDate).inMinutes / 60.0);
+    final actualHoursController = TextEditingController(text: actualHours.toStringAsFixed(1));
+    final totalHoursController = TextEditingController(text: actualHours.toStringAsFixed(1));
+
+    Future<DateTime?> pickDT(DateTime initial) async {
+      final date = await showDatePicker(
+        context: context,
+        initialDate: initial,
+        firstDate: DateTime(2020),
+        lastDate: DateTime(2100),
+      );
+      if (date == null) return null;
+      final time = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.fromDateTime(initial),
+      );
+      if (time == null) return null;
+      return DateTime(date.year, date.month, date.day, time.hour, time.minute);
+    }
 
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: const Text('Ajouter un commentaire'),
-          content: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: contentController,
-                  decoration: const InputDecoration(labelText: 'Commentaire *'),
-                  maxLines: 3,
-                  validator: (v) => v == null || v.isEmpty ? 'Champ requis' : null,
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            void recalc() {
+              final diff = endDate.difference(startDate).inMinutes;
+              if (diff >= 0) {
+                final h = (diff / 60.0).toStringAsFixed(1);
+                setDialogState(() {
+                  actualHoursController.text = h;
+                  totalHoursController.text = h;
+                });
+              }
+            }
+
+            return AlertDialog(
+              title: const Text('Ajouter un compte-rendu / commentaire'),
+              content: SingleChildScrollView(
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextFormField(
+                        controller: contentController,
+                        decoration: const InputDecoration(labelText: 'Commentaire / Rapport *'),
+                        maxLines: 2,
+                        validator: (v) => v == null || v.isEmpty ? 'Champ requis' : null,
+                      ),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: authorController,
+                        decoration: const InputDecoration(labelText: 'Auteur / Code Employé *'),
+                        validator: (v) => v == null || v.isEmpty ? 'Champ requis' : null,
+                      ),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: startDateController,
+                        readOnly: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Date/Heure Début',
+                          suffixIcon: Icon(Icons.calendar_today, size: 18),
+                        ),
+                        onTap: () async {
+                          final picked = await pickDT(startDate);
+                          if (picked != null) {
+                            setDialogState(() {
+                              startDate = picked;
+                              startDateController.text = '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')} ${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+                            });
+                            recalc();
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: endDateController,
+                        readOnly: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Date/Heure Fin',
+                          suffixIcon: Icon(Icons.event_available, size: 18),
+                        ),
+                        onTap: () async {
+                          final picked = await pickDT(endDate);
+                          if (picked != null) {
+                            setDialogState(() {
+                              endDate = picked;
+                              endDateController.text = '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')} ${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+                            });
+                            recalc();
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: actualHoursController,
+                              decoration: const InputDecoration(labelText: 'Heures réelles (auto)'),
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: TextFormField(
+                              controller: totalHoursController,
+                              decoration: const InputDecoration(labelText: 'Heures totales (auto)'),
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-                TextFormField(
-                  controller: authorController,
-                  decoration: const InputDecoration(labelText: 'Auteur / Code Employé *'),
-                  validator: (v) => v == null || v.isEmpty ? 'Champ requis' : null,
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Annuler'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (formKey.currentState?.validate() ?? false) {
+                      Navigator.pop(context);
+                      try {
+                        await widget.otService.createDocument(widget.otCode, {
+                          "woefEmployee": authorController.text.trim(),
+                          "reemDescription": "Intervenant",
+                          "woefUserStatus": contentController.text.trim(),
+                          "woefStartDate": startDate.toIso8601String(),
+                          "woefEndDate": endDate.toIso8601String(),
+                          "woefActualHours": double.tryParse(actualHoursController.text) ?? 0.0,
+                          "woefTotalHours": double.tryParse(totalHoursController.text) ?? 0.0,
+                        });
+                        _loadComments();
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+                      }
+                    }
+                  },
+                  child: const Text('Ajouter'),
                 ),
               ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Annuler'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                if (formKey.currentState?.validate() ?? false) {
-                  Navigator.pop(context);
-                  try {
-                    await widget.otService.createDocument(widget.otCode, {
-                      "woefEmployee": authorController.text.trim(),
-                      "reemDescription": "Intervenant",
-                      "woefUserStatus": contentController.text.trim(),
-                      "woefStartDate": DateTime.now().toIso8601String(),
-                      "woefEndDate": DateTime.now().toIso8601String(),
-                    });
-                    _loadComments();
-                  } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
-                  }
-                }
-              },
-              child: const Text('Ajouter'),
-            ),
-          ],
+            );
+          },
         );
       },
     );
@@ -1727,14 +1834,10 @@ class _EmployesAllouesDetailsTabState
       text: data != null ? (data['etatOT']?.toString() ?? '0. Non réalisé') : '0. Non réalisé',
     );
     _etatRejetController = TextEditingController(
-      text: data != null && data['etatRejet'] != null && data['etatRejet'].toString().isNotEmpty
-          ? data['etatRejet'].toString()
-          : '0. Pas d\'objection',
+      text: data != null && data['etatRejet'] != null ? data['etatRejet'].toString() : '',
     );
     _aPermisController = TextEditingController(
-      text: data != null && data['aPermis'] != null && data['aPermis'].toString().isNotEmpty
-          ? data['aPermis'].toString()
-          : '0. Non',
+      text: data != null && data['aPermis'] != null ? data['aPermis'].toString() : '',
     );
     _numeroSequenceController = TextEditingController(
       text: data != null && data['sequence'] != null ? data['sequence'].toString() : '',

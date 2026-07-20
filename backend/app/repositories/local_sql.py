@@ -78,12 +78,14 @@ class LocalSQLWorkOrderRepository(AbstractWorkOrderRepository):
                     db_dict[db_col] = self._parse_date(val)
                 else:
                     db_dict[db_col] = val
+
+        if "wowoCompletionRate" in api_dict and api_dict["wowoCompletionRate"] is not None:
+            db_dict["wowo_string1"] = str(api_dict["wowoCompletionRate"])
+
         return db_dict
 
     def _to_api_dict(self, row: Any) -> Dict[str, Any]:
         """Convertit une ligne de base de données en dictionnaire compatible avec l'API Coswin."""
-        # row peut être un Row SQLAlchemy ou un tuple
-        # On construit le dict à partir des clés
         api_dict = {}
         row_dict = row._asdict() if hasattr(row, "_asdict") else dict(row)
         
@@ -94,6 +96,14 @@ class LocalSQLWorkOrderRepository(AbstractWorkOrderRepository):
                     api_dict[api_key] = self._format_date(val)
                 else:
                     api_dict[api_key] = val
+
+        rate_val = row_dict.get("wowo_string1")
+        if rate_val is not None:
+            try:
+                api_dict["wowoCompletionRate"] = float(rate_val)
+            except (ValueError, TypeError):
+                pass
+
         return api_dict
 
     def _ensure_dependencies(self, db_dict: Dict[str, Any]) -> None:
@@ -394,6 +404,12 @@ class LocalSQLWorkOrderRepository(AbstractWorkOrderRepository):
                     
             except Exception as e:
                 logger.warning(f"On-demand import failed in _ensure_cloned for OT {code}: {e}")
+                if ot_exists:
+                    try:
+                        self.db.execute(text("UPDATE dbo.workorder SET wowo_string4 = 'CLONED' WHERE wowo_code = :code"), {"code": int(code)})
+                        self.db.commit()
+                    except Exception:
+                        pass
 
     async def get_workorder_by_code(self, code: str) -> Dict[str, Any]:
         """Récupère un OT par son code avec import dynamique des données et sous-ressources depuis Senelec."""
@@ -423,6 +439,9 @@ class LocalSQLWorkOrderRepository(AbstractWorkOrderRepository):
         # Résoudre les contraintes d'intégrité (self-healing)
         self._ensure_dependencies(db_dict)
         
+        # Marquer comme CLONED pour éviter d'interroger le Coswin distant sur un OT qu'on vient de créer localement
+        db_dict["wowo_string4"] = "CLONED"
+
         cols = ", ".join(db_dict.keys())
         placeholders = ", ".join([f":{k}" for k in db_dict.keys()])
         sql = f"INSERT INTO dbo.workorder ({cols}) VALUES ({placeholders})"
@@ -434,15 +453,13 @@ class LocalSQLWorkOrderRepository(AbstractWorkOrderRepository):
 
     async def update_workorder(self, code: str, workorder_data: Dict[str, Any]) -> Dict[str, Any]:
         """Met à jour un OT existant."""
-        # Vérifier l'existence
-        await self.get_workorder_by_code(code)
-        
         db_dict = self._to_db_dict(workorder_data)
         if "pk_workorder" in db_dict:
             del db_dict["pk_workorder"]
         if "wowo_code" in db_dict:
             del db_dict["wowo_code"]  # Ne pas modifier le code unique
             
+        db_dict["wowo_string4"] = "CLONED"
         self._ensure_dependencies(db_dict)
         
         set_clause = ", ".join([f"{k} = :{k}" for k in db_dict.keys()])
@@ -455,12 +472,20 @@ class LocalSQLWorkOrderRepository(AbstractWorkOrderRepository):
         return await self.get_workorder_by_code(code)
 
     async def delete_workorder(self, code: str) -> Dict[str, Any]:
-        """Supprime un OT."""
-        await self.get_workorder_by_code(code)
-        
-        sql = "DELETE FROM dbo.workorder WHERE wowo_code = :code"
-        self.db.execute(text(sql), {"code": int(code)})
-        self.db.commit()
+        """Supprime un OT et ses sous-ressources associées."""
+        int_code = int(code)
+        try:
+            self.db.execute(text("DELETE FROM dbo.workorder_operation WHERE wowo_code = :code"), {"code": int_code})
+            self.db.execute(text("DELETE FROM dbo.workorder_workforce WHERE wowo_code = :code"), {"code": int_code})
+            self.db.execute(text("DELETE FROM dbo.workorder_comment WHERE wowo_code = :code"), {"code": int_code})
+            self.db.execute(text("DELETE FROM dbo.workorder_part WHERE wowo_code = :code"), {"code": int_code})
+            self.db.execute(text("DELETE FROM dbo.workorder_attribute WHERE wowo_code = :code"), {"code": int_code})
+            self.db.execute(text("DELETE FROM dbo.workorder WHERE wowo_code = :code"), {"code": int_code})
+            self.db.commit()
+        except Exception as e:
+            self.db.rollback()
+            logger.error(f"Erreur lors de la suppression de l'OT {code}: {e}")
+            raise HTTPException(status_code=500, detail=f"Erreur lors de la suppression: {str(e)}")
         
         return {"success": True, "message": f"Ordre de travail {code} supprime avec succes"}
 
@@ -535,11 +560,11 @@ class LocalSQLWorkOrderRepository(AbstractWorkOrderRepository):
                 "woeaEmployee": r.employee_code,
                 "reemDescription": r.employee_name,
                 "woeaResource": r.employee_name,
-                "woeaAllocationDate": datetime.now().isoformat() + "Z",
+                "woeaAllocationDate": None,
                 "woeaIsPlanned": True,
                 "woeaPlannedHours": r.hours_planned,
-                "woeaQualificationRejection": "0. Pas d'objection",
-                "woeaWorkPermit": "0. Non",
+                "woeaQualificationRejection": None,
+                "woeaWorkPermit": None,
                 "woeaSequence": str(r.pk_workforce)
             }
             for r in rows
@@ -561,8 +586,8 @@ class LocalSQLWorkOrderRepository(AbstractWorkOrderRepository):
                 "reemCode": r.comment_code,
                 "woefStartDate": r.creation_date.isoformat() + "Z" if r.creation_date else None,
                 "woefEndDate": r.creation_date.isoformat() + "Z" if r.creation_date else None,
-                "woefActualHours": r.hours_planned or 0,
-                "woefTotalHours": r.hours_spent or 0,
+                "woefActualHours": 0,
+                "woefTotalHours": 0,
                 "woefUserStatus": r.content
             }
             for r in rows

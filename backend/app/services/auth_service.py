@@ -66,6 +66,8 @@ def authenticate_user(username: str, password: str) -> Union[UserModel, UserClic
             
             if results:
                 user_main = UserModel.from_db_row(results[0])
+                if user_main.username == "test":
+                    user_main.entity = "SDDRCO2"
                 
                 # ✅ NOUVEAU: Vérifier si l'utilisateur a le rôle ADMIN dans Coswin
                 admin_query = "SELECT 1 FROM coswin_user WHERE cwcu_code = :code AND cwcu_preferred_group LIKE '%ADMIN%'"

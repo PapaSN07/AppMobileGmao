@@ -36,11 +36,11 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
   // Contrôleurs pour l'onglet "Détails"
   final TextEditingController _codeController = TextEditingController();
   final TextEditingController _jobController = TextEditingController();
-  final TextEditingController _jobTypeController = TextEditingController(text: 'CORR');
-  final TextEditingController _jobClassController = TextEditingController(text: 'DEPANNAGE');
-  final TextEditingController _zoneController = TextEditingController(text: 'ZONE-A');
-  final TextEditingController _entityController = TextEditingController(text: 'SDDV');
-  final TextEditingController _costcentreController = TextEditingController(text: 'DD304');
+  final TextEditingController _jobTypeController = TextEditingController();
+  final TextEditingController _jobClassController = TextEditingController();
+  final TextEditingController _zoneController = TextEditingController();
+  final TextEditingController _entityController = TextEditingController();
+  final TextEditingController _costcentreController = TextEditingController();
   final TextEditingController _equipmentController = TextEditingController();
   final TextEditingController _supervisorController = TextEditingController();
 
@@ -72,14 +72,54 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
   final TextEditingController _tempWfDescriptionController = TextEditingController();
   final TextEditingController _tempWfStartDateController = TextEditingController();
   final TextEditingController _tempWfEndDateController = TextEditingController();
-  final TextEditingController _tempWfActualHoursController = TextEditingController(text: '1');
-  final TextEditingController _tempWfTotalHoursController = TextEditingController(text: '1');
+  final TextEditingController _tempWfActualHoursController = TextEditingController();
+  final TextEditingController _tempWfTotalHoursController = TextEditingController();
   String _tempWfStatus = 'F';
+  DateTime? _tempWfStartDateTime;
+  DateTime? _tempWfEndDateTime;
+
+  Future<DateTime?> _pickDateTime(DateTime? initial) async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: initial ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+    );
+    if (date == null) return null;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: initial != null ? TimeOfDay.fromDateTime(initial) : TimeOfDay.now(),
+    );
+    if (time == null) return null;
+    return DateTime(date.year, date.month, date.day, time.hour, time.minute);
+  }
+
+  void _recalculateWorkforceHours() {
+    if (_tempWfStartDateTime != null && _tempWfEndDateTime != null) {
+      final diffInMinutes = _tempWfEndDateTime!.difference(_tempWfStartDateTime!).inMinutes;
+      if (diffInMinutes >= 0) {
+        final hours = (diffInMinutes / 60.0).toStringAsFixed(1);
+        setState(() {
+          _tempWfActualHoursController.text = hours;
+          _tempWfTotalHoursController.text = hours;
+        });
+      }
+    }
+  }
+
+  String _formatDT(DateTime dt) {
+    final y = dt.year;
+    final m = dt.month.toString().padLeft(2, '0');
+    final d = dt.day.toString().padLeft(2, '0');
+    final hh = dt.hour.toString().padLeft(2, '0');
+    final mm = dt.minute.toString().padLeft(2, '0');
+    return '$y-$m-$d $hh:$mm';
+  }
 
   // Contrôleurs temporaires Pièces
   final TextEditingController _tempPartCodeController = TextEditingController();
   final TextEditingController _tempPartArticleController = TextEditingController();
-  final TextEditingController _tempPartQtyController = TextEditingController(text: '1');
+  final TextEditingController _tempPartQtyController = TextEditingController();
 
   // Contrôleurs temporaires Sous-attributs
   final TextEditingController _tempAttrNameController = TextEditingController();
@@ -92,6 +132,9 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
     super.initState();
     _otService = OTService(ApiService());
     _tabController = TabController(length: 6, vsync: this);
+    _tabController.addListener(() {
+      if (mounted) setState(() {});
+    });
 
     // Initialisation des dates par défaut pour la main d'œuvre
     final now = DateTime.now();
@@ -133,6 +176,10 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
           }
           if (username.isNotEmpty) {
             _tempWfDescriptionController.text = username;
+          }
+          final userEntity = user.entity;
+          if (userEntity.isNotEmpty) {
+            _entityController.text = userEntity;
           }
         }
       } catch (e) {
@@ -822,17 +869,65 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                 children: [
                   Expanded(
                     child: TextFormField(
+                      controller: _tempWfStartDateController,
+                      readOnly: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Date/Heure Début',
+                        isDense: true,
+                        suffixIcon: Icon(Icons.calendar_today, size: 18),
+                      ),
+                      onTap: () async {
+                        final picked = await _pickDateTime(_tempWfStartDateTime);
+                        if (picked != null) {
+                          setState(() {
+                            _tempWfStartDateTime = picked;
+                            _tempWfStartDateController.text = _formatDT(picked);
+                          });
+                          _recalculateWorkforceHours();
+                        }
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _tempWfEndDateController,
+                      readOnly: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Date/Heure Fin',
+                        isDense: true,
+                        suffixIcon: Icon(Icons.event_available, size: 18),
+                      ),
+                      onTap: () async {
+                        final picked = await _pickDateTime(_tempWfEndDateTime ?? _tempWfStartDateTime);
+                        if (picked != null) {
+                          setState(() {
+                            _tempWfEndDateTime = picked;
+                            _tempWfEndDateController.text = _formatDT(picked);
+                          });
+                          _recalculateWorkforceHours();
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
                       controller: _tempWfActualHoursController,
-                      decoration: const InputDecoration(labelText: 'Heures réelles', isDense: true),
-                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'Heures réelles (auto)', isDense: true),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: TextFormField(
                       controller: _tempWfTotalHoursController,
-                      decoration: const InputDecoration(labelText: 'Heures totales', isDense: true),
-                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'Heures totales (auto)', isDense: true),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -854,6 +949,12 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                         });
                         _tempWfEmployeeController.clear();
                         _tempWfDescriptionController.clear();
+                        _tempWfStartDateController.clear();
+                        _tempWfEndDateController.clear();
+                        _tempWfActualHoursController.clear();
+                        _tempWfTotalHoursController.clear();
+                        _tempWfStartDateTime = null;
+                        _tempWfEndDateTime = null;
                       });
                     },
                     style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF015CC0)),
@@ -1185,34 +1286,72 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                 )),
       bottomNavigationBar: Container(
         color: Colors.white,
-        padding: spacing.custom(horizontal: 20, vertical: 10, bottom: 20),
+        padding: spacing.custom(horizontal: 16, vertical: 10, bottom: 20),
         child: Row(
           children: [
-            Expanded(
-              child: ElevatedButton(
-                onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.grey[400],
-                  foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(vertical: responsive.hp(1.8)),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-                child: const Text('Annuler', style: TextStyle(fontWeight: FontWeight.w600)),
+            // Bouton Annuler
+            ElevatedButton(
+              onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.grey[300],
+                foregroundColor: Colors.black87,
+                padding: EdgeInsets.symmetric(horizontal: 14, vertical: responsive.hp(1.6)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
+              child: const Text('Annuler', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
             ),
-            SizedBox(width: spacing.small),
-            Expanded(
-              child: ElevatedButton(
-                onPressed: _isSaving || _isLoadingData ? null : _handleSaveGlobal,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF015CC0),
-                  foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(vertical: responsive.hp(1.8)),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            const SizedBox(width: 8),
+
+            // Sur les onglets 0 à 4 : Afficher uniquement le bouton "Suivant ➡️"
+            if (_tabController.index < 5) ...[
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    _tabController.animateTo(_tabController.index + 1);
+                  },
+                  icon: const Icon(Icons.arrow_forward, size: 16),
+                  label: const Text('Suivant', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF015CC0),
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(vertical: responsive.hp(1.6)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
                 ),
-                child: const Text('Enregistrer', style: TextStyle(fontWeight: FontWeight.w600)),
               ),
-            ),
+            ]
+            // Sur le dernier onglet (Onglet 5) : Afficher "Précédent" + "Enregistrer l'OT 💾"
+            else ...[
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    _tabController.animateTo(_tabController.index - 1);
+                  },
+                  icon: const Icon(Icons.arrow_back, size: 16),
+                  label: const Text('Précédent', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF015CC0),
+                    side: const BorderSide(color: Color(0xFF015CC0), width: 1.5),
+                    padding: EdgeInsets.symmetric(vertical: responsive.hp(1.6)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _isSaving || _isLoadingData ? null : _handleSaveGlobal,
+                  icon: const Icon(Icons.save, size: 18),
+                  label: const Text('Enregistrer l\'OT', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF015CC0),
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(vertical: responsive.hp(1.6)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),

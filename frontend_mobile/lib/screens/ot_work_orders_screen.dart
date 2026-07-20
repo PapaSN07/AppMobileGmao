@@ -460,19 +460,25 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
             ),
             ElevatedButton(
               onPressed: () async {
+                final messenger = ScaffoldMessenger.of(context);
                 Navigator.pop(context);
-                setState(() => _isLoading = true);
                 try {
                   await _otService.deleteOT(order.wowoCode);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('OT supprimé avec succès !')),
-                  );
+                  if (mounted) {
+                    setState(() {
+                      _orders.removeWhere((o) => o.wowoCode == order.wowoCode);
+                    });
+                    messenger.showSnackBar(
+                      const SnackBar(content: Text('OT supprimé avec succès !')),
+                    );
+                  }
                   _loadOrders();
                 } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Erreur lors de la suppression: $e')),
-                  );
-                  setState(() => _isLoading = false);
+                  if (mounted) {
+                    messenger.showSnackBar(
+                      SnackBar(content: Text('Erreur lors de la suppression: $e')),
+                    );
+                  }
                 }
               },
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
