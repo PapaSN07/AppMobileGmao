@@ -23,6 +23,7 @@ class ListItemCustom extends StatelessWidget {
   final Widget? bottomLeftBadge; // ✅ Pour l'overlay uniquement
   final Widget? statusBadge; // ✅ Pour l'affichage principal
   final VoidCallback? onDetailsTap; // ✅ Bouton détails pour l'overlay
+  final Widget? trailing;
 
   const ListItemCustom({
     super.key,
@@ -43,6 +44,7 @@ class ListItemCustom extends StatelessWidget {
     this.bottomLeftBadge,
     this.statusBadge,
     this.onDetailsTap,
+    this.trailing,
   });
 
   // Constructeur pour les équipements
@@ -64,6 +66,7 @@ class ListItemCustom extends StatelessWidget {
     bool showModifyButton = true,
     String overlayTitle = 'Détails de l\'équipement',
     VoidCallback? onTap,
+    Widget? trailing,
   }) {
     return ListItemCustom(
       id: id,
@@ -71,13 +74,15 @@ class ListItemCustom extends StatelessWidget {
       primaryText: code,
       primaryLabel: 'Code',
       fields: [
-        ItemField(label: 'Famille', value: famille),
-        ItemField(label: 'Zone', value: zone),
-        ItemField(label: 'Entité', value: entity),
-        ItemField(label: 'Unité', value: unite),
+        ItemField(label: 'Famille', value: famille.trim().isEmpty ? '-' : famille),
+        ItemField(label: 'Zone', value: zone.trim().isEmpty ? '-' : zone),
+        ItemField(label: 'Entité', value: entity.trim().isEmpty ? '-' : entity),
+        ItemField(label: 'Unité', value: unite.trim().isEmpty ? '-' : unite),
       ],
       overlayDetails: {
-        'ID': id ?? '',
+        'id': (id != null && id.isNotEmpty) ? id : code,
+        'ID': (id != null && id.isNotEmpty) ? id : code,
+        'code': code,
         'Code': code,
         'Famille': famille,
         'Zone': zone,
@@ -95,6 +100,7 @@ class ListItemCustom extends StatelessWidget {
       showModifyButton: showModifyButton,
       onTap: onTap,
       attributes: attributes,
+      trailing: trailing,
     );
   }
 
@@ -113,6 +119,7 @@ class ListItemCustom extends StatelessWidget {
     VoidCallback? onTap,
     Widget? statusBadge,
     VoidCallback? onDetailsTap,
+    Widget? trailing,
   }) {
     return ListItemCustom(
       id: id,
@@ -140,6 +147,7 @@ class ListItemCustom extends StatelessWidget {
       onTap: onTap,
       statusBadge: statusBadge,
       onDetailsTap: onDetailsTap,
+      trailing: trailing,
     );
   }
 
@@ -279,7 +287,7 @@ class ListItemCustom extends StatelessWidget {
             _buildIcon(responsive, spacing),
             SizedBox(width: spacing.medium), // ✅ Espacement responsive
             Expanded(child: _buildContent(responsive, spacing)),
-            _buildArrowIcon(responsive),
+            trailing ?? _buildArrowIcon(responsive),
           ],
         ),
       ),

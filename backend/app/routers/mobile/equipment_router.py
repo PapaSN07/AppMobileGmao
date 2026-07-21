@@ -21,7 +21,8 @@ from app.services.equipment_service import (
     get_feeders,
     insert_equipment,
     update_equipment_mobile,
-    get_all_equipment_histories_prestataire  # ✅ AJOUT
+    get_all_equipment_histories_prestataire,
+    delete_equipment
 )
 from app.services.centre_charge_service import get_centre_charges
 from app.services.entity_service import get_entities
@@ -198,6 +199,23 @@ async def update_equipment_mobile_partial_endpoint(
     except Exception as e:
         logger.error(f"❌ Erreur PATCH équipement: {e}")
         raise HTTPException(status_code=500, detail=f"Erreur PATCH: {str(e)}")
+
+@equipment_router.delete("/{equipment_id}",
+    summary="Supprimer un équipement",
+    description="Supprime un équipement par son ID ou son code")
+async def delete_equipment_endpoint(equipment_id: str) -> Dict[str, Any]:
+    """Suppression d'un équipement"""
+    try:
+        success = delete_equipment(equipment_id)
+        if success:
+            return {"status": "success", "message": f"Équipement {equipment_id} supprimé avec succès"}
+        else:
+            raise HTTPException(status_code=500, detail=f"Échec de la suppression de l'équipement {equipment_id}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Erreur DELETE équipement {equipment_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Erreur DELETE: {str(e)}")
 
 @equipment_router.get("/values/{entity}",
     summary="Récupérer les valeurs des équipements",

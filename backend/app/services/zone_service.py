@@ -60,6 +60,26 @@ def get_zones(entity: str, hierarchy_result: Dict[str, Any]) -> Dict[str, Any]:
                     logger.error(f"❌ Erreur mapping zone: {e}")
                     continue
 
+            if not zones:
+                from sqlalchemy import text
+                eq_rows = []
+                try:
+                    eq_rows = session.execute(text("SELECT DISTINCT ereq_zone FROM dbo.equipment WHERE ereq_zone IS NOT NULL AND ereq_zone != ''")).fetchall()
+                except Exception:
+                    pass
+                if not eq_rows:
+                    try:
+                        eq_rows = session.execute(text("SELECT DISTINCT zone FROM gmao_mobile.dbo.equipment WHERE zone IS NOT NULL AND zone != ''")).fetchall()
+                    except Exception:
+                        pass
+                for r in eq_rows:
+                    val = str(r[0])
+                    zones.append({
+                        "code": val,
+                        "description": val,
+                        "entity": entity
+                    })
+
             response = {"zones": zones, "count": len(zones)}
             cache.set(cache_key, response, CACHE_TTL_SHORT)
             return response

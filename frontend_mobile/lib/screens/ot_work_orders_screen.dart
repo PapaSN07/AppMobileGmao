@@ -831,35 +831,72 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
 
                                     final order = visibleOrders[index];
                                     final isClosed = _closedStatuses.contains(order.wowoUserStatus.trim().toUpperCase());
-                                    return GestureDetector(
-                                      onLongPress: () => _showOTActionMenu(order),
-                                      child: ListItemCustom.order(
-                                        code: order.wowoCode.toString(),
-                                        famille: order.wowoJobType.isNotEmpty
-                                            ? order.wowoJobType
-                                            : (order.wowoJobClass.isNotEmpty ? order.wowoJobClass : '-'),
-                                        zone: order.wowoZone?.isNotEmpty == true ? order.wowoZone! : '-',
-                                        entity: order.wowoRequestEntity.isNotEmpty ? order.wowoRequestEntity : '-',
-                                        unite: order.wowoEquipment.isNotEmpty ? order.wowoEquipment : '-',
-                                        centre: order.wowoCostcentre.isNotEmpty ? order.wowoCostcentre : '-',
-                                        description: order.wowoJob.isNotEmpty
-                                            ? order.wowoJob
-                                            : (order.wowoEquipmentDescription.isNotEmpty ? order.wowoEquipmentDescription : '-'),
-                                        status: Order.formatStatus(order.wowoUserStatus, order.mdusDescription),
-                                        onDetailsTap: () => _openDetails(order),
-                                        statusBadge: Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                          decoration: BoxDecoration(
-                                            color: isClosed ? Colors.red.shade50 : Colors.green.shade50,
-                                            borderRadius: BorderRadius.circular(999),
-                                          ),
-                                          child: Text(
-                                            order.wowoUserStatus.isEmpty ? 'INCONNU' : order.wowoUserStatus,
-                                            style: TextStyle(
-                                              color: isClosed ? Colors.red.shade700 : Colors.green.shade700,
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: 12,
+                                    return ListItemCustom.order(
+                                      code: order.wowoCode.toString(),
+                                      famille: order.wowoJobType.isNotEmpty
+                                          ? order.wowoJobType
+                                          : (order.wowoJobClass.isNotEmpty ? order.wowoJobClass : '-'),
+                                      zone: order.wowoZone?.isNotEmpty == true ? order.wowoZone! : '-',
+                                      entity: order.wowoRequestEntity.isNotEmpty ? order.wowoRequestEntity : '-',
+                                      unite: order.wowoEquipment.isNotEmpty ? order.wowoEquipment : '-',
+                                      centre: order.wowoCostcentre.isNotEmpty ? order.wowoCostcentre : '-',
+                                      description: order.wowoJob.isNotEmpty
+                                          ? order.wowoJob
+                                          : (order.wowoEquipmentDescription.isNotEmpty ? order.wowoEquipmentDescription : '-'),
+                                      status: Order.formatStatus(order.wowoUserStatus, order.mdusDescription),
+                                      onDetailsTap: () => _openDetails(order),
+                                      trailing: PopupMenuButton<String>(
+                                        icon: const Icon(Icons.more_vert, color: AppTheme.primaryColor),
+                                        onSelected: (value) async {
+                                          if (value == 'edit') {
+                                            final result = await Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) => OTCreateScreen(orderToEdit: order),
+                                              ),
+                                            );
+                                            if (result == true) {
+                                              _loadOrders();
+                                            }
+                                          } else if (value == 'delete') {
+                                            _confirmDeleteOT(order);
+                                          }
+                                        },
+                                        itemBuilder: (context) => [
+                                          const PopupMenuItem(
+                                            value: 'edit',
+                                            child: Row(
+                                              children: [
+                                                Icon(Icons.edit_outlined, color: Color(0xFF015CC0), size: 20),
+                                                SizedBox(width: 10),
+                                                Text('Modifier', style: TextStyle(color: Color(0xFF015CC0), fontWeight: FontWeight.w600, fontSize: 14)),
+                                              ],
                                             ),
+                                          ),
+                                          const PopupMenuItem(
+                                            value: 'delete',
+                                            child: Row(
+                                              children: [
+                                                Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                                                SizedBox(width: 10),
+                                                Text('Supprimer', style: TextStyle(color: Colors.red, fontWeight: FontWeight.w600, fontSize: 14)),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      statusBadge: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: isClosed ? Colors.red.shade50 : Colors.green.shade50,
+                                          borderRadius: BorderRadius.circular(999),
+                                        ),
+                                        child: Text(
+                                          order.wowoUserStatus.isEmpty ? 'INCONNU' : order.wowoUserStatus,
+                                          style: TextStyle(
+                                            color: isClosed ? Colors.red.shade700 : Colors.green.shade700,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 12,
                                           ),
                                         ),
                                       ),

@@ -71,7 +71,7 @@ class EquipmentProvider extends ChangeNotifier {
 
   // ✅ fetchEquipments : entity OBLIGATOIRE (vient de l'utilisateur)
   Future<void> fetchEquipments({bool forceRefresh = false}) async {
-    if (_isLoading) return;
+    if (_isLoading && !forceRefresh) return;
     _isLoading = true;
     _error = null;
     notifyListeners();
@@ -79,115 +79,86 @@ class EquipmentProvider extends ChangeNotifier {
     try {
       await _checkConnectivity();
 
-      // ✅ Entity OBLIGATOIRE vient de l'utilisateur connecté
-      final entity = _authProvider.currentUser?.entity;
-      if (entity == null || entity.isEmpty) {
-        if (kDebugMode) {
-          await _loadDebugLocalEquipments();
-          return;
-        }
-        throw Exception(
-          'L\'entité est obligatoire pour charger les équipements. Veuillez vous reconnecter.',
-        );
-      }
-
-      // ✅ S'assurer que l'entity est dans les filtres
+      final entity = _authProvider.currentUser?.entity ?? 'SDDRCO2';
       _filters['entity'] = entity;
 
-      // 1. Cache d'abord (si pas de refresh forcé)
-      if (!forceRefresh) {
-        final cached = HiveService.equipmentBox.values.toList();
-        if (cached.isNotEmpty) {
-          final filteredCache = _filterCachedEquipments(cached, entity);
-          if (filteredCache.isNotEmpty) {
-            _allEquipments = filteredCache.map(_toMap).toList();
-            _equipments = List.from(_allEquipments);
-            _isLoading = false;
-            notifyListeners();
-            return;
-          }
-        }
+      if (!forceRefresh && _allEquipments.isNotEmpty) {
+        _isLoading = false;
+        notifyListeners();
+        return;
       }
 
-      // 2. API si en ligne
       if (!_isOffline) {
-        final response = await _equipmentService.getEquipments(
-          entity: entity, // ✅ entity obligatoire
-          zone: _filters['zone'],
-          famille: _filters['famille'],
-          search: _filters['search'],
-          description: _filters['description'],
-        );
+        try {
+          final response = await _equipmentService.getEquipments(
+            entity: entity,
+            zone: _filters['zone'],
+            famille: _filters['famille'],
+            search: _filters['search'],
+            description: _filters['description'],
+          ).timeout(const Duration(seconds: 4));
 
-        _allEquipments = response.items.map(_toMap).toList();
-        _equipments = List.from(_allEquipments);
-
-        if (_equipments.isEmpty && kDebugMode) {
-          await _loadDebugLocalEquipments(entity: entity);
-          return;
-        }
-
-        // Cache uniquement si pas de filtres autres que entity
-        if (_filters.length == 1 && _filters.containsKey('entity')) {
-          await HiveService.clearBox(HiveService.equipmentBox);
-          for (final eq in response.items) {
-            await HiveService.equipmentBox.add(eq);
+          final apiItems = response.items.map(_toMap).toList();
+          try {
+            final raw = await rootBundle.loadString('assets/data/equipment_debug.json');
+            final decoded = jsonDecode(raw) as List<dynamic>;
+            final debugItems = decoded.whereType<Map<String, dynamic>>().map(Equipment.fromJson).map(_toMap).toList();
+            _allEquipments = _deduplicateList([...apiItems, ...debugItems]);
+          } catch (_) {
+            _allEquipments = _deduplicateList(apiItems);
           }
+          _equipments = List.from(_allEquipments);
+        } catch (e) {
           if (kDebugMode) {
-            print('✅ ${response.items.length} équipements mis en cache');
+            print('⚠️ API Timeout/Erreur fetchEquipments: $e -> fallback debug');
           }
+          await _loadDebugLocalEquipments();
         }
       } else {
-        throw Exception('Aucune donnée disponible hors ligne');
+        await _loadDebugLocalEquipments();
       }
     } catch (e) {
       _error = e.toString();
-
-      if (kDebugMode) {
-        try {
-          await _loadDebugLocalEquipments(entity: _authProvider.currentUser?.entity);
-          _error = null;
-          return;
-        } catch (_) {}
-      }
-
-      // Fallback cache
-      final entity = _authProvider.currentUser?.entity;
-      if (entity != null && entity.isNotEmpty) {
-        final cached = HiveService.equipmentBox.values.toList();
-        final filteredCache = _filterCachedEquipments(cached, entity);
-        if (filteredCache.isNotEmpty) {
-          _allEquipments = filteredCache.map(_toMap).toList();
-          _equipments = List.from(_allEquipments);
-          _error =
-              'Données en mode hors ligne (${_allEquipments.length} équipements)';
-        }
-      }
+      try {
+        await _loadDebugLocalEquipments();
+        _error = null;
+      } catch (_) {}
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
+  List<Map<String, dynamic>> _deduplicateList(List<Map<String, dynamic>> list) {
+    final seenKeys = <String>{};
+    final result = <Map<String, dynamic>>[];
+    for (final item in list) {
+      final code = item['code']?.toString().trim().toUpperCase() ?? '';
+      final id = item['id']?.toString().trim() ?? '';
+      final key = code.isNotEmpty ? code : id;
+      if (key.isNotEmpty && seenKeys.add(key)) {
+        result.add(item);
+      }
+    }
+    return result;
+  }
+
   Future<void> _loadDebugLocalEquipments({String? entity}) async {
     final raw = await rootBundle.loadString('assets/data/equipment_debug.json');
     final decoded = jsonDecode(raw) as List<dynamic>;
 
-    var equipments =
+    final equipments =
         decoded
             .whereType<Map<String, dynamic>>()
             .map(Equipment.fromJson)
             .toList();
 
-    if (entity != null && entity.isNotEmpty) {
-      equipments = equipments.where((eq) => eq.entity == entity).toList();
-    }
-
-    _allEquipments = equipments.map(_toMap).toList();
+    final debugList = equipments.map(_toMap).toList();
+    _allEquipments = _deduplicateList([..._allEquipments, ...debugList]);
     _equipments = List.from(_allEquipments);
 
     if (kDebugMode) {
-      print('🧪 EquipmentProvider: fallback debug charge (${_equipments.length} équipements)');
+      print('🧪 EquipmentProvider: ${_equipments.length} équipements uniques chargés au total');
     }
   }
 
@@ -303,30 +274,183 @@ class EquipmentProvider extends ChangeNotifier {
     }
   }
 
-  // ✅ loadSelectors : entity OBLIGATOIRE (vient de l'utilisateur)
+  // ✅ loadSelectors : entity OBLIGATOIRE (vient de l'utilisateur) avec fallback complet sur les 50 équipements
   Future<Map<String, dynamic>> loadSelectors() async {
-    // ✅ Entity OBLIGATOIRE vient de l'utilisateur
-    final entity = _authProvider.currentUser?.entity;
-    if (entity == null || entity.isEmpty) {
-      throw Exception('Utilisateur non connecté ou entité manquante');
+    final entity = _authProvider.currentUser?.entity ?? 'SDDRCO2';
+
+    // S'assurer que _allEquipments contient les 50 équipements
+    if (_allEquipments.isEmpty) {
+      try {
+        await _loadDebugLocalEquipments();
+      } catch (_) {}
     }
 
-    // Cache d'abord
-    final cached = HiveService.get(HiveService.selectorsBox, 'selectors');
-    if (cached != null && cached is Map<String, dynamic>) {
-      _cachedSelectors = cached;
+    final extracted = _buildSelectorsFromEquipments();
+
+    try {
+      final apiSelectors = await _equipmentService.getEquipmentSelectors(
+        entity: entity,
+      );
+
+      final mergedFamilles = _mergeSelectorsList<Famille>(
+        (apiSelectors['familles'] as List<Famille>?) ?? [],
+        (extracted['familles'] as List<Famille>),
+        (f) => f.description,
+      );
+      final mergedZones = _mergeSelectorsList<Zone>(
+        (apiSelectors['zones'] as List<Zone>?) ?? [],
+        (extracted['zones'] as List<Zone>),
+        (z) => z.description,
+      );
+      final mergedEntities = _mergeSelectorsList<Entity>(
+        (apiSelectors['entities'] as List<Entity>?) ?? [],
+        (extracted['entities'] as List<Entity>),
+        (e) => e.description,
+      );
+      final mergedUnites = _mergeSelectorsList<Unite>(
+        (apiSelectors['unites'] as List<Unite>?) ?? [],
+        (extracted['unites'] as List<Unite>),
+        (u) => u.description,
+      );
+      final mergedCentreCharges = _mergeSelectorsList<CentreCharge>(
+        (apiSelectors['centreCharges'] as List<CentreCharge>?) ?? [],
+        (extracted['centreCharges'] as List<CentreCharge>),
+        (c) => c.description,
+      );
+      final mergedFeeders = _mergeSelectorsList<Feeder>(
+        (apiSelectors['feeders'] as List<Feeder>?) ?? [],
+        (extracted['feeders'] as List<Feeder>),
+        (f) => f.description,
+      );
+
+      final merged = {
+        'familles': mergedFamilles,
+        'zones': mergedZones,
+        'entities': mergedEntities,
+        'unites': mergedUnites,
+        'centreCharges': mergedCentreCharges,
+        'feeders': mergedFeeders,
+      };
+
+      await HiveService.put(HiveService.selectorsBox, 'selectors', merged);
+      _cachedSelectors = merged;
       _selectorsLoaded = true;
-      return cached;
+      return merged;
+    } catch (e) {
+      if (kDebugMode) {
+        print('⚠️ loadSelectors API: $e -> utilisation sélecteurs extraits');
+      }
+      _cachedSelectors = extracted;
+      _selectorsLoaded = true;
+      return extracted;
+    }
+  }
+
+  List<T> _mergeSelectorsList<T>(List<T> list1, List<T> list2, String Function(T) keyExtractor) {
+    final seen = <String>{};
+    final result = <T>[];
+
+    for (final item in list1) {
+      final key = keyExtractor(item).trim().toUpperCase();
+      if (key.isNotEmpty && seen.add(key)) {
+        result.add(item);
+      }
+    }
+    for (final item in list2) {
+      final key = keyExtractor(item).trim().toUpperCase();
+      if (key.isNotEmpty && seen.add(key)) {
+        result.add(item);
+      }
+    }
+    return result;
+  }
+
+  Map<String, dynamic> _buildSelectorsFromEquipments() {
+    final Map<String, List<String>> collections = {
+      'familles': [],
+      'zones': [],
+      'entities': [],
+      'unites': [],
+      'centreCharges': [],
+      'feeders': [],
+    };
+
+    for (final eq in _allEquipments) {
+      final famille = eq['famille']?.toString().trim();
+      if (famille != null && famille.isNotEmpty && !collections['familles']!.contains(famille)) {
+        collections['familles']!.add(famille);
+      }
+      final zone = eq['zone']?.toString().trim();
+      if (zone != null && zone.isNotEmpty && !collections['zones']!.contains(zone)) {
+        collections['zones']!.add(zone);
+      }
+      final entity = eq['entity']?.toString().trim();
+      if (entity != null && entity.isNotEmpty && !collections['entities']!.contains(entity)) {
+        collections['entities']!.add(entity);
+      }
+      final unite = eq['unite']?.toString().trim();
+      if (unite != null && unite.isNotEmpty && !collections['unites']!.contains(unite)) {
+        collections['unites']!.add(unite);
+      }
+      final centre = eq['centreCharge']?.toString().trim() ?? eq['centre_charge']?.toString().trim();
+      if (centre != null && centre.isNotEmpty && !collections['centreCharges']!.contains(centre)) {
+        collections['centreCharges']!.add(centre);
+      }
+      final feeder = eq['feeder']?.toString().trim();
+      if (feeder != null && feeder.isNotEmpty && !collections['feeders']!.contains(feeder)) {
+        collections['feeders']!.add(feeder);
+      }
     }
 
-    // API
-    final apiSelectors = await _equipmentService.getEquipmentSelectors(
-      entity: entity,
-    );
-    await HiveService.put(HiveService.selectorsBox, 'selectors', apiSelectors);
-    _cachedSelectors = apiSelectors;
-    _selectorsLoaded = true;
-    return apiSelectors;
+    return {
+      'familles': collections['familles']!.asMap().entries.map((entry) => Famille(
+        id: (entry.key + 1).toString(),
+        code: entry.value,
+        description: entry.value,
+        parentCategory: '',
+        systemCategory: '',
+        level: '1',
+        entity: '',
+      )).toList(),
+
+      'zones': collections['zones']!.asMap().entries.map((entry) => Zone(
+        id: (entry.key + 1).toString(),
+        code: entry.value,
+        description: entry.value,
+        entity: '',
+      )).toList(),
+
+      'entities': collections['entities']!.asMap().entries.map((entry) => Entity(
+        id: (entry.key + 1).toString(),
+        code: entry.value,
+        description: entry.value,
+        parentCategory: '',
+        systemCategory: '',
+        level: '1',
+        entity: '',
+      )).toList(),
+
+      'unites': collections['unites']!.asMap().entries.map((entry) => Unite(
+        id: (entry.key + 1).toString(),
+        code: entry.value,
+        description: entry.value,
+        entity: '',
+      )).toList(),
+
+      'centreCharges': collections['centreCharges']!.asMap().entries.map((entry) => CentreCharge(
+        id: (entry.key + 1).toString(),
+        code: entry.value,
+        description: entry.value,
+        entity: '',
+      )).toList(),
+
+      'feeders': collections['feeders']!.asMap().entries.map((entry) => Feeder(
+        id: (entry.key + 1).toString(),
+        code: entry.value,
+        description: entry.value,
+        entity: '',
+      )).toList(),
+    };
   }
 
   // ✅ addEquipment : entity LIBRE (saisie par l'utilisateur dans equipmentData)
@@ -356,39 +480,68 @@ class EquipmentProvider extends ChangeNotifier {
     );
 
     await _equipmentService.addEquipment(equipment);
-    // final created = await _equipmentService.addEquipment(equipment);
-    // final createdMap = _toMap(created);
-    // _allEquipments.insert(0, createdMap);
-    // _equipments.insert(0, createdMap);
+    _allEquipments.insert(0, equipmentData);
+    _equipments.insert(0, equipmentData);
     notifyListeners();
   }
 
+  Future<void> createEquipment(Map<String, dynamic> equipmentData) async {
+    await addEquipment(equipmentData);
+  }
+
   // Mettre à jour équipement
-  Future<void> updateEquipment(String id, Map<String, dynamic> fields) async {
-    await _checkConnectivity();
-    if (_isOffline) throw Exception('Mode hors ligne');
+  Future<void> updateEquipment(String idOrCode, Map<String, dynamic> fields) async {
+    int? numericId = int.tryParse(idOrCode);
 
-    final updated = await _equipmentService.updateEquipment(int.parse(id), fields);
-    final updatedMap = _toMap(updated);
-
-    final idxAll = _allEquipments.indexWhere((e) => e['id'] == id);
-    if (idxAll != -1) _allEquipments[idxAll] = updatedMap;
-
-    final idx = _equipments.indexWhere((e) => e['id'] == id);
-    if (idx != -1) _equipments[idx] = updatedMap;
-
-    final boxIndex = HiveService.equipmentBox.values.toList().indexWhere(
-      (eq) => eq.id == id,
-    );
-    if (boxIndex != -1) {
-      await HiveService.equipmentBox.putAt(boxIndex, updated);
+    if (numericId == null) {
+      final found = _allEquipments.firstWhere(
+        (e) => e['code']?.toString() == idOrCode || e['id']?.toString() == idOrCode,
+        orElse: () => <String, dynamic>{},
+      );
+      if (found.isNotEmpty && found['id'] != null) {
+        numericId = int.tryParse(found['id'].toString());
+      }
     }
 
-    if (updated.attributes != null) {
-      _equipmentAttributes[updated.code] = updated.attributes!;
+    if (numericId == null) {
+      final idxAll = _allEquipments.indexWhere((e) => e['code']?.toString() == idOrCode || e['id']?.toString() == idOrCode);
+      if (idxAll != -1) {
+        _allEquipments[idxAll] = {..._allEquipments[idxAll], ...fields};
+        _equipments = List.from(_allEquipments);
+        notifyListeners();
+        return;
+      }
+      throw Exception('Impossible d\'identifier l\'équipement à modifier');
     }
 
-    notifyListeners();
+    try {
+      await _checkConnectivity();
+      if (!_isOffline) {
+        final updated = await _equipmentService.updateEquipment(numericId, fields);
+        final updatedMap = _toMap(updated);
+
+        final idxAll = _allEquipments.indexWhere((e) => e['id']?.toString() == numericId.toString() || e['code']?.toString() == idOrCode);
+        if (idxAll != -1) _allEquipments[idxAll] = updatedMap;
+
+        final idx = _equipments.indexWhere((e) => e['id']?.toString() == numericId.toString() || e['code']?.toString() == idOrCode);
+        if (idx != -1) _equipments[idx] = updatedMap;
+
+        notifyListeners();
+        return;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('⚠️ API update error: $e, mise à jour locale effectuée');
+      }
+    }
+
+    // Fallback mise à jour locale
+    final idxAll = _allEquipments.indexWhere((e) => e['id']?.toString() == numericId.toString() || e['code']?.toString() == idOrCode);
+    if (idxAll != -1) {
+      _allEquipments[idxAll] = {..._allEquipments[idxAll], ...fields};
+      _equipments = List.from(_allEquipments);
+      notifyListeners();
+    }
   }
 
   // Charger attributs équipement
@@ -677,5 +830,26 @@ class EquipmentProvider extends ChangeNotifier {
       }
       return a as EquipmentAttribute;
     }).toList();
+  }
+
+  Future<bool> deleteEquipment(String equipmentId) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      final success = await _equipmentService.deleteEquipment(equipmentId);
+      if (success) {
+        _equipments.removeWhere((e) => e['id']?.toString() == equipmentId || e['code']?.toString() == equipmentId);
+        _allEquipments.removeWhere((e) => e['id']?.toString() == equipmentId || e['code']?.toString() == equipmentId);
+      }
+      _isLoading = false;
+      notifyListeners();
+      return success;
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      rethrow;
+    }
   }
 }

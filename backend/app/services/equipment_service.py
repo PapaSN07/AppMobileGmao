@@ -99,8 +99,36 @@ def get_equipments_infinite(
             return response
             
     except Exception as e:
-        logger.error(f"❌ Erreur SQLAlchemy pour {entity}: {e}")
-        raise
+        logger.error(f"❌ Erreur SQLAlchemy pour {entity}: {e}, tentative fallback local gmao_mobile.dbo.equipment")
+        try:
+            with get_main_session() as session:
+                from sqlalchemy import text
+                rows = session.execute(text("SELECT id, code, description, famille, zone, entity, centre_charge, unite, feeder FROM gmao_mobile.dbo.equipment")).fetchall()
+                equipments_api = []
+                for r in rows:
+                    equipments_api.append({
+                        "id": str(r[0]),
+                        "code": str(r[1] or ""),
+                        "description": str(r[2] or ""),
+                        "famille": str(r[3] or ""),
+                        "zone": str(r[4] or ""),
+                        "entity": str(r[5] or ""),
+                        "centreCharge": str(r[6] or ""),
+                        "unite": str(r[7] or ""),
+                        "feeder": str(r[8] or "")
+                    })
+                return {
+                    'equipments': equipments_api,
+                    'count': len(equipments_api),
+                    'entity_hierarchy': {
+                        'requested_entity': entity,
+                        'hierarchy_used': [entity],
+                        'hierarchy_count': 1
+                    }
+                }
+        except Exception as fallback_err:
+            logger.error(f"❌ Erreur fallback gmao_mobile: {fallback_err}")
+            raise e
 
 
 def get_attribute_values(specification: str, attribute_index: str) -> List[AttributeValues]:
@@ -210,6 +238,31 @@ def get_feeders(entity: str, hierarchy_result: Dict[str, Any]) -> Dict[str, Any]
                 except Exception as e:
                     logger.error(f"❌ Erreur mapping feeder: {e}")
                     continue
+
+            if not feeders:
+                from sqlalchemy import text
+                eq_rows = []
+                try:
+                    eq_rows = session.execute(text("SELECT DISTINCT ereq_string2 FROM dbo.equipment WHERE ereq_string2 IS NOT NULL AND ereq_string2 != ''")).fetchall()
+                    if not eq_rows:
+                        eq_rows = session.execute(text("SELECT DISTINCT ereq_code FROM dbo.equipment WHERE ereq_code IS NOT NULL AND ereq_code != ''")).fetchall()
+                except Exception:
+                    pass
+                if not eq_rows:
+                    try:
+                        eq_rows = session.execute(text("SELECT DISTINCT feeder FROM gmao_mobile.dbo.equipment WHERE feeder IS NOT NULL AND feeder != ''")).fetchall()
+                        if not eq_rows:
+                            eq_rows = session.execute(text("SELECT DISTINCT code FROM gmao_mobile.dbo.equipment WHERE code IS NOT NULL AND code != ''")).fetchall()
+                    except Exception:
+                        pass
+                for idx, r in enumerate(eq_rows):
+                    val = str(r[0])
+                    feeders.append({
+                        "id": idx + 1,
+                        "code": val,
+                        "description": val,
+                        "entity": entity
+                    })
 
             response = {"feeders": feeders, "count": len(feeders)}
             cache.set(cache_key, response, CACHE_TTL_SHORT)
@@ -942,3 +995,19 @@ def get_all_equipment_histories_prestataire(username: str) -> List[Dict[str, Any
     except Exception as e:
         logger.error(f"❌ Erreur récupération historiques pour le prestataire {username}: {e}", exc_info=True)
         return []
+
+
+def delete_equipment(equipment_id: str) -> bool:
+    """Supprime un équipement de la base de données."""
+    logger.info(f"🗑️ Suppression de l'équipement {equipment_id}")
+    try:
+        from sqlalchemy import text
+        with get_main_session() as session:
+            eq_pk = int(equipment_id) if equipment_id.isdigit() else -1
+            session.execute(text("DELETE FROM dbo.equipment WHERE pk_equipment = :eq_id OR ereq_code = :eq_code"), 
+                            {"eq_id": eq_pk, "eq_code": equipment_id})
+            session.commit()
+            return True
+    except Exception as e:
+        logger.error(f"❌ Erreur lors de la suppression de l'équipement {equipment_id}: {e}")
+        return False

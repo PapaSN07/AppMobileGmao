@@ -61,6 +61,26 @@ def get_entities(entity: str, hierarchy_result: Dict[str, Any]) -> Dict[str, Any
                     logger.error(f"❌ Erreur mapping entité: {e}")
                     continue
 
+            if not entities:
+                from sqlalchemy import text
+                eq_rows = []
+                try:
+                    eq_rows = session.execute(text("SELECT DISTINCT ereq_entity FROM dbo.equipment WHERE ereq_entity IS NOT NULL AND ereq_entity != ''")).fetchall()
+                except Exception:
+                    pass
+                if not eq_rows:
+                    try:
+                        eq_rows = session.execute(text("SELECT DISTINCT entity FROM gmao_mobile.dbo.equipment WHERE entity IS NOT NULL AND entity != ''")).fetchall()
+                    except Exception:
+                        pass
+                for r in eq_rows:
+                    val = str(r[0])
+                    entities.append({
+                        "code": val,
+                        "description": val,
+                        "level": "1"
+                    })
+
             response = {
                 "entities": entities, 
                 "count": len(entities)

@@ -526,6 +526,22 @@ class EquipmentService {
     }
   }
 
+  /// Supprime un équipement par son ID ou son code
+  Future<bool> deleteEquipment(String equipmentId) async {
+    try {
+      if (kDebugMode) {
+        print('🗑️ $__logName Suppression équipement: $equipmentId');
+      }
+      final response = await _apiService.delete('$__prefixURI/$equipmentId');
+      return response != null;
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ $__logName Erreur deleteEquipment: $e');
+      }
+      rethrow;
+    }
+  }
+
   /// Change l'URL de base (utile pour basculer entre environnements)
   void setBaseUrl(String url) {
     _apiService.setCustomBaseUrl(url);

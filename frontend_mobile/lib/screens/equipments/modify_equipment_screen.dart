@@ -1033,7 +1033,11 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
       }
 
       final equipmentId =
-          widget.equipmentData!['id'] ?? widget.equipmentData!['ID'] ?? '';
+          widget.equipmentData!['id']?.toString() ??
+          widget.equipmentData!['ID']?.toString() ??
+          widget.equipmentData!['code']?.toString() ??
+          widget.equipmentData!['Code']?.toString() ??
+          '';
       if (equipmentId.isEmpty) throw Exception('ID de l\'équipement manquant');
 
       await equipmentProvider.updateEquipment(equipmentId, updatedData);

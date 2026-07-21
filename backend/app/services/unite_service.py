@@ -59,6 +59,26 @@ def get_unites(entity: str, hierarchy_result: Dict[str, Any]) -> Dict[str, Any]:
                     logger.error(f"❌ Erreur mapping unité: {e}")
                     continue
 
+            if not unites:
+                from sqlalchemy import text
+                eq_rows = []
+                try:
+                    eq_rows = session.execute(text("SELECT DISTINCT ereq_function FROM dbo.equipment WHERE ereq_function IS NOT NULL AND ereq_function != ''")).fetchall()
+                except Exception:
+                    pass
+                if not eq_rows:
+                    try:
+                        eq_rows = session.execute(text("SELECT DISTINCT unite FROM gmao_mobile.dbo.equipment WHERE unite IS NOT NULL AND unite != ''")).fetchall()
+                    except Exception:
+                        pass
+                for r in eq_rows:
+                    val = str(r[0])
+                    unites.append({
+                        "code": val,
+                        "description": val,
+                        "entity": entity
+                    })
+
             response = {"unites": unites, "count": len(unites)}
             cache.set(cache_key, response, CACHE_TTL_SHORT)
             return response

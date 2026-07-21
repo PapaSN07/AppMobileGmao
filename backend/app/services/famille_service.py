@@ -60,6 +60,26 @@ def get_familles(entity: str, hierarchy_result: Dict[str, Any]) -> Dict[str, Any
                     logger.error(f"❌ Erreur mapping famille: {e}")
                     continue
 
+            if not familles:
+                from sqlalchemy import text
+                eq_rows = []
+                try:
+                    eq_rows = session.execute(text("SELECT DISTINCT ereq_category FROM dbo.equipment WHERE ereq_category IS NOT NULL AND ereq_category != ''")).fetchall()
+                except Exception:
+                    pass
+                if not eq_rows:
+                    try:
+                        eq_rows = session.execute(text("SELECT DISTINCT famille FROM gmao_mobile.dbo.equipment WHERE famille IS NOT NULL AND famille != ''")).fetchall()
+                    except Exception:
+                        pass
+                for r in eq_rows:
+                    cat_val = str(r[0])
+                    familles.append({
+                        "code": cat_val,
+                        "description": cat_val,
+                        "level": "1"
+                    })
+
             response = {"familles": familles, "count": len(familles)}
             cache.set("mobile_familles", response, CACHE_TTL_SHORT)
             return response
