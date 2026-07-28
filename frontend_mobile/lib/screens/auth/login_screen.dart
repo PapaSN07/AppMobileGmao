@@ -98,90 +98,109 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     final responsive = context.responsive;
     final spacing = context.spacing;
-
     return Scaffold(
-      backgroundColor: AppTheme.primaryColor,
+      backgroundColor: const Color(0xFFF8FAFC),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: spacing.custom(all: 24), // ✅ Padding responsive
+          padding: spacing.custom(horizontal: 24, vertical: 16),
           child: Form(
             key: _formKey,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                SizedBox(height: spacing.xxlarge), // ✅ Espacement responsive
-                // Logo et titre
+                SizedBox(height: spacing.xxlarge),
+                // 🏷️ Logo et Titre Corporate
                 Container(
-                  padding: spacing.custom(all: 10), // ✅ Padding responsive
+                  padding: spacing.custom(all: 10),
                   child: Column(
                     children: [
-                      SizedBox(
-                        width: responsive.spacing(200), // ✅ Largeur responsive
-                        height: responsive.spacing(200), // ✅ Hauteur responsive
-                        child: Image.asset(
-                          'assets/images/logo.png',
-                          fit: BoxFit.contain,
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.04),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: SizedBox(
+                          width: responsive.spacing(120),
+                          height: responsive.spacing(120),
+                          child: Image.asset(
+                            'assets/images/logo.png',
+                            fit: BoxFit.contain,
+                          ),
                         ),
                       ),
-                      SizedBox(
-                        height: spacing.large,
-                      ), // ✅ Espacement responsive
+                      SizedBox(height: spacing.large),
                       Text(
-                        'GMAO Mobile de la Senelec',
+                        'GMAO Mobile',
                         style: TextStyle(
-                          fontSize: responsive.sp(18), // ✅ Texte responsive
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.secondaryColor,
+                          fontSize: responsive.sp(22),
+                          fontWeight: FontWeight.w800,
+                          color: const Color(0xFF2B1D4C),
                           fontFamily: AppTheme.fontMontserrat,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Senelec • Portail de Maintenance',
+                        style: TextStyle(
+                          fontSize: responsive.sp(13),
+                          fontWeight: FontWeight.w500,
+                          color: const Color(0xFF64748B),
+                          fontFamily: AppTheme.fontRoboto,
                         ),
                       ),
                     ],
                   ),
                 ),
 
-                SizedBox(height: spacing.xlarge), // ✅ Espacement responsive
-                // Formulaire de connexion
+                SizedBox(height: spacing.xlarge),
+
+                // 📝 Formulaire de Connexion sur Carte Blanche Élevée
                 Container(
-                  padding: spacing.custom(
-                    left: 16,
-                    right: 16,
-                    top: 10,
-                    bottom: 10,
-                  ), // ✅ Padding responsive
+                  padding: spacing.custom(horizontal: 20, vertical: 24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(responsive.spacing(20)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 12,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
                   child: Column(
                     children: [
                       // Message d'erreur
                       if (_errorMessage != null)
                         Container(
                           width: double.infinity,
-                          padding: spacing.custom(
-                            all: 16,
-                          ), // ✅ Padding responsive
-                          margin: spacing.custom(
-                            bottom: 20,
-                          ), // ✅ Margin responsive
+                          padding: spacing.custom(all: 14),
+                          margin: spacing.custom(bottom: 20),
                           decoration: BoxDecoration(
-                            color: Colors.red.shade50,
-                            borderRadius: BorderRadius.circular(
-                              responsive.spacing(12),
-                            ), // ✅ Border radius responsive
-                            border: Border.all(color: Colors.red.shade200),
+                            color: const Color(0xFFFEF2F2),
+                            borderRadius: BorderRadius.circular(responsive.spacing(12)),
+                            border: Border.all(color: const Color(0xFFFCA5A5)),
                           ),
                           child: Row(
                             children: [
-                              Icon(
-                                Icons.error_outline,
-                                color: Colors.red.shade700,
-                              ),
-                              SizedBox(
-                                width: spacing.medium,
-                              ), // ✅ Espacement responsive
+                              const Icon(Icons.error_outline, color: Color(0xFFDC2626)),
+                              SizedBox(width: spacing.medium),
                               Expanded(
                                 child: Text(
                                   _errorMessage!,
-                                  style: TextStyle(
-                                    color: Colors.red.shade700,
-                                    fontWeight: FontWeight.w500,
+                                  style: const TextStyle(
+                                    color: Color(0xFFDC2626),
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
                                   ),
                                 ),
                               ),
@@ -192,34 +211,24 @@ class _LoginScreenState extends State<LoginScreen> {
                       // Champ nom d'utilisateur
                       TextFormField(
                         controller: _usernameController,
+                        style: const TextStyle(color: Color(0xFF1E293B), fontWeight: FontWeight.w600),
                         decoration: InputDecoration(
                           labelText: 'Nom d\'utilisateur',
-                          prefixIcon: Icon(
-                            Icons.person,
-                            color: AppTheme.secondaryColor,
-                          ),
+                          labelStyle: const TextStyle(color: Color(0xFF64748B)),
+                          prefixIcon: const Icon(Icons.person_outline, color: Color(0xFF0F1B80)),
+                          filled: true,
+                          fillColor: const Color(0xFFF8FAFC),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(
-                              responsive.spacing(12),
-                            ), // ✅ Border radius responsive
+                            borderRadius: BorderRadius.circular(responsive.spacing(14)),
+                            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
                           ),
                           focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(
-                              responsive.spacing(12),
-                            ), // ✅ Border radius responsive
-                            borderSide: BorderSide(
-                              color: AppTheme.secondaryColor,
-                              width: 2,
-                            ),
+                            borderRadius: BorderRadius.circular(responsive.spacing(14)),
+                            borderSide: const BorderSide(color: Color(0xFF0F1B80), width: 2),
                           ),
                           enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(
-                              responsive.spacing(12),
-                            ), // ✅ Border radius responsive
-                            borderSide: BorderSide(
-                              color: AppTheme.thirdColor,
-                              width: 1,
-                            ),
+                            borderRadius: BorderRadius.circular(responsive.spacing(14)),
+                            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
                           ),
                         ),
                         textInputAction: TextInputAction.next,
@@ -228,31 +237,27 @@ class _LoginScreenState extends State<LoginScreen> {
                             return 'Veuillez entrer votre nom d\'utilisateur';
                           }
                           if (value!.length < 3) {
-                            return 'Le nom d\'utilisateur doit contenir au moins 3 caractères';
+                            return 'Au moins 3 caractères requis';
                           }
                           return null;
                         },
                       ),
 
-                      SizedBox(
-                        height: spacing.medium,
-                      ), // ✅ Espacement responsive
+                      SizedBox(height: spacing.medium),
+
                       // Champ mot de passe
                       TextFormField(
                         controller: _passwordController,
                         obscureText: _obscurePassword,
+                        style: const TextStyle(color: Color(0xFF1E293B), fontWeight: FontWeight.w600),
                         decoration: InputDecoration(
                           labelText: 'Mot de passe',
-                          prefixIcon: Icon(
-                            Icons.lock,
-                            color: AppTheme.secondaryColor,
-                          ),
+                          labelStyle: const TextStyle(color: Color(0xFF64748B)),
+                          prefixIcon: const Icon(Icons.lock_outlined, color: Color(0xFF0F1B80)),
                           suffixIcon: IconButton(
                             icon: Icon(
-                              _obscurePassword
-                                  ? Icons.visibility
-                                  : Icons.visibility_off,
-                              color: AppTheme.secondaryColor,
+                              _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                              color: const Color(0xFF64748B),
                             ),
                             onPressed: () {
                               setState(() {
@@ -260,28 +265,19 @@ class _LoginScreenState extends State<LoginScreen> {
                               });
                             },
                           ),
+                          filled: true,
+                          fillColor: const Color(0xFFF8FAFC),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(
-                              responsive.spacing(12),
-                            ), // ✅ Border radius responsive
+                            borderRadius: BorderRadius.circular(responsive.spacing(14)),
+                            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
                           ),
                           focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(
-                              responsive.spacing(12),
-                            ), // ✅ Border radius responsive
-                            borderSide: BorderSide(
-                              color: AppTheme.secondaryColor,
-                              width: 2,
-                            ),
+                            borderRadius: BorderRadius.circular(responsive.spacing(14)),
+                            borderSide: const BorderSide(color: Color(0xFF0F1B80), width: 2),
                           ),
                           enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(
-                              responsive.spacing(12),
-                            ), // ✅ Border radius responsive
-                            borderSide: BorderSide(
-                              color: AppTheme.thirdColor,
-                              width: 1,
-                            ),
+                            borderRadius: BorderRadius.circular(responsive.spacing(14)),
+                            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
                           ),
                         ),
                         textInputAction: TextInputAction.done,
@@ -291,20 +287,19 @@ class _LoginScreenState extends State<LoginScreen> {
                             return 'Veuillez entrer votre mot de passe';
                           }
                           if (value!.length < 4) {
-                            return 'Le mot de passe doit contenir au moins 4 caractères';
+                            return 'Au moins 4 caractères requis';
                           }
                           return null;
                         },
                       ),
 
-                      SizedBox(
-                        height: spacing.xlarge,
-                      ), // ✅ Espacement responsive
+                      SizedBox(height: spacing.xlarge),
+
                       // Bouton de connexion
                       PrimaryButton(
                         text: 'Se connecter',
                         width: double.infinity,
-                        height: responsive.spacing(56), // ✅ Hauteur responsive
+                        height: responsive.spacing(52),
                         isLoading: _isLoading,
                         onPressed: _handleLogin,
                       ),
@@ -312,13 +307,15 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
 
-                SizedBox(height: spacing.xlarge), // ✅ Espacement responsive
-                // Informations de support
+                SizedBox(height: spacing.xlarge),
+                
+                // 📞 Support IT
                 Text(
                   'En cas de problème, contactez le support IT SENELEC',
                   style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: responsive.sp(14), // ✅ Texte responsive
+                    color: const Color(0xFF64748B),
+                    fontSize: responsive.sp(12),
+                    fontWeight: FontWeight.w500,
                     fontFamily: AppTheme.fontRoboto,
                   ),
                   textAlign: TextAlign.center,

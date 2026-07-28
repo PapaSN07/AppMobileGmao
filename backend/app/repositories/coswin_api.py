@@ -1,8 +1,6 @@
 import asyncio
 import logging
-import requests
-from requests.auth import HTTPDigestAuth
-from requests.exceptions import RequestException, Timeout
+import httpx
 from typing import List, Optional, Dict, Any
 from fastapi import HTTPException
 from urllib.parse import urlencode
@@ -31,7 +29,7 @@ class CoswinAPIWorkOrderRepository(AbstractWorkOrderRepository):
         
         self._digest_auth = None
         if self.username and self.password:
-            self._digest_auth = HTTPDigestAuth(self.username, self.password)
+            self._digest_auth = httpx.DigestAuth(self.username, self.password)
         
         self.headers = {
             "Accept": "application/json"
@@ -57,23 +55,18 @@ class CoswinAPIWorkOrderRepository(AbstractWorkOrderRepository):
         """Effectue une requête HTTP vers l'API Coswin."""
         url = self._build_url(endpoint, **(params or {}))
         logger.info(f"➡️ Repo API OT: {method} {url}")
-        
-        def sync_call():
-            request_kwargs = {
-                "headers": self.headers,
-                "json": json_data,
-                "timeout": 30,
-                "proxies": {
-                    "http": None,
-                    "https": None,
-                }
-            }
-            if self._digest_auth:
-                request_kwargs["auth"] = self._digest_auth
-            return requests.request(method, url, **request_kwargs)
 
         try:
-            response = await asyncio.to_thread(sync_call)
+            async with httpx.AsyncClient(timeout=30.0, trust_env=False) as client:
+                request_kwargs = {
+                    "headers": self.headers,
+                    "json": json_data,
+                }
+                if self._digest_auth:
+                    request_kwargs["auth"] = self._digest_auth
+                
+                response = await client.request(method, url, **request_kwargs)
+
             logger.info(
                 f"⬅️ Repo API OT Réponse: {response.status_code} "
                 f"({len(response.content)} octets) pour {url}"
@@ -101,12 +94,12 @@ class CoswinAPIWorkOrderRepository(AbstractWorkOrderRepository):
             except Exception:
                 return response.text
 
-        except Timeout:
+        except httpx.TimeoutException:
             raise HTTPException(
                 status_code=504,
                 detail="Timeout lors de l'appel à l'API Coswin"
             )
-        except RequestException as e:
+        except httpx.RequestError as e:
             raise HTTPException(
                 status_code=503,
                 detail=f"Erreur de connexion à l'API Coswin: {str(e)}"

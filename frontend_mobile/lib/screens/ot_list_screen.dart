@@ -55,17 +55,16 @@ class _OTListScreenState extends State<OTListScreen> {
     final spacing = context.spacing;
 
     return Scaffold(
-      backgroundColor: Colors.white,
-      // Barre d'application en haut de l'écran avec menu hamburger
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: CustomAppBar(
         title: 'Liste des ordres de travail',
         showBackButton: false,
         backgroundColor: Colors.white,
-        titleColor: AppTheme.secondaryColor,
-        iconColor: AppTheme.secondaryColor,
+        titleColor: const Color(0xFF2B1D4C),
+        iconColor: const Color(0xFF2B1D4C),
         actions: [
           IconButton(
-            icon: const Icon(Icons.menu, color: AppTheme.secondaryColor),
+            icon: const Icon(Icons.menu, color: Color(0xFF2B1D4C)),
             onPressed: () {
               // TODO: Ouvrir le drawer/menu
             },

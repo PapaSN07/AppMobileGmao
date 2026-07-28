@@ -272,20 +272,30 @@ class ListItemCustom extends StatelessWidget {
       onTap: onTap ?? () => _showOverlay(context),
       child: Container(
         padding: spacing.custom(
-          horizontal: 10,
-          vertical: 10,
-        ), // ✅ Padding responsive
-        decoration: BoxDecoration(
-          color: backgroundColor ?? AppTheme.secondaryColor,
-          borderRadius: BorderRadius.circular(
-            responsive.spacing(20),
-          ), // ✅ Border radius responsive
+          horizontal: 14,
+          vertical: 12,
         ),
-        // ✅ MODIFIÉ: Supprimer le Stack et les badges
+        decoration: BoxDecoration(
+          color: backgroundColor ?? Colors.white,
+          borderRadius: BorderRadius.circular(
+            responsive.spacing(16),
+          ),
+          border: Border.all(
+            color: const Color(0xFFE2E8F0),
+            width: 1.0,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
         child: Row(
           children: [
             _buildIcon(responsive, spacing),
-            SizedBox(width: spacing.medium), // ✅ Espacement responsive
+            SizedBox(width: spacing.medium),
             Expanded(child: _buildContent(responsive, spacing)),
             trailing ?? _buildArrowIcon(responsive),
           ],
@@ -296,18 +306,18 @@ class ListItemCustom extends StatelessWidget {
 
   Widget _buildIcon(Responsive responsive, ResponsiveSpacing spacing) {
     return Container(
-      width: responsive.spacing(56), // ✅ Largeur responsive
-      height: responsive.spacing(56), // ✅ Hauteur responsive
+      width: responsive.spacing(48),
+      height: responsive.spacing(48),
       decoration: BoxDecoration(
-        color: iconColor ?? AppTheme.primaryColor,
+        color: iconColor ?? const Color(0xFF0F1B80).withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(
-          responsive.spacing(15),
-        ), // ✅ Border radius responsive
+          responsive.spacing(12),
+        ),
       ),
       child: Icon(
         icon,
-        size: responsive.iconSize(30), // ✅ Icône responsive
-        color: backgroundColor ?? AppTheme.secondaryColor,
+        size: responsive.iconSize(24),
+        color: const Color(0xFF0F1B80),
       ),
     );
   }
@@ -317,6 +327,7 @@ class ListItemCustom extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildPrimaryRow(responsive, spacing),
+        const SizedBox(height: 4),
         ..._buildFieldRows(responsive, spacing),
       ],
     );
@@ -326,23 +337,22 @@ class ListItemCustom extends StatelessWidget {
     return Row(
       children: [
         Text(
-          '$primaryLabel:',
+          '$primaryLabel: ',
           style: TextStyle(
             fontFamily: AppTheme.fontMontserrat,
-            fontWeight: FontWeight.w600,
-            color: textColor ?? AppTheme.primaryColor,
-            fontSize: responsive.sp(18), // ✅ Texte responsive
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF2B1D4C),
+            fontSize: responsive.sp(14),
           ),
         ),
-        SizedBox(width: spacing.small), // ✅ Espacement responsive
         Expanded(
           child: Text(
             primaryText,
             style: TextStyle(
               fontFamily: AppTheme.fontMontserrat,
-              fontWeight: FontWeight.w600,
-              color: textColor ?? AppTheme.primaryColor,
-              fontSize: responsive.sp(18), // ✅ Texte responsive
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFF0F1B80),
+              fontSize: responsive.sp(14),
             ),
             overflow: TextOverflow.ellipsis,
           ),
@@ -397,23 +407,22 @@ class ListItemCustom extends StatelessWidget {
       child: Row(
         children: [
           Text(
-            '${field.label}:',
+            '${field.label}: ',
             style: TextStyle(
               fontFamily: AppTheme.fontRoboto,
-              fontWeight: FontWeight.normal,
-              color: textColor ?? AppTheme.primaryColor,
-              fontSize: responsive.sp(12), // ✅ Texte responsive
+              fontWeight: FontWeight.w500,
+              color: const Color(0xFF64748B),
+              fontSize: responsive.sp(12),
             ),
           ),
-          SizedBox(width: spacing.small), // ✅ Espacement responsive
           Expanded(
             child: Text(
               field.value,
               style: TextStyle(
                 fontFamily: AppTheme.fontRoboto,
-                fontWeight: FontWeight.normal,
-                color: textColor ?? AppTheme.primaryColor,
-                fontSize: responsive.sp(12), // ✅ Texte responsive
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF1E293B),
+                fontSize: responsive.sp(12),
               ),
               overflow: TextOverflow.ellipsis,
             ),

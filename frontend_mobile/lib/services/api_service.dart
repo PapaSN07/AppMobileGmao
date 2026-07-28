@@ -22,7 +22,7 @@ class ApiService {
   late String baseUrl;
   String? _authToken;
 
-  static const Duration _timeout = Duration(seconds: 60);
+  static const Duration _timeout = Duration(seconds: 5);
   static const int _productionPort = 9099;
   static const String _productionHost = 'domtec.senelec.sn';
   static const int _localDevPort = 8003;
@@ -44,6 +44,7 @@ class ApiService {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
+          'Bypass-Tunnel-Reminder': 'true',
         },
         validateStatus: (status) => status != null && status < 500,
       ),
@@ -69,9 +70,11 @@ class ApiService {
     return 'localhost';
   }
 
+  static const String _publicTunnelUrl = 'https://gmao-senelec-mobile.loca.lt';
+
   String _buildBaseUrl(int port) {
-    final scheme = kReleaseMode ? 'https' : 'http';
-    return '$scheme://${_resolveHost()}:$port';
+    if (kReleaseMode) return 'https://$_productionHost:$_productionPort';
+    return _publicTunnelUrl;
   }
 
   Future<void> _loadAuthToken() async {

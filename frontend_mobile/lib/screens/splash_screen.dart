@@ -52,7 +52,7 @@ class _SplashScreenState extends State<SplashScreen>
 
   Future<void> _initializeApp() async {
     _animationController.forward();
-    await Future.delayed(const Duration(seconds: 3));
+    await Future.delayed(const Duration(seconds: 5));
     await _checkAuthentication();
   }
 
@@ -120,18 +120,18 @@ class _SplashScreenState extends State<SplashScreen>
     final spacing = context.spacing;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppTheme.senelecIndigo,
       body: Stack(
         children: [
-          // 🤍 Fond Blanc Épuré avec subtil dégradé
+          // 💜 Fond Violet Foncé Senelec avec subtil dégradé
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Colors.white,
-                  Color(0xFFF8FAFC), // Blanc très légèrement nuancé
+                  AppTheme.senelecIndigo,
+                  Color(0xFF160A30), // Indigo encore plus profond pour le bas
                 ],
               ),
             ),
@@ -148,7 +148,7 @@ class _SplashScreenState extends State<SplashScreen>
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    const Color(0xFF015CC0).withValues(alpha: 0.08),
+                    const Color(0xFF0F1B80).withValues(alpha: 0.15),
                     Colors.transparent,
                   ],
                 ),
@@ -165,7 +165,7 @@ class _SplashScreenState extends State<SplashScreen>
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    const Color(0xFFFFB800).withValues(alpha: 0.08),
+                    const Color(0xFFFFB800).withValues(alpha: 0.12),
                     Colors.transparent,
                   ],
                 ),
@@ -223,7 +223,7 @@ class _SplashScreenState extends State<SplashScreen>
                                   style: TextStyle(
                                     fontSize: responsive.sp(28),
                                     fontWeight: FontWeight.w800,
-                                    color: const Color(0xFF021B3B), // Navy Senelec
+                                    color: Colors.white,
                                     letterSpacing: 2.0,
                                     fontFamily: AppTheme.fontMontserrat,
                                   ),
@@ -251,7 +251,7 @@ class _SplashScreenState extends State<SplashScreen>
                                     style: TextStyle(
                                       fontSize: responsive.sp(18),
                                       fontWeight: FontWeight.w900,
-                                      color: const Color(0xFF021B3B),
+                                      color: const Color(0xFF2B1D4C),
                                       letterSpacing: 1.5,
                                       fontFamily: AppTheme.fontMontserrat,
                                     ),
@@ -265,7 +265,7 @@ class _SplashScreenState extends State<SplashScreen>
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 fontSize: responsive.sp(13),
-                                color: const Color(0xFF475569),
+                                color: Colors.white70,
                                 fontWeight: FontWeight.w500,
                                 letterSpacing: 0.3,
                               ),
@@ -292,9 +292,9 @@ class _SplashScreenState extends State<SplashScreen>
                                 borderRadius: BorderRadius.circular(10),
                                 child: LinearProgressIndicator(
                                   minHeight: 4,
-                                  backgroundColor: const Color(0xFFE2E8F0),
+                                  backgroundColor: Colors.white.withValues(alpha: 0.15),
                                   valueColor: const AlwaysStoppedAnimation<Color>(
-                                    Color(0xFF015CC0),
+                                    AppTheme.senelecOrange,
                                   ),
                                 ),
                               ),
@@ -303,7 +303,7 @@ class _SplashScreenState extends State<SplashScreen>
                             Text(
                               'Initialisation des modules...',
                               style: TextStyle(
-                                color: const Color(0xFF64748B),
+                                color: Colors.white60,
                                 fontSize: responsive.sp(12),
                                 fontWeight: FontWeight.w400,
                               ),
@@ -327,7 +327,7 @@ class _SplashScreenState extends State<SplashScreen>
                           child: Text(
                             '© Senelec • Version 1.0.0',
                             style: TextStyle(
-                              color: const Color(0xFF94A3B8),
+                              color: Colors.white38,
                               fontSize: responsive.sp(11),
                               letterSpacing: 1.0,
                               fontWeight: FontWeight.w400,

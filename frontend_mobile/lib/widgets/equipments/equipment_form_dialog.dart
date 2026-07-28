@@ -120,7 +120,7 @@ class _EquipmentFormDialogState extends State<EquipmentFormDialog> {
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF015CC0),
+                        color: Color(0xFF0F1B80),
                       ),
                     ),
                     IconButton(
@@ -221,7 +221,7 @@ class _EquipmentFormDialogState extends State<EquipmentFormDialog> {
                           : const Icon(Icons.save, size: 18),
                       label: Text(_isEditMode ? 'Enregistrer' : 'Créer'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF015CC0),
+                        backgroundColor: const Color(0xFF0F1B80),
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -248,7 +248,7 @@ class _EquipmentFormDialogState extends State<EquipmentFormDialog> {
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF015CC0)),
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF0F1B80)),
         ),
         const SizedBox(height: 4),
         TextFormField(

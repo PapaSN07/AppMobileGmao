@@ -496,23 +496,27 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
         TextFormField(
           controller: _serviceController,
           textCapitalization: TextCapitalization.characters,
-          style: const TextStyle(color: AppTheme.thirdColor),
+          style: const TextStyle(color: Color(0xFF1E293B), fontWeight: FontWeight.w600),
           decoration: InputDecoration(
             labelText: 'Filtre service (code service / entité)',
+            labelStyle: const TextStyle(color: Color(0xFF64748B)),
             prefixIcon: IconButton(
-              icon: Icon(_showSearchOptions ? Icons.filter_list : Icons.tune),
+              icon: Icon(
+                _showSearchOptions ? Icons.filter_list : Icons.tune,
+                color: const Color(0xFF0F1B80),
+              ),
               onPressed: () => setState(() => _showSearchOptions = !_showSearchOptions),
             ),
             suffixIcon: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(
-                  icon: const Icon(Icons.search),
+                  icon: const Icon(Icons.search, color: Color(0xFF0F1B80)),
                   onPressed: _loadOrders,
                 ),
                 if (_serviceController.text.isNotEmpty)
                   IconButton(
-                    icon: const Icon(Icons.clear),
+                    icon: const Icon(Icons.clear, color: Color(0xFF64748B)),
                     onPressed: () {
                       _serviceController.clear();
                       FocusScope.of(context).unfocus();
@@ -521,13 +525,27 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
                   ),
               ],
             ),
+            filled: true,
+            fillColor: Colors.white,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(responsive.spacing(12)),
+              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(responsive.spacing(12)),
+              borderSide: const BorderSide(color: Color(0xFF0F1B80), width: 2),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(responsive.spacing(12)),
+              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+            ),
           ),
           onFieldSubmitted: (_) => _loadOrders(),
           textInputAction: TextInputAction.search,
         ),
         AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          height: _showSearchOptions ? responsive.spacing(175) : 0,
+          height: _showSearchOptions ? responsive.spacing(180) : 0,
           child: _showSearchOptions
               ? SingleChildScrollView(
                   physics: const NeverScrollableScrollPhysics(),
@@ -536,36 +554,52 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
                     margin: spacing.custom(top: 8),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
-                      side: BorderSide(color: AppTheme.primaryColor20),
+                      side: const BorderSide(color: Color(0xFFE2E8F0)),
                     ),
                     color: Colors.white,
                     child: Padding(
-                      padding: spacing.custom(horizontal: 14, vertical: 10),
+                      padding: spacing.custom(horizontal: 14, vertical: 12),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
+                          const Text(
                             'Recherche locale',
                             style: TextStyle(
                               fontFamily: AppTheme.fontMontserrat,
-                              fontSize: responsive.sp(14),
+                              fontSize: 14,
                               fontWeight: FontWeight.bold,
-                              color: AppTheme.secondaryColor,
+                              color: Color(0xFF2B1D4C),
                             ),
                           ),
-                          SizedBox(height: spacing.tiny),
+                          const SizedBox(height: 8),
                           Row(
                             children: [
                               Expanded(
                                 child: TextFormField(
                                   controller: _searchController,
+                                  style: const TextStyle(color: Color(0xFF1E293B), fontWeight: FontWeight.w600),
                                   decoration: InputDecoration(
                                     labelText: 'Rechercher un OT',
+                                    labelStyle: const TextStyle(color: Color(0xFF64748B)),
                                     hintText: 'Ex: Numéro OT, équipement...',
-                                    prefixIcon: const Icon(Icons.search),
+                                    prefixIcon: const Icon(Icons.search, color: Color(0xFF0F1B80)),
+                                    filled: true,
+                                    fillColor: const Color(0xFFF8FAFC),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(responsive.spacing(10)),
+                                      borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(responsive.spacing(10)),
+                                      borderSide: const BorderSide(color: Color(0xFF0F1B80), width: 1.5),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(responsive.spacing(10)),
+                                      borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                                    ),
                                     suffixIcon: _searchController.text.isNotEmpty
                                         ? IconButton(
-                                            icon: const Icon(Icons.clear),
+                                            icon: const Icon(Icons.clear, color: Color(0xFF64748B)),
                                             onPressed: () {
                                               _searchController.clear();
                                               setState(() {
@@ -768,200 +802,229 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
     final spacing = context.spacing;
     final visibleOrders = _applyFilters(_orders);
 
-    final mainContent = Stack(
-      children: [
-        Positioned(
-          top: responsive.spacing(120),
-          left: 0,
-          right: 0,
-          bottom: 0,
-          child: Container(
-            padding: spacing.custom(horizontal: 16),
-            child: Column(
-              children: [
-                _buildSearchAndFilters(responsive, spacing),
-                SizedBox(height: spacing.medium),
-                Expanded(
-                  child: _isLoading
-                      ? const LoadingIndicator()
-                      : _errorMessage != null
-                          ? EmptyState(
-                              title: 'Impossible de charger les OT',
-                              message: _errorMessage!,
-                              icon: Icons.work_history,
-                              onRetry: _loadOrders,
-                              retryButtonText: 'Réessayer',
-                            )
-                          : visibleOrders.isEmpty
-                              ? const EmptyState(
-                                  title: 'Aucun OT trouvé',
-                                  message: 'Aucun OT ouvert ne correspond à ce service.',
-                                  icon: Icons.assignment_late,
-                                )
-                              : ListView.separated(
-                                  physics: const AlwaysScrollableScrollPhysics(),
-                                  itemCount: visibleOrders.length + (_hasMore ? 1 : 0),
-                                  separatorBuilder: (_, __) => SizedBox(height: spacing.small),
-                                  itemBuilder: (context, index) {
-                                    if (index == visibleOrders.length) {
-                                      return Padding(
-                                        padding: const EdgeInsets.symmetric(vertical: 16.0),
-                                        child: Center(
-                                          child: _isLoadingMore
-                                              ? const CircularProgressIndicator()
-                                              : ElevatedButton.icon(
-                                                  onPressed: _loadMoreOrders,
-                                                  icon: const Icon(Icons.add),
-                                                  label: const Text("Charger plus d'OT"),
-                                                  style: ElevatedButton.styleFrom(
-                                                    backgroundColor: AppTheme.secondaryColor,
-                                                    foregroundColor: Colors.white,
-                                                    shape: RoundedRectangleBorder(
-                                                      borderRadius: BorderRadius.circular(12),
-                                                    ),
-                                                    padding: const EdgeInsets.symmetric(
-                                                      horizontal: 24,
-                                                      vertical: 12,
-                                                    ),
-                                                  ),
-                                                ),
-                                        ),
-                                      );
-                                    }
-
-                                    final order = visibleOrders[index];
-                                    final isClosed = _closedStatuses.contains(order.wowoUserStatus.trim().toUpperCase());
-                                    return ListItemCustom.order(
-                                      code: order.wowoCode.toString(),
-                                      famille: order.wowoJobType.isNotEmpty
-                                          ? order.wowoJobType
-                                          : (order.wowoJobClass.isNotEmpty ? order.wowoJobClass : '-'),
-                                      zone: order.wowoZone?.isNotEmpty == true ? order.wowoZone! : '-',
-                                      entity: order.wowoRequestEntity.isNotEmpty ? order.wowoRequestEntity : '-',
-                                      unite: order.wowoEquipment.isNotEmpty ? order.wowoEquipment : '-',
-                                      centre: order.wowoCostcentre.isNotEmpty ? order.wowoCostcentre : '-',
-                                      description: order.wowoJob.isNotEmpty
-                                          ? order.wowoJob
-                                          : (order.wowoEquipmentDescription.isNotEmpty ? order.wowoEquipmentDescription : '-'),
-                                      status: Order.formatStatus(order.wowoUserStatus, order.mdusDescription),
-                                      onDetailsTap: () => _openDetails(order),
-                                      trailing: PopupMenuButton<String>(
-                                        icon: const Icon(Icons.more_vert, color: AppTheme.primaryColor),
-                                        onSelected: (value) async {
-                                          if (value == 'edit') {
-                                            final result = await Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (_) => OTCreateScreen(orderToEdit: order),
-                                              ),
-                                            );
-                                            if (result == true) {
-                                              _loadOrders();
-                                            }
-                                          } else if (value == 'delete') {
-                                            _confirmDeleteOT(order);
-                                          }
-                                        },
-                                        itemBuilder: (context) => [
-                                          const PopupMenuItem(
-                                            value: 'edit',
-                                            child: Row(
-                                              children: [
-                                                Icon(Icons.edit_outlined, color: Color(0xFF015CC0), size: 20),
-                                                SizedBox(width: 10),
-                                                Text('Modifier', style: TextStyle(color: Color(0xFF015CC0), fontWeight: FontWeight.w600, fontSize: 14)),
-                                              ],
-                                            ),
-                                          ),
-                                          const PopupMenuItem(
-                                            value: 'delete',
-                                            child: Row(
-                                              children: [
-                                                Icon(Icons.delete_outline, color: Colors.red, size: 20),
-                                                SizedBox(width: 10),
-                                                Text('Supprimer', style: TextStyle(color: Colors.red, fontWeight: FontWeight.w600, fontSize: 14)),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      statusBadge: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          color: isClosed ? Colors.red.shade50 : Colors.green.shade50,
-                                          borderRadius: BorderRadius.circular(999),
-                                        ),
-                                        child: Text(
-                                          order.wowoUserStatus.isEmpty ? 'INCONNU' : order.wowoUserStatus,
-                                          style: TextStyle(
-                                            color: isClosed ? Colors.red.shade700 : Colors.green.shade700,
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          child: Container(color: AppTheme.secondaryColor, height: 70),
-        ),
-        Positioned(
-          top: responsive.spacing(20),
-          left: 20,
-          right: 20,
-          child: Container(
-            constraints: BoxConstraints(
-              minHeight: responsive.spacing(84),
-            ),
-            padding: spacing.custom(horizontal: 10, vertical: 12),
+    final mainContent = SafeArea(
+      child: Column(
+        children: [
+          // 📊 En-Tête Supérieur Moderne : Carte de Compteur des OT
+          Container(
+            margin: spacing.custom(horizontal: 16, vertical: 12),
+            padding: spacing.custom(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(responsive.spacing(20)),
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF2B1D4C), Color(0xFF0F1B80)],
+              ),
+              borderRadius: BorderRadius.circular(responsive.spacing(16)),
               boxShadow: [
                 BoxShadow(
-                  color: AppTheme.boxShadowColor,
-                  blurRadius: responsive.spacing(10),
-                  offset: Offset(0, responsive.spacing(5)),
+                  color: const Color(0xFF0F1B80).withValues(alpha: 0.25),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
                 ),
               ],
             ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded(
-                  child: Tools.buildStatCard(
-                    context,
-                    _selectedService.isEmpty ? 'Non défini' : _selectedService,
-                    'Service',
-                  ),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.assignment_rounded,
+                        color: Colors.white,
+                        size: 26,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${visibleOrders.length} ${visibleOrders.length > 1 ? "OTs ouverts" : "OT ouvert"}',
+                          style: TextStyle(
+                            fontFamily: AppTheme.fontMontserrat,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                            fontSize: responsive.sp(18),
+                          ),
+                        ),
+                        Text(
+                          'Service : ${_selectedService.isEmpty ? "Non défini" : _selectedService}',
+                          style: TextStyle(
+                            fontFamily: AppTheme.fontRoboto,
+                            fontWeight: FontWeight.w400,
+                            color: Colors.white.withValues(alpha: 0.8),
+                            fontSize: responsive.sp(12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-                Tools.buildVerticalDivider(context),
-                Expanded(
-                  child: Tools.buildStatCard(
-                    context,
-                    visibleOrders.length.toString(),
-                    visibleOrders.length > 1 ? 'OTs ouverts' : 'OT ouvert',
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.flash_on_rounded,
+                    color: Colors.white,
+                    size: 20,
                   ),
                 ),
               ],
             ),
           ),
-        ),
-      ],
+
+          // 🔍 Barre de Recherche & Filtres
+          Padding(
+            padding: spacing.custom(horizontal: 16),
+            child: _buildSearchAndFilters(responsive, spacing),
+          ),
+
+          SizedBox(height: spacing.small),
+
+          // 📋 Liste des OT
+          Expanded(
+            child: Padding(
+              padding: spacing.custom(horizontal: 16),
+              child: _isLoading
+                  ? const LoadingIndicator()
+                  : _errorMessage != null
+                      ? EmptyState(
+                          title: 'Impossible de charger les OT',
+                          message: _errorMessage!,
+                          icon: Icons.work_history,
+                          onRetry: _loadOrders,
+                          retryButtonText: 'Réessayer',
+                        )
+                      : visibleOrders.isEmpty
+                          ? const EmptyState(
+                              title: 'Aucun OT trouvé',
+                              message: 'Aucun OT ouvert ne correspond à ce service.',
+                              icon: Icons.assignment_late,
+                            )
+                          : ListView.separated(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              itemCount: visibleOrders.length + (_hasMore ? 1 : 0),
+                              separatorBuilder: (_, __) => SizedBox(height: spacing.small),
+                              itemBuilder: (context, index) {
+                                if (index == visibleOrders.length) {
+                                  return Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 16.0),
+                                    child: Center(
+                                      child: _isLoadingMore
+                                          ? const CircularProgressIndicator()
+                                          : ElevatedButton.icon(
+                                              onPressed: _loadMoreOrders,
+                                              icon: const Icon(Icons.add),
+                                              label: const Text("Charger plus d'OT"),
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: AppTheme.secondaryColor,
+                                                foregroundColor: Colors.white,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius: BorderRadius.circular(12),
+                                                ),
+                                                padding: const EdgeInsets.symmetric(
+                                                  horizontal: 24,
+                                                  vertical: 12,
+                                                ),
+                                              ),
+                                            ),
+                                    ),
+                                  );
+                                }
+
+                                final order = visibleOrders[index];
+                                final isClosed = _closedStatuses.contains(order.wowoUserStatus.trim().toUpperCase());
+                                return ListItemCustom.order(
+                                  code: order.wowoCode.toString(),
+                                  famille: order.wowoJobType.isNotEmpty
+                                      ? order.wowoJobType
+                                      : (order.wowoJobClass.isNotEmpty ? order.wowoJobClass : '-'),
+                                  zone: order.wowoZone?.isNotEmpty == true ? order.wowoZone! : '-',
+                                  entity: order.wowoRequestEntity.isNotEmpty ? order.wowoRequestEntity : '-',
+                                  unite: order.wowoEquipment.isNotEmpty ? order.wowoEquipment : '-',
+                                  centre: order.wowoCostcentre.isNotEmpty ? order.wowoCostcentre : '-',
+                                  description: order.wowoJob.isNotEmpty
+                                      ? order.wowoJob
+                                      : (order.wowoEquipmentDescription.isNotEmpty ? order.wowoEquipmentDescription : '-'),
+                                  status: Order.formatStatus(order.wowoUserStatus, order.mdusDescription),
+                                  onDetailsTap: () => _openDetails(order),
+                                  trailing: PopupMenuButton<String>(
+                                    icon: const Icon(Icons.more_vert, color: AppTheme.secondaryColor),
+                                    onSelected: (value) async {
+                                      if (value == 'edit') {
+                                        final result = await Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => OTCreateScreen(orderToEdit: order),
+                                          ),
+                                        );
+                                        if (result == true) {
+                                          _loadOrders();
+                                        }
+                                      } else if (value == 'delete') {
+                                        _confirmDeleteOT(order);
+                                      }
+                                    },
+                                    itemBuilder: (context) => [
+                                      const PopupMenuItem(
+                                        value: 'edit',
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.edit_outlined, color: Color(0xFF0F1B80), size: 20),
+                                            SizedBox(width: 10),
+                                            Text('Modifier', style: TextStyle(color: Color(0xFF0F1B80), fontWeight: FontWeight.w600, fontSize: 14)),
+                                          ],
+                                        ),
+                                      ),
+                                      const PopupMenuItem(
+                                        value: 'delete',
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                                            SizedBox(width: 10),
+                                            Text('Supprimer', style: TextStyle(color: Colors.red, fontWeight: FontWeight.w600, fontSize: 14)),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  statusBadge: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: isClosed ? Colors.red.shade50 : Colors.green.shade50,
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
+                                    child: Text(
+                                      order.wowoUserStatus.isEmpty ? 'INCONNU' : order.wowoUserStatus,
+                                      style: TextStyle(
+                                        color: isClosed ? Colors.red.shade700 : Colors.green.shade700,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+            ),
+          ),
+        ],
+      ),
     );
 
     if (widget.isTab) {
       return Scaffold(
-        backgroundColor: AppTheme.primaryColor,
+        backgroundColor: const Color(0xFFF8FAFC),
         body: mainContent,
         floatingActionButton: FloatingActionButton(
           onPressed: () async {
@@ -979,15 +1042,13 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
       );
     } else {
       return Scaffold(
-        backgroundColor: AppTheme.primaryColor,
+        backgroundColor: const Color(0xFFF8FAFC),
         appBar: AppBar(
           title: const Text('OT par service'),
           backgroundColor: AppTheme.secondaryColor,
           foregroundColor: Colors.white,
         ),
-        body: SafeArea(
-          child: mainContent,
-        ),
+        body: mainContent,
         floatingActionButton: FloatingActionButton(
           onPressed: () async {
             final result = await Navigator.push(

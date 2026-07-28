@@ -465,7 +465,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
             children: [
               const Text(
                 'Sélectionner le taux de réalisation',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF015CC0)),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F1B80)),
               ),
               const SizedBox(height: 10),
               Expanded(
@@ -517,7 +517,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                     onChanged: (val) {
                       setState(() => _autoGenerateCode = val ?? true);
                     },
-                    activeColor: const Color(0xFF015CC0),
+                    activeColor: const Color(0xFF0F1B80),
                   ),
                   const Text('Générer automatiquement le Code OT'),
                 ],
@@ -594,7 +594,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                     children: [
                       const Text(
                         'Taux de réalisation',
-                        style: TextStyle(color: Color(0xFF015CC0), fontSize: 12, fontWeight: FontWeight.w500),
+                        style: TextStyle(color: Color(0xFF0F1B80), fontSize: 12, fontWeight: FontWeight.w500),
                       ),
                       const SizedBox(height: 4),
                       InkWell(
@@ -608,7 +608,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text('${_completionRate.toInt()}%', style: const TextStyle(fontSize: 14)),
-                              const Icon(Icons.arrow_drop_down, color: Color(0xFF015CC0)),
+                              const Icon(Icons.arrow_drop_down, color: Color(0xFF0F1B80)),
                             ],
                           ),
                         ),
@@ -647,7 +647,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                     children: [
                       const Text(
                         'Priorité',
-                        style: TextStyle(color: Color(0xFF015CC0), fontSize: 12, fontWeight: FontWeight.w500),
+                        style: TextStyle(color: Color(0xFF0F1B80), fontSize: 12, fontWeight: FontWeight.w500),
                       ),
                       DropdownButtonFormField<String>(
                         value: _priority,
@@ -668,7 +668,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                     children: [
                       const Text(
                         'Statut de départ',
-                        style: TextStyle(color: Color(0xFF015CC0), fontSize: 12, fontWeight: FontWeight.w500),
+                        style: TextStyle(color: Color(0xFF0F1B80), fontSize: 12, fontWeight: FontWeight.w500),
                       ),
                       DropdownButtonFormField<String>(
                         value: _status,
@@ -719,7 +719,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                     _tempOpController.clear();
                   });
                 },
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF015CC0)),
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0F1B80)),
                 child: const Icon(Icons.add, color: Colors.white),
               ),
             ],
@@ -737,8 +737,8 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                       margin: const EdgeInsets.only(bottom: 8),
                       child: ListTile(
                         leading: CircleAvatar(
-                          backgroundColor: const Color(0xFF015CC0).withAlpha(30),
-                          child: Text('${index + 1}', style: const TextStyle(color: Color(0xFF015CC0), fontWeight: FontWeight.bold)),
+                          backgroundColor: const Color(0xFF0F1B80).withAlpha(30),
+                          child: Text('${index + 1}', style: const TextStyle(color: Color(0xFF0F1B80), fontWeight: FontWeight.bold)),
                         ),
                         title: Text(op['description']),
                         trailing: IconButton(
@@ -798,7 +798,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                     _tempCommentController.clear();
                   });
                 },
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF015CC0)),
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0F1B80)),
                 child: const Icon(Icons.add, color: Colors.white),
               ),
             ],
@@ -815,7 +815,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                     return Card(
                       margin: const EdgeInsets.only(bottom: 8),
                       child: ListTile(
-                        leading: const Icon(Icons.comment, color: Color(0xFF015CC0)),
+                        leading: const Icon(Icons.comment, color: Color(0xFF0F1B80)),
                         title: Text(comm['description']),
                         subtitle: Text('Par : ${comm['employee']}'),
                         trailing: IconButton(
@@ -957,7 +957,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                         _tempWfEndDateTime = null;
                       });
                     },
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF015CC0)),
+                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0F1B80)),
                     child: const Icon(Icons.add, color: Colors.white),
                   ),
                 ],
@@ -976,7 +976,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                     return Card(
                       margin: const EdgeInsets.only(bottom: 8),
                       child: ListTile(
-                        leading: const Icon(Icons.people, color: Color(0xFF015CC0)),
+                        leading: const Icon(Icons.people, color: Color(0xFF0F1B80)),
                         title: Text('${wf['description']} (${wf['employee']})'),
                         subtitle: Text('Heures : ${wf['actualHours']}h / ${wf['totalHours']}h'),
                         trailing: IconButton(
@@ -1054,7 +1054,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                         _tempPartQtyController.text = '1';
                       });
                     },
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF015CC0)),
+                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0F1B80)),
                     child: const Icon(Icons.add, color: Colors.white),
                   ),
                 ],
@@ -1073,7 +1073,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                     return Card(
                       margin: const EdgeInsets.only(bottom: 8),
                       child: ListTile(
-                        leading: const Icon(Icons.settings, color: Color(0xFF015CC0)),
+                        leading: const Icon(Icons.settings, color: Color(0xFF0F1B80)),
                         title: Text('${part['article']} (${part['partCode']})'),
                         subtitle: Text('Quantité : ${part['qtyUsed']}'),
                         trailing: IconButton(
@@ -1157,7 +1157,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                         _tempAttrUnitController.clear();
                       });
                     },
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF015CC0)),
+                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0F1B80)),
                     child: const Icon(Icons.add, color: Colors.white),
                   ),
                 ],
@@ -1177,7 +1177,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                     return Card(
                       margin: const EdgeInsets.only(bottom: 8),
                       child: ListTile(
-                        leading: const Icon(Icons.tune, color: Color(0xFF015CC0)),
+                        leading: const Icon(Icons.tune, color: Color(0xFF0F1B80)),
                         title: Text('${attr['name']} : ${attr['value']}${unit.isNotEmpty ? ' $unit' : ''}'),
                         subtitle: attr['description'].toString().isNotEmpty ? Text(attr['description']) : null,
                         trailing: IconButton(
@@ -1212,7 +1212,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
       children: [
         Text(
           label,
-          style: const TextStyle(color: Color(0xFF015CC0), fontSize: 12, fontWeight: FontWeight.w500),
+          style: const TextStyle(color: Color(0xFF0F1B80), fontSize: 12, fontWeight: FontWeight.w500),
         ),
         const SizedBox(height: 4),
         TextFormField(
@@ -1236,9 +1236,11 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
     final responsive = context.responsive;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: CustomAppBar(
-        backgroundColor: AppTheme.secondaryColor,
+        backgroundColor: Colors.white,
+        iconColor: const Color(0xFF2B1D4C),
+        title: widget.orderToEdit != null ? 'Modifier l\'OT' : 'Créer un OT',
         bottom: CustomTabBar(
           tabController: _tabController,
           tabLabels: const [
@@ -1256,7 +1258,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  CircularProgressIndicator(color: Color(0xFF015CC0)),
+                  CircularProgressIndicator(color: Color(0xFF0F1B80)),
                   SizedBox(height: 16),
                   Text('Chargement des données de l\'OT en cours...', style: TextStyle(fontWeight: FontWeight.w600)),
                 ],
@@ -1267,7 +1269,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      CircularProgressIndicator(color: Color(0xFF015CC0)),
+                      CircularProgressIndicator(color: Color(0xFF0F1B80)),
                       SizedBox(height: 16),
                       Text('Enregistrement des modifications en cours...', style: TextStyle(fontWeight: FontWeight.w600)),
                     ],
@@ -1312,7 +1314,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                   icon: const Icon(Icons.arrow_forward, size: 16),
                   label: const Text('Suivant', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF015CC0),
+                    backgroundColor: const Color(0xFF0F1B80),
                     foregroundColor: Colors.white,
                     padding: EdgeInsets.symmetric(vertical: responsive.hp(1.6)),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -1330,8 +1332,8 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                   icon: const Icon(Icons.arrow_back, size: 16),
                   label: const Text('Précédent', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF015CC0),
-                    side: const BorderSide(color: Color(0xFF015CC0), width: 1.5),
+                    foregroundColor: const Color(0xFF0F1B80),
+                    side: const BorderSide(color: Color(0xFF0F1B80), width: 1.5),
                     padding: EdgeInsets.symmetric(vertical: responsive.hp(1.6)),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
@@ -1344,7 +1346,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                   icon: const Icon(Icons.save, size: 18),
                   label: const Text('Enregistrer l\'OT', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF015CC0),
+                    backgroundColor: const Color(0xFF0F1B80),
                     foregroundColor: Colors.white,
                     padding: EdgeInsets.symmetric(vertical: responsive.hp(1.6)),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),

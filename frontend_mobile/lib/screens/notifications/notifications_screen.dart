@@ -17,30 +17,30 @@ class NotificationsScreen extends StatelessWidget {
     final spacing = context.spacing;
 
     return Scaffold(
-      backgroundColor: AppTheme.primaryColor,
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         title: Text(
           'Notifications',
           style: TextStyle(
             fontFamily: AppTheme.fontMontserrat,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-            fontSize: responsive.sp(20),
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF2B1D4C),
+            fontSize: responsive.sp(18),
           ),
         ),
-        backgroundColor: AppTheme.secondaryColor,
+        backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
           icon: Container(
             padding: spacing.custom(all: 8),
             decoration: BoxDecoration(
-              color: AppTheme.primaryColor20,
+              color: const Color(0xFFF1F5F9),
               borderRadius: BorderRadius.circular(responsive.spacing(8)),
             ),
             child: Icon(
               Icons.arrow_back,
-              color: Colors.white,
-              size: responsive.iconSize(20),
+              color: const Color(0xFF2B1D4C),
+              size: responsive.iconSize(18),
             ),
           ),
           onPressed: () => Navigator.pop(context),
@@ -57,13 +57,13 @@ class NotificationsScreen extends StatelessWidget {
                 icon: Container(
                   padding: spacing.custom(all: 8),
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryColor20,
+                    color: const Color(0xFFF1F5F9),
                     borderRadius: BorderRadius.circular(responsive.spacing(8)),
                   ),
                   child: Icon(
                     Icons.done_all,
-                    color: Colors.white,
-                    size: responsive.iconSize(20),
+                    color: const Color(0xFF2B1D4C),
+                    size: responsive.iconSize(18),
                   ),
                 ),
                 onPressed: () async {

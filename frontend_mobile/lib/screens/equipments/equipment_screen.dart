@@ -122,7 +122,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.primaryColor,
+      backgroundColor: const Color(0xFFF8FAFC),
       body: Consumer2<EquipmentProvider, AuthProvider>(
         builder: (context, equipmentProvider, authProvider, child) {
           return _buildBody(equipmentProvider, authProvider);
@@ -138,102 +138,129 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     final responsive = context.responsive;
     final spacing = context.spacing;
 
-    return Stack(
-      children: [
-        Positioned(
-          top: responsive.spacing(120),
-          left: 0,
-          right: 0,
-          bottom: 0,
-          child: Container(
-            padding: spacing.custom(horizontal: 16),
-            child: Column(
-              children: [
-                custom.SearchBar(
-                  controller: _searchController,
-                  initialType: _searchType,
-                  onSearch: (value) {
-                    _performSearch(value);
-                    setState(() {});
-                  },
-                  onTypeChange: (type) {
-                    setState(() {
-                      _searchType = type;
-                    });
-                    if (_searchController.text.isNotEmpty) {
-                      _performSearch(_searchController.text);
-                    }
-                  },
+    final int totalCount = equipmentProvider.equipments.length;
+
+    return SafeArea(
+      child: Column(
+        children: [
+          // 📊 En-Tête Supérieur Moderne : Carte de Compteur Équipements
+          Container(
+            margin: spacing.custom(horizontal: 16, vertical: 12),
+            padding: spacing.custom(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF2B1D4C), Color(0xFF0F1B80)],
+              ),
+              borderRadius: BorderRadius.circular(responsive.spacing(16)),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF0F1B80).withValues(alpha: 0.25),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
                 ),
-                SizedBox(height: spacing.medium),
-                Expanded(
-                  child: EquipmentList(
-                    isLoading: equipmentProvider.isLoading,
-                    items: equipmentProvider.equipments,
-                    onRefresh: () => _refreshWithFilters(equipmentProvider),
-                    itemBuilder: (item) => buildEquipmentItem(
-                      item,
-                      onEdit: () => _openEquipmentForm(item),
+              ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.settings_suggest_rounded,
+                        color: Colors.white,
+                        size: 26,
+                      ),
                     ),
+                    const SizedBox(width: 14),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '$totalCount ${totalCount > 1 ? "Équipements" : "Équipement"}',
+                          style: TextStyle(
+                            fontFamily: AppTheme.fontMontserrat,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                            fontSize: responsive.sp(18),
+                          ),
+                        ),
+                        Text(
+                          'Catalogue de maintenance',
+                          style: TextStyle(
+                            fontFamily: AppTheme.fontRoboto,
+                            fontWeight: FontWeight.w400,
+                            color: Colors.white.withValues(alpha: 0.8),
+                            fontSize: responsive.sp(12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.dashboard_customize_rounded,
+                    color: Colors.white,
+                    size: 20,
                   ),
                 ),
               ],
             ),
           ),
-        ),
 
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          child: Container(color: AppTheme.secondaryColor, height: 70),
-        ),
-
-        Positioned(
-          top: responsive.spacing(20), // ✅ Position responsive
-          left: 20,
-          right: 20,
-          child: Container(
-            constraints: BoxConstraints(
-              minHeight: responsive.spacing(84),
-            ),
-            padding: spacing.custom(
-              horizontal: 10,
-              vertical: 12,
-            ), // ✅ Padding responsive
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(
-                responsive.spacing(20),
-              ), // ✅ Border radius responsive
-              boxShadow: [
-                BoxShadow(
-                  color: AppTheme.boxShadowColor,
-                  blurRadius: responsive.spacing(
-                    10,
-                  ), // ✅ Blur radius responsive
-                  offset: Offset(
-                    0,
-                    responsive.spacing(5),
-                  ), // ✅ Offset responsive
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                Tools.buildStatCard(
-                  context,
-                  equipmentProvider.equipments.length.toString(),
-                  equipmentProvider.equipments.length > 1
-                      ? 'Équipements'
-                      : 'Équipement'
-                ),
-              ],
+          // 🔍 Barre de Recherche Élevée
+          Padding(
+            padding: spacing.custom(horizontal: 16),
+            child: custom.SearchBar(
+              controller: _searchController,
+              initialType: _searchType,
+              onSearch: (value) {
+                _performSearch(value);
+                setState(() {});
+              },
+              onTypeChange: (type) {
+                setState(() {
+                  _searchType = type;
+                });
+                if (_searchController.text.isNotEmpty) {
+                  _performSearch(_searchController.text);
+                }
+              },
             ),
           ),
-        ),
-      ],
+
+          SizedBox(height: spacing.small),
+
+          // 📋 Liste des Équipements
+          Expanded(
+            child: Padding(
+              padding: spacing.custom(horizontal: 16),
+              child: EquipmentList(
+                isLoading: equipmentProvider.isLoading,
+                items: equipmentProvider.equipments,
+                onRefresh: () => _refreshWithFilters(equipmentProvider),
+                itemBuilder: (item) => buildEquipmentItem(
+                  item,
+                  onEdit: () => _openEquipmentForm(item),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

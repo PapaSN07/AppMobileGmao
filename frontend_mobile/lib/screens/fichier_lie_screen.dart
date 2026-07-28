@@ -124,48 +124,57 @@ class _FichierLieScreenState extends State<FichierLieScreen> {
     final spacing = context.spacing;
 
     return Scaffold(
-      backgroundColor: Colors.white,
-      // Barre d'application en haut avec le titre et les icônes d'action
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppTheme.primaryColor),
+          icon: Container(
+            padding: spacing.custom(all: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(responsive.spacing(8)),
+            ),
+            child: Icon(
+              Icons.arrow_back,
+              color: const Color(0xFF2B1D4C),
+              size: responsive.iconSize(18),
+            ),
+          ),
           onPressed: _handleBack,
         ),
         title: Text(
           'Fichier Lié',
           style: TextStyle(
             fontFamily: AppTheme.fontMontserrat,
-            fontWeight: FontWeight.bold,
-            color: const Color.fromARGB(255, 255, 255, 255),
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF2B1D4C),
             fontSize: responsive.sp(18),
           ),
         ),
-        backgroundColor: const Color.fromARGB(255, 1, 92, 192),
-        elevation: 1,
-        // Icônes d'action dans l'AppBar (barre d'outils)
+        backgroundColor: Colors.white,
+        elevation: 0,
         actions: [
           IconButton(
-            icon: Icon(Icons.arrow_forward, color: AppTheme.primaryColor),
+            icon: const Icon(Icons.arrow_forward, color: Color(0xFF2B1D4C)),
             onPressed: () {},
           ),
           IconButton(
-            icon: Icon(Icons.add, color: AppTheme.primaryColor),
+            icon: const Icon(Icons.add, color: Color(0xFF2B1D4C)),
             onPressed: () {},
           ),
           IconButton(
-            icon: Icon(Icons.link, color: AppTheme.primaryColor),
+            icon: const Icon(Icons.link, color: Color(0xFF2B1D4C)),
             onPressed: () {},
           ),
           IconButton(
-            icon: Icon(Icons.refresh, color: AppTheme.primaryColor),
+            icon: const Icon(Icons.refresh, color: Color(0xFF2B1D4C)),
             onPressed: () {},
           ),
           IconButton(
-            icon: Icon(Icons.save, color: AppTheme.primaryColor),
+            icon: const Icon(Icons.save, color: Color(0xFF2B1D4C)),
             onPressed: () {},
           ),
           IconButton(
-            icon: Icon(Icons.help_outline, color: AppTheme.primaryColor),
+            icon: const Icon(Icons.help_outline, color: Color(0xFF2B1D4C)),
             onPressed: () {},
           ),
         ],

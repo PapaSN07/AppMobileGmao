@@ -131,27 +131,39 @@ class _OTInfoDetailsScreenState extends State<OTInfoDetailsScreen> {
     final spacing = context.spacing;
 
     return Scaffold(
-      backgroundColor: AppTheme.primaryColor,
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         title: Text(
           'Ordres de Travail',
           style: TextStyle(
             fontFamily: AppTheme.fontMontserrat,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.secondaryColor,
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF2B1D4C),
             fontSize: responsive.sp(18),
           ),
         ),
-        backgroundColor: AppTheme.primaryColor,
+        backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: AppTheme.secondaryColor),
+          icon: Container(
+            padding: spacing.custom(all: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(responsive.spacing(8)),
+            ),
+            child: Icon(
+              Icons.arrow_back,
+              color: const Color(0xFF2B1D4C),
+              size: responsive.iconSize(18),
+            ),
+          ),
           onPressed: () => Navigator.pop(context),
+          tooltip: 'Retour',
         ),
       ),
       body: _isLoading
           ? const Center(
-              child: CircularProgressIndicator(color: Color(0xFF015CC0)),
+              child: CircularProgressIndicator(color: Color(0xFF0F1B80)),
             )
           : _errorMessage != null
               ? _buildErrorState(spacing)
@@ -189,7 +201,7 @@ class _OTInfoDetailsScreenState extends State<OTInfoDetailsScreen> {
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF015CC0),
+                      color: Color(0xFF0F1B80),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -212,7 +224,7 @@ class _OTInfoDetailsScreenState extends State<OTInfoDetailsScreen> {
                       icon: const Icon(Icons.dashboard),
                       label: const Text('Voir les détails complets'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF015CC0),
+                        backgroundColor: const Color(0xFF0F1B80),
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
@@ -258,7 +270,7 @@ class _OTInfoDetailsScreenState extends State<OTInfoDetailsScreen> {
             icon: const Icon(Icons.refresh),
             label: const Text('Réessayer'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF015CC0),
+              backgroundColor: const Color(0xFF0F1B80),
               foregroundColor: Colors.white,
             ),
           ),

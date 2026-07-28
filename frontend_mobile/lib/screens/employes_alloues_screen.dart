@@ -51,27 +51,35 @@ class _EmployesAllouesScreenState extends State<EmployesAllouesScreen> {
     final responsive = context.responsive;
 
     return Scaffold(
-      // Couleur de fond de l'écran
-      backgroundColor: Colors.white,
-
-      // Barre supérieure de l'application
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        backgroundColor: AppTheme.primaryColor,
+        backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white),
+          icon: Container(
+            padding: spacing.custom(all: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(responsive.spacing(8)),
+            ),
+            child: Icon(
+              Icons.arrow_back,
+              color: const Color(0xFF2B1D4C),
+              size: responsive.iconSize(18),
+            ),
+          ),
           onPressed: () => Navigator.pop(context),
+          tooltip: 'Retour',
         ),
         title: Text(
           'Employés Alloués',
           style: TextStyle(
             fontFamily: AppTheme.fontMontserrat,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-            fontSize: responsive.sp(20),
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF2B1D4C),
+            fontSize: responsive.sp(18),
           ),
         ),
-        centerTitle: true,
       ),
 
       body: Column(
