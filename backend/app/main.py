@@ -24,6 +24,7 @@ from app.core.cache import cache
 from app.routers.websocket_router import router_ws
 from app.routers.notification_router import router_notification
 from app.routers.web.statistique_router import statistique_router_web
+from app.services.jwt_service import jwt_service
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
