@@ -1,20 +1,20 @@
 -- =============================================================
 --  create_local_schema.sql
 --  Crée le schéma local pour les données extraites de Coswin
---  Exécuter dans la DB locale Docker : gmao_local
+--  Exécuter dans la DB locale Docker : gmao_backend
 -- =============================================================
 
 USE master;
 GO
 
 -- Créer la base si elle n'existe pas
-IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = 'gmao_local')
+IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = 'gmao_backend')
 BEGIN
-    CREATE DATABASE gmao_local;
+    CREATE DATABASE gmao_backend;
 END
 GO
 
-USE gmao_local;
+USE gmao_backend;
 GO
 
 -- Créer le schéma dbo (existe déjà par défaut, au cas où)
@@ -207,5 +207,5 @@ CREATE INDEX IX_wr_equipment ON dbo.work_request (dinq_equipment);
 CREATE INDEX IX_wr_status    ON dbo.work_request (dinq_user_status);
 GO
 
-PRINT '✅  Schéma gmao_local créé avec succès';
+PRINT '✅  Schéma gmao_backend créé avec succès';
 GO

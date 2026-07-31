@@ -52,7 +52,7 @@ class WebSocketManager:
             exclude_user_id: ID de l'utilisateur à exclure (généralement l'émetteur)
         """
         for user_id in list(self.active_connections.keys()):
-            # ✅ CORRECTION : Exclure l'émetteur
+            # CORRECTION : Exclure l'émetteur
             if exclude_user_id and user_id == exclude_user_id:
                 logger.debug(f"⏭️ Broadcast: utilisateur {user_id} exclu (émetteur)")
                 continue

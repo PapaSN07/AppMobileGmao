@@ -57,6 +57,7 @@ try:
     # Read from Source and Write to Target
     with engine_source.connect() as conn_src:
         with engine_target.begin() as conn_tgt:
+            conn_tgt.execute(text("DELETE FROM dbo.workorder"))
             for table_info in ref_tables:
                 t_name = table_info["name"]
                 cols = table_info["columns"]
@@ -86,14 +87,14 @@ try:
                     print(f"  Successfully copied {len(rows)} records to coswin_mock.")
                     
 except Exception as e:
-    print("❌ Error copying reference data:", e)
+    print("[Error] Error copying reference data:", e)
     exit(1)
 
 
 # --- Step 2: Seed Work Orders from JSON file ---
 json_path = "c:/Users/X1/AppMobileGmao/API_OT_SUCCESS_EXAMPLE.json"
 if not os.path.exists(json_path):
-    print(f"❌ Error: Mock JSON file not found at {json_path}")
+    print(f"[Error] Error: Mock JSON file not found at {json_path}")
     exit(1)
 
 with open(json_path, "r", encoding="utf-8") as f:

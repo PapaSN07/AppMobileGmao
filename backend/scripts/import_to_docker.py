@@ -44,9 +44,9 @@ except ImportError:
 # ─── Connexion Docker SQL Server local ───────────────────────────────────────
 LOCAL_HOST = os.getenv("TEMP_DB_HOST", "localhost")
 LOCAL_PORT = os.getenv("TEMP_DB_PORT", "1433")
-LOCAL_DB   = os.getenv("TEMP_DB_NAME", "gmao_local")
+LOCAL_DB   = os.getenv("DB_NAME", "gmao_backend")
 LOCAL_USER = os.getenv("TEMP_DB_USERNAME", "sa")
-LOCAL_PASS = os.getenv("TEMP_DB_PASSWORD", "GmaoLocal123!")
+LOCAL_PASS = os.getenv("DB_PASSWORD", "Mssql_2025@")
 
 DATA_DIR = Path(__file__).parent / "data_extracted"
 
