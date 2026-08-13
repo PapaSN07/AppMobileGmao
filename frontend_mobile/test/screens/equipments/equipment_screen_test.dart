@@ -3,10 +3,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:appmobilegmao/screens/equipments/equipment_screen.dart';
 import 'package:appmobilegmao/provider/equipment_provider.dart';
+import 'package:appmobilegmao/provider/auth_provider.dart';
 
 void main() {
   testWidgets('EquipmentScreen renders correctly', (WidgetTester tester) async {
-    final equipmentProvider = EquipmentProvider();
+    final authProvider = AuthProvider();
+    final equipmentProvider = EquipmentProvider(authProvider);
 
     await tester.pumpWidget(
       MultiProvider(

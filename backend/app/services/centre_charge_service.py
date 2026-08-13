@@ -37,6 +37,26 @@ def get_centre_charges(entity: str) -> Dict[str, Any]:
                     logger.error(f"❌ Erreur mapping centre de charge: {e}")
                     continue
 
+            if not centre_charges:
+                from sqlalchemy import text
+                eq_rows = []
+                try:
+                    eq_rows = session.execute(text("SELECT DISTINCT ereq_costcentre FROM dbo.equipment WHERE ereq_costcentre IS NOT NULL AND ereq_costcentre != ''")).fetchall()
+                except Exception:
+                    pass
+                if not eq_rows:
+                    try:
+                        eq_rows = session.execute(text("SELECT DISTINCT centre_charge FROM gmao_mobile.dbo.equipment WHERE centre_charge IS NOT NULL AND centre_charge != ''")).fetchall()
+                    except Exception:
+                        pass
+                for r in eq_rows:
+                    val = str(r[0])
+                    centre_charges.append({
+                        "code": val,
+                        "description": val,
+                        "entity": entity
+                    })
+
             response = {
                 "centre_charges": centre_charges, 
                 "count": len(centre_charges),# Nombre total en DB

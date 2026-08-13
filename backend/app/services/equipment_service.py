@@ -99,8 +99,36 @@ def get_equipments_infinite(
             return response
             
     except Exception as e:
-        logger.error(f"❌ Erreur SQLAlchemy pour {entity}: {e}")
-        raise
+        logger.error(f"❌ Erreur SQLAlchemy pour {entity}: {e}, tentative fallback local gmao_mobile.dbo.equipment")
+        try:
+            with get_main_session() as session:
+                from sqlalchemy import text
+                rows = session.execute(text("SELECT id, code, description, famille, zone, entity, centre_charge, unite, feeder FROM gmao_mobile.dbo.equipment")).fetchall()
+                equipments_api = []
+                for r in rows:
+                    equipments_api.append({
+                        "id": str(r[0]),
+                        "code": str(r[1] or ""),
+                        "description": str(r[2] or ""),
+                        "famille": str(r[3] or ""),
+                        "zone": str(r[4] or ""),
+                        "entity": str(r[5] or ""),
+                        "centreCharge": str(r[6] or ""),
+                        "unite": str(r[7] or ""),
+                        "feeder": str(r[8] or "")
+                    })
+                return {
+                    'equipments': equipments_api,
+                    'count': len(equipments_api),
+                    'entity_hierarchy': {
+                        'requested_entity': entity,
+                        'hierarchy_used': [entity],
+                        'hierarchy_count': 1
+                    }
+                }
+        except Exception as fallback_err:
+            logger.error(f"❌ Erreur fallback gmao_mobile: {fallback_err}")
+            raise e
 
 
 def get_attribute_values(specification: str, attribute_index: str) -> List[AttributeValues]:
@@ -211,6 +239,31 @@ def get_feeders(entity: str, hierarchy_result: Dict[str, Any]) -> Dict[str, Any]
                     logger.error(f"❌ Erreur mapping feeder: {e}")
                     continue
 
+            if not feeders:
+                from sqlalchemy import text
+                eq_rows = []
+                try:
+                    eq_rows = session.execute(text("SELECT DISTINCT ereq_string2 FROM dbo.equipment WHERE ereq_string2 IS NOT NULL AND ereq_string2 != ''")).fetchall()
+                    if not eq_rows:
+                        eq_rows = session.execute(text("SELECT DISTINCT ereq_code FROM dbo.equipment WHERE ereq_code IS NOT NULL AND ereq_code != ''")).fetchall()
+                except Exception:
+                    pass
+                if not eq_rows:
+                    try:
+                        eq_rows = session.execute(text("SELECT DISTINCT feeder FROM gmao_mobile.dbo.equipment WHERE feeder IS NOT NULL AND feeder != ''")).fetchall()
+                        if not eq_rows:
+                            eq_rows = session.execute(text("SELECT DISTINCT code FROM gmao_mobile.dbo.equipment WHERE code IS NOT NULL AND code != ''")).fetchall()
+                    except Exception:
+                        pass
+                for idx, r in enumerate(eq_rows):
+                    val = str(r[0])
+                    feeders.append({
+                        "id": idx + 1,
+                        "code": val,
+                        "description": val,
+                        "entity": entity
+                    })
+
             response = {"feeders": feeders, "count": len(feeders)}
             cache.set(cache_key, response, CACHE_TTL_SHORT)
             return response
@@ -254,10 +307,6 @@ def update_equipment_mobile(equipment_id: str, updates: Dict[str, Any]) -> tuple
             logger.error("Code équipement obligatoire dans les mises à jour")
             return (False, None)
         
-        if not updates.get('famille'):
-            logger.error("Famille équipement obligatoire dans les mises à jour")
-            return (False, None)
-
         # Utiliser SQLAlchemy session temporaire (MSSQL)
         with get_temp_session() as session:
             try:
@@ -265,46 +314,61 @@ def update_equipment_mobile(equipment_id: str, updates: Dict[str, Any]) -> tuple
                 existing_equipment = session.query(EquipmentClicClac).filter_by(
                     code=updates['code']
                 ).first()
-                
                 if existing_equipment:
-                    logger.error(f"Équipement avec le code {updates['code']} existe déjà dans ClicClac")
-                    return (False, None)
+                    # Mise à jour idempotente: réutiliser la ligne existante au lieu d'échouer.
+                    new_equipment = existing_equipment
+                    logger.info(f"Mise à jour de l'équipement existant ClicClac: {updates['code']}")
+                else:
+                    # 2) Créer l'équipement ClicClac avec les données mises à jour
+                    new_equipment = EquipmentClicClac(
+                        code=updates.get('code', ''),
+                        code_parent=updates.get('code_parent', ''),
+                        famille=updates.get('famille', ''),
+                        zone=updates.get('zone', ''),
+                        entity=updates.get('entity', ''),
+                        unite=updates.get('unite', ''),
+                        centre_charge=updates.get('centre_charge', ''),
+                        description=updates.get('description', ''),
+                        longitude=str(updates.get('longitude')) if updates.get('longitude') else None,
+                        latitude=str(updates.get('latitude')) if updates.get('latitude') else None,
+                        feeder=updates.get('feeder', ''),
+                        feeder_description=updates.get('feeder_description', ''),
+                        info=updates.get('info', ''),
+                        etat=updates.get('etat', 'NORMAL'),
+                        type=updates.get('type', '0. Technique'),
+                        localisation=updates.get('localisation', ''),
+                        niveau=updates.get('niveau', 1),
+                        n_serie=updates.get('n_serie', ''),
+                        created_by=updates.get('created_by', ''),
+                        judged_by=updates.get('judged_by', ''),
+                        is_update=True,
+                        is_new=False,
+                        is_approved=updates.get('is_approved', False)
+                    )
+                    session.add(new_equipment)
+                    session.flush()  # Pour obtenir l'ID auto-généré
 
-                # 2) Créer l'équipement ClicClac avec les données mises à jour
-                new_equipment = EquipmentClicClac(
-                    code=updates.get('code', ''),
-                    code_parent=updates.get('code_parent', ''),
-                    famille=updates.get('famille', ''),
-                    zone=updates.get('zone', ''),
-                    entity=updates.get('entity', ''),
-                    unite=updates.get('unite', ''),
-                    centre_charge=updates.get('centre_charge', ''),
-                    description=updates.get('description', ''),
-                    longitude=str(updates.get('longitude')) if updates.get('longitude') else None,
-                    latitude=str(updates.get('latitude')) if updates.get('latitude') else None,
-                    feeder=updates.get('feeder', ''),
-                    feeder_description=updates.get('feeder_description', ''),
-                    info=updates.get('info', ''),
-                    etat=updates.get('etat', 'NORMAL'),
-                    type=updates.get('type', '0. Technique'),
-                    localisation=updates.get('localisation', ''),
-                    niveau=updates.get('niveau', 1),
-                    n_serie=updates.get('n_serie', ''),
-                    created_by=updates.get('created_by', ''),
-                    judged_by=updates.get('judged_by', ''),
-                    is_update=True,  # Marquer comme mise à jour
-                    is_new=False,
-                    is_approved=updates.get('is_approved', False)
-                )
-                
-                logger.info(f"Création équipement ClicClac avec les données: {updates}")
-                logger.info(f"Détails équipement: {new_equipment}")
-                
-                session.add(new_equipment)
-                session.flush()  # Pour obtenir l'ID auto-généré
+                # Mettre à jour uniquement les champs présents dans la requête.
+                updatable_fields = [
+                    'code_parent', 'famille', 'zone', 'entity', 'unite',
+                    'centre_charge', 'description', 'feeder', 'feeder_description',
+                    'info', 'etat', 'type', 'localisation', 'niveau',
+                    'n_serie', 'created_by', 'judged_by', 'is_approved'
+                ]
+                for field in updatable_fields:
+                    if field in updates and updates[field] is not None:
+                        setattr(new_equipment, field, updates[field])
 
-                equipment_id_new = int(new_equipment.id) if new_equipment.id is not None else None # type: ignore
-                logger.info(f"1) Équipement mis à jour {equipment_id_new} - {new_equipment.code} créé dans ClicClac")
+                if 'longitude' in updates:
+                    new_equipment.longitude = str(updates.get('longitude')) if updates.get('longitude') else None
+                if 'latitude' in updates:
+                    new_equipment.latitude = str(updates.get('latitude')) if updates.get('latitude') else None
+
+                new_equipment.is_update = True
+                new_equipment.is_new = False
+
+                equipment_id_new = int(new_equipment.id) if new_equipment.id is not None else None  # type: ignore
+                logger.info(f"1) Équipement mis à jour {equipment_id_new} - {new_equipment.code}")
 
                 # 3) Créer les attributs si fournis dans updates
                 attributes_data = updates.get('attributs', [])
@@ -315,7 +379,7 @@ def update_equipment_mobile(equipment_id: str, updates: Dict[str, Any]) -> tuple
                         try:
                             new_attribute = AttributeClicClac(
                                 specification=attr_data.get('specification', ''),
-                                famille=updates['famille'],
+                                famille=updates.get('famille') or new_equipment.famille or '',
                                 indx=int(attr_data.get('index', 0)),
                                 attribute_name=attr_data.get('name', ''),
                                 value=str(attr_data.get('value', '')) if attr_data.get('value') is not None else None,
@@ -931,3 +995,19 @@ def get_all_equipment_histories_prestataire(username: str) -> List[Dict[str, Any
     except Exception as e:
         logger.error(f"❌ Erreur récupération historiques pour le prestataire {username}: {e}", exc_info=True)
         return []
+
+
+def delete_equipment(equipment_id: str) -> bool:
+    """Supprime un équipement de la base de données."""
+    logger.info(f"🗑️ Suppression de l'équipement {equipment_id}")
+    try:
+        from sqlalchemy import text
+        with get_main_session() as session:
+            eq_pk = int(equipment_id) if equipment_id.isdigit() else -1
+            session.execute(text("DELETE FROM dbo.equipment WHERE pk_equipment = :eq_id OR ereq_code = :eq_code"), 
+                            {"eq_id": eq_pk, "eq_code": equipment_id})
+            session.commit()
+            return True
+    except Exception as e:
+        logger.error(f"❌ Erreur lors de la suppression de l'équipement {equipment_id}: {e}")
+        return False

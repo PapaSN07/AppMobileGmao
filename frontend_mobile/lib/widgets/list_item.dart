@@ -21,6 +21,9 @@ class ListItemCustom extends StatelessWidget {
   final List<Map<String, dynamic>>? attributes;
   final Widget? topRightBadges; // ✅ Pour l'overlay uniquement
   final Widget? bottomLeftBadge; // ✅ Pour l'overlay uniquement
+  final Widget? statusBadge; // ✅ Pour l'affichage principal
+  final VoidCallback? onDetailsTap; // ✅ Bouton détails pour l'overlay
+  final Widget? trailing;
 
   const ListItemCustom({
     super.key,
@@ -39,6 +42,9 @@ class ListItemCustom extends StatelessWidget {
     this.attributes,
     this.topRightBadges,
     this.bottomLeftBadge,
+    this.statusBadge,
+    this.onDetailsTap,
+    this.trailing,
   });
 
   // Constructeur pour les équipements
@@ -60,6 +66,7 @@ class ListItemCustom extends StatelessWidget {
     bool showModifyButton = true,
     String overlayTitle = 'Détails de l\'équipement',
     VoidCallback? onTap,
+    Widget? trailing,
   }) {
     return ListItemCustom(
       id: id,
@@ -67,13 +74,15 @@ class ListItemCustom extends StatelessWidget {
       primaryText: code,
       primaryLabel: 'Code',
       fields: [
-        ItemField(label: 'Famille', value: famille),
-        ItemField(label: 'Zone', value: zone),
-        ItemField(label: 'Entité', value: entity),
-        ItemField(label: 'Unité', value: unite),
+        ItemField(label: 'Famille', value: famille.trim().isEmpty ? '-' : famille),
+        ItemField(label: 'Zone', value: zone.trim().isEmpty ? '-' : zone),
+        ItemField(label: 'Entité', value: entity.trim().isEmpty ? '-' : entity),
+        ItemField(label: 'Unité', value: unite.trim().isEmpty ? '-' : unite),
       ],
       overlayDetails: {
-        'ID': id ?? '',
+        'id': (id != null && id.isNotEmpty) ? id : code,
+        'ID': (id != null && id.isNotEmpty) ? id : code,
+        'code': code,
         'Code': code,
         'Famille': famille,
         'Zone': zone,
@@ -91,6 +100,7 @@ class ListItemCustom extends StatelessWidget {
       showModifyButton: showModifyButton,
       onTap: onTap,
       attributes: attributes,
+      trailing: trailing,
     );
   }
 
@@ -104,8 +114,12 @@ class ListItemCustom extends StatelessWidget {
     required String unite,
     required String centre,
     required String description,
+    String? status, // ✅ AJOUTÉ: Statut/État textuel de l'OT
     String overlayTitle = 'Détails de l\'ordre',
     VoidCallback? onTap,
+    Widget? statusBadge,
+    VoidCallback? onDetailsTap,
+    Widget? trailing,
   }) {
     return ListItemCustom(
       id: id,
@@ -120,6 +134,7 @@ class ListItemCustom extends StatelessWidget {
       ],
       overlayDetails: {
         'Code': code,
+        if (status != null && status.isNotEmpty) 'État': status, // ✅ AJOUTÉ
         'Famille': famille,
         'Zone': zone,
         'Entité': entity,
@@ -130,6 +145,9 @@ class ListItemCustom extends StatelessWidget {
       overlayTitle: overlayTitle,
       showModifyButton: false,
       onTap: onTap,
+      statusBadge: statusBadge,
+      onDetailsTap: onDetailsTap,
+      trailing: trailing,
     );
   }
 
@@ -253,18 +271,33 @@ class ListItemCustom extends StatelessWidget {
     return GestureDetector(
       onTap: onTap ?? () => _showOverlay(context),
       child: Container(
-        padding: spacing.custom(horizontal: 10, vertical: 10),
-        decoration: BoxDecoration(
-          color: backgroundColor ?? AppTheme.secondaryColor,
-          borderRadius: BorderRadius.circular(responsive.spacing(20)),
+        padding: spacing.custom(
+          horizontal: 14,
+          vertical: 12,
         ),
-        // ✅ MODIFIÉ: Supprimer le Stack et les badges
+        decoration: BoxDecoration(
+          color: backgroundColor ?? Colors.white,
+          borderRadius: BorderRadius.circular(
+            responsive.spacing(16),
+          ),
+          border: Border.all(
+            color: const Color(0xFFE2E8F0),
+            width: 1.0,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
         child: Row(
           children: [
             _buildIcon(responsive, spacing),
             SizedBox(width: spacing.medium),
             Expanded(child: _buildContent(responsive, spacing)),
-            _buildArrowIcon(responsive),
+            trailing ?? _buildArrowIcon(responsive),
           ],
         ),
       ),
@@ -273,16 +306,18 @@ class ListItemCustom extends StatelessWidget {
 
   Widget _buildIcon(Responsive responsive, ResponsiveSpacing spacing) {
     return Container(
-      width: responsive.spacing(56),
-      height: responsive.spacing(56),
+      width: responsive.spacing(48),
+      height: responsive.spacing(48),
       decoration: BoxDecoration(
-        color: iconColor ?? AppTheme.primaryColor,
-        borderRadius: BorderRadius.circular(responsive.spacing(15)),
+        color: iconColor ?? const Color(0xFF0F1B80).withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(
+          responsive.spacing(12),
+        ),
       ),
       child: Icon(
         icon,
-        size: responsive.iconSize(30),
-        color: backgroundColor ?? AppTheme.secondaryColor,
+        size: responsive.iconSize(24),
+        color: const Color(0xFF0F1B80),
       ),
     );
   }
@@ -292,6 +327,7 @@ class ListItemCustom extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildPrimaryRow(responsive, spacing),
+        const SizedBox(height: 4),
         ..._buildFieldRows(responsive, spacing),
       ],
     );
@@ -301,27 +337,30 @@ class ListItemCustom extends StatelessWidget {
     return Row(
       children: [
         Text(
-          '$primaryLabel:',
+          '$primaryLabel: ',
           style: TextStyle(
             fontFamily: AppTheme.fontMontserrat,
-            fontWeight: FontWeight.w600,
-            color: textColor ?? AppTheme.primaryColor,
-            fontSize: responsive.sp(18),
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF2B1D4C),
+            fontSize: responsive.sp(14),
           ),
         ),
-        SizedBox(width: spacing.small),
         Expanded(
           child: Text(
             primaryText,
             style: TextStyle(
               fontFamily: AppTheme.fontMontserrat,
-              fontWeight: FontWeight.w600,
-              color: textColor ?? AppTheme.primaryColor,
-              fontSize: responsive.sp(18),
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFF0F1B80),
+              fontSize: responsive.sp(14),
             ),
             overflow: TextOverflow.ellipsis,
           ),
         ),
+        if (statusBadge != null) ...[
+          SizedBox(width: spacing.small),
+          statusBadge!,
+        ],
       ],
     );
   }
@@ -368,22 +407,21 @@ class ListItemCustom extends StatelessWidget {
       child: Row(
         children: [
           Text(
-            '${field.label}:',
+            '${field.label}: ',
             style: TextStyle(
               fontFamily: AppTheme.fontRoboto,
-              fontWeight: FontWeight.normal,
-              color: textColor ?? AppTheme.primaryColor,
+              fontWeight: FontWeight.w500,
+              color: const Color(0xFF64748B),
               fontSize: responsive.sp(12),
             ),
           ),
-          SizedBox(width: spacing.small),
           Expanded(
             child: Text(
               field.value,
               style: TextStyle(
                 fontFamily: AppTheme.fontRoboto,
-                fontWeight: FontWeight.normal,
-                color: textColor ?? AppTheme.primaryColor,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF1E293B),
                 fontSize: responsive.sp(12),
               ),
               overflow: TextOverflow.ellipsis,
@@ -400,7 +438,7 @@ class ListItemCustom extends StatelessWidget {
       alignment: Alignment.center,
       child: Icon(
         Icons.arrow_back,
-        size: responsive.iconSize(24),
+        size: responsive.iconSize(24), // ✅ Icône responsive
         color: textColor ?? AppTheme.primaryColor,
       ),
     );
@@ -434,6 +472,7 @@ class ListItemCustom extends StatelessWidget {
             showModifyButton: showModifyButton,
             topBadges: topRightBadges, // ✅ Passé à l'overlay
             statusBadge: bottomLeftBadge, // ✅ Passé à l'overlay
+            onDetailsPressed: onDetailsTap, // ✅ Callback détails
           ),
         );
       },

@@ -8,6 +8,11 @@ import 'package:appmobilegmao/provider/equipment_provider.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:appmobilegmao/services/hive_service.dart';
 
+// Auth normale: laisser false pour afficher l'écran de connexion quand nécessaire.
+// MODIFICATION: Desactivation du mode test pour afficher l'ecran de connexion.
+const bool testMode = false; // Mettre à true pour sauter l'authentification (mode test)
+
+// ---------------- MAIN PRINCIPAL ----------------
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -17,7 +22,7 @@ void main() async {
   // HiveService.clearAllCache();  // Nettoyer le cache au démarrage
 
   runApp(
-    // ✅ CORRIGÉ: Injection correcte avec ProxyProvider
+    // CORRIGÉ: Injection correcte avec ProxyProvider
     MultiProvider(
       providers: [
         // 1️⃣ AuthProvider en premier (indépendant)
@@ -32,11 +37,11 @@ void main() async {
                 Provider.of<AuthProvider>(context, listen: false),
               ),
           update: (context, authProvider, previousEquipmentProvider) {
-            // ✅ Si l'utilisateur change, recréer le provider
+            // Si l'utilisateur change, recréer le provider
             if (previousEquipmentProvider == null) {
               return EquipmentProvider(authProvider);
             }
-            // ✅ Sinon, réutiliser l'instance existante
+            // Sinon, réutiliser l'instance existante
             return previousEquipmentProvider;
           },
         ),
@@ -82,8 +87,8 @@ class MyApp extends StatelessWidget {
             ),
           ),
         ),
-        // ✅ Commencer par le Splash Screen
-        home: const SplashScreen(),
+        // Commencer par le Splash Screen
+        home: SplashScreen(testMode: testMode),
         debugShowCheckedModeBanner: false,
       ),
     );

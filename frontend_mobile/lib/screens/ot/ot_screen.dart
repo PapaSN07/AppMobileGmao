@@ -1,4 +1,4 @@
-import 'package:appmobilegmao/screens/widgets/under_maintenance_screen.dart';
+import 'package:appmobilegmao/screens/ot_work_orders_screen.dart';
 import 'package:flutter/material.dart';
 
 class OtScreen extends StatefulWidget {
@@ -11,6 +11,9 @@ class OtScreen extends StatefulWidget {
 class _OtScreenState extends State<OtScreen> {
   @override
   Widget build(BuildContext context) {
-    return const UnderMaintenanceScreen();
+    return const OTWorkOrdersScreen(
+      showBottomNavigationBar: false,
+      isTab: true,
+    );
   }
 }

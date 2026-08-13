@@ -14,6 +14,8 @@ import 'package:provider/provider.dart';
 import 'package:appmobilegmao/utils/responsive.dart';
 import 'package:appmobilegmao/theme/responsive_spacing.dart';
 
+import 'package:appmobilegmao/widgets/equipments/equipment_form_dialog.dart';
+
 class EquipmentScreen extends StatefulWidget {
   const EquipmentScreen({super.key});
 
@@ -29,6 +31,24 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
 
   // Logging
   static const String __logName = 'EquipmentScreen -';
+
+  void _openEquipmentForm([Map<String, dynamic>? item]) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => EquipmentFormDialog(equipmentToEdit: item),
+    );
+    if (result == true && mounted) {
+      final provider = Provider.of<EquipmentProvider>(context, listen: false);
+      provider.fetchEquipments();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            item != null ? 'Équipement modifié avec succès !' : 'Équipement créé avec succès !',
+          ),
+        ),
+      );
+    }
+  }
 
   @override
   void initState() {
@@ -64,10 +84,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
           print('🚀 $__logName Chargement initial des sélecteurs');
         }
 
-        // Chargement en arrière-plan des sélecteurs (cache prioritaire)
         unawaited(_loadSelectorsInBackground(equipmentProvider));
-
-        // Charger les équipements (l'entité vient de AuthProvider via EquipmentProvider)
         await equipmentProvider.fetchEquipments();
 
         if (_searchController.text.isNotEmpty) {
@@ -83,7 +100,6 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     }
   }
 
-  // ✅ MODIFIÉ: Ne passe plus entity en paramètre (déduit par le provider)
   Future<void> _loadSelectorsInBackground(
     EquipmentProvider equipmentProvider,
   ) async {
@@ -106,7 +122,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.primaryColor,
+      backgroundColor: const Color(0xFFF8FAFC),
       body: Consumer2<EquipmentProvider, AuthProvider>(
         builder: (context, equipmentProvider, authProvider, child) {
           return _buildBody(equipmentProvider, authProvider);
@@ -122,99 +138,129 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     final responsive = context.responsive;
     final spacing = context.spacing;
 
-    return Stack(
-      children: [
-        Positioned(
-          top: responsive.spacing(120), // ✅ Position responsive
-          left: 0,
-          right: 0,
-          bottom: 0,
-          child: Container(
-            padding: spacing.custom(horizontal: 16), // ✅ Padding responsive
-            child: Column(
-              children: [
-                // ✅ REMPLACÉ: Utiliser le SearchBar factorisé
-                custom.SearchBar(
-                  controller: _searchController,
-                  initialType: _searchType,
-                  onSearch: (value) {
-                    _performSearch(value);
-                    setState(() {}); // Met à jour l'affichage du badge/clear
-                  },
-                  onTypeChange: (type) {
-                    setState(() {
-                      _searchType = type;
-                    });
-                    if (_searchController.text.isNotEmpty) {
-                      _performSearch(_searchController.text);
-                    }
-                  },
+    final int totalCount = equipmentProvider.equipments.length;
+
+    return SafeArea(
+      child: Column(
+        children: [
+          // 📊 En-Tête Supérieur Moderne : Carte de Compteur Équipements
+          Container(
+            margin: spacing.custom(horizontal: 16, vertical: 12),
+            padding: spacing.custom(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF2B1D4C), Color(0xFF0F1B80)],
+              ),
+              borderRadius: BorderRadius.circular(responsive.spacing(16)),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF0F1B80).withValues(alpha: 0.25),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
                 ),
-                SizedBox(height: spacing.medium), // ✅ Espacement responsive
-                // ✅ REMPLACÉ: Utiliser EquipmentList factorisée
-                Expanded(
-                  child: EquipmentList(
-                    isLoading: equipmentProvider.isLoading,
-                    items: equipmentProvider.equipments,
-                    onRefresh: () => _refreshWithFilters(equipmentProvider),
-                    itemBuilder: (item) => buildEquipmentItem(item),
+              ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.settings_suggest_rounded,
+                        color: Colors.white,
+                        size: 26,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '$totalCount ${totalCount > 1 ? "Équipements" : "Équipement"}',
+                          style: TextStyle(
+                            fontFamily: AppTheme.fontMontserrat,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                            fontSize: responsive.sp(18),
+                          ),
+                        ),
+                        Text(
+                          'Catalogue de maintenance',
+                          style: TextStyle(
+                            fontFamily: AppTheme.fontRoboto,
+                            fontWeight: FontWeight.w400,
+                            color: Colors.white.withValues(alpha: 0.8),
+                            fontSize: responsive.sp(12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.dashboard_customize_rounded,
+                    color: Colors.white,
+                    size: 20,
                   ),
                 ),
               ],
             ),
           ),
-        ),
 
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          child: Container(color: AppTheme.secondaryColor, height: 70),
-        ),
-
-        Positioned(
-          top: responsive.spacing(20), // ✅ Position responsive
-          left: 20,
-          right: 20,
-          child: Container(
-            height: 90,
-            padding: spacing.custom(
-              horizontal: 10,
-              vertical: 20,
-            ), // ✅ Padding responsive
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(
-                responsive.spacing(20),
-              ), // ✅ Border radius responsive
-              boxShadow: [
-                BoxShadow(
-                  color: AppTheme.boxShadowColor,
-                  blurRadius: responsive.spacing(
-                    10,
-                  ), // ✅ Blur radius responsive
-                  offset: Offset(
-                    0,
-                    responsive.spacing(5),
-                  ), // ✅ Offset responsive
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                Tools.buildStatCard(
-                  context,
-                  equipmentProvider.equipments.length.toString(),
-                  equipmentProvider.equipments.isEmpty
-                      ? 'Équipements'
-                      : 'Équipement'
-                ),
-              ],
+          // 🔍 Barre de Recherche Élevée
+          Padding(
+            padding: spacing.custom(horizontal: 16),
+            child: custom.SearchBar(
+              controller: _searchController,
+              initialType: _searchType,
+              onSearch: (value) {
+                _performSearch(value);
+                setState(() {});
+              },
+              onTypeChange: (type) {
+                setState(() {
+                  _searchType = type;
+                });
+                if (_searchController.text.isNotEmpty) {
+                  _performSearch(_searchController.text);
+                }
+              },
             ),
           ),
-        ),
-      ],
+
+          SizedBox(height: spacing.small),
+
+          // 📋 Liste des Équipements
+          Expanded(
+            child: Padding(
+              padding: spacing.custom(horizontal: 16),
+              child: EquipmentList(
+                isLoading: equipmentProvider.isLoading,
+                items: equipmentProvider.equipments,
+                onRefresh: () => _refreshWithFilters(equipmentProvider),
+                itemBuilder: (item) => buildEquipmentItem(
+                  item,
+                  onEdit: () => _openEquipmentForm(item),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

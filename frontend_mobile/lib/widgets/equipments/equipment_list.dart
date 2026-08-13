@@ -8,14 +8,14 @@ typedef ItemBuilder = Widget Function(int index);
 class EquipmentList extends StatelessWidget {
   final bool isLoading;
   final List items;
-  final Future<void> Function() onRefresh;
+  final Future<void> Function()? onRefresh;
   final Widget Function(dynamic item) itemBuilder;
 
   const EquipmentList({
     super.key,
     required this.isLoading,
     required this.items,
-    required this.onRefresh,
+    this.onRefresh,
     required this.itemBuilder,
   });
 
@@ -23,28 +23,25 @@ class EquipmentList extends StatelessWidget {
   Widget build(BuildContext context) {
     final spacing = context.spacing;
 
-    if (isLoading) return const LoadingIndicator();
-    return RefreshIndicator(
-      onRefresh: onRefresh,
-      child:
-          items.isEmpty
-              ? EmptyState(
-                title: '📦 Aucun équipement',
-                message: 'Aucun équipement n\'a été trouvé.',
-                icon: Icons.inventory_2_outlined,
-                onRetry: onRefresh,
-              )
-              : ListView.builder(
-                padding: EdgeInsets.zero,
-                itemCount: items.length,
-                itemBuilder:
-                    (context, index) => Padding(
-                      padding: spacing.custom(
-                        bottom: 10,
-                      ), // ✅ Padding responsive
-                      child: itemBuilder(items[index]),
-                    ),
-              ),
+    if (isLoading && items.isEmpty) return const LoadingIndicator();
+
+    if (items.isEmpty) {
+      return EmptyState(
+        title: '📦 Aucun équipement',
+        message: 'Aucun équipement n\'a été trouvé.',
+        icon: Icons.inventory_2_outlined,
+        onRetry: onRefresh,
+      );
+    }
+
+    return ListView.builder(
+      physics: const BouncingScrollPhysics(),
+      padding: EdgeInsets.zero,
+      itemCount: items.length,
+      itemBuilder: (context, index) => Padding(
+        padding: spacing.custom(bottom: 10),
+        child: itemBuilder(items[index]),
+      ),
     );
   }
 }

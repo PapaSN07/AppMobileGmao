@@ -17,7 +17,9 @@ import 'package:appmobilegmao/utils/responsive.dart';
 import 'package:appmobilegmao/theme/responsive_spacing.dart';
 
 class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
+  final int initialIndex;
+
+  const MainScreen({super.key, this.initialIndex = 0});
 
   @override
   State<MainScreen> createState() => _MainScreenState();
@@ -30,6 +32,7 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
+    _currentIndex = widget.initialIndex;
   }
 
   // Retirer _pages initialisé dans initState, au lieu de ça : getter dynamique
@@ -88,44 +91,12 @@ class _MainScreenState extends State<MainScreen> {
 
   // Obtenir la couleur de l'AppBar selon la page
   Color _getAppBarBackgroundColor() {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-
-    if (authProvider.isPrestataire) {
-      // ✅ PRESTATAIRE : toujours couleur secondaire (bleu)
-      return AppTheme.secondaryColor;
-    }
-
-    // ✅ LDAP : couleurs selon page
-    switch (_currentIndex) {
-      case 0: // Home
-        return AppTheme.primaryColor;
-      case 1: // Equipment
-      case 2: // OT
-      case 3: // DI
-      default:
-        return AppTheme.secondaryColor;
-    }
+    return Colors.white;
   }
 
   // Obtenir la couleur du texte selon la page
   Color _getAppBarTextColor() {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-
-    if (authProvider.isPrestataire) {
-      // ✅ PRESTATAIRE : toujours texte blanc
-      return Colors.white;
-    }
-
-    // ✅ LDAP : couleurs selon page
-    switch (_currentIndex) {
-      case 0: // Home
-        return AppTheme.secondaryColor;
-      case 1: // Equipment
-      case 2: // OT
-      case 3: // DI
-      default:
-        return Colors.white;
-    }
+    return const Color(0xFF2B1D4C);
   }
 
   void _openProfile() {
@@ -165,6 +136,8 @@ class _MainScreenState extends State<MainScreen> {
       );
     }
   }
+
+
 
   // ✅ NOUVELLE MÉTHODE: Action conditionnelle pour le bouton de droite
   void _handleRightButtonAction() {
@@ -212,7 +185,7 @@ class _MainScreenState extends State<MainScreen> {
         icon: Container(
           padding: spacing.custom(all: 8),
           decoration: BoxDecoration(
-            color: AppTheme.primaryColor20,
+            color: const Color(0xFFF1F5F9),
             borderRadius: BorderRadius.circular(responsive.spacing(8)),
           ),
           child: Icon(
@@ -234,10 +207,7 @@ class _MainScreenState extends State<MainScreen> {
               Container(
                 padding: spacing.custom(all: 8),
                 decoration: BoxDecoration(
-                  color:
-                      isHome
-                          ? AppTheme.secondaryColor10
-                          : AppTheme.primaryColor20,
+                  color: const Color(0xFFF1F5F9),
                   borderRadius: BorderRadius.circular(responsive.spacing(20)),
                 ),
                 child: Text(
@@ -453,9 +423,11 @@ class _MainScreenState extends State<MainScreen> {
 
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
+        final pages = _pages;
+        final effectiveIndex = _currentIndex.clamp(0, pages.length - 1);
         final appBarBgColor = _getAppBarBackgroundColor();
         final textColor = _getAppBarTextColor();
-        final isHome = authProvider.isPrestataire ? false : _currentIndex == 0;
+        final isHome = authProvider.isPrestataire ? false : effectiveIndex == 0;
 
         return Scaffold(
           key: _scaffoldKey,
@@ -472,7 +444,7 @@ class _MainScreenState extends State<MainScreen> {
                   right: 16,
                 ), // ✅ AJOUTÉ: Espacement à gauche
                 child: Text(
-                  _getPageTitle(_currentIndex),
+                  _getPageTitle(effectiveIndex),
                   style: TextStyle(
                     fontFamily: AppTheme.fontMontserrat,
                     fontWeight: FontWeight.w600,
@@ -493,10 +465,7 @@ class _MainScreenState extends State<MainScreen> {
                   icon: Container(
                     padding: spacing.custom(all: 8),
                     decoration: BoxDecoration(
-                      color:
-                          isHome
-                              ? AppTheme.secondaryColor10
-                              : AppTheme.primaryColor20,
+                      color: const Color(0xFFF1F5F9),
                       borderRadius: BorderRadius.circular(
                         responsive.spacing(8),
                       ),
@@ -521,9 +490,9 @@ class _MainScreenState extends State<MainScreen> {
               ],
             ),
           ),
-          body: IndexedStack(index: _currentIndex, children: _pages),
+          body: IndexedStack(index: effectiveIndex, children: pages),
           bottomNavigationBar: CustomBottomNavigationBar(
-            currentIndex: _currentIndex,
+            currentIndex: effectiveIndex,
             onTap: _onTabTapped,
           ),
         );

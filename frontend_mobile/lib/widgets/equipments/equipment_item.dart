@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:appmobilegmao/widgets/list_item.dart';
+import 'package:appmobilegmao/theme/app_theme.dart';
 
-Widget buildEquipmentItem(Map<String, dynamic> equipment) {
+Widget buildEquipmentItem(
+  Map<String, dynamic> equipment, {
+  VoidCallback? onEdit,
+}) {
   List<Map<String, dynamic>>? equipmentAttributes;
   try {
     if (equipment['attributes'] != null && equipment['attributes'] is List) {
@@ -32,6 +36,15 @@ Widget buildEquipmentItem(Map<String, dynamic> equipment) {
     equipmentAttributes = null;
   }
 
+  Widget? trailingAction;
+  if (onEdit != null) {
+    trailingAction = IconButton(
+      icon: const Icon(Icons.edit_outlined, color: AppTheme.primaryColor),
+      onPressed: onEdit,
+      tooltip: 'Modifier',
+    );
+  }
+
   return ListItemCustom.equipment(
     id: equipment['id']?.toString() ?? '',
     codeParent: equipment['codeParent'] ?? '',
@@ -47,5 +60,6 @@ Widget buildEquipmentItem(Map<String, dynamic> equipment) {
     longitude: equipment['longitude']?.toString() ?? '',
     latitude: equipment['latitude']?.toString() ?? '',
     attributes: equipmentAttributes,
+    trailing: trailingAction,
   );
 }

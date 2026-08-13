@@ -8,7 +8,7 @@ from app.db.sqlalchemy.engine import Base, BaseClicClac
 
 class UserModel(Base):
     """Modèle SQLAlchemy pour les utilisateurs."""
-    # ✅ CORRECTION: Table selon GET_USER_AUTHENTICATION_QUERY
+    #CORRECTION: Table selon GET_USER_AUTHENTICATION_QUERY
     __tablename__ = 'coswin_user'
     __table_args__ = {'schema': 'dbo'}
     
@@ -67,7 +67,7 @@ class UserClicClac(BaseClicClac):
     password = Column(String(512), nullable=False)  # stocke le hash bcrypt / argon2
     email = Column(String(255), nullable=False, unique=True, index=True)
     entity = Column(String(100), nullable=False)
-    supervisor = Column(Integer, ForeignKey('dbo.users.id', ondelete='SET NULL'), nullable=True, index=True)
+    supervisor = Column(Integer, ForeignKey('dbo.users.id', ondelete='NO ACTION'), nullable=True, index=True)
     url_image = Column(String(512), nullable=True)
     address = Column(Text, nullable=True)
     company = Column(String(255), nullable=True)

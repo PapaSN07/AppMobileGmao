@@ -1,6 +1,6 @@
+import 'package:appmobilegmao/widgets/custom_bottom_navigation_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:appmobilegmao/widgets/bottom_navigation_bar.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
 
 void main() {

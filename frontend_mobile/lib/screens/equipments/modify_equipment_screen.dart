@@ -220,59 +220,39 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     final spacing = context.spacing;
 
     return Scaffold(
-      backgroundColor: AppTheme.primaryColor,
-      // ✅ MODIFIÉ: Augmenter la hauteur de l'AppBar
-      appBar: PreferredSize(
-        preferredSize: Size.fromHeight(
-          responsive.spacing(70),
-        ), // ✅ Hauteur augmentée
-        child: AppBar(
-          titleSpacing: 0,
-          title: Padding(
-            padding: spacing.custom(
-              left: 4,
-              right: 16,
-            ), // ✅ AJOUTÉ: Espacement à gauche
-            child: Text(
-              'Modifier l\'équipement',
-              style: TextStyle(
-                fontFamily: AppTheme.fontMontserrat,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
-                fontSize: responsive.sp(18),
-              ),
+      backgroundColor: const Color(0xFFF8FAFC),
+      appBar: AppBar(
+        title: Text(
+          'Modifier l\'équipement',
+          style: TextStyle(
+            fontFamily: AppTheme.fontMontserrat,
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF2B1D4C),
+            fontSize: responsive.sp(18),
+          ),
+        ),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: Container(
+            padding: spacing.custom(all: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(responsive.spacing(8)),
+            ),
+            child: Icon(
+              Icons.arrow_back,
+              color: const Color(0xFF2B1D4C),
+              size: responsive.iconSize(18),
             ),
           ),
-          backgroundColor: AppTheme.secondaryColor,
-          elevation: 0,
-          leading: Padding(
-            padding: spacing.custom(
-              left: 16,
-              right: 8,
-            ), // ✅ MODIFIÉ: Espacement augmenté
-            child: IconButton(
-              padding: EdgeInsets.zero,
-              icon: Container(
-                padding: spacing.custom(all: 8),
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryColor20,
-                  borderRadius: BorderRadius.circular(responsive.spacing(8)),
-                ),
-                child: Icon(
-                  Icons.arrow_back,
-                  color: Colors.white,
-                  size: responsive.iconSize(20),
-                ),
-              ),
-              onPressed: () {
-                if (kDebugMode) {
-                  print('⬅️ $__logName Retour');
-                }
-                Navigator.pop(context);
-              },
-              tooltip: 'Retour',
-            ),
-          ),
+          onPressed: () {
+            if (kDebugMode) {
+              print('⬅️ $__logName Retour');
+            }
+            Navigator.pop(context);
+          },
+          tooltip: 'Retour',
         ),
       ),
       body: Consumer<EquipmentProvider>(
@@ -954,45 +934,77 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
         cachedSelectors,
       );
 
-      final updatedData = {
-        'code':
-            widget.equipmentData!['Code'] ??
-            widget.equipmentData!['code'] ??
-            '',
+      final existingCode =
+          widget.equipmentData!['Code'] ?? widget.equipmentData!['code'] ?? '';
+      final existingFamille =
+          widget.equipmentData!['Famille'] ?? widget.equipmentData!['famille'];
+      final existingZone =
+          widget.equipmentData!['Zone'] ?? widget.equipmentData!['zone'];
+      final existingEntity =
+          widget.equipmentData!['Entité'] ?? widget.equipmentData!['entity'];
+      final existingUnite =
+          widget.equipmentData!['Unité'] ?? widget.equipmentData!['unite'];
+      final existingCentre =
+          widget.equipmentData!['Centre'] ?? widget.equipmentData!['centre'];
+      final existingFeederDescription =
+          widget.equipmentData!['Feeder Description'] ??
+          widget.equipmentData!['feeder_description'];
+
+      final resolvedFamille =
+          SelectorLoader.extractCodeFromTypedSelectors(
+            selectedFamille,
+            'familles',
+            cachedSelectors,
+          ) ??
+          existingFamille;
+      final resolvedZone =
+          SelectorLoader.extractCodeFromTypedSelectors(
+            selectedZone,
+            'zones',
+            cachedSelectors,
+          ) ??
+          existingZone;
+      final resolvedEntity =
+          SelectorLoader.extractCodeFromTypedSelectors(
+            selectedEntity,
+            'entities',
+            cachedSelectors,
+          ) ??
+          existingEntity;
+      final resolvedUnite =
+          SelectorLoader.extractCodeFromTypedSelectors(
+            selectedUnite,
+            'unites',
+            cachedSelectors,
+          ) ??
+          existingUnite;
+      final resolvedCentre =
+          SelectorLoader.extractCodeFromTypedSelectors(
+            selectedCentreCharge,
+            'centreCharges',
+            cachedSelectors,
+          ) ??
+          existingCentre;
+
+      final updatedData = <String, dynamic>{
+        'code': existingCode,
         // ✅ SUPPRIMÉ: 'code_parent': ...
-        'famille': SelectorLoader.extractCodeFromTypedSelectors(
-          selectedFamille,
-          'familles',
-          cachedSelectors,
-        ),
-        'zone': SelectorLoader.extractCodeFromTypedSelectors(
-          selectedZone,
-          'zones',
-          cachedSelectors,
-        ),
-        'entity': SelectorLoader.extractCodeFromTypedSelectors(
-          selectedEntity,
-          'entities',
-          cachedSelectors,
-        ),
-        'unite': SelectorLoader.extractCodeFromTypedSelectors(
-          selectedUnite,
-          'unites',
-          cachedSelectors,
-        ),
-        'centre_charge': SelectorLoader.extractCodeFromTypedSelectors(
-          selectedCentreCharge,
-          'centreCharges',
-          cachedSelectors,
-        ),
+        'famille': resolvedFamille,
+        'zone': resolvedZone,
+        'entity': resolvedEntity,
+        'unite': resolvedUnite,
+        'centre_charge': resolvedCentre,
         'description': _descriptionController.text.trim(),
         'longitude': valueLongitude ?? '12311231',
         'latitude': valueLatitude ?? '12311231',
         'feeder': feederCode,
-        'feeder_description': selectedFeeder,
+        'feeder_description': selectedFeeder ?? existingFeederDescription,
         'created_by': authProvider.currentUser?.username ?? '',
         'attributs': attributs,
       };
+
+      // Eviter d'envoyer des clés nulles quand les sélecteurs ne sont pas chargés.
+      updatedData.removeWhere((_, value) => value == null);
 
       if (kDebugMode) {
         print('📤 $__logName Données de mise à jour:');
@@ -1001,13 +1013,19 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
       }
 
       final equipmentId =
-          widget.equipmentData!['id'] ?? widget.equipmentData!['ID'] ?? '';
+          widget.equipmentData!['id']?.toString() ??
+          widget.equipmentData!['ID']?.toString() ??
+          widget.equipmentData!['code']?.toString() ??
+          widget.equipmentData!['Code']?.toString() ??
+          '';
       if (equipmentId.isEmpty) throw Exception('ID de l\'équipement manquant');
 
       await equipmentProvider.updateEquipment(equipmentId, updatedData);
       await Future.delayed(const Duration(milliseconds: 300));
 
-      if (mounted) {
+      // En mode debug sans utilisateur connecté, fetchEquipments recharge
+      // le JSON local et écrase la modification visible en mémoire.
+      if (mounted && authProvider.currentUser?.entity != null) {
         await equipmentProvider.fetchEquipments(forceRefresh: false);
       }
 

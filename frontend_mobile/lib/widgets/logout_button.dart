@@ -23,14 +23,12 @@ class LogoutButton extends StatelessWidget {
             title: Text(
               'Déconnexion',
               style: TextStyle(
-                fontFamily: AppTheme.fontMontserrat,
                 fontSize: responsive.sp(20),
               ), // ✅ Titre responsive
             ),
             content: Text(
               'Êtes-vous sûr de vouloir vous déconnecter ?',
               style: TextStyle(
-                fontFamily: AppTheme.fontRoboto,
                 fontSize: responsive.sp(14),
               ), // ✅ Contenu responsive
             ),
@@ -40,7 +38,6 @@ class LogoutButton extends StatelessWidget {
                 child: Text(
                   'Annuler',
                   style: TextStyle(
-                    fontFamily: AppTheme.fontMontserrat,
                     fontSize: responsive.sp(14),
                   ), // ✅ Bouton responsive
                 ),
@@ -63,7 +60,6 @@ class LogoutButton extends StatelessWidget {
                 child: Text(
                   'Déconnecter',
                   style: TextStyle(
-                    fontFamily: AppTheme.fontMontserrat,
                     fontSize: responsive.sp(14),
                   ), // ✅ Bouton responsive
                 ),
@@ -114,7 +110,6 @@ class LogoutButton extends StatelessWidget {
               content: Text(
                 'Erreur lors de la déconnexion: $e',
                 style: TextStyle(
-                  fontFamily: AppTheme.fontRoboto,
                   fontSize: responsive.sp(14),
                 ), // ✅ SnackBar responsive
               ),

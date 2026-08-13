@@ -1,38 +1,31 @@
 import 'package:appmobilegmao/models/order.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:appmobilegmao/widgets/list_item.dart';
-import 'package:appmobilegmao/provider/auth_provider.dart';
+import 'package:appmobilegmao/screens/ot_work_orders_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:appmobilegmao/utils/responsive.dart';
 import 'package:appmobilegmao/theme/responsive_spacing.dart';
+import 'package:provider/provider.dart';
+import 'package:appmobilegmao/provider/auth_provider.dart';
+import 'package:appmobilegmao/services/ot_service.dart';
+import 'package:appmobilegmao/services/api_service.dart';
+import 'package:appmobilegmao/models/work_order.dart';
+import 'package:appmobilegmao/screens/ot_detail_screen.dart';
+import 'package:appmobilegmao/screens/di/di_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({Key? key}) : super(key: key);
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // État pour gérer la liste affichée
-  String selectedCategory = 'OT'; // Par défaut, "OT" est sélectionné
-
-  // Exemple de données pour les listes
-  final List<Order> otOrders = List.generate(
-    5,
-    (index) => Order(
-      id: '$index',
-      icon: Icons.assignment,
-      code: '#OT12345$index',
-      famille: 'Famille OT $index',
-      zone: 'Zone OT $index',
-      entity: 'Entité OT $index',
-      unite: 'Unité OT $index',
-      centre: 'Centre OT $index',
-      description: 'Description de l\'ordre de travail OT $index',
-    ),
-  );
+  String selectedCategory = 'OT';
+  late final OTService _otService;
+  List<WorkOrder> _otOrders = [];
+  bool _isLoadingOT = true;
+  String? _errorMessage;
 
   final List<Order> diOrders = List.generate(
     5,
@@ -46,359 +39,430 @@ class _HomeScreenState extends State<HomeScreen> {
       unite: 'Unité DI $index',
       centre: 'Centre DI $index',
       description: 'Description de la demande d\'intervention DI $index',
+      status: 'CREE',
+      completionRate: 10.0 * index,
     ),
   );
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor:
-          AppTheme.primaryColor, // ✅ Fond transparent pour l'accueil
-      body: _buildBody(),
+  void initState() {
+    super.initState();
+    _otService = OTService(ApiService());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadOTs();
+    });
+  }
+
+  Future<void> _loadOTs() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoadingOT = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final user = authProvider.currentUser;
+      final entity = user?.entity.trim() ?? '';
+      final group = user?.group?.trim() ?? '';
+      final fallbackService = entity.isNotEmpty ? entity : group;
+      final serviceCode = fallbackService.isNotEmpty ? fallbackService : 'SDDV';
+
+      final result = await _otService.getOrdersPage(
+        scope: 'service',
+        requestEntity: serviceCode,
+        excludeClosed: true,
+      );
+
+      if (mounted) {
+        setState(() {
+          _otOrders = result.workorders;
+          _isLoadingOT = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _otOrders = [];
+          _isLoadingOT = false;
+          _errorMessage = e.toString();
+        });
+      }
+    }
+  }
+
+  Order _convertToOrder(WorkOrder order) {
+    return Order(
+      id: order.pkWorkOrder.toString(),
+      icon: Icons.assignment,
+      code: order.wowoCode.toString(),
+      famille: order.wowoJobType.isNotEmpty
+          ? order.wowoJobType
+          : (order.wowoJobClass.isNotEmpty ? order.wowoJobClass : '-'),
+      zone: order.wowoZone?.isNotEmpty == true ? order.wowoZone! : '-',
+      entity: order.wowoRequestEntity.isNotEmpty ? order.wowoRequestEntity : '-',
+      unite: order.wowoEquipment.isNotEmpty ? order.wowoEquipment : '-',
+      centre: order.wowoCostcentre.isNotEmpty ? order.wowoCostcentre : '-',
+      description: order.wowoJob.isNotEmpty
+          ? order.wowoJob
+          : (order.wowoEquipmentDescription.isNotEmpty ? order.wowoEquipmentDescription : '-'),
+      status: Order.formatStatus(order.wowoUserStatus, order.mdusDescription),
+      completionRate: order.wowoCompletionRate,
     );
   }
 
-  Widget _buildBody() {
+  @override
+  Widget build(BuildContext context) {
     final responsive = context.responsive;
     final spacing = context.spacing;
+    final authProvider = Provider.of<AuthProvider>(context);
+    final user = authProvider.currentUser;
+    final username = user?.username ?? 'Utilisateur';
+    final capitalizedUsername = username.isNotEmpty 
+        ? username[0].toUpperCase() + username.substring(1) 
+        : '';
 
-    return Consumer<AuthProvider>(
-      builder: (context, authProvider, child) {
-        return Padding(
-          padding: spacing.custom(
-            horizontal: 20,
-            vertical: 20,
-          ), // ✅ Padding responsive
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _cardSectionOne(responsive, spacing),
-              SizedBox(height: spacing.medium), // ✅ Espacement responsive
-              // Affichage du titre dynamique
-              Text(
-                selectedCategory == 'OT'
-                    ? '${otOrders.length} Ordres de Travail en cours'
-                    : '${diOrders.length} Demandes d\'Intervention en cours',
-                style: TextStyle(
-                  fontFamily: AppTheme.fontMontserrat,
-                  fontWeight: FontWeight.normal,
-                  color: AppTheme.thirdColor,
-                  fontSize: responsive.sp(15), // ✅ Texte responsive
-                ),
-              ),
-              SizedBox(height: spacing.small), // ✅ Espacement responsive
-              Expanded(
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 300),
-                  child:
-                      selectedCategory == 'OT'
-                          ? _buildList(otOrders, 'OT', responsive, spacing)
-                          : _buildList(diOrders, 'DI', responsive, spacing),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _cardSectionOne(Responsive responsive, ResponsiveSpacing spacing) {
-    return Container(
-      padding: spacing.custom(
-        horizontal: 15,
-        vertical: 15,
-      ), // ✅ Padding responsive
-      decoration: BoxDecoration(
-        color: AppTheme.blurColor,
-        borderRadius: BorderRadius.circular(
-          responsive.spacing(25),
-        ), // ✅ Border radius responsive
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  selectedCategory = 'OT';
-                });
-              },
-              child: AspectRatio(
-                aspectRatio: 170 / 200,
-                child: _boxOne(responsive, spacing),
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      appBar: AppBar(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Bonjour, $capitalizedUsername',
+              style: TextStyle(
+                fontFamily: AppTheme.fontMontserrat,
+                fontWeight: FontWeight.w800,
+                color: const Color(0xFF2B1D4C),
+                fontSize: responsive.sp(18),
               ),
             ),
-          ),
-          SizedBox(width: spacing.small), // ✅ Espacement responsive
-          Expanded(
-            child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  selectedCategory = 'DI';
-                });
-              },
-              child: AspectRatio(
-                aspectRatio: 170 / 200,
-                child: _boxTwo(responsive, spacing),
+            Text(
+              'Tableau de bord de maintenance',
+              style: TextStyle(
+                fontFamily: AppTheme.fontRoboto,
+                fontWeight: FontWeight.w400,
+                color: const Color(0xFF64748B),
+                fontSize: responsive.sp(12),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
+        backgroundColor: Colors.white,
+        elevation: 0.5,
+        centerTitle: false,
       ),
-    );
-  }
-
-  Widget _boxOne(Responsive responsive, ResponsiveSpacing spacing) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppTheme.primaryColor,
-        borderRadius: BorderRadius.circular(
-          responsive.spacing(10),
-        ), // ✅ Border radius responsive
-        border:
-            selectedCategory == 'OT'
-                ? Border.all(color: AppTheme.secondaryColor, width: 2)
-                : null,
-      ),
-      child: Stack(
-        children: [
-          Padding(
-            padding: spacing.custom(all: 10), // ✅ Padding responsive
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      body: Padding(
+        padding: spacing.custom(horizontal: 16, vertical: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 📊 Cartes de Raccourcis Supérieures (Stat Cards sans chevauchement)
+            Row(
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: responsive.spacing(50), // ✅ Largeur responsive
-                      height: responsive.spacing(50), // ✅ Hauteur responsive
-                      decoration: BoxDecoration(
-                        color: AppTheme.secondaryColor,
-                        shape: BoxShape.circle,
+                Expanded(child: _buildStatCard(
+                  title: 'Ordres de Travail',
+                  count: _isLoadingOT ? 0 : _otOrders.length,
+                  icon: Icons.assignment_rounded,
+                  categoryKey: 'OT',
+                  gradientColors: [const Color(0xFF0F1B80), const Color(0xFF2B1D4C)],
+                  responsive: responsive,
+                  spacing: spacing,
+                  onTap: () {
+                    setState(() {
+                      selectedCategory = 'OT';
+                    });
+                  },
+                  onArrowTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const OTWorkOrdersScreen(),
                       ),
-                      child: Icon(
-                        Icons.assignment,
-                        size: responsive.iconSize(24), // ✅ Icône responsive
-                        color: AppTheme.primaryColor,
+                    );
+                  },
+                )),
+                SizedBox(width: spacing.medium),
+                Expanded(child: _buildStatCard(
+                  title: 'Demandes d\'Intervention',
+                  count: diOrders.length,
+                  icon: Icons.build_circle_rounded,
+                  categoryKey: 'DI',
+                  gradientColors: [const Color(0xFF2B1D4C), const Color(0xFF2B1D4C)],
+                  responsive: responsive,
+                  spacing: spacing,
+                  onTap: () {
+                    setState(() {
+                      selectedCategory = 'DI';
+                    });
+                  },
+                  onArrowTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const DiScreen(),
                       ),
-                    ),
-                    Transform(
-                      transform: Matrix4.rotationZ(-0.785398),
-                      alignment: Alignment.center,
-                      child: Icon(
-                        Icons.arrow_back,
-                        size: responsive.iconSize(24), // ✅ Icône responsive
-                        color: AppTheme.secondaryColor,
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: spacing.small), // ✅ Espacement responsive
+                    );
+                  },
+                )),
+              ],
+            ),
+            SizedBox(height: spacing.large),
+
+            // 🏷️ Titre de Section Dynamique & Badge de Compteur
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
                 Text(
-                  'Ordre de Travail',
+                  selectedCategory == 'OT'
+                      ? 'Ordres de Travail en cours'
+                      : 'Demandes d\'Intervention',
                   style: TextStyle(
                     fontFamily: AppTheme.fontMontserrat,
                     fontWeight: FontWeight.bold,
-                    color: AppTheme.secondaryColor,
-                    fontSize: responsive.sp(14), // ✅ Texte responsive
+                    color: const Color(0xFF2B1D4C),
+                    fontSize: responsive.sp(16),
                   ),
                 ),
-                SizedBox(height: spacing.small), // ✅ Espacement responsive
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'De',
-                      style: TextStyle(
-                        fontFamily: AppTheme.fontMontserrat,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.thirdColor,
-                        fontSize: responsive.sp(14), // ✅ Texte responsive
-                      ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: selectedCategory == 'OT' 
+                        ? const Color(0xFF0F1B80).withValues(alpha: 0.1)
+                        : const Color(0xFFFFB800).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    selectedCategory == 'OT'
+                        ? '${_otOrders.length} OT'
+                        : '${diOrders.length} DI',
+                    style: TextStyle(
+                      fontFamily: AppTheme.fontMontserrat,
+                      fontWeight: FontWeight.w700,
+                      color: selectedCategory == 'OT'
+                          ? const Color(0xFF0F1B80)
+                          : const Color(0xFFCC4600),
+                      fontSize: responsive.sp(12),
                     ),
-                    Text(
-                      '${otOrders.length}',
-                      style: TextStyle(
-                        fontFamily: AppTheme.fontMontserrat,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.secondaryColor,
-                        fontSize: responsive.sp(16), // ✅ Texte responsive
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ],
             ),
-          ),
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: ClipRRect(
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(
-                  responsive.spacing(8),
-                ), // ✅ Border radius responsive
-                bottomRight: Radius.circular(
-                  responsive.spacing(8),
-                ), // ✅ Border radius responsive
-              ),
-              child: SizedBox(
-                height: responsive.spacing(80), // ✅ Hauteur responsive
-                child: Image.asset(
-                  'assets/images/bg_card.png',
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                ),
+            SizedBox(height: spacing.medium),
+
+            // 📋 Liste Animée des OT / DI
+            Expanded(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 250),
+                child: selectedCategory == 'OT' && _isLoadingOT
+                    ? const Center(
+                        child: CircularProgressIndicator(color: Color(0xFF0F1B80)),
+                      )
+                    : selectedCategory == 'OT' && _errorMessage != null
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Text(
+                                _errorMessage!,
+                                style: const TextStyle(color: Colors.red),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          )
+                        : ListView.builder(
+                            key: ValueKey(selectedCategory),
+                            padding: EdgeInsets.zero,
+                            itemCount: selectedCategory == 'OT'
+                                ? _otOrders.length
+                                : diOrders.length,
+                            itemBuilder: (context, index) {
+                              if (selectedCategory == 'OT') {
+                                final order = _otOrders[index];
+                                return Padding(
+                                  padding: spacing.custom(bottom: 12),
+                                  child: ListItemCustom.order(
+                                    id: order.wowoCode.toString(),
+                                    code: '#OT${order.wowoCode}',
+                                    famille: order.wowoJobClassDescription ?? order.wowoJobClass,
+                                    zone: order.wowoZone ?? '-',
+                                    entity: order.wowoActionEntity,
+                                    unite: order.wowoRequestEntity,
+                                    centre: order.wowoCostcentre,
+                                    description: order.mdjbDescription ?? order.wowoEquipmentDescription,
+                                    status: order.wowoUserStatus,
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => OTDetailScreen(order: _convertToOrder(order)),
+                                        ),
+                                      );
+                                    },
+                                    trailing: const SizedBox.shrink(),
+                                  ),
+                                );
+                              } else {
+                            final order = diOrders[index];
+                            return Padding(
+                              padding: spacing.custom(bottom: 12),
+                              child: ListItemCustom.order(
+                                id: order.id,
+                                code: order.code,
+                                famille: order.famille,
+                                zone: order.zone,
+                                entity: order.entity,
+                                unite: order.unite,
+                                centre: order.centre,
+                                description: order.description,
+                                trailing: PopupMenuButton<String>(
+                                  icon: const Icon(
+                                    Icons.more_vert_rounded,
+                                    color: Color(0xFF64748B),
+                                  ),
+                                  onSelected: (value) {
+                                    if (value == 'edit') {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(content: Text('Modifier ${order.code}')),
+                                      );
+                                    }
+                                  },
+                                  itemBuilder: (context) => [
+                                    const PopupMenuItem(
+                                      value: 'edit',
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.edit_outlined, size: 18, color: Color(0xFF0F1B80)),
+                                          SizedBox(width: 8),
+                                          Text('Modifier'),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }
+                        },
+                      ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _boxTwo(Responsive responsive, ResponsiveSpacing spacing) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppTheme.primaryColor,
-        borderRadius: BorderRadius.circular(
-          responsive.spacing(10),
-        ), // ✅ Border radius responsive
-        border:
-            selectedCategory == 'DI'
-                ? Border.all(color: AppTheme.secondaryColor, width: 2)
-                : null,
-      ),
-      child: Stack(
-        children: [
-          Padding(
-            padding: spacing.custom(all: 10), // ✅ Padding responsive
-            child: Column(
+  // 💎 Composant de Carte de Statistique Moderne Sans Chevauchement de Texte
+  Widget _buildStatCard({
+    required String title,
+    required int count,
+    required IconData icon,
+    required String categoryKey,
+    required List<Color> gradientColors,
+    required Responsive responsive,
+    required ResponsiveSpacing spacing,
+    required VoidCallback onTap,
+    required VoidCallback onArrowTap,
+  }) {
+    final bool isSelected = selectedCategory == categoryKey;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: spacing.custom(all: 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(responsive.spacing(16)),
+          border: Border.all(
+            color: isSelected ? gradientColors.first : const Color(0xFFE2E8F0),
+            width: isSelected ? 2.0 : 1.0,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: isSelected 
+                  ? gradientColors.first.withValues(alpha: 0.15)
+                  : Colors.black.withValues(alpha: 0.03),
+              blurRadius: isSelected ? 12 : 6,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // Ligne supérieure : Icône colorée + Flèche d'action (cliquable séparément)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  width: responsive.spacing(44),
+                  height: responsive.spacing(44),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(colors: gradientColors),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: gradientColors.first.withValues(alpha: 0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    icon,
+                    size: responsive.iconSize(22),
+                    color: Colors.white,
+                  ),
+                ),
+                GestureDetector(
+                  onTap: onArrowTap,
+                  behavior: HitTestBehavior.opaque,
+                  child: Padding(
+                    padding: EdgeInsets.all(responsive.spacing(8)),
+                    child: Icon(
+                      Icons.arrow_outward_rounded,
+                      size: responsive.iconSize(20),
+                      color: isSelected ? gradientColors.first : const Color(0xFF94A3B8),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: spacing.medium),
+
+            // Compteur & Libellé (Sans aucun chevauchement !)
+            Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: responsive.spacing(50), // ✅ Largeur responsive
-                      height: responsive.spacing(50), // ✅ Hauteur responsive
-                      decoration: BoxDecoration(
-                        color: AppTheme.secondaryColor,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.build,
-                        size: responsive.iconSize(24), // ✅ Icône responsive
-                        color: AppTheme.primaryColor,
-                      ),
-                    ),
-                    Transform(
-                      transform: Matrix4.rotationZ(-0.785398),
-                      alignment: Alignment.center,
-                      child: Icon(
-                        Icons.arrow_back,
-                        size: responsive.iconSize(24), // ✅ Icône responsive
-                        color: AppTheme.secondaryColor,
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: spacing.small), // ✅ Espacement responsive
                 Text(
-                  'Demande d\'Intervention',
+                  '$count en cours',
                   style: TextStyle(
                     fontFamily: AppTheme.fontMontserrat,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.secondaryColor,
-                    fontSize: responsive.sp(14), // ✅ Texte responsive
+                    fontWeight: FontWeight.w800,
+                    color: gradientColors.first,
+                    fontSize: responsive.sp(16),
                   ),
                 ),
-                SizedBox(height: spacing.small), // ✅ Espacement responsive
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'De',
-                      style: TextStyle(
-                        fontFamily: AppTheme.fontMontserrat,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.thirdColor,
-                        fontSize: responsive.sp(14), // ✅ Texte responsive
-                      ),
-                    ),
-                    Text(
-                      '${diOrders.length}',
-                      style: TextStyle(
-                        fontFamily: AppTheme.fontMontserrat,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.secondaryColor,
-                        fontSize: responsive.sp(16), // ✅ Texte responsive
-                      ),
-                    ),
-                  ],
+                const SizedBox(height: 2),
+                Text(
+                  title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: AppTheme.fontRoboto,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF334155),
+                    fontSize: responsive.sp(13),
+                    height: 1.2,
+                  ),
                 ),
               ],
             ),
-          ),
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: ClipRRect(
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(
-                  responsive.spacing(8),
-                ), // ✅ Border radius responsive
-                bottomRight: Radius.circular(
-                  responsive.spacing(8),
-                ), // ✅ Border radius responsive
-              ),
-              child: SizedBox(
-                height: responsive.spacing(80), // ✅ Hauteur responsive
-                child: Image.asset(
-                  'assets/images/bg_card.png',
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                ),
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
-    );
-  }
-
-  Widget _buildList(
-    List<Order> orders,
-    String category,
-    Responsive responsive,
-    ResponsiveSpacing spacing,
-  ) {
-    return ListView.builder(
-      key: ValueKey(category), // Clé unique pour chaque catégorie
-      padding: EdgeInsets.zero,
-      itemCount: orders.length,
-      itemBuilder: (context, index) {
-        final order = orders[index];
-        return Padding(
-          padding: spacing.custom(bottom: 10), // ✅ Padding responsive
-          child: ListItemCustom.order(
-            id: order.id,
-            code: order.code,
-            famille: order.famille,
-            zone: order.zone,
-            entity: order.entity,
-            unite: order.unite,
-            centre: order.centre,
-            description: order.description,
-          ),
-        );
-      },
     );
   }
 }
