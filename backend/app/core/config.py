@@ -2,7 +2,10 @@ import os
 from dotenv import load_dotenv
 
 # Charger les variables d'environnement
-load_dotenv('.env')
+if os.path.exists('.env'):
+    load_dotenv('.env')
+else:
+    load_dotenv('.env.prod')
 
 # Configuration de la base de données Oracle
 DB_NAME = os.getenv("DB_NAME")
