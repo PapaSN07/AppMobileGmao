@@ -112,12 +112,7 @@ class _MainScreenState extends State<MainScreen> {
                 nom: userInfo['nom']!,
                 prenom: userInfo['prenom']!,
                 email: user.email,
-                role:
-                    (user.group?.trim().isNotEmpty == true)
-                        ? user.group!.trim()
-                        : (user.role?.trim().isNotEmpty == true)
-                        ? user.role!.trim()
-                        : 'Utilisateur',
+                role: user.subtitleInfo,
                 onLogout: _handleLogout,
               ),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {

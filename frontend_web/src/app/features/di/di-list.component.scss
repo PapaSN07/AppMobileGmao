@@ -1,0 +1,21 @@
+.custom-tabs {
+    .tab-btn {
+        background: transparent;
+        color: #4b5563;
+        border: none;
+        outline: none;
+        cursor: pointer;
+        
+        &:hover {
+            background-color: #f3f4f6;
+            color: #0f1b80;
+        }
+
+        &.active {
+            background-color: #ffffff;
+            color: #0f1b80;
+            border-bottom: 3px solid #0f1b80;
+            font-weight: bold;
+        }
+    }
+}

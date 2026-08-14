@@ -383,17 +383,24 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
                         },
                       ),
                       DropdownButtonFormField<String>(
-                        value: status,
-                        decoration: const InputDecoration(labelText: 'Statut'),
-                        items: [
-                          DropdownMenuItem(value: 'OUV', child: const Text('OUVERT (OUV)')),
-                          DropdownMenuItem(value: 'CR', child: const Text('CRÉÉ (CR)')),
-                          DropdownMenuItem(value: 'TE', child: const Text('RÉALISÉ (TE)')),
-                          DropdownMenuItem(value: 'CL', child: const Text('CLÔTURÉ (CL)')),
-                        ].toList(),
-                        onChanged: (val) {
-                          if (val != null) setDialogState(() => status = val);
-                        },
+                        value: ['TE', 'CL'].contains(status) ? status : (['OUV', 'CR'].contains(status) ? status : 'OUV'),
+                        decoration: InputDecoration(
+                          labelText: 'Statut',
+                          helperText: ['TE', 'CL'].contains(order.wowoUserStatus.trim().toUpperCase())
+                              ? 'Statut verrouillé par Coswin (OT terminé/clôturé)'
+                              : null,
+                        ),
+                        items: const [
+                          DropdownMenuItem(value: 'OUV', child: Text('OUVERT (OUV)')),
+                          DropdownMenuItem(value: 'CR', child: Text('EN COURS (CR)')),
+                          DropdownMenuItem(value: 'TE', child: Text('RÉALISÉ (TE)')),
+                          DropdownMenuItem(value: 'CL', child: Text('CLÔTURÉ (CL)')),
+                        ],
+                        onChanged: ['TE', 'CL'].contains(order.wowoUserStatus.trim().toUpperCase())
+                            ? null
+                            : (val) {
+                                if (val != null) setDialogState(() => status = val);
+                              },
                       ),
                     ],
                   ),
@@ -1027,6 +1034,7 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
         backgroundColor: const Color(0xFFF8FAFC),
         body: mainContent,
         floatingActionButton: FloatingActionButton(
+          heroTag: 'ot_tab_fab',
           onPressed: () async {
             final result = await Navigator.push(
               context,
@@ -1050,6 +1058,7 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
         ),
         body: mainContent,
         floatingActionButton: FloatingActionButton(
+          heroTag: 'ot_screen_fab',
           onPressed: () async {
             final result = await Navigator.push(
               context,

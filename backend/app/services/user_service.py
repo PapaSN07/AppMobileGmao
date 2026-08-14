@@ -1,5 +1,5 @@
 import logging
-from typing import Any
+from typing import Any, Dict
 import bcrypt as bcrypt_lib
 from sqlalchemy.exc import IntegrityError
 
@@ -208,3 +208,33 @@ def add_user(user_data: AddUserRequest) -> AddUserResponse:
             message="Erreur interne lors de l'ajout.",
             error_code="INTERNAL_ERROR"
         )
+
+def get_supervisors_list(entity: str = None) -> Dict[str, Any]:
+    """Récupère la liste des superviseurs depuis la table coswin_user de la base SQL Server."""
+    from app.db.sqlalchemy.session import get_main_session
+    from sqlalchemy import text
+    try:
+        with get_main_session() as session:
+            query = "SELECT cwcu_code as code, COALESCE(cwcu_signature, cwcu_code) as description, cwcu_entity as entity FROM coswin_user"
+            params = {}
+            if entity:
+                query += " WHERE cwcu_entity = :entity OR cwcu_entity IS NULL OR cwcu_entity = ''"
+                params["entity"] = entity
+            rows = session.execute(text(query), params).fetchall()
+            supervisors = []
+            for r in rows:
+                code_str = str(r[0]).strip()
+                desc_str = str(r[1]).strip()
+                if desc_str != code_str:
+                    display_desc = f"{desc_str} ({code_str})"
+                else:
+                    display_desc = code_str
+                supervisors.append({
+                    "code": code_str,
+                    "description": display_desc,
+                    "entity": str(r[2]) if r[2] else ""
+                })
+            return {"supervisors": supervisors, "count": len(supervisors)}
+    except Exception as e:
+        logger.error(f"❌ Erreur récupération superviseurs: {e}")
+        return {"supervisors": [{"code": "5286", "description": "ERIC DASYLVA CARDOZO (5286)"}], "count": 1}

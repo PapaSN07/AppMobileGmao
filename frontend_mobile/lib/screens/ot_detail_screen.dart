@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:appmobilegmao/provider/auth_provider.dart';
 import 'package:appmobilegmao/models/order.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:appmobilegmao/utils/responsive.dart';
@@ -436,7 +438,7 @@ class _ModeOperatoireTabState extends State<_ModeOperatoireTab> {
     final desc = op['opopDescription']?.toString() ?? op['opopJobDescription']?.toString() ?? '';
     final descController = TextEditingController(text: desc);
     final durationController = TextEditingController(text: (op['duration'] ?? 1.0).toString());
-    final pk = op['pkOperation'] as int;
+    final pk = (op['pkOperation'] ?? op['pkWorkAction'] ?? 0) as int;
 
     showDialog(
       context: context,
@@ -563,7 +565,7 @@ class _ModeOperatoireTabState extends State<_ModeOperatoireTab> {
                       int index = entry.key;
                       final op = entry.value;
                       String text = op['opopDescription']?.toString() ?? op['opopJobDescription']?.toString() ?? 'Opération sans description';
-                      final pk = op['pkOperation'] as int;
+                      final pk = (op['pkOperation'] ?? op['pkWorkAction'] ?? 0) as int;
 
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 12),
@@ -815,7 +817,7 @@ class _CommentairesTabState extends State<_CommentairesTab> {
     final authorController = TextEditingController(
       text: comment['woefEmployee']?.toString() ?? comment['reemCode']?.toString() ?? (currentUser?.code ?? '5893')
     );
-    final pk = comment['pkComment'] as int;
+    final pk = (comment['pkComment'] ?? comment['pkEmployeeFeedback'] ?? 0) as int;
 
     showDialog(
       context: context,
@@ -947,67 +949,72 @@ class _CommentairesTabState extends State<_CommentairesTab> {
                   padding: const EdgeInsets.all(16),
                   itemCount: _comments.length,
                   itemBuilder: (context, index) {
-                    final fb         = _comments[index];
-                    final name       = fb['reemDescription']?.toString() ?? fb['woefEmployee']?.toString() ?? 'Intervenant';
-                    final empCode    = fb['reemCode']?.toString() ?? fb['woefEmployee']?.toString() ?? '';
-                    final start      = _formatDate(fb['woefStartDate']);
-                    final end        = _formatDate(fb['woefEndDate']);
-                    final actualH    = fb['woefActualHours']?.toString() ?? '0';
-                    final totalH     = fb['woefTotalHours']?.toString() ?? '0';
-                    final status     = fb['woefUserStatus']?.toString() ?? '';
-                    final pk         = fb['pkComment'] as int;
+                    final fb = _comments[index];
+                    final commentText = fb['wodoComment']?.toString() ??
+                        fb['wodoDescription']?.toString() ??
+                        fb['wodoText']?.toString() ??
+                        fb['comment']?.toString() ??
+                        fb['reemDescription']?.toString() ??
+                        'Commentaire sans texte';
+                    final author = fb['wodoCreationUser']?.toString() ??
+                        fb['wodoUser']?.toString() ??
+                        fb['author']?.toString() ??
+                        fb['woefEmployee']?.toString() ??
+                        'Agent';
+                    final docType = fb['wodoType']?.toString() ?? fb['type']?.toString() ?? '';
+                    final dateStr = _formatDate(fb['wodoCreationDate'] ?? fb['woefStartDate'] ?? fb['createdAt']);
 
                     return Card(
                       margin: const EdgeInsets.only(bottom: 10),
                       elevation: 1,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        side: BorderSide(color: Colors.grey.shade200),
+                      ),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
                               children: [
-                                const Icon(Icons.person, color: Color(0xFF0F1B80), size: 18),
+                                const Icon(Icons.account_circle, color: Color(0xFF0F1B80), size: 20),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
-                                    '$name ($empCode)',
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                    author,
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF2B1D4C)),
                                   ),
                                 ),
-                                if (status.isNotEmpty)
+                                if (docType.isNotEmpty)
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                     decoration: BoxDecoration(
                                       color: const Color(0xFF0F1B80).withAlpha(20),
                                       borderRadius: BorderRadius.circular(6),
                                     ),
-                                    child: Text(status,
-                                      style: const TextStyle(color: Color(0xFF0F1B80), fontSize: 12, fontWeight: FontWeight.bold)),
+                                    child: Text(
+                                      docType,
+                                      style: const TextStyle(color: Color(0xFF0F1B80), fontSize: 11, fontWeight: FontWeight.bold),
+                                    ),
                                   ),
                               ],
                             ),
                             const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                const Icon(Icons.schedule, size: 14, color: Colors.grey),
-                                const SizedBox(width: 4),
-                                Text(start, style: const TextStyle(fontSize: 12)),
-                                const Text(' → ', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                                Text(end, style: const TextStyle(fontSize: 12)),
-                              ],
+                            Text(
+                              commentText,
+                              style: const TextStyle(fontSize: 13, color: Colors.black87, height: 1.3),
                             ),
-                            const SizedBox(height: 6),
+                            const SizedBox(height: 8),
                             Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
                               children: [
-                                const Icon(Icons.timer_outlined, size: 14, color: Color(0xFF0F1B80)),
+                                const Icon(Icons.access_time, size: 13, color: Colors.grey),
                                 const SizedBox(width: 4),
-                                Text('Réalisé : $actualH h',
-                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F1B80))),
-                                const SizedBox(width: 16),
-                                const Icon(Icons.timelapse, size: 14, color: Colors.grey),
-                                const SizedBox(width: 4),
-                                Text('Total : $totalH h', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                                Text(
+                                  dateStr,
+                                  style: const TextStyle(fontSize: 11, color: Colors.grey),
+                                ),
                               ],
                             ),
                           ],
@@ -1325,7 +1332,7 @@ class _MainsOeuvreTabState extends State<_MainsOeuvreTab>
         employes = list.map((item) {
           final isPlanned = item['woeaIsPlanned'] == true ? 'Planifié' : 'Non planifié';
           return {
-            'pk':               item['pkWorkforce'] as int,
+            'pk':               (item['pkWorkforce'] ?? item['pkEmployeeAllocated'] ?? 0) as int,
             'employe':          item['reemCode']?.toString() ?? item['woeaEmployee']?.toString() ?? '',
             'description':      item['reemDescription']?.toString() ?? item['woeaResource']?.toString() ?? 'Intervenant',
             'dateDebut':        _formatDate(item['woeaAllocationDate']),
@@ -1362,8 +1369,13 @@ class _MainsOeuvreTabState extends State<_MainsOeuvreTab>
 
   void _showAddDialog() {
     final formKey = GlobalKey<FormState>();
-    final codeController = TextEditingController();
-    final nameController = TextEditingController();
+    final authProvider = context.read<AuthProvider>();
+    final currentUser = authProvider.currentUser;
+    final userMatricule = currentUser?.code ?? currentUser?.username ?? '';
+    final userName = currentUser?.username ?? '';
+
+    final codeController = TextEditingController(text: userMatricule);
+    final nameController = TextEditingController(text: userName);
     final hoursController = TextEditingController(text: '1.0');
 
     showDialog(
@@ -3547,7 +3559,7 @@ class _StockPiecesTabState extends State<_StockPiecesTab> {
               ?? item['usedQuantity']?.toString()
               ?? '0';
           return {
-            'pk': item['pkPart'] as int,
+            'pk': (item['pkPart'] ?? item['pkStockUsed'] ?? 0) as int,
             'partCode': partCode,
             'article': label.isNotEmpty ? label : 'Article',
             'quantiteUtilise': qty,
@@ -4473,7 +4485,7 @@ class _SousAttributsTabState extends State<_SousAttributsTab> {
     final nameController = TextEditingController(text: attr['woatName']?.toString() ?? '');
     final valController = TextEditingController(text: attr['woatValue']?.toString() ?? '');
     final descController = TextEditingController(text: attr['woatDescription']?.toString() ?? '');
-    final pk = attr['pkAttribute'] as int;
+    final pk = (attr['pkAttribute'] ?? attr['pkWorkOrderAttribute'] ?? 0) as int;
 
     showDialog(
       context: context,
@@ -4608,7 +4620,7 @@ class _SousAttributsTabState extends State<_SousAttributsTab> {
                     final equipment  = attr['woatDescription']?.toString() ?? '';
                     final unit       = attr['woatUnitSymbol']?.toString() ?? '';
                     final displayVal = value.isNotEmpty ? (unit.isNotEmpty ? '$value $unit' : value) : '-';
-                    final pk         = attr['pkAttribute'] as int;
+                    final pk         = (attr['pkAttribute'] ?? attr['pkWorkOrderAttribute'] ?? 0) as int;
 
                     return Card(
                       margin: const EdgeInsets.only(bottom: 8),

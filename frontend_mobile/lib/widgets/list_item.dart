@@ -161,8 +161,11 @@ class ListItemCustom extends StatelessWidget {
     required String unite,
     required String centre,
     required String description,
+    String? status,
     String overlayTitle = 'Détails de la demande',
     VoidCallback? onTap,
+    VoidCallback? onDetailsTap,
+    Widget? trailing,
   }) {
     return ListItemCustom(
       id: id,
@@ -177,6 +180,7 @@ class ListItemCustom extends StatelessWidget {
       ],
       overlayDetails: {
         'Code': code,
+        if (status != null && status.isNotEmpty) 'État': status,
         'Famille': famille,
         'Zone': zone,
         'Entité': entity,
@@ -187,6 +191,8 @@ class ListItemCustom extends StatelessWidget {
       overlayTitle: overlayTitle,
       showModifyButton: false,
       onTap: onTap,
+      onDetailsTap: onDetailsTap,
+      trailing: trailing,
     );
   }
 

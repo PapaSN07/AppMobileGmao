@@ -22,12 +22,12 @@ class ApiService {
   late String baseUrl;
   String? _authToken;
 
-  static const Duration _timeout = Duration(seconds: 5);
+  static const Duration _timeout = Duration(seconds: 30);
   static const int _productionPort = 9099;
   static const String _productionHost = 'domtec.senelec.sn';
   static const int _localDevPort = 8003;
-  // IP locale du PC de développement (192.168.1.21 pour accès depuis un vrai téléphone sur le même Wi-Fi)
-  static const String _localDevHost = '192.168.1.21';
+  // IP de boucle locale de l'émulateur Android Studio vers le PC hôte (10.0.2.2)
+  static const String _localDevHost = '10.0.2.2';
 
   String get macIpAddress => _resolveHost();
   int get defaultPort => _resolvePort();
@@ -62,19 +62,23 @@ class ApiService {
     if (kIsWeb) return 'localhost';
 
     if (defaultTargetPlatform == TargetPlatform.android) {
-      // 10.0.2.2 = uniquement pour l'émulateur Android
-      // Pour un vrai téléphone, utiliser l'IP locale du PC
+      // IP locale de la machine de dev pour le vrai téléphone et l'émulateur
       return _localDevHost;
     }
 
     return 'localhost';
   }
 
+  static const bool useTunnel = false;
   static const String _publicTunnelUrl = 'https://gmao-senelec-mobile.loca.lt';
 
   String _buildBaseUrl(int port) {
     if (kReleaseMode) return 'https://$_productionHost:$_productionPort';
-    return _publicTunnelUrl;
+    if (useTunnel && _publicTunnelUrl.isNotEmpty) {
+      return _publicTunnelUrl;
+    }
+    final host = _resolveHost();
+    return 'http://$host:$port';
   }
 
   Future<void> _loadAuthToken() async {

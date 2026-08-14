@@ -117,10 +117,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final spacing = context.spacing;
     final authProvider = Provider.of<AuthProvider>(context);
     final user = authProvider.currentUser;
-    final username = user?.username ?? 'Utilisateur';
-    final capitalizedUsername = username.isNotEmpty 
-        ? username[0].toUpperCase() + username.substring(1) 
-        : '';
+    final displayName = user?.displayName ?? 'Utilisateur';
+    final subtitle = user?.subtitleInfo ?? 'Tableau de bord de maintenance';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -129,7 +127,7 @@ class _HomeScreenState extends State<HomeScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Bonjour, $capitalizedUsername',
+              'Bonjour, $displayName',
               style: TextStyle(
                 fontFamily: AppTheme.fontMontserrat,
                 fontWeight: FontWeight.w800,
@@ -138,11 +136,11 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             Text(
-              'Tableau de bord de maintenance',
+              subtitle,
               style: TextStyle(
                 fontFamily: AppTheme.fontRoboto,
-                fontWeight: FontWeight.w400,
-                color: const Color(0xFF64748B),
+                fontWeight: FontWeight.w500,
+                color: const Color(0xFF0F1B80),
                 fontSize: responsive.sp(12),
               ),
             ),

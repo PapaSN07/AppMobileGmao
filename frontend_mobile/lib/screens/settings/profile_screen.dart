@@ -163,8 +163,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildFormField(
-          label: 'Username',
-          value: user?.username ?? '',
+          label: 'Nom & Prénom',
+          value: user?.displayName ?? '',
           enabled: false,
           responsive: responsive,
           spacing: spacing,
@@ -181,7 +181,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         SizedBox(height: spacing.medium), // ✅ Espacement responsive
 
         _buildFormField(
-          label: 'Entité',
+          label: 'Entité Rattachée',
           value: user?.entity ?? '',
           enabled: false,
           responsive: responsive,
@@ -190,8 +190,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         SizedBox(height: spacing.medium), // ✅ Espacement responsive
 
         _buildFormField(
-          label: 'Groupe de préférence',
-          value: user?.group ?? user?.role ?? '',
+          label: 'Rôle & Fonction',
+          value: user?.displayRole ?? '',
           enabled: false,
           responsive: responsive,
           spacing: spacing,

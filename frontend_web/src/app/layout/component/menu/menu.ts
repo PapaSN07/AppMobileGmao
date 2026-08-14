@@ -42,6 +42,15 @@ export class Menu implements OnInit {
             homeItems.push(subHome);
         }
 
+        // Ajouter les DI pour les ADMIN
+        if (user && user.role === 'ADMIN') {
+            homeItems.push({
+                label: 'Demandes d\'Intervention',
+                icon: 'pi pi-fw pi-file-edit',
+                routerLink: ['/di']
+            });
+        }
+
         this.model = [
             {
                 label: 'Accueil',

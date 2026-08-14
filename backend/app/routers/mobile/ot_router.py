@@ -22,8 +22,133 @@ ot_router = APIRouter(
     tags=["Ordres de Travail - Mobile API"],
 )
 
+import httpx
+import re
+from urllib.parse import urljoin
 
-# ========== WORKORDERS ==========
+@ot_router.get(
+    "/debug-routes",
+    summary="[DEBUG] Détecter les routes de création d'OT sur le serveur Senelec",
+    tags=["Debug"]
+)
+async def debug_senelec_routes():
+    from app.core import config
+    base_url = config.OT_API_BASE_URL
+    root_url = base_url.split("/ws/rest")[0]
+    
+    urls_to_try = [
+        f"{root_url}/ws/rest/api/swagger.json",
+        f"{root_url}/ws/rest/api/swagger.yaml",
+        f"{root_url}/ws/rest/api/openapi.json",
+        f"{root_url}/ws/rest/api/api-docs",
+        f"{root_url}/ws/rest/api-docs",
+        f"{root_url}/ws/rest/swagger.json",
+        f"{root_url}/ws/rest/api/index.html"
+    ]
+    
+    auth = None
+    if config.OT_API_USERNAME and config.OT_API_PASSWORD:
+        auth = httpx.DigestAuth(config.OT_API_USERNAME, config.OT_API_PASSWORD)
+        
+    results = {}
+    
+    index_url = f"{root_url}/ws/rest/api/index.html"
+    try:
+        async with httpx.AsyncClient(timeout=5.0, trust_env=False) as client:
+            resp = await client.get(index_url, auth=auth)
+            if resp.status_code == 200:
+                html = resp.text
+                urls = re.findall(r'url\s*:\s*["\']([^"\']+)["\']', html)
+                for u in urls:
+                    abs_url = urljoin(index_url, u)
+                    if abs_url not in urls_to_try:
+                        urls_to_try.insert(0, abs_url)
+    except Exception as e:
+        results["index_html_error"] = str(e)
+        
+    for url in urls_to_try:
+        if "index.html" in url:
+            continue
+        try:
+            async with httpx.AsyncClient(timeout=5.0, trust_env=False) as client:
+                resp = await client.get(url, auth=auth)
+                if resp.status_code == 200:
+                    try:
+                        data = resp.json()
+                        paths = data.get("paths", {})
+                        wo_paths = {}
+                        for p, methods in paths.items():
+                            if "workorders" in p.lower() or "ot" in p.lower():
+                                wo_paths[p] = list(methods.keys())
+                        return {
+                            "success": True,
+                            "source_url": url,
+                            "workorders_paths": wo_paths
+                        }
+                    except Exception as json_err:
+                        results[url] = f"JSON parse error: {str(json_err)}"
+                else:
+                    results[url] = f"HTTP {resp.status_code}"
+        except Exception as e:
+            results[url] = f"Request error: {str(e)}"
+            
+    return {
+        "success": False,
+        "message": "Impossible de charger la spec API automatiquement.",
+        "details": results,
+        "advice": f"Veuillez rebrancher le câble Senelec et ouvrir directement l'URL {index_url} sur votre navigateur pour voir les routes."
+    }
+
+
+@ot_router.get(
+    "/debug-schemas",
+    summary="[DEBUG] Récupérer les schémas de paramètres des endpoints de création d'OT",
+    tags=["Debug"]
+)
+async def debug_senelec_schemas():
+    from app.core import config
+    base_url = config.OT_API_BASE_URL
+    root_url = base_url.split("/ws/rest")[0]
+    url = f"{root_url}/ws/rest/api/swagger.json"
+    
+    auth = None
+    if config.OT_API_USERNAME and config.OT_API_PASSWORD:
+        auth = httpx.DigestAuth(config.OT_API_USERNAME, config.OT_API_PASSWORD)
+        
+    try:
+        async with httpx.AsyncClient(timeout=10.0, trust_env=False) as client:
+            resp = await client.get(url, auth=auth)
+            if resp.status_code != 200:
+                return {
+                    "success": False,
+                    "message": f"Impossible de charger swagger.json: HTTP {resp.status_code}"
+                }
+            
+            parsed = resp.json()
+            paths = parsed.get("paths", {})
+            
+            definitions = parsed.get("components", {}).get("schemas", {})
+            if not definitions:
+                definitions = parsed.get("definitions", {})
+                
+            endpoints = ["/workorders", "/workorders/createSimple", "/workorders/createSimple0"]
+            schemas = {}
+            
+            for ep in endpoints:
+                path_data = paths.get(ep, {})
+                schemas[ep] = path_data.get("post", "No POST method found")
+                
+            return {
+                "success": True,
+                "schemas": schemas,
+                "components": parsed.get("components", {}),
+                "definitions": parsed.get("definitions", {})
+            }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
 
 @ot_router.get(
     "/workorders",
@@ -649,8 +774,11 @@ async def create_operation(code: str, data: Dict[str, Any], ot_service: OTServic
     try:
         res = await ot_service.create_operation(code, data)
         return RestResponse(success=True, data=res, message="Opération ajoutée avec succès")
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"❌ Erreur ajout opération OT {code}: {e}")
+        raise HTTPException(status_code=500, detail=f"Erreur ajout opération: {str(e)}")
 
 @ot_router.put("/workorders/{code}/operations/{pk}", response_model=RestResponse)
 async def update_operation(code: str, pk: int, data: Dict[str, Any], ot_service: OTService = Depends(get_ot_service)):
@@ -699,8 +827,10 @@ async def create_workforce(code: str, data: Dict[str, Any], ot_service: OTServic
     try:
         res = await ot_service.create_workforce(code, data)
         return RestResponse(success=True, data=res, message="Main d'œuvre ajoutée avec succès")
+    except HTTPException as he:
+        raise he
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
 
 @ot_router.put("/workorders/{code}/workforce/{pk}", response_model=RestResponse)
 async def update_workforce(code: str, pk: int, data: Dict[str, Any], ot_service: OTService = Depends(get_ot_service)):

@@ -10,6 +10,9 @@ from app.repositories.coswin_api import CoswinAPIWorkOrderRepository
 
 logger = logging.getLogger(__name__)
 
+# =====================================================================
+# CONFIGURATION ACTIVE (Injection Coswin API / Production)
+# =====================================================================
 def get_workorder_repository(
     db: Session = Depends(get_mock_db_session)
 ) -> AbstractWorkOrderRepository:
@@ -20,3 +23,14 @@ def get_workorder_repository(
     else:
         logger.info("Injecting CoswinAPIWorkOrderRepository (Senelec API)")
         return CoswinAPIWorkOrderRepository()
+
+
+# =====================================================================
+# CODE D'ORIGINE / ALTERNATIF PERSO (Sauvegardé en commentaire)
+# Pour réactiver cette version, décommentez le bloc ci-dessous :
+# =====================================================================
+# def get_workorder_repository_local(db: Session = Depends(get_mock_db_session)) -> AbstractWorkOrderRepository:
+#     """Version locale originale conservée en secours."""
+#     logger.info("Injecting LocalSQLWorkOrderRepository (coswin_mock) - Backup Perso")
+#     return LocalSQLWorkOrderRepository(db)
+

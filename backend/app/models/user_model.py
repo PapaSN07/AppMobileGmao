@@ -54,9 +54,11 @@ class UserModel(Base):
             'entity': self.entity,
             'group': self.group,
             'url_image': self.url_image,
+            'urlImage': self.url_image,
             'is_absent': self.is_absent,
             'role': self.role
         }
+
 
 class UserClicClac(BaseClicClac):
     __tablename__ = "users"
@@ -87,6 +89,7 @@ class UserClicClac(BaseClicClac):
             'supervisor': str(self.supervisor) if self.supervisor is not None else None,
             'entity': self.entity,
             'url_image': self.url_image,
+            'urlImage': self.url_image,
             'role': self.role,
             'address': self.address,
             'company': self.company,

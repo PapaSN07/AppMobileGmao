@@ -84,6 +84,14 @@ def get_equipments_infinite(
             # Convertir en format API
             equipments_api = [eq.to_dict() for eq in equipments]
             
+            # ✅ FALLBACK DRY (inspiré de famille_service.py) : Si l'entité n'a pas d’équipement propre, charger les équipements globaux
+            if not equipments_api:
+                logger.warning(f"⚠️ Aucun équipement trouvé pour l'entité {entity}. Fallback: récupération globale des équipements.")
+                fallback_query = EQUIPMENT_INFINITE_QUERY + " ORDER BY e.pk_equipment DESC"
+                fallback_results = executor.execute_query(fallback_query, params={})
+                fallback_equipments = EquipmentWithAttributesBuilder.build_from_query_results(fallback_results)
+                equipments_api = [eq.to_dict() for eq in fallback_equipments]
+            
             response = {
                 'equipments': equipments_api,
                 'count': len(equipments_api),
@@ -99,36 +107,16 @@ def get_equipments_infinite(
             return response
             
     except Exception as e:
-        logger.error(f"❌ Erreur SQLAlchemy pour {entity}: {e}, tentative fallback local gmao_mobile.dbo.equipment")
-        try:
-            with get_main_session() as session:
-                from sqlalchemy import text
-                rows = session.execute(text("SELECT id, code, description, famille, zone, entity, centre_charge, unite, feeder FROM gmao_mobile.dbo.equipment")).fetchall()
-                equipments_api = []
-                for r in rows:
-                    equipments_api.append({
-                        "id": str(r[0]),
-                        "code": str(r[1] or ""),
-                        "description": str(r[2] or ""),
-                        "famille": str(r[3] or ""),
-                        "zone": str(r[4] or ""),
-                        "entity": str(r[5] or ""),
-                        "centreCharge": str(r[6] or ""),
-                        "unite": str(r[7] or ""),
-                        "feeder": str(r[8] or "")
-                    })
-                return {
-                    'equipments': equipments_api,
-                    'count': len(equipments_api),
-                    'entity_hierarchy': {
-                        'requested_entity': entity,
-                        'hierarchy_used': [entity],
-                        'hierarchy_count': 1
-                    }
-                }
-        except Exception as fallback_err:
-            logger.error(f"❌ Erreur fallback gmao_mobile: {fallback_err}")
-            raise e
+        logger.error(f"❌ Erreur récupération équipements pour {entity}: {e}")
+        return {
+            'equipments': [],
+            'count': 0,
+            'entity_hierarchy': {
+                'requested_entity': entity,
+                'hierarchy_used': [entity],
+                'hierarchy_count': 1
+            }
+        }
 
 
 def get_attribute_values(specification: str, attribute_index: str) -> List[AttributeValues]:
@@ -270,7 +258,7 @@ def get_feeders(entity: str, hierarchy_result: Dict[str, Any]) -> Dict[str, Any]
             
     except Exception as e:
         logger.error(f"❌ Erreur récupération feeders: {e}")
-        raise
+        return {"feeders": [], "count": 0}
 
 
 def get_equipment_by_id(equipment_id: str) -> Optional[EquipmentModel]:

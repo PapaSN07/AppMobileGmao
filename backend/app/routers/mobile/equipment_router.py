@@ -222,34 +222,36 @@ async def delete_equipment_endpoint(equipment_id: str) -> Dict[str, Any]:
     description="Récupère les valeurs des équipements pour l'entité spécifiée"
 )
 async def get_equipment_values(entity: str) -> Dict[str, Any]:
-    """Récupération des valeurs des équipements"""
+    """Récupération des valeurs des équipements depuis la base de données"""
     
-    # Import local pour éviter les imports circulaires
     from app.services.entity_service import get_hierarchy
     
     try:
-        hierarchy_result = get_hierarchy(entity)
-        cost_charges_result = get_centre_charges(entity)
-        entities_result = get_entities(entity, hierarchy_result)
-        familles_result = get_familles(entity, hierarchy_result)
-        unites_result = get_unites(entity, hierarchy_result)
-        zones_result = get_zones(entity, hierarchy_result)
-        feeder_result = get_feeders(entity, hierarchy_result)
+        try:
+            hierarchy_result = get_hierarchy(entity)
+        except Exception:
+            hierarchy_result = {'hierarchy': [entity]}
 
-        # Vérification des résultats
-        if not cost_charges_result or not entities_result or not familles_result or not unites_result or not zones_result:
-            raise HTTPException(status_code=404, detail="Aucune donnée trouvée pour l'entité spécifiée")
-        
+        cost_charges_res = (get_centre_charges(entity) or {}).get('centre_charges', [])
+        entities_res = (get_entities(entity, hierarchy_result) or {}).get('entities', [])
+        familles_res = (get_familles(entity, hierarchy_result) or {}).get('familles', [])
+        unites_res = (get_unites(entity, hierarchy_result) or {}).get('unites', [])
+        zones_res = (get_zones(entity, hierarchy_result) or {}).get('zones', [])
+        feeder_res = (get_feeders(entity, hierarchy_result) or {}).get('feeders', [])
+        from app.services.user_service import get_supervisors_list
+        supervisors_res = (get_supervisors_list(entity) or {}).get('supervisors', [])
+
         return {
             "status": "success",
             "message": f"Valeurs récupérées pour l'entité {entity}",
             "data": {
-                "entities": entities_result.get('entities', []),
-                "unites": unites_result.get('unites', []),
-                "zones": zones_result.get('zones', []),
-                "familles": familles_result.get('familles', []),
-                "cost_charges": cost_charges_result.get('centre_charges', []),
-                "feeders": feeder_result.get('feeders', [])
+                "entities": entities_res,
+                "unites": unites_res,
+                "zones": zones_res,
+                "familles": familles_res,
+                "cost_charges": cost_charges_res,
+                "feeders": feeder_res,
+                "supervisors": supervisors_res
             }
         }
     

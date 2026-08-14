@@ -68,6 +68,49 @@ class User extends HiveObject {
     };
   }
 
+  /// Formate le nom complet (Prénom + Nom) proprement
+  String get displayName {
+    if (username.isEmpty) return 'Utilisateur';
+    final parts = username.split(RegExp(r'[.\s_-]+'));
+    if (parts.length >= 2) {
+      final prenom = _capitalize(parts.first);
+      final nom = _capitalize(parts.sublist(1).join(' '));
+      return '$prenom $nom';
+    } else {
+      return _capitalize(username);
+    }
+  }
+
+  /// Formate le rôle de manière lisible
+  String get displayRole {
+    final r = (role ?? group ?? '').trim();
+    if (r.isEmpty) return 'Utilisateur';
+    final rUpper = r.toUpperCase();
+    if (rUpper == 'ADMIN' || rUpper == 'SUPERVISOR') return 'Administrateur';
+    if (rUpper == 'CONTREMAITRE' || rUpper.contains('CONT')) return 'Contremaître';
+    if (rUpper == 'CHEF_UNITE' || rUpper.contains('CHEF')) return "Chef d'Unité";
+    if (rUpper == 'USER') return 'Agent';
+    return _capitalize(r.replaceAll('_', ' '));
+  }
+
+  /// Chaîne combinée Rôle & Entité pour l'affichage UI
+  String get subtitleInfo {
+    final r = displayRole;
+    final e = entity.trim();
+    if (e.isNotEmpty && e != 'SENELEC') {
+      return '$r • $e';
+    }
+    return r;
+  }
+
+  static String _capitalize(String str) {
+    if (str.isEmpty) return str;
+    return str.split(' ').map((word) {
+      if (word.isEmpty) return '';
+      return word[0].toUpperCase() + word.substring(1).toLowerCase();
+    }).join(' ');
+  }
+
   @override
   String toString() {
     return 'User{id: $id, code: $code, username: $username, password: $password, email: $email, entity: $entity, group: $group, urlImage: $urlImage, isAbsent: $isAbsent, role: $role}';

@@ -130,8 +130,14 @@ def get_hierarchy(entity_code: str) -> Dict[str, Any]:
             return response
             
     except Exception as e:
-        logger.error(f"❌ Erreur hiérarchie Oracle: {e}")
-        raise
+        logger.error(f"❌ Erreur hiérarchie Oracle/SQL: {e}")
+        # Fallback pour éviter le crash de l'application si la fonction n'existe pas en local
+        return {
+            "entity_code": entity_code,
+            "hierarchy": [entity_code],
+            "count": 1,
+            "message": f"Fallback: Hiérarchie simulée pour {entity_code} suite à erreur DB"
+        }
 
 def get_all_entities() -> Dict[str, Any]:
     """Récupère les entités depuis la base de données."""

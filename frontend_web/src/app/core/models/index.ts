@@ -7,3 +7,4 @@ export * from './notification.model';
 export * from './history.attribute.model';
 export * from './history.equipment.model';
 export * from './prestataire-history.model';
+export * from './work-request.model';

@@ -1,0 +1,252 @@
+<div class="card">
+    <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-bold text-gray-800">Sélectionneur des Demandes d'Intervention (DI)</h2>
+    </div>
+
+    <!-- 📊 Table de sélection des DI -->
+    <p-table 
+        [value]="workRequests" 
+        [loading]="loading" 
+        [paginator]="true" 
+        [rows]="10" 
+        responsiveLayout="scroll"
+        styleClass="p-datatable-striped p-datatable-gridlines">
+        
+        <ng-template pTemplate="header">
+            <tr>
+                <th style="width: 120px">N° de DI</th>
+                <th style="width: 140px">Date de création</th>
+                <th style="width: 180px">Équipement source</th>
+                <th>Description de la demande</th>
+                <th style="width: 110px">État DI</th>
+                <th style="width: 110px">Destinataire</th>
+                <th style="width: 120px">Priorité</th>
+                <th style="width: 80px" class="text-center">Action</th>
+            </tr>
+        </ng-template>
+
+        <ng-template pTemplate="body" let-di>
+            <tr>
+                <td class="font-bold text-blue-800">{{ di.dinqCode }}</td>
+                <td>{{ di.dinqAskDate }}</td>
+                <td>
+                    <span [pTooltip]="di.dinqEquipmentDescription" tooltipPosition="top" class="cursor-help border-b border-dotted border-gray-400">
+                        {{ di.dinqEquipment }}
+                    </span>
+                </td>
+                <td class="truncate max-w-xs">{{ di.dinqDescription }}</td>
+                <td>
+                    <p-tag [value]="di.dinqUserStatus" [severity]="getStatusSeverity(di.dinqUserStatus)"></p-tag>
+                </td>
+                <td>{{ di.dinqActionEntity }}</td>
+                <td>
+                    <p-tag [value]="di.dinqPriority" [severity]="getPrioritySeverity(di.dinqPriority)"></p-tag>
+                </td>
+                <td class="text-center">
+                    <button 
+                        pButton 
+                        icon="pi pi-eye" 
+                        class="p-button-rounded p-button-text" 
+                        (click)="viewDetails(di)"
+                        pTooltip="Voir les détails"
+                        tooltipPosition="left">
+                    </button>
+                </td>
+            </tr>
+        </ng-template>
+
+        <ng-template pTemplate="emptymessage">
+            <tr>
+                <td colspan="8" class="text-center p-4">Aucune demande d'intervention trouvée.</td>
+            </tr>
+        </ng-template>
+    </p-table>
+</div>
+
+<!-- 🔍 DIALOG MODAL DE DÉTAILS DI -->
+<p-dialog 
+    [(visible)]="detailsDialog" 
+    [header]="'DÉTAIL DE LA DI (' + (selectedDI?.dinqCode || '') + ')'" 
+    [modal]="true" 
+    [style]="{ width: '85vw', minHeight: '600px' }"
+    [maximizable]="true" 
+    styleClass="p-fluid di-details-dialog"
+    (onHide)="hideDetails()">
+    
+    <div *ngIf="selectedDI" class="dialog-content flex flex-col gap-6">
+        <!-- 📋 En-tête de la DI (Formulaire principal) -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
+            <!-- Col 1 -->
+            <div class="flex flex-col gap-3">
+                <div class="field">
+                    <label class="block text-xs font-bold text-gray-500 mb-1">N° de Di</label>
+                    <input type="text" pInputText [value]="selectedDI.dinqCode" disabled class="bg-gray-100 w-full" />
+                </div>
+                <div class="field">
+                    <label class="block text-xs font-bold text-gray-500 mb-1">Demandeur</label>
+                    <input type="text" pInputText [value]="selectedDI.dinqSupervisor || '6795'" disabled class="bg-gray-100 w-full" />
+                </div>
+                <div class="field">
+                    <label class="block text-xs font-bold text-gray-500 mb-1">Destinataire</label>
+                    <input type="text" pInputText [value]="selectedDI.dinqActionEntity || 'UMP-DV'" disabled class="bg-gray-100 w-full" />
+                </div>
+                <div class="field">
+                    <label class="block text-xs font-bold text-gray-500 mb-1">Date de déclaration</label>
+                    <input type="text" pInputText [value]="selectedDI.dinqAskDate" disabled class="bg-gray-100 w-full" />
+                </div>
+            </div>
+
+            <!-- Col 2 -->
+            <div class="flex flex-col gap-3">
+                <div class="field">
+                    <label class="block text-xs font-bold text-gray-500 mb-1">Description principale</label>
+                    <input type="text" pInputText [value]="selectedDI.dinqDescription" disabled class="bg-yellow-100 font-semibold w-full" />
+                </div>
+                <div class="field flex gap-2">
+                    <div class="w-1/2">
+                        <label class="block text-xs font-bold text-gray-500 mb-1">Contrôleur</label>
+                        <input type="text" pInputText value="" disabled class="bg-gray-100 w-full" />
+                    </div>
+                    <div class="w-1/2">
+                        <label class="block text-xs font-bold text-gray-500 mb-1">Priorité</label>
+                        <input type="text" pInputText [value]="selectedDI.dinqPriority || 'URGENT'" disabled class="bg-gray-100 w-full" />
+                    </div>
+                </div>
+                <div class="field">
+                    <label class="block text-xs font-bold text-gray-500 mb-1">Équipement</label>
+                    <input type="text" pInputText [value]="selectedDI.dinqEquipment" disabled class="bg-gray-100 w-full" />
+                </div>
+                <div class="field">
+                    <label class="block text-xs font-bold text-gray-500 mb-1">Libellé Équipement</label>
+                    <input type="text" pInputText [value]="selectedDI.dinqEquipmentDescription" disabled class="bg-gray-100 w-full" />
+                </div>
+            </div>
+
+            <!-- Col 3 -->
+            <div class="flex flex-col gap-3">
+                <div class="field flex gap-2">
+                    <div class="w-1/2">
+                        <label class="block text-xs font-bold text-gray-500 mb-1">État DI</label>
+                        <input type="text" pInputText [value]="selectedDI.dinqUserStatus" disabled class="bg-gray-100 w-full" />
+                    </div>
+                    <div class="w-1/2">
+                        <label class="block text-xs font-bold text-gray-500 mb-1">État OT</label>
+                        <input type="text" pInputText value="" disabled class="bg-gray-100 w-full" />
+                    </div>
+                </div>
+                <div class="field">
+                    <label class="block text-xs font-bold text-gray-500 mb-1">Mails à notifier</label>
+                    <input type="text" pInputText [value]="selectedDI.mailsToNotify || 'Aucun'" disabled class="bg-gray-100 w-full" />
+                </div>
+                <div class="field flex gap-2">
+                    <div class="w-1/2">
+                        <label class="block text-xs font-bold text-gray-500 mb-1">Unité</label>
+                        <input type="text" pInputText [value]="selectedDI.dinqRequestEntity || 'UMP-DV'" disabled class="bg-gray-100 w-full" />
+                    </div>
+                    <div class="w-1/2">
+                        <label class="block text-xs font-bold text-gray-500 mb-1">Superviseur</label>
+                        <input type="text" pInputText [value]="selectedDI.dinqSupervisor || ''" disabled class="bg-gray-100 w-full" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 🗂️ Système d'Onglets Réutilisables -->
+        <div class="custom-tabs border border-gray-200 rounded-lg overflow-hidden">
+            <div class="tabs-header flex bg-gray-100 border-b border-gray-200">
+                <button [class.active]="activeTab === 'probleme'" (click)="activeTab = 'probleme'" class="tab-btn px-4 py-3 font-semibold text-sm border-r border-gray-200 transition-colors">PROBLÈME</button>
+                <button [class.active]="activeTab === 'plus'" (click)="activeTab = 'plus'" class="tab-btn px-4 py-3 font-semibold text-sm border-r border-gray-200 transition-colors">PLUS</button>
+                <button [class.active]="activeTab === 'diagnostic'" (click)="activeTab = 'diagnostic'" class="tab-btn px-4 py-3 font-semibold text-sm border-r border-gray-200 transition-colors">DIAGNOSTIC</button>
+                <button [class.active]="activeTab === 'remarque'" (click)="activeTab = 'remarque'" class="tab-btn px-4 py-3 font-semibold text-sm border-r border-gray-200 transition-colors">REMARQUE DE L'OT</button>
+                <button [class.active]="activeTab === 'historique'" (click)="activeTab = 'historique'" class="tab-btn px-4 py-3 font-semibold text-sm border-r border-gray-200 transition-colors">HISTORIQUE DES ÉTATS</button>
+                <button [class.active]="activeTab === 'repartitions'" (click)="activeTab = 'repartitions'" class="tab-btn px-4 py-3 font-semibold text-sm transition-colors">RÉPARTITIONS</button>
+            </div>
+            
+            <div class="tabs-content p-4 bg-white min-h-[250px]">
+                <!-- TAB 1: PROBLÈME -->
+                <div *ngIf="activeTab === 'probleme'" class="flex flex-col gap-4">
+                    <p class="text-sm font-semibold text-gray-600 mb-2">Pièces jointes & Documents liés :</p>
+                    <div class="border border-dashed border-gray-300 p-6 rounded-lg flex items-center justify-center bg-gray-50">
+                        <div class="text-center">
+                            <i class="pi pi-file-pdf text-red-500 text-4xl mb-2"></i>
+                            <p class="text-sm font-bold">RAPPORT ULTRASON.pdf</p>
+                            <p class="text-xs text-gray-500">28/07/2026 - 2.4 MB</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 2: PLUS -->
+                <div *ngIf="activeTab === 'plus'" class="grid grid-cols-2 gap-4">
+                    <div class="flex flex-col gap-2">
+                        <p><strong class="text-gray-600">OT Source :</strong> 2025284107</p>
+                        <p><strong class="text-gray-600">Zone :</strong> {{ selectedDI.dinqZone || 'DAKAR' }}</p>
+                        <p><strong class="text-gray-600">Centre de charges :</strong> {{ selectedDI.dinqCostcentre || 'DD303' }} (G. Équipement)</p>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <p><strong class="text-gray-600">Date début prévue :</strong> {{ selectedDI.dateDebut || '24/07/2026' }}</p>
+                        <p><strong class="text-gray-600">Date fin prévue :</strong> {{ selectedDI.dateFin || '24/07/2026' }}</p>
+                        <p><strong class="text-gray-600">Entité de réalisation :</strong> {{ selectedDI.dinqActionEntity || 'SDDV - SERVICE DE DISTRIBUTION DAKAR VILLE' }}</p>
+                    </div>
+                </div>
+
+                <!-- TAB 3: DIAGNOSTIC -->
+                <div *ngIf="activeTab === 'diagnostic'">
+                    <table class="w-full border-collapse border border-gray-300 text-sm">
+                        <thead>
+                            <tr class="bg-gray-50">
+                                <th class="border border-gray-300 p-2 text-left">Symptôme</th>
+                                <th class="border border-gray-300 p-2 text-left">Défaut</th>
+                                <th class="border border-gray-300 p-2 text-left">Cause</th>
+                                <th class="border border-gray-300 p-2 text-left">Remède</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="border border-gray-300 p-2 font-semibold">DECHARGE PARTIELLE SUR CELLULE</td>
+                                <td class="border border-gray-300 p-2 text-red-600">ECHAUFFEMENT</td>
+                                <td class="border border-gray-300 p-2">EFFET CORONA</td>
+                                <td class="border border-gray-300 p-2 text-green-700">REMPLACEMENT DES COMPOSANTS</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- TAB 4: REMARQUE DE L'OT -->
+                <div *ngIf="activeTab === 'remarque'">
+                    <textarea pInputTextarea [rows]="6" class="w-full bg-gray-50 border border-gray-300 rounded p-2" placeholder="Aucune remarque saisie pour cet ordre de travail." disabled></textarea>
+                </div>
+
+                <!-- TAB 5: HISTORIQUE DES ÉTATS -->
+                <div *ngIf="activeTab === 'historique'">
+                    <table class="w-full border-collapse border border-gray-300 text-sm">
+                        <thead>
+                            <tr class="bg-gray-50">
+                                <th class="border border-gray-300 p-2 text-left">Date de la modification</th>
+                                <th class="border border-gray-300 p-2 text-left">Ancien état</th>
+                                <th class="border border-gray-300 p-2 text-left">Nouvel état</th>
+                                <th class="border border-gray-300 p-2 text-left">Utilisateur</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="border border-gray-300 p-2">24/07/2026 13:41</td>
+                                <td class="border border-gray-300 p-2">-</td>
+                                <td class="border border-gray-300 p-2">0. Créée</td>
+                                <td class="border border-gray-300 p-2 font-bold">papamadou.mbaye</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- TAB 6: RÉPARTITIONS -->
+                <div *ngIf="activeTab === 'repartitions'">
+                    <p class="text-xs text-gray-500 italic text-center p-6">Aucune répartition d'interventions secondaires sur cette demande.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <ng-template pTemplate="footer">
+        <button pButton label="Fermer" icon="pi pi-times" class="p-button-text p-button-secondary" (click)="hideDetails()"></button>
+    </ng-template>
+</p-dialog>

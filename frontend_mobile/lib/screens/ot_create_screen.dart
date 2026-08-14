@@ -8,6 +8,8 @@ import 'package:appmobilegmao/widgets/custom_app_bar.dart';
 import 'package:appmobilegmao/services/ot_service.dart';
 import 'package:appmobilegmao/services/api_service.dart';
 import 'package:appmobilegmao/services/hive_service.dart';
+import 'package:appmobilegmao/services/equipment_service.dart';
+import 'package:appmobilegmao/models/equipment.dart';
 import 'dart:math';
 
 /// Écran complet pour la création et la modification d'un Ordre de Travail (OT)
@@ -32,6 +34,10 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
 
   // Clé du formulaire pour l'onglet Détails
   final _formKey = GlobalKey<FormState>();
+
+  final EquipmentService _equipmentService = EquipmentService();
+  Map<String, dynamic> _selectorsData = {};
+  bool _isLoadingSelectors = false;
 
   // Contrôleurs pour l'onglet "Détails"
   final TextEditingController _codeController = TextEditingController();
@@ -170,9 +176,12 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
         if (user != null) {
           final userCode = user.code ?? '';
           final username = user.username;
-          if (userCode.isNotEmpty) {
+          if (userCode.isNotEmpty && userCode.toLowerCase() != 'test' && RegExp(r'^\d+$').hasMatch(userCode)) {
             _supervisorController.text = userCode;
             _tempWfEmployeeController.text = userCode;
+          } else {
+            _supervisorController.text = 'supervisor';
+            _tempWfEmployeeController.text = 'supervisor';
           }
           if (username.isNotEmpty) {
             _tempWfDescriptionController.text = username;
@@ -186,6 +195,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
         debugPrint('Erreur lors de la récupération de l\'utilisateur connecté: $e');
       }
     }
+    _loadSelectors();
   }
 
   /// Charge de manière asynchrone toutes les sous-ressources de l'OT en édition
@@ -196,7 +206,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
       final ops = await _otService.getOperations(otCode);
       setState(() {
         _operations.addAll(ops.map((op) => {
-          'pk': op['pkOperation'] as int,
+          'pk': (op['pkOperation'] ?? op['pkWorkAction'] ?? 0) as int,
           'description': op['opopDescription']?.toString() ?? op['opopJobDescription']?.toString() ?? '',
         }));
       });
@@ -205,7 +215,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
       final docs = await _otService.getDocuments(otCode);
       setState(() {
         _comments.addAll(docs.map((doc) => {
-          'pk': doc['pkComment'] as int,
+          'pk': (doc['pkComment'] ?? doc['pkEmployeeFeedback'] ?? 0) as int,
           'employee': doc['woefEmployee']?.toString() ?? '',
           'description': doc['reemDescription']?.toString() ?? '',
           'startDate': doc['woefStartDate']?.toString() ?? '',
@@ -220,7 +230,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
       final wf = await _otService.getWorkforce(otCode);
       setState(() {
         _workforce.addAll(wf.map((item) => {
-          'pk': item['pkWorkforce'] as int,
+          'pk': (item['pkWorkforce'] ?? item['pkEmployeeAllocated'] ?? 0) as int,
           'employee': item['woeaEmployee']?.toString() ?? item['reemCode']?.toString() ?? '',
           'description': item['woeaResource']?.toString() ?? item['reemDescription']?.toString() ?? 'Intervenant',
           'startDate': item['woeaAllocationDate']?.toString() ?? '',
@@ -247,7 +257,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
               ?? item['usedQuantity']?.toString()
               ?? '0';
           return {
-            'pk': item['pkPart'] as int,
+            'pk': (item['pkPart'] ?? item['pkStockUsed'] ?? 0) as int,
             'partCode': partCode,
             'article': description,
             'qtyUsed': double.tryParse(qty) ?? 0.0,
@@ -259,7 +269,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
       final attrs = await _otService.getAttributes(otCode);
       setState(() {
         _attributes.addAll(attrs.map((item) => {
-          'pk': item['pkAttribute'] as int,
+          'pk': (item['pkAttribute'] ?? item['pkWorkOrderAttribute'] ?? 0) as int,
           'name': item['woatName']?.toString() ?? '',
           'value': item['woatValue']?.toString() ?? '',
           'description': item['woatDescription']?.toString() ?? '',
@@ -306,6 +316,109 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
     super.dispose();
   }
 
+  Future<void> _loadSelectors() async {
+    final entityCode = _entityController.text.trim();
+    if (entityCode.isEmpty) return;
+
+    setState(() {
+      _isLoadingSelectors = true;
+    });
+
+    try {
+      final data = await _equipmentService.getEquipmentSelectors(entity: entityCode);
+      if (mounted) {
+        setState(() {
+          _selectorsData = data;
+          _isLoadingSelectors = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Erreur lors du chargement des sélecteurs: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingSelectors = false;
+        });
+      }
+    }
+  }
+
+  List<_GenericSelectionItem> _extractSelectionItems(String key) {
+    final rawList = _selectorsData[key];
+    if (rawList == null || rawList is! List || rawList.isEmpty) {
+      return [];
+    }
+    final List<_GenericSelectionItem> items = [];
+    for (final item in rawList) {
+      String code = '';
+      String desc = '';
+      if (item is Map) {
+        code = item['code']?.toString() ?? '';
+        desc = item['description']?.toString() ?? '';
+      } else {
+        try {
+          code = (item as dynamic).code?.toString() ?? '';
+          desc = (item as dynamic).description?.toString() ?? '';
+        } catch (_) {}
+      }
+      if (code.isNotEmpty) {
+        items.add(_GenericSelectionItem(code: code, description: desc.isNotEmpty ? desc : code));
+      }
+    }
+    return items;
+  }
+
+  void _showGenericSelector({
+    required String title,
+    required List<_GenericSelectionItem> items,
+    required Function(String) onSelected,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return _GenericSelectionModal(
+          title: title,
+          items: items,
+          onSelected: onSelected,
+        );
+      },
+    );
+  }
+
+  void _showEquipmentSelector() {
+    final entityCode = _entityController.text.trim();
+    if (entityCode.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Veuillez d\'abord renseigner l\'Entité *')),
+      );
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return _EquipmentSelectionModal(
+          entity: entityCode,
+          zone: '', // Recherche basée à 100% sur le Service/Entité et sa hiérarchie
+          onSelected: (equipmentCode) {
+            setState(() {
+              _equipmentController.text = equipmentCode;
+            });
+          },
+        );
+      },
+    );
+  }
+
   /// Génère un code OT aléatoire si l'utilisateur a choisi la génération automatique
   String _generateRandomCode() {
     final random = Random();
@@ -318,7 +431,16 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
     if (_formKey.currentState == null || !_formKey.currentState!.validate()) {
       _tabController.animateTo(0);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Veuillez remplir correctement les champs de détails obligatoires *')),
+        SnackBar(
+          backgroundColor: Colors.red.shade800,
+          content: const Row(
+            children: [
+              Icon(Icons.error_outline, color: Colors.white),
+              SizedBox(width: 8),
+              Expanded(child: Text('Veuillez remplir les champs obligatoires (surlignés en rouge) *', style: TextStyle(fontWeight: FontWeight.bold))),
+            ],
+          ),
+        ),
       );
       return;
     }
@@ -337,7 +459,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
         'wowoRequestEntity': _entityController.text.trim(),
         'wowoCostcentre': _costcentreController.text.trim(),
         'wowoEquipment': _equipmentController.text.trim().isNotEmpty ? _equipmentController.text.trim() : 'MOCK_EQ',
-        'wowoSupervisor': _supervisorController.text.trim().isNotEmpty ? _supervisorController.text.trim() : 'MOCK_SUP',
+        'wowoSupervisor': (RegExp(r'^\d+$').hasMatch(_supervisorController.text.trim()) || _supervisorController.text.trim() == 'supervisor') ? _supervisorController.text.trim() : 'supervisor',
         'wowoCompletionRate': _completionRate,
         'wowoPriority': _priority,
         'wowoUserStatus': _status,
@@ -536,15 +658,49 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
               label: 'Description / Travail *',
               controller: _jobController,
               validator: (val) => val == null || val.isEmpty ? 'Champ obligatoire' : null,
+              maxLength: 15,
+              suffixIcon: const Icon(Icons.arrow_drop_down, color: Color(0xFF0F1B80)),
+              onTap: () {
+                final List<_GenericSelectionItem> jobSuggestions = [
+                  _GenericSelectionItem(code: 'Inspection', description: 'Contrôle et inspection générale de l\'équipement'),
+                  _GenericSelectionItem(code: 'Dépannage BT', description: 'Recherche et réparation de panne sur le réseau'),
+                  _GenericSelectionItem(code: 'Entretien prév', description: 'Maintenance et révision périodique'),
+                  _GenericSelectionItem(code: 'Remplacement', description: 'Remplacement d\'élément défectueux'),
+                  _GenericSelectionItem(code: 'Nettoyage', description: 'Nettoyage et resserrage des connexions'),
+                  _GenericSelectionItem(code: 'Contrôle', description: 'Vérification électrique des paramètres'),
+                  _GenericSelectionItem(code: 'Répar. fuite', description: 'Traitement de fuite sur équipement'),
+                  _GenericSelectionItem(code: 'Maintenance', description: 'Intervention corrective immédiate'),
+                ];
+                _showGenericSelector(
+                  title: 'Choisir un Travail à effectuer',
+                  items: jobSuggestions,
+                  onSelected: (val) => setState(() => _jobController.text = val),
+                );
+              },
             ),
             SizedBox(height: spacing.medium),
             Row(
               children: [
                 Expanded(
                   child: _buildInputField(
-                    label: 'Famille *',
+                    label: 'Famille (Type) *',
                     controller: _jobTypeController,
                     validator: (val) => val == null || val.isEmpty ? 'Obligatoire' : null,
+                    suffixIcon: const Icon(Icons.arrow_drop_down, color: Color(0xFF0F1B80)),
+                    onTap: () {
+                      final List<_GenericSelectionItem> jobTypes = [
+                        _GenericSelectionItem(code: 'CORR', description: 'Correctif'),
+                        _GenericSelectionItem(code: 'PREV', description: 'Préventif'),
+                        _GenericSelectionItem(code: 'AMEL', description: 'Amélioration'),
+                        _GenericSelectionItem(code: 'EXPT', description: 'Exploitation'),
+                        _GenericSelectionItem(code: 'SECUR', description: 'Sécurité'),
+                      ];
+                      _showGenericSelector(
+                        title: 'Choisir la Famille (Type)',
+                        items: jobTypes,
+                        onSelected: (val) => setState(() => _jobTypeController.text = val),
+                      );
+                    },
                   ),
                 ),
                 SizedBox(width: spacing.medium),
@@ -553,6 +709,24 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                     label: 'Classe de travail *',
                     controller: _jobClassController,
                     validator: (val) => val == null || val.isEmpty ? 'Obligatoire' : null,
+                    maxLength: 8,
+                    suffixIcon: const Icon(Icons.arrow_drop_down, color: Color(0xFF0F1B80)),
+                    onTap: () {
+                      final List<_GenericSelectionItem> jobClasses = [
+                        _GenericSelectionItem(code: 'POSTE', description: 'Poste HTA/BT'),
+                        _GenericSelectionItem(code: 'HTA_S', description: 'Réseau Souterrain HTA'),
+                        _GenericSelectionItem(code: 'LIGNE', description: 'Ligne Aérienne HTA/BT'),
+                        _GenericSelectionItem(code: 'CEL-HTA', description: 'Cellules HTA'),
+                        _GenericSelectionItem(code: 'ARM-PROT', description: 'Armoire de Protection'),
+                        _GenericSelectionItem(code: 'DEPART', description: 'Départ BT/HTA'),
+                        _GenericSelectionItem(code: 'BT', description: 'Réseau Basse Tension'),
+                      ];
+                      _showGenericSelector(
+                        title: 'Choisir la Classe de travail',
+                        items: jobClasses,
+                        onSelected: (val) => setState(() => _jobClassController.text = val),
+                      );
+                    },
                   ),
                 ),
               ],
@@ -565,6 +739,14 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                     label: 'Zone *',
                     controller: _zoneController,
                     validator: (val) => val == null || val.isEmpty ? 'Obligatoire' : null,
+                    suffixIcon: const Icon(Icons.arrow_drop_down, color: Color(0xFF0F1B80)),
+                    onTap: () {
+                      _showGenericSelector(
+                        title: 'Choisir la Zone',
+                        items: _extractSelectionItems('zones'),
+                        onSelected: (val) => setState(() => _zoneController.text = val),
+                      );
+                    },
                   ),
                 ),
                 SizedBox(width: spacing.medium),
@@ -573,6 +755,20 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                     label: 'Entité *',
                     controller: _entityController,
                     validator: (val) => val == null || val.isEmpty ? 'Obligatoire' : null,
+                    suffixIcon: const Icon(Icons.arrow_drop_down, color: Color(0xFF0F1B80)),
+                    onTap: () {
+                      _showGenericSelector(
+                        title: 'Choisir l\'Entité',
+                        items: _extractSelectionItems('entities'),
+                        onSelected: (val) {
+                          setState(() {
+                            _entityController.text = val;
+                            _loadSelectors();
+                            _equipmentController.clear();
+                          });
+                        },
+                      );
+                    },
                   ),
                 ),
               ],
@@ -585,6 +781,14 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                     label: 'Centre de charge *',
                     controller: _costcentreController,
                     validator: (val) => val == null || val.isEmpty ? 'Obligatoire' : null,
+                    suffixIcon: const Icon(Icons.arrow_drop_down, color: Color(0xFF0F1B80)),
+                    onTap: () {
+                      _showGenericSelector(
+                        title: 'Choisir le Centre de charge',
+                        items: _extractSelectionItems('centreCharges'),
+                        onSelected: (val) => setState(() => _costcentreController.text = val),
+                      );
+                    },
                   ),
                 ),
                 SizedBox(width: spacing.medium),
@@ -626,6 +830,12 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                     label: 'Équipement (Code) *',
                     controller: _equipmentController,
                     validator: (val) => val == null || val.isEmpty ? 'Obligatoire' : null,
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.search, color: Color(0xFF0F1B80), size: 20),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      onPressed: _showEquipmentSelector,
+                    ),
                   ),
                 ),
                 SizedBox(width: spacing.medium),
@@ -634,6 +844,19 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                     label: 'Technicien / Superviseur *',
                     controller: _supervisorController,
                     validator: (val) => val == null || val.isEmpty ? 'Obligatoire' : null,
+                    suffixIcon: const Icon(Icons.arrow_drop_down, color: Color(0xFF0F1B80)),
+                    onTap: () {
+                      final items = _extractSelectionItems('supervisors');
+                      _showGenericSelector(
+                        title: 'Choisir le Superviseur',
+                        items: items.isNotEmpty ? items : [
+                          _GenericSelectionItem(code: '5286', description: 'ERIC DASYLVA CARDOZO (5286)'),
+                          _GenericSelectionItem(code: '6732', description: 'Mouhamadou Mansour KEBE (6732)'),
+                          _GenericSelectionItem(code: 'supervisor', description: 'Superviseur Général (Système)'),
+                        ],
+                        onSelected: (val) => setState(() => _supervisorController.text = val),
+                      );
+                    },
                   ),
                 ),
               ],
@@ -1206,6 +1429,9 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
     String? Function(String?)? validator,
     TextInputType keyboardType = TextInputType.text,
     bool readOnly = false,
+    int? maxLength,
+    Widget? suffixIcon,
+    VoidCallback? onTap,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1219,11 +1445,29 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
           controller: controller,
           validator: validator,
           keyboardType: keyboardType,
-          readOnly: readOnly,
-          style: TextStyle(fontSize: 14, color: readOnly ? Colors.grey : Colors.black),
-          decoration: const InputDecoration(
+          readOnly: readOnly || onTap != null,
+          onTap: onTap,
+          maxLength: maxLength,
+          style: TextStyle(fontSize: 14, color: (readOnly || onTap != null) ? Colors.grey.shade600 : Colors.black),
+          decoration: InputDecoration(
             isDense: true,
-            contentPadding: EdgeInsets.symmetric(vertical: 8),
+            contentPadding: const EdgeInsets.symmetric(vertical: 8),
+            counterText: '', // Hide character counter for cleaner look
+            suffixIcon: suffixIcon,
+            suffixIconConstraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+            enabledBorder: const UnderlineInputBorder(
+              borderSide: BorderSide(color: Color(0xFFCBD5E1)),
+            ),
+            focusedBorder: const UnderlineInputBorder(
+              borderSide: BorderSide(color: Color(0xFF0F1B80), width: 2),
+            ),
+            errorBorder: const UnderlineInputBorder(
+              borderSide: BorderSide(color: Colors.redAccent, width: 2),
+            ),
+            focusedErrorBorder: const UnderlineInputBorder(
+              borderSide: BorderSide(color: Colors.red, width: 2),
+            ),
+            errorStyle: const TextStyle(color: Colors.red, fontSize: 11, fontWeight: FontWeight.bold),
           ),
         ),
       ],
@@ -1278,12 +1522,12 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
               : TabBarView(
                   controller: _tabController,
                   children: [
-                    _buildDetailsTab(spacing, responsive),
-                    _buildModeOperatoireTab(spacing),
-                    _buildCommentairesTab(spacing),
-                    _buildMainsOeuvreTab(spacing),
-                    _buildMaterielTab(spacing),
-                    _buildAttributesTab(spacing),
+                    KeepAliveWrapper(child: _buildDetailsTab(spacing, responsive)),
+                    KeepAliveWrapper(child: _buildModeOperatoireTab(spacing)),
+                    KeepAliveWrapper(child: _buildCommentairesTab(spacing)),
+                    KeepAliveWrapper(child: _buildMainsOeuvreTab(spacing)),
+                    KeepAliveWrapper(child: _buildMaterielTab(spacing)),
+                    KeepAliveWrapper(child: _buildAttributesTab(spacing)),
                   ],
                 )),
       bottomNavigationBar: Container(
@@ -1356,6 +1600,280 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+class KeepAliveWrapper extends StatefulWidget {
+  final Widget child;
+  const KeepAliveWrapper({super.key, required this.child});
+
+  @override
+  State<KeepAliveWrapper> createState() => _KeepAliveWrapperState();
+}
+
+class _KeepAliveWrapperState extends State<KeepAliveWrapper> with AutomaticKeepAliveClientMixin {
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
+  }
+
+  @override
+  bool get wantKeepAlive => true;
+}
+
+class _EquipmentSelectionModal extends StatefulWidget {
+  final String entity;
+  final String zone;
+  final Function(String) onSelected;
+
+  const _EquipmentSelectionModal({
+    Key? key,
+    required this.entity,
+    required this.zone,
+    required this.onSelected,
+  }) : super(key: key);
+
+  @override
+  State<_EquipmentSelectionModal> createState() => _EquipmentSelectionModalState();
+}
+
+class _EquipmentSelectionModalState extends State<_EquipmentSelectionModal> {
+  final EquipmentService _equipmentService = EquipmentService();
+  final TextEditingController _searchController = TextEditingController();
+  List<Equipment> _equipments = [];
+  bool _isLoading = true;
+  String _errorMessage = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadEquipments();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadEquipments() async {
+    try {
+      final response = await _equipmentService.getEquipments(
+        entity: widget.entity,
+        zone: widget.zone.isNotEmpty ? widget.zone : null,
+      );
+      if (mounted) {
+        setState(() {
+          _equipments = response.items;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString();
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final query = _searchController.text.trim().toLowerCase();
+    final filtered = _equipments.where((eq) {
+      final code = eq.code.toLowerCase();
+      final desc = eq.description.toLowerCase();
+      return code.contains(query) || desc.contains(query);
+    }).toList();
+
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.75,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Choisir un équipement (${widget.entity})',
+                style: const TextStyle(
+                  color: Color(0xFF0F1B80),
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _searchController,
+            onChanged: (val) => setState(() {}),
+            decoration: InputDecoration(
+              hintText: 'Rechercher par code ou description...',
+              prefixIcon: const Icon(Icons.search, color: Color(0xFF0F1B80)),
+              isDense: true,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF0F1B80))))
+                : _errorMessage.isNotEmpty
+                    ? Center(child: Text('Erreur: $_errorMessage'))
+                    : filtered.isEmpty
+                        ? const Center(child: Text('Aucun équipement trouvé'))
+                        : ListView.separated(
+                            itemCount: filtered.length,
+                            separatorBuilder: (context, index) => const Divider(height: 1),
+                            itemBuilder: (context, index) {
+                              final eq = filtered[index];
+                              return ListTile(
+                                contentPadding: EdgeInsets.zero,
+                                title: Text(
+                                  eq.code,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF0F1B80),
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  eq.description,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                onTap: () {
+                                  widget.onSelected(eq.code);
+                                  Navigator.pop(context);
+                                },
+                              );
+                            },
+                          ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GenericSelectionItem {
+  final String code;
+  final String description;
+
+  _GenericSelectionItem({required this.code, required this.description});
+}
+
+class _GenericSelectionModal extends StatefulWidget {
+  final String title;
+  final List<_GenericSelectionItem> items;
+  final Function(String) onSelected;
+
+  const _GenericSelectionModal({
+    Key? key,
+    required this.title,
+    required this.items,
+    required this.onSelected,
+  }) : super(key: key);
+
+  @override
+  State<_GenericSelectionModal> createState() => _GenericSelectionModalState();
+}
+
+class _GenericSelectionModalState extends State<_GenericSelectionModal> {
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final query = _searchController.text.trim().toLowerCase();
+    final filtered = widget.items.where((item) {
+      return item.code.toLowerCase().contains(query) ||
+          item.description.toLowerCase().contains(query);
+    }).toList();
+
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.7,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  widget.title,
+                  style: const TextStyle(
+                    color: Color(0xFF0F1B80),
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _searchController,
+            onChanged: (val) => setState(() {}),
+            decoration: InputDecoration(
+              hintText: 'Rechercher...',
+              prefixIcon: const Icon(Icons.search, color: Color(0xFF0F1B80)),
+              isDense: true,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Expanded(
+            child: filtered.isEmpty
+                ? const Center(child: Text('Aucun élément trouvé'))
+                : ListView.separated(
+                    itemCount: filtered.length,
+                    separatorBuilder: (context, index) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final item = filtered[index];
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(
+                          item.code,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF0F1B80),
+                          ),
+                        ),
+                        subtitle: Text(item.description),
+                        onTap: () {
+                          widget.onSelected(item.code);
+                          Navigator.pop(context);
+                        },
+                      );
+                    },
+                  ),
+          ),
+        ],
       ),
     );
   }

@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:appmobilegmao/models/user.dart';
 import 'package:appmobilegmao/services/api_service.dart';
 import 'package:appmobilegmao/services/hive_service.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 
 class AuthService {
   final ApiService apiClient;
@@ -25,7 +27,10 @@ class AuthService {
           print('Authentification réussie pour $username');
         }
 
-        // ✅ NOUVEAU: Sauvegarder les tokens JWT
+        final user = User.fromJson(response['data']);
+        await HiveService.cacheCurrentUser(user);
+
+        // ✅ Sauvegarder les tokens JWT
         final accessToken = response['access_token'];
         final refreshToken = response['refresh_token'];
 
@@ -42,86 +47,100 @@ class AuthService {
 
         return {
           'success': response['success'],
-          'data': User.fromJson(response['data']),
+          'data': user,
           'message': response['message'],
         };
       }
 
       // ✅ Cas échec authentification (mauvais identifiants)
       if (response != null && response['success'] == false) {
-        return {
-          'success': false,
-          'message':
-              response['message'] ??
+        return _failureResponse(
+          response['message'] ??
               "Nom d'utilisateur ou mot de passe incorrect",
-        };
+        );
       }
 
       // ✅ Cas backend répond mais erreur connue (ex: FastAPI retourne detail)
       if (response != null && response['detail'] != null) {
-        return {'success': false, 'message': response['detail']};
+        final detailMessage = response['detail'] is String
+            ? response['detail']
+            : (response['detail']['message'] ?? "Erreur d'authentification");
+        return _failureResponse(detailMessage);
       }
 
       // Cas inconnu
-      return {
-        'success': false,
-        'message': "Erreur inconnue lors de la connexion",
-      };
+      return _failureResponse("Erreur inconnue lors de la connexion");
     } on ApiException catch (e) {
       // ✅ Si erreur 401 ou 403 => mauvais identifiants
       if (e.statusCode == 401 || e.statusCode == 403) {
-        return {
-          'success': false,
-          'message': "Nom d'utilisateur ou mot de passe incorrect",
-        };
+        return _failureResponse("Nom d'utilisateur ou mot de passe incorrect");
       }
       // ✅ Si erreur 400 avec message d'authentification
       if (e.statusCode == 400 && e.message.contains("authentification")) {
-        return {
-          'success': false,
-          'message': "Nom d'utilisateur ou mot de passe incorrect",
-        };
+        return _failureResponse("Nom d'utilisateur ou mot de passe incorrect");
       }
-      // ✅ Si erreur 500 avec message d'authentification
-      if (e.statusCode == 500 && e.message.contains("authentification")) {
-        return {
-          'success': false,
-          'message': "Nom d'utilisateur ou mot de passe incorrect",
-        };
+
+      // ✅ Erreurs serveur (500, 502, 504) => ne pas passer en fallback hors-ligne
+      if (e.statusCode != null && e.statusCode! >= 500 && e.statusCode != 503) {
+        if (e.message.contains("authentification")) {
+          return _failureResponse("Nom d'utilisateur ou mot de passe incorrect");
+        }
+        return _failureResponse("Erreur serveur (${e.statusCode}). Veuillez réessayer plus tard.");
       }
-      // ✅ Si erreur serveur ou réseau (ex: 503 localtunnel offline, timeout, etc.)
-      if (e.statusCode == null || e.statusCode == 0 || e.statusCode! >= 500) {
+
+      // ✅ Si erreur réseau ou service indisponible (0, null, 503) => mode hors-ligne
+      if (e.statusCode == null || e.statusCode == 0 || e.statusCode == 503) {
         return _offlineLoginFallback(username, password);
       }
-      // Sinon, vraie erreur serveur
-      return {'success': false, 'message': "Erreur serveur : ${e.message}"};
+
+      return _failureResponse("Erreur serveur : ${e.message}");
     } on SocketException {
       return _offlineLoginFallback(username, password);
-    } catch (e) {
+    } on TimeoutException {
       return _offlineLoginFallback(username, password);
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ AuthService: Erreur inattendue durant login: $e');
+      }
+      return _failureResponse("Erreur lors de la connexion");
     }
   }
 
+  Map<String, dynamic> _failureResponse(String message) {
+    return {
+      'success': false,
+      'message': message,
+    };
+  }
+
   Map<String, dynamic> _offlineLoginFallback(String username, String password) {
-    if (username.trim().isNotEmpty && password.trim().isNotEmpty) {
-      final mockUser = User(
-        id: '1',
-        username: username,
-        email: '$username@senelec.sn',
-        role: 'ADMIN',
-        entity: 'SDDV',
+    final cleanUsername = username.trim();
+    final cleanPassword = password.trim();
+
+    if (cleanUsername.isEmpty || cleanPassword.isEmpty) {
+      return _failureResponse(
+        "Veuillez saisir un nom d'utilisateur et un mot de passe.",
       );
-      HiveService.cacheCurrentUser(mockUser);
+    }
+
+    // Récupérer l'utilisateur stocké lors d'une précédente connexion en ligne réussie
+    final User? cachedUser = HiveService.getCurrentUser();
+
+    if (cachedUser != null &&
+        cachedUser.username.toLowerCase() == cleanUsername.toLowerCase()) {
+      if (kDebugMode) {
+        print('✅ Connexion hors-ligne réussie pour ${cachedUser.username}');
+      }
       return {
         'success': true,
-        'data': mockUser,
+        'data': cachedUser,
         'message': 'Connexion réussie (mode hors-ligne)',
       };
     }
-    return {
-      'success': false,
-      'message': 'Veuillez saisir un nom d\'utilisateur et un mot de passe.',
-    };
+
+    return _failureResponse(
+      "Mode hors-ligne : Cet utilisateur n'est pas enregistré sur cet appareil.",
+    );
   }
 
   Future<void> logout(String username) async {

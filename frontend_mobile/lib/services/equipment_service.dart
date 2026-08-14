@@ -40,11 +40,11 @@ class EquipmentService {
   }) async {
     try {
       final queryParams = <String, dynamic>{
-        if (zone != null) 'zone': zone,
-        if (famille != null) 'famille': famille,
-        if (entity.isNotEmpty) 'entity': entity,
-        if (search != null) 'search': search,
-        if (description != null) 'description': description,
+        if (zone != null && zone.trim().isNotEmpty) 'zone': zone.trim(),
+        if (famille != null && famille.trim().isNotEmpty) 'famille': famille.trim(),
+        if (entity.trim().isNotEmpty) 'entity': entity.trim(),
+        if (search != null && search.trim().isNotEmpty) 'search': search.trim(),
+        if (description != null && description.trim().isNotEmpty) 'description': description.trim(),
       };
 
       if (kDebugMode) {
@@ -63,40 +63,6 @@ class EquipmentService {
     } catch (e) {
       if (kDebugMode) {
         print('❌ $__logName Erreur getEquipments: $e');
-      }
-      if (e.toString().contains("503") || e.toString().contains("Connexion impossible") || e.toString().contains("SocketException") || e.toString().contains("Network") || e.toString().contains("timeout") || e.toString().contains("ApiException") || e.toString().contains("HttpException")) {
-        if (kDebugMode) {
-          print('📱 Retour de données d\'équipements simulées de secours (mode hors-ligne)');
-        }
-        final List<Equipment> mockEquips = List.generate(
-          10,
-          (index) => Equipment(
-            id: (100 + index).toString(),
-            codeParent: 'EQ-PARENT-01',
-            feeder: 'FEEDER-01',
-            feederDescription: 'Départ principal',
-            code: 'EQ-SIM-${index}',
-            famille: famille ?? 'TRANS',
-            zone: zone ?? 'DAKAR',
-            entity: entity.isNotEmpty ? entity : 'SDDV',
-            unite: 'U-DAKAR',
-            centreCharge: 'CC-GEN',
-            description: 'Équipement Simulé #${index} - ${entity.isNotEmpty ? entity : 'SDDV'}',
-            longitude: '-17.444',
-            latitude: '14.693',
-            attributes: [],
-          ),
-        );
-        return ApiResponse<Equipment>(
-          items: mockEquips,
-          pagination: PaginationInfo(
-            nextCursor: null,
-            hasMore: false,
-            count: mockEquips.length,
-            requestedLimit: 20,
-          ),
-          filtersApplied: zone != null || famille != null || search != null || description != null,
-        );
       }
       rethrow;
     }

@@ -28,6 +28,11 @@ export const routes: Routes = [
                 canActivate: [authGuard, firstLoginGuard],
             },
             {
+                path: 'di',
+                loadComponent: () => import('./features/di/di-list.component').then((m) => m.DIListComponent),
+                canActivate: [authGuard, firstLoginGuard],
+            },
+            {
                 path: 'parameter',
                 loadChildren: () => import('./features/parameter/parameter.routes').then((m) => m.PARAMETER_ROUTES)
             }

@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 import time
 import logging
 import os
+import json
 
 from fastapi.security import HTTPBearer
 from fastapi.staticfiles import StaticFiles
@@ -46,6 +47,7 @@ async def lifespan(app: FastAPI):
                 logger.warning("⚠️ DB Principale Oracle: KO (mode dégradé)")
     except Exception as e:
         logger.warning(f"⚠️ DB Principale Oracle: KO - {str(e)[:100]}")
+
     
     # Test DB Temporaire
     try:
@@ -217,6 +219,8 @@ async def health():
 PREFIX = "/api/v1"
 app.include_router(authenticate_user_router, prefix=PREFIX)
 
+from app.routers.mobile.user_router import mobile_user_router
+
 # Inclusion du routeur pour le mobile
 PREFIX_MOBILE = "/api/v1/mobile"
 app.include_router(equipment_router, prefix=PREFIX_MOBILE)
@@ -226,6 +230,7 @@ app.include_router(famille_router, prefix=PREFIX_MOBILE)
 app.include_router(unite_router, prefix=PREFIX_MOBILE)
 app.include_router(zone_router, prefix=PREFIX_MOBILE)
 app.include_router(ot_router, prefix=PREFIX_MOBILE)
+app.include_router(mobile_user_router, prefix=PREFIX_MOBILE)
 
 # Inclusion du routeur pour le web
 PREFIX_WEB = "/api/v1/web"
