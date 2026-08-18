@@ -32,13 +32,13 @@ void main() {
       expect(find.byIcon(Icons.settings), findsOneWidget);
 
       // Vérifier que le texte principal est affiché
-      expect(find.text('Code:'), findsOneWidget);
+      expect(find.text('Code: '), findsOneWidget);
       expect(find.text('EQ001'), findsOneWidget);
 
       // Vérifier que les champs sont affichés
-      expect(find.text('Famille:'), findsOneWidget);
+      expect(find.text('Famille: '), findsOneWidget);
       expect(find.text('Transformateur'), findsOneWidget);
-      expect(find.text('Zone:'), findsOneWidget);
+      expect(find.text('Zone: '), findsOneWidget);
       expect(find.text('Dakar'), findsOneWidget);
 
       // Vérifier que l'icône de flèche est présente
@@ -74,13 +74,13 @@ void main() {
       expect(find.byIcon(Icons.settings), findsOneWidget);
 
       // Vérifier que le code est affiché
-      expect(find.text('Code:'), findsOneWidget);
+      expect(find.text('Code: '), findsOneWidget);
       expect(find.text('EQ001'), findsOneWidget);
 
       // Vérifier que les champs principaux sont affichés
-      expect(find.text('Famille:'), findsOneWidget);
+      expect(find.text('Famille: '), findsOneWidget);
       expect(find.text('Transformateur'), findsOneWidget);
-      expect(find.text('Zone:'), findsOneWidget);
+      expect(find.text('Zone: '), findsOneWidget);
       expect(find.text('Dakar'), findsOneWidget);
     });
 
@@ -108,13 +108,13 @@ void main() {
       expect(find.byIcon(Icons.assignment), findsOneWidget);
 
       // Vérifier que le code est affiché
-      expect(find.text('Code:'), findsOneWidget);
+      expect(find.text('Code: '), findsOneWidget);
       expect(find.text('OT001'), findsOneWidget);
 
       // Vérifier que les champs sont affichés
-      expect(find.text('Famille:'), findsOneWidget);
+      expect(find.text('Famille: '), findsOneWidget);
       expect(find.text('Maintenance'), findsOneWidget);
-      expect(find.text('Zone:'), findsOneWidget);
+      expect(find.text('Zone: '), findsOneWidget);
       expect(find.text('Thiès'), findsOneWidget);
     });
 
@@ -142,13 +142,13 @@ void main() {
       expect(find.byIcon(Icons.build), findsOneWidget);
 
       // Vérifier que le code est affiché
-      expect(find.text('Code:'), findsOneWidget);
+      expect(find.text('Code: '), findsOneWidget);
       expect(find.text('DI001'), findsOneWidget);
 
       // Vérifier que les champs sont affichés
-      expect(find.text('Famille:'), findsOneWidget);
+      expect(find.text('Famille: '), findsOneWidget);
       expect(find.text('Urgence'), findsOneWidget);
-      expect(find.text('Zone:'), findsOneWidget);
+      expect(find.text('Zone: '), findsOneWidget);
       expect(find.text('Kaolack'), findsOneWidget);
     });
 

@@ -383,7 +383,7 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
                         },
                       ),
                       DropdownButtonFormField<String>(
-                        value: ['TE', 'CL'].contains(status) ? status : (['OUV', 'CR'].contains(status) ? status : 'OUV'),
+                        value: ['TE', 'CL'].contains(status) ? status : (['OUV', 'CR', 'AY'].contains(status) ? status : 'OUV'),
                         decoration: InputDecoration(
                           labelText: 'Statut',
                           helperText: ['TE', 'CL'].contains(order.wowoUserStatus.trim().toUpperCase())
@@ -393,6 +393,7 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
                         items: const [
                           DropdownMenuItem(value: 'OUV', child: Text('OUVERT (OUV)')),
                           DropdownMenuItem(value: 'CR', child: Text('EN COURS (CR)')),
+                          DropdownMenuItem(value: 'AY', child: Text('EN ATTENTE (AY)')),
                           DropdownMenuItem(value: 'TE', child: Text('RÉALISÉ (TE)')),
                           DropdownMenuItem(value: 'CL', child: Text('CLÔTURÉ (CL)')),
                         ],

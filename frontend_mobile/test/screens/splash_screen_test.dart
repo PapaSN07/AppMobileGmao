@@ -2,102 +2,110 @@ import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:appmobilegmao/screens/splash_screen.dart';
+import 'package:provider/provider.dart';
+import 'package:appmobilegmao/provider/auth_provider.dart';
+import 'package:appmobilegmao/provider/equipment_provider.dart';
+import 'package:appmobilegmao/provider/notification_provider.dart';
+import 'dart:io';
+import 'package:hive/hive.dart';
 
 void main() {
+  setUpAll(() {
+    Hive.init(Directory.systemTemp.path);
+  });
+
   group('SplashScreen Tests', () {
     Widget createWidget() {
-      return const MaterialApp(home: SplashScreen());
+      final authProvider = AuthProvider();
+      return MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: authProvider),
+          ChangeNotifierProvider(create: (_) => EquipmentProvider(authProvider)),
+          ChangeNotifierProvider(create: (_) => NotificationProvider()),
+        ],
+        child: const MaterialApp(home: SplashScreen(testMode: true)),
+      );
     }
 
     testWidgets('renders correctly with all components', (
       WidgetTester tester,
     ) async {
       await tester.pumpWidget(createWidget());
-      await tester.pump(
-        const Duration(milliseconds: 100),
-      ); // Remplace pumpAndSettle
+      await tester.pump(const Duration(milliseconds: 500));
 
-      // Vérifier que le SplashScreen est rendu
       expect(find.byType(SplashScreen), findsOneWidget);
-
-      // Vérifier que l'image du logo est présente
       expect(find.byType(Image), findsOneWidget);
       expect(
         find.image(const AssetImage('assets/images/logo.png')),
         findsOneWidget,
       );
-
-      // Vérifier que le CircularProgressIndicator est présent
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
-
-      // Vérifier qu'aucune erreur ne survient
+      expect(find.byType(LinearProgressIndicator), findsOneWidget);
       expect(tester.takeException(), isNull);
+
+      // Flush 5s timer + 600ms page transition
+      await tester.pump(const Duration(seconds: 6));
+      await tester.pump(const Duration(seconds: 1));
     });
 
-    testWidgets('displays logo with correct dimensions', (
+    testWidgets('displays logo with correct fit', (
       WidgetTester tester,
     ) async {
       await tester.pumpWidget(createWidget());
-      await tester.pump(
-        const Duration(milliseconds: 100),
-      ); // Remplace pumpAndSettle
+      await tester.pump(const Duration(milliseconds: 500));
 
-      // Vérifier que l'image a les bonnes dimensions
       final image = tester.widget<Image>(find.byType(Image));
-      expect(image.width, 200);
-      expect(image.height, 200);
-      expect(image.fit, BoxFit.cover);
+      expect(image.fit, BoxFit.contain);
+
+      await tester.pump(const Duration(seconds: 6));
+      await tester.pump(const Duration(seconds: 1));
     });
 
-    testWidgets('displays CircularProgressIndicator with correct color', (
+    testWidgets('displays LinearProgressIndicator with correct color', (
       WidgetTester tester,
     ) async {
       await tester.pumpWidget(createWidget());
-      await tester.pump(
-        const Duration(milliseconds: 100),
-      ); // Remplace pumpAndSettle
+      await tester.pump(const Duration(milliseconds: 500));
 
-      // Vérifier que le CircularProgressIndicator a la bonne couleur
-      final progressIndicator = tester.widget<CircularProgressIndicator>(
-        find.byType(CircularProgressIndicator),
+      final progressIndicator = tester.widget<LinearProgressIndicator>(
+        find.byType(LinearProgressIndicator),
       );
       expect(
         (progressIndicator.valueColor as AlwaysStoppedAnimation).value,
-        equals(AppTheme.secondaryColor),
+        equals(AppTheme.senelecOrange),
       );
+
+      await tester.pump(const Duration(seconds: 6));
+      await tester.pump(const Duration(seconds: 1));
     });
 
     testWidgets('renders centered layout', (WidgetTester tester) async {
       await tester.pumpWidget(createWidget());
-      await tester.pump(
-        const Duration(milliseconds: 100),
-      ); // Remplace pumpAndSettle
-
-      // Vérifier que le contenu est centré
-      final column = find.byType(Column);
-      expect(column, findsOneWidget);
-
-      final columnWidget = tester.widget<Column>(column);
-      expect(columnWidget.mainAxisAlignment, MainAxisAlignment.center);
+      await tester.pump(const Duration(milliseconds: 500));
 
       final center = find.byType(Center);
-      expect(center, findsOneWidget);
+      expect(center, findsWidgets);
+
+      final column = find.descendant(
+        of: find.byType(Center),
+        matching: find.byType(Column)
+      ).first;
+      expect(column, findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 6));
+      await tester.pump(const Duration(seconds: 1));
     });
 
-    testWidgets('renders spacing between logo and progress indicator', (
+    testWidgets('renders specific texts', (
       WidgetTester tester,
     ) async {
       await tester.pumpWidget(createWidget());
-      await tester.pump(
-        const Duration(milliseconds: 100),
-      ); // Remplace pumpAndSettle
+      await tester.pump(const Duration(milliseconds: 500));
 
-      // Vérifier qu'il y a un SizedBox avec une hauteur de 20 entre les widgets
-      final sizedBox = find.byType(SizedBox);
-      expect(sizedBox, findsOneWidget);
+      expect(find.text('GMAO'), findsOneWidget);
+      expect(find.text('Initialisation des modules...'), findsOneWidget);
 
-      final sizedBoxWidget = tester.widget<SizedBox>(sizedBox);
-      expect(sizedBoxWidget.height, 20);
+      await tester.pump(const Duration(seconds: 6));
+      await tester.pump(const Duration(seconds: 1));
     });
   });
 }

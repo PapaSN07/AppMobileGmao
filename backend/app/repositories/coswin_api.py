@@ -14,8 +14,8 @@ from app.core.config import (
     OT_CWUSER,
 )
 from app.repositories.base import AbstractWorkOrderRepository
-from app.db.sqlalchemy.session import get_temp_session, get_main_session
-from sqlalchemy import text
+# Note: les imports DB locale (get_temp_session, get_main_session, text) ont été supprimés
+# car toutes les opérations passent directement par l'API Coswin sans fallback local.
 
 logger = logging.getLogger(__name__)
 
@@ -209,20 +209,20 @@ class CoswinAPIWorkOrderRepository(AbstractWorkOrderRepository):
                     exclude_closed=exclude_closed
                 )
                 matched = res["workorders"]
-                matched.sort(key=lambda x: int(x.get("wowoCode") or 0), reverse=True)
                 has_more = res["hasMore"]
                 next_token = res["paginationContext"] if has_more else None
 
             elif scope == "service" and request_entity:
                 req_ent_upper = str(request_entity).upper()
                 if req_ent_upper in ["SENELEC", "GLOBAL"]:
-                    # Entité globale parente SENELEC : utiliser filterOperator: between avec la plage 2025-2026
+                    # Entité globale parente SENELEC : utiliser filterOperator: between avec l'année en cours
                     # et la pagination native Coswin pour un chargement instantané (<1s) et successif.
+                    current_year = datetime.now().year
                     params = {
                         "usePagination": "true",
                         "filterOperator": "between",
-                        "filterOperand1": "2025000000",
-                        "filterOperand2": "2026999999"
+                        "filterOperand1": f"{current_year}000000",
+                        "filterOperand2": f"{current_year}999999"
                     }
                     if pagination_context:
                         params["paginationContext"] = pagination_context
@@ -235,7 +235,6 @@ class CoswinAPIWorkOrderRepository(AbstractWorkOrderRepository):
                         exclude_closed=exclude_closed,
                     )
                     matched = res["workorders"]
-                    matched.sort(key=lambda x: int(x.get("wowoCode") or 0), reverse=True)
                     has_more = res["hasMore"]
                     next_token = res["paginationContext"] if has_more else None
                 else:
@@ -256,7 +255,6 @@ class CoswinAPIWorkOrderRepository(AbstractWorkOrderRepository):
                         exclude_closed=exclude_closed
                     )
                     matched = res["workorders"]
-                    matched.sort(key=lambda x: int(x.get("wowoCode") or 0), reverse=True)
                     has_more = res["hasMore"]
                     next_token = res["paginationContext"] if has_more else None
 
@@ -309,31 +307,11 @@ class CoswinAPIWorkOrderRepository(AbstractWorkOrderRepository):
                 next_token = f"custom_prev_code:{current_upper}" if has_more else None
 
         except Exception as e:
-            logger.warning(f"Erreur lors de la récupération Coswin API OT ({e}). Fallback DB locale...")
-            # Fallback DB locale MSSQL (dbo.work_order dans gmao_backend)
-            try:
-                with get_main_session() as session:
-                    sql = "SELECT * FROM dbo.work_order WHERE 1=1"
-                    params_sql = {}
-                    if request_entity:
-                        sql += " AND UPPER(wowo_request_entity) = :req_entity"
-                        params_sql["req_entity"] = request_entity.upper()
-                    if supervisor_code:
-                        sql += " AND wowo_supervisor = :sup"
-                        params_sql["sup"] = str(supervisor_code)
-                    if exclude_closed:
-                        sql += " AND UPPER(wowo_user_status) != 'CL'"
-                    sql += " ORDER BY wowo_code DESC"
-                    rows = session.execute(text(sql), params_sql).fetchall()
-                    local_matched = []
-                    for r in rows:
-                        d = dict(r._mapping) if hasattr(r, '_mapping') else {}
-                        if d:
-                            local_matched.append(d)
-                    matched = local_matched
-            except Exception as ex_db:
-                logger.error(f"Erreur fallback DB locale OT: {ex_db}")
-                matched = []
+            logger.error(f"Erreur Coswin API OT: {e}")
+            raise HTTPException(status_code=502, detail=f"Coswin indisponible: {str(e)}")
+
+        # Tri unique (DRY) — appliqué une seule fois après toutes les branches
+        matched.sort(key=lambda x: int(x.get("wowoCode") or 0), reverse=True)
 
         # Dédoublonnage
         seen_codes = set()
@@ -615,62 +593,13 @@ class CoswinAPIWorkOrderRepository(AbstractWorkOrderRepository):
         if equipment:
             payload["wowaEquipment"] = equipment
 
-        # 1. Tenter l'API Coswin
-        try:
-            res = await self._write_sub_resource(workorder_code, "actions", payload)
-            if res and isinstance(res, dict) and res.get("success") != False:
-                return res
-        except Exception as e:
-            logger.warning(f"API Coswin Actions non disponible ({e}), sauvegarde de l'opération en DB locale MSSQL...")
-
-        # 2. Fallback DB locale MSSQL (dbo.workorder_operation)
-        try:
-            with get_temp_session() as session:
-                session.execute(
-                    text("INSERT INTO dbo.workorder_operation (wowo_code, operation_code, description, duration) VALUES (:wowo_code, :op_code, :desc, :duration)"),
-                    {
-                        "wowo_code": int(workorder_code),
-                        "op_code": data.get("operationCode") or data.get("opopDescription") or "OP_LOCAL",
-                        "desc": description,
-                        "duration": float(data.get("duration") or 0.0)
-                    }
-                )
-                session.commit()
-            logger.info(f"✅ Opération enregistrée avec succès en DB locale MSSQL pour l'OT {workorder_code}")
-            return {"success": True, "storage": "local_db"}
-        except Exception as ex:
-            logger.error(f"Erreur sauvegarde opération DB locale: {ex}")
-            return {"success": True, "storage": "fallback"}
+        return await self._write_sub_resource(workorder_code, "actions", payload)
 
     async def update_operation(self, workorder_code: str, pk: int, data: Dict[str, Any]) -> Dict[str, Any]:
-        try:
-            return await self._update_sub_resource(workorder_code, "actions", pk, data)
-        except Exception:
-            try:
-                with get_temp_session() as session:
-                    session.execute(
-                        text("UPDATE dbo.workorder_operation SET description = :desc WHERE pk_operation = :pk"),
-                        {"pk": pk, "desc": data.get("opopDescription") or data.get("description")}
-                    )
-                    session.commit()
-            except Exception as ex:
-                logger.error(f"Erreur update local operation: {ex}")
-            return {"success": True}
+        return await self._update_sub_resource(workorder_code, "actions", pk, data)
 
     async def delete_operation(self, workorder_code: str, pk: int) -> Dict[str, Any]:
-        try:
-            return await self._delete_sub_resource(workorder_code, "actions", pk)
-        except Exception:
-            try:
-                with get_temp_session() as session:
-                    session.execute(
-                        text("DELETE FROM dbo.workorder_operation WHERE pk_operation = :pk"),
-                        {"pk": pk}
-                    )
-                    session.commit()
-            except Exception as ex:
-                logger.error(f"Erreur delete local operation: {ex}")
-            return {"success": True}
+        return await self._delete_sub_resource(workorder_code, "actions", pk)
 
     # --- Documents / Commentaires (employeefeedbacks dans Coswin: WoEmployeeFeedbackAdd) ---
     async def create_document(self, workorder_code: str, data: Dict[str, Any]) -> Dict[str, Any]:
@@ -755,60 +684,28 @@ class CoswinAPIWorkOrderRepository(AbstractWorkOrderRepository):
             )
 
     async def update_workforce(self, workorder_code: str, pk: int, data: Dict[str, Any]) -> Dict[str, Any]:
-        try:
-            return await self._update_sub_resource(workorder_code, "allocatedemployees", pk, data)
-        except Exception as e:
-            logger.warning(f"Coswin update_workforce warning ({e})")
-            return {"success": True}
+        return await self._update_sub_resource(workorder_code, "allocatedemployees", pk, data)
 
     async def delete_workforce(self, workorder_code: str, pk: int) -> Dict[str, Any]:
-        try:
-            return await self._delete_sub_resource(workorder_code, "allocatedemployees", pk)
-        except Exception as e:
-            logger.warning(f"Coswin delete_workforce warning ({e})")
-            return {"success": True}
+        return await self._delete_sub_resource(workorder_code, "allocatedemployees", pk)
 
     # --- Pièces de rechange (stockused dans Coswin) ---
     async def create_part(self, workorder_code: str, data: Dict[str, Any]) -> Dict[str, Any]:
-        try:
-            return await self._write_sub_resource(workorder_code, "stockused", data)
-        except Exception as e:
-            logger.warning(f"Coswin stockused warning ({e}). Fallback pièce enregistrée.")
-            return {"success": True, "storage": "fallback", "message": "Pièce enregistrée"}
+        return await self._write_sub_resource(workorder_code, "stockused", data)
 
     async def update_part(self, workorder_code: str, pk: int, data: Dict[str, Any]) -> Dict[str, Any]:
-        try:
-            return await self._update_sub_resource(workorder_code, "stockused", pk, data)
-        except Exception as e:
-            logger.warning(f"Coswin update_part warning ({e})")
-            return {"success": True}
+        return await self._update_sub_resource(workorder_code, "stockused", pk, data)
 
     async def delete_part(self, workorder_code: str, pk: int) -> Dict[str, Any]:
-        try:
-            return await self._delete_sub_resource(workorder_code, "stockused", pk)
-        except Exception as e:
-            logger.warning(f"Coswin delete_part warning ({e})")
-            return {"success": True}
+        return await self._delete_sub_resource(workorder_code, "stockused", pk)
 
     # --- Attributs ---
     async def create_attribute(self, workorder_code: str, data: Dict[str, Any]) -> Dict[str, Any]:
-        try:
-            return await self._write_sub_resource(workorder_code, "attributes", data)
-        except Exception as e:
-            logger.warning(f"Coswin attributes warning ({e}). Fallback attribut enregistré.")
-            return {"success": True, "storage": "fallback", "message": "Attribut enregistré"}
+        return await self._write_sub_resource(workorder_code, "attributes", data)
 
     async def update_attribute(self, workorder_code: str, pk: int, data: Dict[str, Any]) -> Dict[str, Any]:
-        try:
-            return await self._update_sub_resource(workorder_code, "attributes", pk, data)
-        except Exception as e:
-            logger.warning(f"Coswin update_attribute warning ({e})")
-            return {"success": True}
+        return await self._update_sub_resource(workorder_code, "attributes", pk, data)
 
     async def delete_attribute(self, workorder_code: str, pk: int) -> Dict[str, Any]:
-        try:
-            return await self._delete_sub_resource(workorder_code, "attributes", pk)
-        except Exception as e:
-            logger.warning(f"Coswin delete_attribute warning ({e})")
-            return {"success": True}
+        return await self._delete_sub_resource(workorder_code, "attributes", pk)
 

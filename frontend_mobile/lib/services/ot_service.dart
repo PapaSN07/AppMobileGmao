@@ -331,98 +331,98 @@ class OTService {
   /// Récupérer les opérations (mode opératoire) d'un OT
   Future<List<dynamic>> getOperations(String otCode) async {
     final hasInternet = await hasInternetConnection();
-    if (!hasInternet) return [];
+    if (!hasInternet) throw Exception('Pas de connexion internet');
     try {
       final response = await _apiService.get('$ordersEndpoint/$otCode/operations');
       final payload = _extractDataPayload(response);
       return payload is List ? payload : [];
     } catch (e) {
       print('❌ Erreur getOperations: $e');
-      return [];
+      rethrow;
     }
   }
 
   /// Récupérer la main d'œuvre affectée à un OT
   Future<List<dynamic>> getWorkforce(String otCode) async {
     final hasInternet = await hasInternetConnection();
-    if (!hasInternet) return [];
+    if (!hasInternet) throw Exception('Pas de connexion internet');
     try {
       final response = await _apiService.get('$ordersEndpoint/$otCode/workforce');
       final payload = _extractDataPayload(response);
       return payload is List ? payload : [];
     } catch (e) {
       print('❌ Erreur getWorkforce: $e');
-      return [];
+      rethrow;
     }
   }
 
   /// Récupérer les pièces de rechange d'un OT
   Future<List<dynamic>> getParts(String otCode) async {
     final hasInternet = await hasInternetConnection();
-    if (!hasInternet) return [];
+    if (!hasInternet) throw Exception('Pas de connexion internet');
     try {
       final response = await _apiService.get('$ordersEndpoint/$otCode/parts');
       final payload = _extractDataPayload(response);
       return payload is List ? payload : [];
     } catch (e) {
       print('❌ Erreur getParts: $e');
-      return [];
+      rethrow;
     }
   }
 
   /// Récupérer les services utilisés d'un OT (prestations de services / sous-traitance)
   Future<List<dynamic>> getServices(String otCode) async {
     final hasInternet = await hasInternetConnection();
-    if (!hasInternet) return [];
+    if (!hasInternet) throw Exception('Pas de connexion internet');
     try {
       final response = await _apiService.get('$ordersEndpoint/$otCode/services');
       final payload = _extractDataPayload(response);
       return payload is List ? payload : [];
     } catch (e) {
       print('❌ Erreur getServices: $e');
-      return [];
+      rethrow;
     }
   }
 
   /// Récupérer les commentaires/feedbacks d'un OT (employeefeedbacks Coswin)
   Future<List<dynamic>> getDocuments(String otCode) async {
     final hasInternet = await hasInternetConnection();
-    if (!hasInternet) return [];
+    if (!hasInternet) throw Exception('Pas de connexion internet');
     try {
       final response = await _apiService.get('$ordersEndpoint/$otCode/documents');
       final payload = _extractDataPayload(response);
       return payload is List ? payload : [];
     } catch (e) {
       print('❌ Erreur getDocuments: $e');
-      return [];
+      rethrow;
     }
   }
 
   /// Récupérer les sous-attributs d'un OT (attributes Coswin)
   Future<List<dynamic>> getAttributes(String otCode) async {
     final hasInternet = await hasInternetConnection();
-    if (!hasInternet) return [];
+    if (!hasInternet) throw Exception('Pas de connexion internet');
     try {
       final response = await _apiService.get('$ordersEndpoint/$otCode/attributes');
       final payload = _extractDataPayload(response);
       return payload is List ? payload : [];
     } catch (e) {
       print('❌ Erreur getAttributes: $e');
-      return [];
+      rethrow;
     }
   }
 
   /// Récupérer les moyens d'un OT (facilitiesused Coswin)
   Future<List<dynamic>> getMoyens(String otCode) async {
     final hasInternet = await hasInternetConnection();
-    if (!hasInternet) return [];
+    if (!hasInternet) throw Exception('Pas de connexion internet');
     try {
       final response = await _apiService.get('$ordersEndpoint/$otCode/facilitiesused');
       final payload = _extractDataPayload(response);
       return payload is List ? payload : [];
     } catch (e) {
       print('❌ Erreur getMoyens: $e');
-      return [];
+      rethrow;
     }
   }
 

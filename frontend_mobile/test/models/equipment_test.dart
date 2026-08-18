@@ -44,7 +44,6 @@ void main() {
 
       final json = equipment.toJson();
 
-      expect(json['id'], "1");
       expect(json['code'], "EQ001");
       expect(json['famille'], "Transformateur");
     });

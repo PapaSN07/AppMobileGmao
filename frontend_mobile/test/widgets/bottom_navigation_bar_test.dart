@@ -2,22 +2,37 @@ import 'package:appmobilegmao/widgets/custom_bottom_navigation_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
+import 'package:provider/provider.dart';
+import 'package:appmobilegmao/provider/auth_provider.dart';
+import 'dart:io';
+import 'package:hive/hive.dart';
 
 void main() {
+  setUpAll(() {
+    Hive.init(Directory.systemTemp.path);
+  });
+
   group('CustomBottomNavigationBar Tests', () {
     testWidgets('renders all navigation items correctly', (
       WidgetTester tester,
     ) async {
       int selectedIndex = 0;
 
+      final authProvider = AuthProvider();
+
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            bottomNavigationBar: CustomBottomNavigationBar(
-              currentIndex: selectedIndex,
-              onTap: (index) {
-                selectedIndex = index;
-              },
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider.value(value: authProvider),
+          ],
+          child: MaterialApp(
+            home: Scaffold(
+              bottomNavigationBar: CustomBottomNavigationBar(
+                currentIndex: selectedIndex,
+                onTap: (index) {
+                  selectedIndex = index;
+                },
+              ),
             ),
           ),
         ),
@@ -29,9 +44,9 @@ void main() {
       expect(find.text('DI'), findsOneWidget);
 
       expect(find.byIcon(Icons.home), findsOneWidget);
-      expect(find.byIcon(Icons.settings), findsOneWidget);
-      expect(find.byIcon(Icons.assignment), findsOneWidget);
-      expect(find.byIcon(Icons.build), findsOneWidget);
+      expect(find.byIcon(Icons.shopping_bag_outlined), findsOneWidget);
+      expect(find.byIcon(Icons.assignment_outlined), findsOneWidget);
+      expect(find.byIcon(Icons.build_outlined), findsOneWidget);
     });
 
     testWidgets('calls onTap when an item is tapped', (
@@ -39,14 +54,21 @@ void main() {
     ) async {
       int selectedIndex = 0;
 
+      final authProvider = AuthProvider();
+
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            bottomNavigationBar: CustomBottomNavigationBar(
-              currentIndex: selectedIndex,
-              onTap: (index) {
-                selectedIndex = index;
-              },
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider.value(value: authProvider),
+          ],
+          child: MaterialApp(
+            home: Scaffold(
+              bottomNavigationBar: CustomBottomNavigationBar(
+                currentIndex: selectedIndex,
+                onTap: (index) {
+                  selectedIndex = index;
+                },
+              ),
             ),
           ),
         ),
@@ -64,12 +86,19 @@ void main() {
     testWidgets('applies correct styles to selected and unselected items', (
       WidgetTester tester,
     ) async {
+      final authProvider = AuthProvider();
+
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            bottomNavigationBar: CustomBottomNavigationBar(
-              currentIndex: 1, // Sélectionner "Équipements"
-              onTap: (_) {},
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider.value(value: authProvider),
+          ],
+          child: MaterialApp(
+            home: Scaffold(
+              bottomNavigationBar: CustomBottomNavigationBar(
+                currentIndex: 1, // Sélectionner "Équipements"
+                onTap: (_) {},
+              ),
             ),
           ),
         ),

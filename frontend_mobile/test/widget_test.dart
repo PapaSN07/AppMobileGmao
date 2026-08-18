@@ -1,30 +1,39 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
+import 'package:provider/provider.dart';
 import 'package:appmobilegmao/main.dart';
+import 'package:appmobilegmao/provider/auth_provider.dart';
+import 'package:appmobilegmao/provider/equipment_provider.dart';
+import 'package:appmobilegmao/provider/notification_provider.dart';
+import 'dart:io';
+import 'package:hive/hive.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  setUpAll(() async {
+    Hive.init(Directory.systemTemp.path);
+    // Note: HiveService.init() removed - it uses path_provider plugin
+    // which is not available in the test environment.
+  });
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+  testWidgets('MyApp smoke test', (WidgetTester tester) async {
+    final authProvider = AuthProvider();
+    final equipmentProvider = EquipmentProvider(authProvider);
+    final notificationProvider = NotificationProvider();
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: authProvider),
+          ChangeNotifierProvider.value(value: equipmentProvider),
+          ChangeNotifierProvider.value(value: notificationProvider),
+        ],
+        child: const MyApp(),
+      ),
+    );
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(find.byType(MaterialApp), findsOneWidget);
+
+    // Flush pending timer from SplashScreen (5s delay + animation)
+    await tester.pump(const Duration(seconds: 6));
   });
 }

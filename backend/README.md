@@ -348,4 +348,4 @@ except Exception as e:
 
 ---
 
-*Développé avec ❤️ pour SENELEC par l'équipe DSI*
+
