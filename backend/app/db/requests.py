@@ -93,7 +93,7 @@ FROM function_
 #   ================================================================================
 #   REQUÊTES DE Équipements
 #   ================================================================================
-EQUIPMENT_INFINITE_QUERY = """
+EQUIPMENT_BASE_SELECT = """
 SELECT 
     e.pk_equipment, 
     e.ereq_parent_equipment, 
@@ -119,10 +119,11 @@ LEFT JOIN costcentre cc ON e.ereq_costcentre = cc.mdcc_code
 LEFT JOIN equipment f ON e.ereq_string2 = f.ereq_code
 LEFT JOIN equipment_specs es ON e.ereq_code = es.etes_equipment
 LEFT JOIN equipment_attribute ea ON es.pk_equipment_specs = ea.commonkey
-LEFT JOIN t_specification s ON es.etes_specification = s.cwsp_code
+LEFT JOIN specification s ON es.etes_specification = s.cwsp_code
 LEFT JOIN attribute a ON (s.pk_specification = a.cwat_specification AND ea.INDX = a.CWAT_INDEX)
-WHERE 1=1
 """
+
+EQUIPMENT_INFINITE_QUERY = EQUIPMENT_BASE_SELECT + "\nWHERE 1=1\n"
 
 ATTRIBUTE_VALUES_QUERY = """
 SELECT
@@ -167,35 +168,7 @@ INSERT INTO equipment (
 )
 """
 
-EQUIPMENT_BY_ID_QUERY = """
-SELECT 
-    e.pk_equipment, 
-    e.ereq_parent_equipment, 
-    e.ereq_code, 
-    e.ereq_category, 
-    e.ereq_zone, 
-    e.ereq_entity, 
-    e.ereq_function,
-    COALESCE(cc.mdcc_description, '') as ereq_costcentre, 
-    e.ereq_description, 
-    e.ereq_longitude, 
-    e.ereq_latitude,
-    f.pk_equipment as feeder,
-    f.ereq_description as feeder_description,
-    a.pk_attribute as attr_id,
-    a.cwat_specification as attr_specification,
-    a.cwat_index as attr_index,
-    a.cwat_name as attr_name,
-    ea.etat_value as attr_value
-FROM equipment e
-LEFT JOIN costcentre cc ON e.ereq_costcentre = cc.mdcc_code
-LEFT JOIN equipment f ON e.ereq_string2 = f.ereq_code
-LEFT JOIN equipment_specs es ON e.ereq_code = es.etes_equipment
-LEFT JOIN equipment_attribute ea ON es.pk_equipment_specs = ea.commonkey
-LEFT JOIN t_specification s ON es.etes_specification = s.cwsp_code
-LEFT JOIN attribute a ON (s.pk_specification = a.cwat_specification AND ea.INDX = a.CWAT_INDEX)
-WHERE e.pk_equipment = :equipment_id
-"""
+EQUIPMENT_BY_ID_QUERY = EQUIPMENT_BASE_SELECT + "\nWHERE e.pk_equipment = :equipment_id\n"
 
 EQUIPMENT_UPDATE_QUERY = """
 UPDATE equipment 
@@ -220,7 +193,7 @@ SET etat_value = :value
 WHERE commonkey = (
     SELECT es.pk_equipment_specs 
     FROM equipment_specs es
-    JOIN t_specification s ON es.etes_specification = s.cwsp_code
+    JOIN specification s ON es.etes_specification = s.cwsp_code
     JOIN attribute a ON s.pk_specification = a.cwat_specification
     WHERE es.etes_equipment = :equipment_code
     AND a.cwat_name = :attribute_name
@@ -228,7 +201,7 @@ WHERE commonkey = (
 AND indx = (
     SELECT a.cwat_index
     FROM equipment_specs es
-    JOIN t_specification s ON es.etes_specification = s.cwsp_code
+    JOIN specification s ON es.etes_specification = s.cwsp_code
     JOIN attribute a ON s.pk_specification = a.cwat_specification
     WHERE es.etes_equipment = :equipment_code
     AND a.cwat_name = :attribute_name
@@ -246,7 +219,7 @@ FROM
     equipment e
     JOIN equipment_specs es ON e.ereq_code = es.etes_equipment
     JOIN equipment_attribute ea ON es.pk_equipment_specs = ea.commonkey
-    JOIN t_specification s ON es.etes_specification = s.cwsp_code
+    JOIN specification s ON es.etes_specification = s.cwsp_code
     JOIN attribute a ON (s.pk_specification = a.cwat_specification AND ea.INDX = a.CWAT_INDEX)
 WHERE 
     e.ereq_code = :code
@@ -260,7 +233,7 @@ SELECT
 FROM
     category c
     JOIN category_specification cs ON c.mdct_code = cs.mdcs_category
-    JOIN t_specification s ON cs.mdcs_specification = s.cwsp_code
+    JOIN specification s ON cs.mdcs_specification = s.cwsp_code
 WHERE c.mdct_code LIKE :category
 """
 
@@ -288,7 +261,7 @@ SELECT
     a.cwat_name as name,
     NULL as value
 FROM
-    t_specification s
+    specification s
     JOIN category_specification cs ON cs.mdcs_specification = s.cwsp_code
     JOIN category r ON r.mdct_code = cs.mdcs_category
     JOIN attribute a ON s.pk_specification = a.cwat_specification
@@ -300,7 +273,7 @@ EQUIPMENT_LENGTH_ATTRIBUTS_QUERY = """
 SELECT
     a.cwat_index as len
 FROM
-    t_specification s
+    specification s
     JOIN category_specification cs ON cs.mdcs_specification = s.cwsp_code
     JOIN category r ON r.mdct_code = cs.mdcs_category
     JOIN attribute a ON s.pk_specification = a.cwat_specification
@@ -325,7 +298,7 @@ EQUIPMENT_T_SPECIFICATION_CODE_QUERY = """
 SELECT TOP 1 s.cwsp_code
 FROM equipment e
     JOIN category_specification cs ON e.ereq_category = cs.mdcs_category
-    JOIN t_specification s ON cs.mdcs_specification = s.cwsp_code
+    JOIN specification s ON cs.mdcs_specification = s.cwsp_code
 WHERE e.ereq_category LIKE :category
 """
 
@@ -336,7 +309,7 @@ WHERE commonkey = :commonkey AND indx = :indx
 
 EQUIPMENT_LENGTH_ATTRIBUTS_QUERY_DISTINCT = """
 SELECT DISTINCT a.cwat_index
-FROM t_specification s
+FROM specification s
 JOIN category_specification cs ON s.cwsp_code = cs.mdcs_specification  
 JOIN category r ON cs.mdcs_category = r.mdct_code
 JOIN attribute a ON s.pk_specification = a.cwat_specification

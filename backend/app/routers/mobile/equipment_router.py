@@ -38,6 +38,7 @@ logger = logging.getLogger(__name__)
 equipment_router = APIRouter(
     prefix="/equipments",
     tags=["Équipements GMAO - Mobile API"],
+    dependencies=[Depends(get_current_user)],  # ✅ FIX #3 : Auth obligatoire sur tous les endpoints
 )
 
 # === ENDPOINTS CORE POUR MOBILE ===

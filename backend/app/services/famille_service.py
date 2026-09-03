@@ -6,30 +6,22 @@ from app.db.requests import CATEGORY_QUERY
 from typing import Any, Dict
 import logging
 
+from app.services.entity_service import extract_hierarchy
+
 logger = logging.getLogger(__name__)
 
 def get_familles(entity: str, hierarchy_result: Dict[str, Any]) -> Dict[str, Any]:
     """Récupère toutes les familles depuis la base de données."""
     
-    cached = cache.get_data_only("mobile_familles")
+    # ✅ FIX #1 : Clé de cache inclut l'entité pour éviter la fuite inter-utilisateurs
+    cache_key = f"mobile_familles_{entity.upper()}"
+    cached = cache.get_data_only(cache_key)
     if cached:
         return cached
     
-    # Récupérer la hiérarchie de l'entité
-    try:
-        hierarchy_entities = hierarchy_result.get('hierarchy', [])
-        
-        if not hierarchy_entities:
-            # Si pas de hiérarchie, utiliser seulement l'entité fournie
-            hierarchy_entities = [entity]
-            logger.warning(f"Aucune hiérarchie trouvée pour {entity}, utilisation de l'entité seule")
-        
-        logger.info(f"Hiérarchie pour {entity}: {hierarchy_entities}")
-        
-    except Exception as e:
-        logger.error(f"Erreur récupération hiérarchie pour {entity}: {e}")
-        # En cas d'erreur, utiliser seulement l'entité fournie
-        hierarchy_entities = [entity]
+    # ✅ DRY : Utilisation de extract_hierarchy
+    hierarchy_entities = extract_hierarchy(entity, hierarchy_result)
+    logger.info(f"Hiérarchie pour {entity}: {hierarchy_entities}")
     
     query = CATEGORY_QUERY
     params = {}
@@ -81,7 +73,7 @@ def get_familles(entity: str, hierarchy_result: Dict[str, Any]) -> Dict[str, Any
                     })
 
             response = {"familles": familles, "count": len(familles)}
-            cache.set("mobile_familles", response, CACHE_TTL_SHORT)
+            cache.set(cache_key, response, CACHE_TTL_SHORT)
             return response
     except Exception as e:
         logger.error(f"❌ Erreur familles: {e}")

@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:appmobilegmao/models/order.dart';
 import 'package:appmobilegmao/models/work_order.dart';
-import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:appmobilegmao/utils/responsive.dart';
 import 'package:appmobilegmao/theme/responsive_spacing.dart';
 import 'package:appmobilegmao/widgets/custom_app_bar.dart';
@@ -139,7 +137,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
     _otService = OTService(ApiService());
     _tabController = TabController(length: 6, vsync: this);
     _tabController.addListener(() {
-      if (mounted) setState(() {});
+      if (mounted && _tabController.indexIsChanging) setState(() {});
     });
 
     // Initialisation des dates par défaut pour la main d'œuvre

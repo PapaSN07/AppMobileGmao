@@ -19,7 +19,7 @@ import 'package:appmobilegmao/models/equipment.dart';
 class EquipmentProvider extends ChangeNotifier {
   final EquipmentService _equipmentService = EquipmentService();
   final Connectivity _connectivity = Connectivity();
-  late final AuthProvider _authProvider; // ✅ Changé en late pour injection
+  late AuthProvider _authProvider; // ✅ Mutable pour supporter les mises à jour du ProxyProvider
 
   List<Map<String, dynamic>> _equipments = [];
   List<Map<String, dynamic>> _allEquipments = [];
@@ -35,29 +35,60 @@ class EquipmentProvider extends ChangeNotifier {
   final Map<String, List<EquipmentAttribute>> _attributeSpecifications = {};
   bool _attributesLoading = false;
 
+  String? _lastLoadedEntity;
+  final int _pageSize = 50;
+  int _displayedCount = 50;
+  bool _isLoadingMore = false;
+
   // ✅ Constructeur avec injection d'AuthProvider
   EquipmentProvider(this._authProvider);
 
+  // ✅ FIX : Méthode appelée par ProxyProvider quand AuthProvider change (entité active modifiée dans les OT)
+  void onAuthProviderUpdated(AuthProvider newAuthProvider) {
+    _authProvider = newAuthProvider;
+    final newEntity = newAuthProvider.activeEntity;
+    // Recharger les équipements si l'entité active a changé
+    if (_lastLoadedEntity != newEntity && newEntity.isNotEmpty) {
+      if (kDebugMode) {
+        print('🔄 EquipmentProvider: entité changée $_lastLoadedEntity → $newEntity, rechargement...');
+      }
+      _lastLoadedEntity = newEntity;
+      fetchEquipments(forceRefresh: true);
+    }
+  }
+
   // Getters
   List<Map<String, dynamic>> get equipments => _equipments;
+  List<Map<String, dynamic>> get visibleEquipments => _equipments.take(_displayedCount).toList();
   bool get isLoading => _isLoading;
+  bool get isLoadingMore => _isLoadingMore;
+  bool get hasMore => _displayedCount < _equipments.length;
   String? get error => _error;
   bool get isOffline => _isOffline;
   Map<String, dynamic>? get cachedSelectors => _cachedSelectors;
   bool get selectorsLoaded => _selectorsLoaded;
   bool get attributesLoading => _attributesLoading;
 
+  Future<void> loadMore() async {
+    if (_isLoadingMore || !hasMore) return;
+    _isLoadingMore = true;
+    notifyListeners();
+
+    await Future.delayed(const Duration(milliseconds: 300));
+    _displayedCount = (_displayedCount + _pageSize).clamp(0, _equipments.length);
+    _isLoadingMore = false;
+    notifyListeners();
+  }
+
   // ✅ Initialisation avec entity de l'utilisateur
   Future<void> initialize() async {
     await _checkConnectivity();
 
     // ✅ Définir l'entity dans les filtres dès le départ
-    final entity = _authProvider.currentUser?.entity;
-    if (entity != null && entity.isNotEmpty) {
+    final entity = _authProvider.activeEntity;
+    if (entity.isNotEmpty) {
       _filters['entity'] = entity;
       await fetchEquipments();
-    } else if (kDebugMode) {
-      await _loadDebugLocalEquipments();
     } else {
       _error = 'Utilisateur non connecté ou entité manquante';
       notifyListeners();
@@ -69,7 +100,7 @@ class EquipmentProvider extends ChangeNotifier {
     _isOffline = result == ConnectivityResult.none;
   }
 
-  // ✅ fetchEquipments : entity OBLIGATOIRE (vient de l'utilisateur)
+  // ✅ fetchEquipments : entity OBLIGATOIRE (vient de l'utilisateur/activeEntity) - 100% API Réelle
   Future<void> fetchEquipments({bool forceRefresh = false}) async {
     if (_isLoading && !forceRefresh) return;
     _isLoading = true;
@@ -79,7 +110,14 @@ class EquipmentProvider extends ChangeNotifier {
     try {
       await _checkConnectivity();
 
-      final entity = _authProvider.currentUser?.entity ?? 'SDDRCO2';
+      final entity = _authProvider.activeEntity;
+      if (entity.isEmpty) {
+        _error = 'Entité utilisateur non définie';
+        _isLoading = false;
+        notifyListeners();
+        return;
+      }
+      _lastLoadedEntity = entity;
       _filters['entity'] = entity;
 
       if (!forceRefresh && _allEquipments.isNotEmpty) {
@@ -89,40 +127,26 @@ class EquipmentProvider extends ChangeNotifier {
       }
 
       if (!_isOffline) {
-        try {
-          final response = await _equipmentService.getEquipments(
-            entity: entity,
-            zone: _filters['zone'],
-            famille: _filters['famille'],
-            search: _filters['search'],
-            description: _filters['description'],
-          ).timeout(const Duration(seconds: 4));
+        final response = await _equipmentService.getEquipments(
+          entity: entity,
+          zone: _filters['zone'],
+          famille: _filters['famille'],
+          search: _filters['search'],
+          description: _filters['description'],
+        ).timeout(const Duration(seconds: 30));
 
-          final apiItems = response.items.map(_toMap).toList();
-          try {
-            final raw = await rootBundle.loadString('assets/data/equipment_debug.json');
-            final decoded = jsonDecode(raw) as List<dynamic>;
-            final debugItems = decoded.whereType<Map<String, dynamic>>().map(Equipment.fromJson).map(_toMap).toList();
-            _allEquipments = _deduplicateList([...apiItems, ...debugItems]);
-          } catch (_) {
-            _allEquipments = _deduplicateList(apiItems);
-          }
-          _equipments = List.from(_allEquipments);
-        } catch (e) {
-          if (kDebugMode) {
-            print('⚠️ API Timeout/Erreur fetchEquipments: $e -> fallback debug');
-          }
-          await _loadDebugLocalEquipments();
-        }
+        final apiItems = response.items.map(_toMap).toList();
+        _allEquipments = _deduplicateList(apiItems);
+        _equipments = List.from(_allEquipments);
+        _displayedCount = _pageSize;
       } else {
-        await _loadDebugLocalEquipments();
+        _error = 'Mode hors-ligne : connexion réseau indisponible';
       }
     } catch (e) {
-      _error = e.toString();
-      try {
-        await _loadDebugLocalEquipments();
-        _error = null;
-      } catch (_) {}
+      _error = 'Erreur lors de la récupération des équipements réels: ${e.toString()}';
+      if (kDebugMode) {
+        print(_error);
+      }
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -655,6 +679,7 @@ class EquipmentProvider extends ChangeNotifier {
   }
 
   void filterEquipments(String searchTerm) {
+    _displayedCount = _pageSize;
     if (searchTerm.isEmpty) {
       _equipments = List.from(_allEquipments);
     } else {
@@ -678,6 +703,7 @@ class EquipmentProvider extends ChangeNotifier {
 
   // ✅ NOUVELLES méthodes pour filtrer par champ spécifique
   void filterEquipmentsByField(String searchTerm, String field) {
+    _displayedCount = _pageSize;
     if (searchTerm.isEmpty) {
       _equipments = List.from(_allEquipments);
     } else {

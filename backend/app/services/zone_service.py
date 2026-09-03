@@ -6,6 +6,8 @@ from app.db.requests import ZONE_QUERY
 from typing import Any, Dict
 import logging
 
+from app.services.entity_service import extract_hierarchy
+
 logger = logging.getLogger(__name__)
 
 def get_zones(entity: str, hierarchy_result: Dict[str, Any]) -> Dict[str, Any]:
@@ -16,21 +18,9 @@ def get_zones(entity: str, hierarchy_result: Dict[str, Any]) -> Dict[str, Any]:
     if cached:
         return cached
 
-    # Récupérer la hiérarchie de l'entité
-    try:
-        hierarchy_entities = hierarchy_result.get('hierarchy', [])
-        
-        if not hierarchy_entities:
-            # Si pas de hiérarchie, utiliser seulement l'entité fournie
-            hierarchy_entities = [entity]
-            logger.warning(f"Aucune hiérarchie trouvée pour {entity}, utilisation de l'entité seule")
-        
-        logger.info(f"Hiérarchie pour {entity}: {hierarchy_entities}")
-        
-    except Exception as e:
-        logger.error(f"Erreur récupération hiérarchie pour {entity}: {e}")
-        # En cas d'erreur, utiliser seulement l'entité fournie
-        hierarchy_entities = [entity]
+    # ✅ DRY : Utilisation de extract_hierarchy
+    hierarchy_entities = extract_hierarchy(entity, hierarchy_result)
+    logger.info(f"Hiérarchie pour {entity}: {hierarchy_entities}")
     
     query = ZONE_QUERY
     params = {}

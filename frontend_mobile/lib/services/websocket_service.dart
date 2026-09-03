@@ -20,7 +20,10 @@ class WebSocketService {
   // ✅ CORRECTION: Construire l'URL WebSocket correctement
   static String get _wsBaseUrl {
     if (kIsWeb) {
-      return 'ws://localhost:$defaultPort';
+      final host = Uri.base.host.isNotEmpty && Uri.base.host != 'localhost' && Uri.base.host != '127.0.0.1'
+          ? Uri.base.host
+          : macIpAddress;
+      return 'ws://$host:$defaultPort';
     }
     // ✅ Pour Android/iOS: utiliser l'IP du serveur
     return 'ws://$macIpAddress:$defaultPort';

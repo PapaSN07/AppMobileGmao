@@ -53,6 +53,21 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  // ✅ FIX #4 : Détection du changement d'entité ici, pas dans build()
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final entity = context.read<AuthProvider>().activeEntity;
+    if (entity.isNotEmpty && entity != _lastLoadedEntity) {
+      _lastLoadedEntity = entity;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _loadOTs();
+      });
+    }
+  }
+
+  String? _lastLoadedEntity;
+
   Future<void> _loadOTs() async {
     if (!mounted) return;
     setState(() {
@@ -62,11 +77,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final user = authProvider.currentUser;
-      final entity = user?.entity.trim() ?? '';
-      final group = user?.group?.trim() ?? '';
-      final fallbackService = entity.isNotEmpty ? entity : group;
-      final serviceCode = fallbackService.isNotEmpty ? fallbackService : 'SDDV';
+      final activeEntity = authProvider.activeEntity;
+      final serviceCode = activeEntity.isNotEmpty ? activeEntity : 'SDDV';
 
       final result = await _otService.getOrdersPage(
         scope: 'service',
@@ -116,6 +128,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final responsive = context.responsive;
     final spacing = context.spacing;
     final authProvider = Provider.of<AuthProvider>(context);
+    // ✅ FIX #4 : Plus de détection d'entité ici — géré dans didChangeDependencies()
+
     final user = authProvider.currentUser;
     final displayName = user?.displayName ?? 'Utilisateur';
     final subtitle = user?.subtitleInfo ?? 'Tableau de bord de maintenance';

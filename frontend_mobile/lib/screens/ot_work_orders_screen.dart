@@ -3,7 +3,6 @@ import 'package:appmobilegmao/models/order.dart';
 import 'package:appmobilegmao/provider/auth_provider.dart';
 import 'package:appmobilegmao/screens/ot_detail_screen.dart';
 import 'package:appmobilegmao/screens/ot_create_screen.dart';
-import 'package:appmobilegmao/screens/ot_info_details_screen.dart';
 import 'package:appmobilegmao/services/api_service.dart';
 import 'package:appmobilegmao/services/ot_service.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
@@ -12,7 +11,6 @@ import 'package:appmobilegmao/utils/responsive.dart';
 import 'package:appmobilegmao/widgets/empty_state.dart';
 import 'package:appmobilegmao/widgets/loading_indicator.dart';
 import 'package:appmobilegmao/widgets/list_item.dart';
-import 'package:appmobilegmao/widgets/tools.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -36,6 +34,7 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
   static const Set<String> _closedStatuses = {
     'CL',
     'TE',
+    'AY',
     'CLOSE',
     'CLOSED',
     'TERMINE',
@@ -43,6 +42,14 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
     'TERMINATED',
     'FINI',
     'FINISHED',
+    'ARCHIVABLE',
+  };
+
+  // Statuts pour lesquels la modification est autorisée (source unique — DRY)
+  static const Set<String> _editableStatuses = {
+    'CR',
+    'OUV',
+    'EC',
   };
 
   late final OTService _otService;
@@ -113,6 +120,13 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
     return !_closedStatuses.contains(status);
   }
 
+  /// Retourne true si l'OT peut être modifié selon son statut.
+  /// Suit le même principe que [_isOpenOrder] (principe DRY/SRP).
+  bool _isEditable(WorkOrder order) {
+    final status = order.wowoUserStatus.trim().toUpperCase();
+    return _editableStatuses.contains(status);
+  }
+
   bool _matchesSearch(WorkOrder order) {
     final query = _searchQuery.trim().toLowerCase();
     if (query.isEmpty) {
@@ -137,7 +151,9 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
   }
 
   List<WorkOrder> _applyFilters(List<WorkOrder> source) {
-    return source.where(_isOpenOrder).where(_matchesSearch).toList();
+    final filtered = source.where(_isOpenOrder).where(_matchesSearch).toList();
+    final seen = <String>{};
+    return filtered.where((o) => seen.add(o.wowoCode.toString())).toList();
   }
 
   Future<void> _loadOrders() async {
@@ -149,6 +165,9 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
       });
       return;
     }
+
+    // ✅ Mettre à jour l'entité active globale réactive dans AuthProvider
+    context.read<AuthProvider>().updateActiveEntity(service);
 
     setState(() {
       _isLoading = true;
@@ -164,9 +183,12 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
         excludeClosed: _hideClosedOrders,
       );
 
+      final seen = <String>{};
+      final uniqueOrders = result.workorders.where((o) => seen.add(o.wowoCode.toString())).toList();
+
       setState(() {
         _selectedService = service;
-        _orders = result.workorders;
+        _orders = uniqueOrders;
         _paginationContext = result.paginationContext;
         _hasMore = result.hasMore;
         _isLoading = false;
@@ -198,8 +220,11 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
         paginationContext: _paginationContext,
       );
 
+      final existingCodes = _orders.map((o) => o.wowoCode.toString()).toSet();
+      final newOrders = result.workorders.where((o) => existingCodes.add(o.wowoCode.toString())).toList();
+
       setState(() {
-        _orders.addAll(result.workorders);
+        _orders.addAll(newOrders);
         _paginationContext = result.paginationContext;
         _hasMore = result.hasMore;
         _isLoadingMore = false;
@@ -247,211 +272,6 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
     if (refresh == true) {
       _loadOrders();
     }
-  }
-
-  void _showOTActionMenu(WorkOrder order) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        return Container(
-          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'OT N° ${order.wowoCode}',
-                style: const TextStyle(
-                  fontFamily: AppTheme.fontMontserrat,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  color: AppTheme.secondaryColor,
-                ),
-              ),
-              const SizedBox(height: 12),
-              ListTile(
-                leading: const Icon(Icons.edit, color: Colors.blue),
-                title: const Text('Modifier l\'OT'),
-                onTap: () async {
-                  Navigator.pop(context);
-                  final result = await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => OTCreateScreen(orderToEdit: order),
-                    ),
-                  );
-                  if (result == true) {
-                    _loadOrders();
-                  }
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.delete, color: Colors.red),
-                title: const Text('Supprimer l\'OT'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _confirmDeleteOT(order);
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  void _showEditOTDialog(WorkOrder order) {
-    final formKey = GlobalKey<FormState>();
-    final jobController = TextEditingController(text: order.wowoJob);
-    final eqController = TextEditingController(text: order.wowoEquipment);
-    final supervisorController = TextEditingController(text: order.wowoSupervisor ?? '');
-    final zoneController = TextEditingController(text: order.wowoZone ?? '');
-    final entityController = TextEditingController(text: order.wowoRequestEntity);
-    final rateController = TextEditingController(text: order.wowoCompletionRate?.toString() ?? '0');
-    final jobClassController = TextEditingController(text: order.wowoJobClass);
-    String priority = order.wowoPriority?.trim().toUpperCase() ?? 'URGENT';
-    if (!['URGENT', 'MOYEN', 'BAS'].contains(priority)) {
-      priority = 'URGENT';
-    }
-    String status = order.wowoUserStatus.trim().toUpperCase();
-    if (!['OUV', 'CR', 'CL', 'TE'].contains(status)) {
-      status = 'OUV';
-    }
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: Text('Modifier l\'OT ${order.wowoCode}'),
-              content: SingleChildScrollView(
-                child: Form(
-                  key: formKey,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      TextFormField(
-                        controller: jobController,
-                        decoration: const InputDecoration(labelText: 'Description / Travail *'),
-                        validator: (value) => value == null || value.isEmpty ? 'Ce champ est obligatoire' : null,
-                      ),
-                      TextFormField(
-                        controller: eqController,
-                        decoration: const InputDecoration(labelText: 'Équipement *'),
-                        validator: (value) => value == null || value.isEmpty ? 'Ce champ est obligatoire' : null,
-                      ),
-                      TextFormField(
-                        controller: supervisorController,
-                        decoration: const InputDecoration(labelText: 'Technicien / Superviseur *'),
-                        validator: (value) => value == null || value.isEmpty ? 'Ce champ est obligatoire' : null,
-                      ),
-                      TextFormField(
-                        controller: zoneController,
-                        decoration: const InputDecoration(labelText: 'Zone'),
-                      ),
-                      TextFormField(
-                        controller: entityController,
-                        decoration: const InputDecoration(labelText: 'Entité / Service'),
-                      ),
-                      TextFormField(
-                        controller: rateController,
-                        decoration: const InputDecoration(labelText: 'Taux de réalisation (%)'),
-                        keyboardType: TextInputType.number,
-                      ),
-                      TextFormField(
-                        controller: jobClassController,
-                        decoration: const InputDecoration(labelText: 'Classe de travail'),
-                      ),
-                      DropdownButtonFormField<String>(
-                        value: priority,
-                        decoration: const InputDecoration(labelText: 'Priorité'),
-                        items: ['URGENT', 'MOYEN', 'BAS'].map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
-                        onChanged: (val) {
-                          if (val != null) setDialogState(() => priority = val);
-                        },
-                      ),
-                      DropdownButtonFormField<String>(
-                        value: ['TE', 'CL'].contains(status) ? status : (['OUV', 'CR', 'AY'].contains(status) ? status : 'OUV'),
-                        decoration: InputDecoration(
-                          labelText: 'Statut',
-                          helperText: ['TE', 'CL'].contains(order.wowoUserStatus.trim().toUpperCase())
-                              ? 'Statut verrouillé par Coswin (OT terminé/clôturé)'
-                              : null,
-                        ),
-                        items: const [
-                          DropdownMenuItem(value: 'OUV', child: Text('OUVERT (OUV)')),
-                          DropdownMenuItem(value: 'CR', child: Text('EN COURS (CR)')),
-                          DropdownMenuItem(value: 'AY', child: Text('EN ATTENTE (AY)')),
-                          DropdownMenuItem(value: 'TE', child: Text('RÉALISÉ (TE)')),
-                          DropdownMenuItem(value: 'CL', child: Text('CLÔTURÉ (CL)')),
-                        ],
-                        onChanged: ['TE', 'CL'].contains(order.wowoUserStatus.trim().toUpperCase())
-                            ? null
-                            : (val) {
-                                if (val != null) setDialogState(() => status = val);
-                              },
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Annuler'),
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    if (formKey.currentState?.validate() ?? false) {
-                      Navigator.pop(context);
-                      setState(() => _isLoading = true);
-                      try {
-                        final data = {
-                          "wowoUserStatus": status,
-                          "wowoEquipment": eqController.text.trim(),
-                          "wowoJob": jobController.text.trim(),
-                          "wowoJobClass": jobClassController.text.trim(),
-                          "wowoPriority": priority,
-                          "wowoActionEntity": entityController.text.trim(),
-                          "wowoRequestEntity": entityController.text.trim(),
-                          "wowoSupervisor": supervisorController.text.trim(),
-                          "wowoZone": zoneController.text.trim(),
-                          "wowoCompletionRate": double.tryParse(rateController.text.trim()) ?? 0.0,
-                        };
-
-                        await _otService.updateOT(order.wowoCode, data);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('OT mis à jour avec succès !')),
-                        );
-                        _loadOrders();
-                      } catch (e) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Erreur: $e')),
-                        );
-                        setState(() => _isLoading = false);
-                      }
-                    }
-                  },
-                  child: const Text('Enregistrer'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
   }
 
   void _confirmDeleteOT(WorkOrder order) {
@@ -663,11 +483,11 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
     final formKey = GlobalKey<FormState>();
     final codeController = TextEditingController();
     final jobController = TextEditingController();
-    final eqController = TextEditingController(text: 'POSTE_A_AGRIK');
-    final supervisorController = TextEditingController(text: '5286');
-    final jobClassController = TextEditingController(text: 'POSTE');
-    final zoneController = TextEditingController(text: 'DAKAR');
-    final entityController = TextEditingController(text: _selectedService.isNotEmpty ? _selectedService : 'DTAE');
+    final eqController = TextEditingController();
+    final supervisorController = TextEditingController();
+    final jobClassController = TextEditingController();
+    final zoneController = TextEditingController();
+    final entityController = TextEditingController(text: _selectedService);
     final rateController = TextEditingController(text: '0');
     String priority = 'URGENT';
     String status = 'OUV';
@@ -970,6 +790,7 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
                                     icon: const Icon(Icons.more_vert, color: AppTheme.secondaryColor),
                                     onSelected: (value) async {
                                       if (value == 'edit') {
+                                        if (!_isEditable(order)) return;
                                         final result = await Navigator.push(
                                           context,
                                           MaterialPageRoute(
@@ -984,16 +805,28 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
                                       }
                                     },
                                     itemBuilder: (context) => [
-                                      const PopupMenuItem(
-                                        value: 'edit',
-                                        child: Row(
-                                          children: [
-                                            Icon(Icons.edit_outlined, color: Color(0xFF0F1B80), size: 20),
-                                            SizedBox(width: 10),
-                                            Text('Modifier', style: TextStyle(color: Color(0xFF0F1B80), fontWeight: FontWeight.w600, fontSize: 14)),
-                                          ],
+                                      if (_isEditable(order))
+                                        const PopupMenuItem(
+                                          value: 'edit',
+                                          child: Row(
+                                            children: [
+                                              Icon(Icons.edit_outlined, color: Color(0xFF0F1B80), size: 20),
+                                              SizedBox(width: 10),
+                                              Text('Modifier', style: TextStyle(color: Color(0xFF0F1B80), fontWeight: FontWeight.w600, fontSize: 14)),
+                                            ],
+                                          ),
+                                        )
+                                      else
+                                        PopupMenuItem(
+                                          enabled: false,
+                                          child: Row(
+                                            children: [
+                                              const Icon(Icons.lock_outline, color: Colors.grey, size: 20),
+                                              const SizedBox(width: 10),
+                                              Text('Non modifiable (${order.wowoUserStatus})', style: const TextStyle(color: Colors.grey, fontSize: 14)),
+                                            ],
+                                          ),
                                         ),
-                                      ),
                                       const PopupMenuItem(
                                         value: 'delete',
                                         child: Row(

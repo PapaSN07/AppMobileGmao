@@ -8,11 +8,31 @@ class AuthProvider with ChangeNotifier {
   final AuthService _authService;
   final WebSocketService _wsService = WebSocketService();
   User? _currentUser;
+  String? _activeEntity;
 
   AuthProvider({AuthService? authService})
     : _authService = authService ?? AuthService();
 
   User? get currentUser => _currentUser;
+
+  // ✅ Entité active réactive synchronisée sur toute l'app (Accueil + OT + Équipements)
+  String get activeEntity {
+    if (_activeEntity != null && _activeEntity!.isNotEmpty) {
+      return _activeEntity!;
+    }
+    return _currentUser?.entity.trim() ?? '';
+  }
+
+  void updateActiveEntity(String entity) {
+    final cleanEntity = entity.trim().toUpperCase();
+    if (cleanEntity.isNotEmpty && cleanEntity != _activeEntity) {
+      _activeEntity = cleanEntity;
+      if (kDebugMode) {
+        print('🔄 AuthProvider: Entité active mise à jour => $cleanEntity');
+      }
+      notifyListeners();
+    }
+  }
 
   // ✅ NOUVEAU: Getter pour le rôle
   String? get role => _currentUser?.role ?? _currentUser?.group;

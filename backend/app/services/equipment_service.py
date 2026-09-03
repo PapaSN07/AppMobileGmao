@@ -24,7 +24,7 @@ def get_equipments_infinite(
 ) -> Dict[str, Any]:
     """Infinite scroll optimisé pour mobile avec hiérarchie d'entité obligatoire"""
     
-    from app.services.entity_service import get_hierarchy
+    from app.services.entity_service import extract_hierarchy
     
     cache_key = f"mobile_eq_{entity}_{zone}_{famille}_{search_term}"
 
@@ -32,20 +32,9 @@ def get_equipments_infinite(
     if cached:
         return cached
     
-    # Récupérer la hiérarchie de l'entité
-    try:
-        hierarchy_result = get_hierarchy(entity)
-        hierarchy_entities = hierarchy_result.get('hierarchy', [])
-        
-        if not hierarchy_entities:
-            hierarchy_entities = [entity]
-            logger.warning(f"Aucune hiérarchie trouvée pour {entity}, utilisation de l'entité seule")
-        
-        logger.info(f"Hiérarchie pour {entity}: {hierarchy_entities}")
-        
-    except Exception as e:
-        logger.error(f"Erreur récupération hiérarchie pour {entity}: {e}")
-        hierarchy_entities = [entity]
+    # ✅ DRY : Utilisation de extract_hierarchy
+    hierarchy_entities = extract_hierarchy(entity)
+    logger.info(f"Hiérarchie pour {entity}: {hierarchy_entities}")
     
     # Query de base avec conditions
     base_query = EQUIPMENT_INFINITE_QUERY
@@ -176,19 +165,10 @@ def get_feeders(entity: str, hierarchy_result: Dict[str, Any]) -> Dict[str, Any]
     if cached:
         return cached
     
-    # Récupérer la hiérarchie de l'entité
-    try:
-        hierarchy_entities = hierarchy_result.get('hierarchy', [])
-        
-        if not hierarchy_entities:
-            hierarchy_entities = [entity]
-            logger.warning(f"Aucune hiérarchie trouvée pour {entity}, utilisation de l'entité seule")
-        
-        logger.info(f"Hiérarchie pour {entity}: {hierarchy_entities}")
-        
-    except Exception as e:
-        logger.error(f"Erreur récupération hiérarchie pour {entity}: {e}")
-        hierarchy_entities = [entity]
+    # ✅ DRY : Utilisation de extract_hierarchy
+    from app.services.entity_service import extract_hierarchy
+    hierarchy_entities = extract_hierarchy(entity, hierarchy_result)
+    logger.info(f"Hiérarchie pour {entity}: {hierarchy_entities}")
 
     query = FEEDER_QUERY
     params = {}
@@ -388,15 +368,15 @@ def update_equipment_mobile(equipment_id: str, updates: Dict[str, Any]) -> tuple
                 session.commit()
                 invalidate_statistics_cache()  # ✅ AJOUT : Invalider le cache des statistiques
                 
-                # ✅ AJOUT : Envoyer notification à l'admin
+                # ✅ FIX #5 : ensure_future conserve une référence — la tâche ne sera pas perdue
                 import asyncio
                 # Vérifier le role de l'utilisateur
                 user = get_user_connect(str(new_equipment.created_by))
                 
                 if user and isinstance(user, UserClicClac):
                     supervisor_id = str(user.supervisor) or "admin"
-                    asyncio.create_task(send_notification(
-                        user_id=supervisor_id,  # ID du superviseur ou admin par défaut
+                    asyncio.ensure_future(send_notification(
+                        user_id=supervisor_id,
                         title="Équipement mis à jour",
                         message=f"L'équipement {updates['code']} a été mis à jour.",
                         type="info"
@@ -404,14 +384,13 @@ def update_equipment_mobile(equipment_id: str, updates: Dict[str, Any]) -> tuple
                 else:
                     user_id = str(user.id) if user else "unknown"
                     user_name = str(new_equipment.created_by) if new_equipment else "inconnu"
-                    # ✅ CORRECTION : Passer sender_id pour exclure l'émetteur
-                    asyncio.create_task(send_notification(
+                    asyncio.ensure_future(send_notification(
                         user_id="all",
                         title="Équipement mis à jour",
                         message=f"L'équipement {updates['code']} a été mis à jour par {user_name} utilisateur de GMAO.",
                         type="info",
                         broadcast=True,
-                        sender_id=user_id  # ✅ AJOUT : Exclure le modificateur
+                        sender_id=user_id
                     ))
 
                 # Invalider le cache (si applicable pour ClicClac)
@@ -700,29 +679,27 @@ def insert_equipment(equipment: EquipmentClicClac) -> tuple[bool, Optional[int]]
                     str(equipment.famille)
                 )
                 
-                # ✅ AJOUT : Envoyer notification à l'admin
+                # ✅ FIX #5 : ensure_future conserve une référence — la tâche ne sera pas perdue
                 import asyncio
-                # Vérifier le role de l'utilisateur
                 user = get_user_connect(str(equipment.created_by))
                 
                 if user and isinstance(user, UserClicClac):
                     supervisor_id = str(user.supervisor) or "admin"
-                    asyncio.create_task(send_notification(
-                        user_id=supervisor_id,  # ID du superviseur ou admin par défaut
+                    asyncio.ensure_future(send_notification(
+                        user_id=supervisor_id,
                         title="Nouvel équipement créé",
                         message=f"L'équipement {equipment.code} ({equipment.famille}) a été créé par le prestataire {equipment.created_by or 'utilisateur inconnu'}.",
                         type="success"
                     ))
                 else:
                     user_id = str(user.id) if user else "unknown"
-                    # ✅ CORRECTION : Passer sender_id pour exclure l'émetteur
-                    asyncio.create_task(send_notification(
+                    asyncio.ensure_future(send_notification(
                         user_id="all",
                         title="Nouvel équipement créé",
                         message=f"L'équipement {equipment.code} ({equipment.famille}) a été créé par l'utilisateur GMAO {equipment.created_by or 'utilisateur inconnu'}.",
                         type="success",
                         broadcast=True,
-                        sender_id=user_id  # ✅ AJOUT : Exclure le créateur
+                        sender_id=user_id
                     ))
                 
                 return (True, equipment_id)

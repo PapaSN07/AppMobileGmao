@@ -1,12 +1,25 @@
 from app.db.sqlalchemy.session import SQLAlchemyQueryExecutor, get_main_session
 from app.models.entity_model import EntityModel
 from app.core.config import CACHE_TTL_SHORT
-from app.db.requests import (ENTITY_QUERY, HIERARCHIC)
+from app.db.requests import ENTITY_QUERY  # HIERARCHIC supprimé : remplacé par CTE descendante
 from app.core.cache import cache
 from typing import Any, Dict
 import logging
 
 logger = logging.getLogger(__name__)
+
+def extract_hierarchy(entity: str, hierarchy_result: Dict[str, Any] = None) -> list[str]:
+    """Extrait la liste des entités autorisées à partir de la hiérarchie ou utilise entity en fallback."""
+    if hierarchy_result and isinstance(hierarchy_result, dict):
+        hierarchy_entities = hierarchy_result.get('hierarchy', [])
+        if hierarchy_entities:
+            return list(hierarchy_entities)
+    try:
+        res = get_hierarchy(entity)
+        return res.get('hierarchy', [entity])
+    except Exception as e:
+        logger.warning(f"Erreur extraction hiérarchie pour {entity}: {e}, fallback sur [entity]")
+        return [entity]
 
 def get_entities(entity: str, hierarchy_result: Dict[str, Any]) -> Dict[str, Any]:
     """Récupère les entités depuis la base de données."""
@@ -17,21 +30,9 @@ def get_entities(entity: str, hierarchy_result: Dict[str, Any]) -> Dict[str, Any
     if cached:
         return cached
     
-    # Récupérer la hiérarchie de l'entité
-    try:
-        hierarchy_entities = hierarchy_result.get('hierarchy', [])
-        
-        if not hierarchy_entities:
-            # Si pas de hiérarchie, utiliser seulement l'entité fournie
-            hierarchy_entities = [entity]
-            logger.warning(f"Aucune hiérarchie trouvée pour {entity}, utilisation de l'entité seule")
-        
-        logger.info(f"Hiérarchie pour {entity}: {hierarchy_entities}")
-        
-    except Exception as e:
-        logger.error(f"Erreur récupération hiérarchie pour {entity}: {e}")
-        # En cas d'erreur, utiliser seulement l'entité fournie
-        hierarchy_entities = [entity]
+    # ✅ DRY : Utilisation de la fonction utilitaire extract_hierarchy
+    hierarchy_entities = extract_hierarchy(entity, hierarchy_result)
+    logger.info(f"Hiérarchie pour {entity}: {hierarchy_entities}")
     
     query = ENTITY_QUERY
     params = {}
@@ -95,48 +96,55 @@ def get_entities(entity: str, hierarchy_result: Dict[str, Any]) -> Dict[str, Any
         raise
 
 def get_hierarchy(entity_code: str) -> Dict[str, Any]:
-    """Utilise la fonction Oracle sn_hierarchie pour récupérer la hiérarchie."""
-    cache_key = f"entity_hierarchy_oracle_{entity_code}"
+    """Récupère la hiérarchie descendante stricte (soi-même + tous les enfants/descendants uniquement)."""
+    cache_key = f"entity_hierarchy_descendants_{entity_code}"
     cached = cache.get_data_only(cache_key)
     if cached:
         return cached
     
+    query_descendants = """
+        WITH EntityHierarchy AS (
+            SELECT chen_code, chen_parent_entity
+            FROM entity
+            WHERE UPPER(chen_code) = UPPER(:entity)
+            
+            UNION ALL
+            
+            SELECT e.chen_code, e.chen_parent_entity
+            FROM entity e
+            INNER JOIN EntityHierarchy h ON UPPER(e.chen_parent_entity) = UPPER(h.chen_code)
+        )
+        SELECT DISTINCT chen_code FROM EntityHierarchy
+    """
+    
     try:
         with get_main_session() as session:
             db = SQLAlchemyQueryExecutor(session)
-            # Appel direct de votre fonction Oracle
-            results = db.execute_query(HIERARCHIC, {'entity': entity_code})
+            results = db.execute_query(query_descendants, {'entity': entity_code})
             
             if not results:
-                return {
-                    "entity_code": entity_code,
-                    "hierarchy": [],
-                    "count": 0,
-                    "message": f"Aucune hiérarchie trouvée pour l'entité {entity_code}"
-                }
-            
-            # Récupérer les détails complets pour chaque code retourné
-            hierarchy = [row[0] for row in results]
+                hierarchy = [entity_code]
+            else:
+                hierarchy = [row[0] if isinstance(row, tuple) else row.get('chen_code') for row in results]
 
             response = {
                 "entity_code": entity_code,
                 "hierarchy": hierarchy,
                 "count": len(hierarchy),
-                "generated_by": "oracle_function_sn_hierarchie"
+                "generated_by": "recursive_descendants_cte"
             }
             
             cache.set(cache_key, response, CACHE_TTL_SHORT)
-            logger.info(f"✅ Hiérarchie Oracle de {entity_code}: {len(hierarchy)} niveaux")
+            logger.info(f"✅ Hiérarchie descendante de {entity_code}: {len(hierarchy)} niveaux ({hierarchy})")
             return response
             
     except Exception as e:
-        logger.error(f"❌ Erreur hiérarchie Oracle/SQL: {e}")
-        # Fallback pour éviter le crash de l'application si la fonction n'existe pas en local
+        logger.error(f"❌ Erreur hiérarchie descendante SQL: {e}")
         return {
             "entity_code": entity_code,
             "hierarchy": [entity_code],
             "count": 1,
-            "message": f"Fallback: Hiérarchie simulée pour {entity_code} suite à erreur DB"
+            "message": f"Fallback: Hiérarchie seule pour {entity_code}"
         }
 
 def get_all_entities() -> Dict[str, Any]:

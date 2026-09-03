@@ -14,8 +14,8 @@ from app.core.config import (
     OT_CWUSER,
 )
 from app.repositories.base import AbstractWorkOrderRepository
-# Note: les imports DB locale (get_temp_session, get_main_session, text) ont été supprimés
-# car toutes les opérations passent directement par l'API Coswin sans fallback local.
+from app.db.sqlalchemy.session import get_temp_session
+from sqlalchemy import text
 
 logger = logging.getLogger(__name__)
 
@@ -117,8 +117,19 @@ class CoswinAPIWorkOrderRepository(AbstractWorkOrderRepository):
         """Applique les filtres métier à une ligne d'OT."""
         if supervisor_code and str(row.get("wowoSupervisor", "")) != str(supervisor_code):
             return False
-        if request_entity and str(row.get("wowoRequestEntity", "")).upper() != str(request_entity).upper():
-            return False
+            
+        if request_entity:
+            req_upper = str(request_entity).upper()
+            w_req = str(row.get("wowoRequestEntity") or "").upper()
+            w_act = str(row.get("wowoActionEntity") or "").upper()
+            w_eq  = str(row.get("wowoEquipmentEntity") or "").upper()
+            
+            # Vérifier si l'entité recherchée (ex: SLT) correspond à wowoActionEntity, wowoRequestEntity ou wowoEquipmentEntity
+            if w_req or w_act or w_eq:
+                match_found = any(req_upper in e for e in [w_act, w_req, w_eq] if e)
+                if not match_found:
+                    return False
+
         if exclude_closed and str(row.get("wowoUserStatus", "")).upper() == "CL":
             return False
         return True
@@ -148,6 +159,7 @@ class CoswinAPIWorkOrderRepository(AbstractWorkOrderRepository):
     ) -> Dict[str, Any]:
         """Parcourt récursivement les pages Coswin pour extraire les OT filtrés."""
         matched: List[Dict[str, Any]] = []
+        seen_codes = set()
         pages_fetched = 0
         more_data = False
         pag_context = params.get("paginationContext")
@@ -163,7 +175,13 @@ class CoswinAPIWorkOrderRepository(AbstractWorkOrderRepository):
             page_list = (page_response or {}).get("list", {}).get("workorderfind", [])
             for row in page_list:
                 if self._passes_filters(row, supervisor_code, request_entity, exclude_closed):
-                    matched.append(row)
+                    code = row.get("wowoCode")
+                    if code:
+                        if code not in seen_codes:
+                            seen_codes.add(code)
+                            matched.append(row)
+                    else:
+                        matched.append(row)
 
             more_data = bool((page_response or {}).get("moreDataAvailable"))
             pag_context = (page_response or {}).get("paginationContext")
@@ -214,49 +232,29 @@ class CoswinAPIWorkOrderRepository(AbstractWorkOrderRepository):
 
             elif scope == "service" and request_entity:
                 req_ent_upper = str(request_entity).upper()
-                if req_ent_upper in ["SENELEC", "GLOBAL"]:
-                    # Entité globale parente SENELEC : utiliser filterOperator: between avec l'année en cours
-                    # et la pagination native Coswin pour un chargement instantané (<1s) et successif.
-                    current_year = datetime.now().year
-                    params = {
-                        "usePagination": "true",
-                        "filterOperator": "between",
-                        "filterOperand1": f"{current_year}000000",
-                        "filterOperand2": f"{current_year}999999"
-                    }
-                    if pagination_context:
-                        params["paginationContext"] = pagination_context
+                current_year = datetime.now().year
+                params = {
+                    "usePagination": "true",
+                    "filterOperator": "between",
+                    "filterOperand1": "2024000000",
+                    "filterOperand2": f"{current_year}999999"
+                }
+                if pagination_context:
+                    params["paginationContext"] = pagination_context
 
-                    res = await self._fetch_workorders_page(
-                        params,
-                        page_limit=2,
-                        supervisor_code=supervisor_code,
-                        request_entity=None,  # Accepter toutes les sous-entités rattachées à la Senelec
-                        exclude_closed=exclude_closed,
-                    )
-                    matched = res["workorders"]
-                    has_more = res["hasMore"]
-                    next_token = res["paginationContext"] if has_more else None
-                else:
-                    params = {
-                        "usePagination": "true",
-                        "filterColumn": "wowoRequestEntity",
-                        "filterOperator": "equals",
-                        "filterOperand1": str(request_entity)
-                    }
-                    if pagination_context:
-                        params["paginationContext"] = pagination_context
+                # Pour SENELEC ou GLOBAL, accepter toutes les sous-entités ; sinon filtrer sur l'entité spécifique (ex: SLT)
+                filter_entity = None if req_ent_upper in ["SENELEC", "GLOBAL"] else request_entity
 
-                    res = await self._fetch_workorders_page(
-                        params,
-                        page_limit=2,
-                        supervisor_code=supervisor_code,
-                        request_entity=request_entity,
-                        exclude_closed=exclude_closed
-                    )
-                    matched = res["workorders"]
-                    has_more = res["hasMore"]
-                    next_token = res["paginationContext"] if has_more else None
+                res = await self._fetch_workorders_page(
+                    params,
+                    page_limit=2,
+                    supervisor_code=supervisor_code,
+                    request_entity=filter_entity,
+                    exclude_closed=exclude_closed,
+                )
+                matched = res["workorders"]
+                has_more = res["hasMore"]
+                next_token = res["paginationContext"] if has_more else None
 
             else:
                 # Recherche par plage de codes OT via filterOperator=between
@@ -519,7 +517,16 @@ class CoswinAPIWorkOrderRepository(AbstractWorkOrderRepository):
         return await self.get_allocated_employees_by_workorder(workorder_code)
 
     async def get_documents_by_workorder(self, workorder_code: str) -> List[Dict[str, Any]]:
-        return await self._get_workorder_relation(workorder_code, "documents", "workOrderCurrentSetDocumentViewwoDocumentView")
+        try:
+            feedbacks = await self.get_employee_feedbacks_by_workorder(workorder_code)
+            if feedbacks:
+                return feedbacks
+        except Exception:
+            pass
+        try:
+            return await self._get_workorder_relation(workorder_code, "documents", "workOrderCurrentSetDocumentViewwoDocumentView")
+        except Exception:
+            return []
 
     async def get_actions_by_workorder(self, workorder_code: str) -> List[Dict[str, Any]]:
         return await self._get_workorder_relation(workorder_code, "actions", "workActionViewwoActionsView")

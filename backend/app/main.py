@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import time
@@ -131,18 +131,21 @@ async def log_requests(request: Request, call_next):
     
     return response
 
+# ✅ DRY : Gestionnaire global d'exceptions non gérées
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"❌ Erreur serveur non gérée sur {request.method} {request.url.path}: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"status": "error", "message": f"Erreur interne du serveur: {str(exc)}"}
+    )
+
 # CORS pour mobile
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "*",  # Pour développement, à restreindre en production
-        # "http://localhost:*",
-        # "http://127.0.0.1:*", 
-        # "http://10.0.2.2:*",
-        # "http://192.168.*.*:*"  # Pour réseaux locaux
-    ],
+    allow_origin_regex=r"^https?:\/\/.*$",
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 

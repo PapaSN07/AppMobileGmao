@@ -167,11 +167,6 @@ class _MainScreenState extends State<MainScreen> {
     final isHome = authProvider.isPrestataire ? false : _currentIndex == 0;
 
     bool shouldShowAddButton = false;
-    if (authProvider.isPrestataire) {
-      shouldShowAddButton = _currentIndex == 0;
-    } else {
-      shouldShowAddButton = _currentIndex == 1;
-    }
 
     if (shouldShowAddButton) {
       // Page Equipment - Bouton +

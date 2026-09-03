@@ -189,7 +189,7 @@ def get_statistics_cockpit_web(include_details: bool = False) -> Dict:
             "stats_by_entity": None,
             "stats_by_family": None,
             "stats_by_user": None,
-            "last_updated": datetime.now().isoformat() + "Z"
+            "last_updated": datetime.utcnow().isoformat() + "Z"
         }
 
 def get_statistics_summary() -> Dict:

@@ -37,11 +37,12 @@ void main() async {
                 Provider.of<AuthProvider>(context, listen: false),
               ),
           update: (context, authProvider, previousEquipmentProvider) {
-            // Si l'utilisateur change, recréer le provider
+            // ✅ FIX #2 : Mettre à jour si l'utilisateur ou l'entité active change
             if (previousEquipmentProvider == null) {
               return EquipmentProvider(authProvider);
             }
-            // Sinon, réutiliser l'instance existante
+            // Notifier le provider existant du changement d'authProvider
+            previousEquipmentProvider.onAuthProviderUpdated(authProvider);
             return previousEquipmentProvider;
           },
         ),

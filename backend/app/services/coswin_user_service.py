@@ -7,96 +7,94 @@ logger = logging.getLogger(__name__)
 
 class CoswinUserService:
     """
-    Service gérant l'accès aux utilisateurs Coswin depuis la table officielle coswin_user dans la base ODS.
-    Respecte les principes SOLID (Single Responsibility) et DRY.
+    Service gérant l'accès aux utilisateurs Coswin depuis la table officielle COSWIN_USER dans la base gmao_mutualise_ODS.
+    Respecte strictement les principes SOLID (Single Responsibility) et DRY.
     """
 
     @staticmethod
-    def get_user_by_code(code: str) -> Optional[Dict[str, Any]]:
+    def _map_user_row(row: tuple) -> Dict[str, Any]:
         """
-        Récupère un utilisateur Coswin par son code agent / matricule (cwcu_code).
+        Méthode utilitaire DRY pour formater un tuple SQL de la table COSWIN_USER (CWCU_*) en dictionnaire utilisateur.
         """
-        if not code:
+        if not row:
+            return {}
+        return {
+            "pk": row[0],
+            "code": str(row[1]).strip() if row[1] is not None else "",
+            "username": str(row[2]).strip() if row[2] is not None else "",
+            "email": str(row[3]).strip() if len(row) > 3 and row[3] is not None else "",
+            "entity": str(row[4]).strip() if len(row) > 4 and row[4] is not None else "",
+            "group": str(row[5]).strip() if len(row) > 5 and row[5] is not None else "USER"
+        }
+
+    @classmethod
+    def get_user_by_code(cls, code: str) -> Optional[Dict[str, Any]]:
+        """
+        Récupère un utilisateur Coswin par son code agent / matricule depuis COSWIN_USER (gmao_mutualise_ODS).
+        """
+        if not code or not str(code).strip():
             return None
         
+        val = str(code).strip()
+
         query = """
-            SELECT pk_coswin_user, cwcu_code, cwcu_signature, cwcu_email, cwcu_entity, cwcu_preferred_group
-            FROM coswin_user
-            WHERE cwcu_code = :code OR cwcu_signature = :code
+            SELECT TOP 1 PK_COSWIN_USER as pk, CWCU_CODE as code, CWCU_SIGNATURE as username, 
+                         CWCU_EMAIL as email, CWCU_ENTITY as entity, COALESCE(CWCU_PREFERRED_GROUP, 'USER') as preferred_group
+            FROM dbo.COSWIN_USER
+            WHERE LOWER(CWCU_CODE) = LOWER(:code) OR LOWER(CWCU_SIGNATURE) = LOWER(:code)
         """
+
         try:
             with get_main_session() as session:
                 executor = SQLAlchemyQueryExecutor(session)
-                rows = executor.execute_query(query, params={"code": str(code).strip()})
+                rows = executor.execute_query(query, params={"code": val})
                 if rows:
-                    r = rows[0]
-                    return {
-                        "pk": r[0],
-                        "code": r[1],
-                        "username": r[2],
-                        "email": r[3],
-                        "entity": r[4],
-                        "group": r[5]
-                    }
+                    return cls._map_user_row(rows[0])
         except Exception as e:
-            logger.error(f"Erreur lors de la recherche de l'utilisateur {code} dans coswin_user: {e}")
+            logger.error(f"❌ Erreur lors de la recherche de l'utilisateur {code} dans gmao_mutualise_ODS.dbo.COSWIN_USER: {e}")
+            raise e
+        
         return None
 
-    @staticmethod
-    def search_users(query_str: str = "", entity: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+    @classmethod
+    def search_users(cls, query_str: str = "", entity: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
         """
-        Recherche des utilisateurs Coswin par nom ou matricule, filtrés optionnellement par entité.
-        """
-        sql = """
-            SELECT pk_coswin_user, cwcu_code, cwcu_signature, cwcu_email, cwcu_entity, cwcu_preferred_group
-            FROM coswin_user
-            WHERE 1=1
+        Recherche des utilisateurs Coswin directement dans la table gmao_mutualise_ODS.dbo.COSWIN_USER.
         """
         params: Dict[str, Any] = {}
+        where_clause = "WHERE 1=1"
 
         if query_str and query_str.strip():
-            sql += " AND (LOWER(cwcu_signature) LIKE :q OR LOWER(cwcu_code) LIKE :q OR LOWER(cwcu_email) LIKE :q)"
-            params["q"] = f"%{query_str.strip().lower()}%"
+            q_val = f"%{query_str.strip().lower()}%"
+            where_clause += " AND (LOWER(CWCU_SIGNATURE) LIKE :q OR LOWER(CWCU_CODE) LIKE :q OR LOWER(CWCU_EMAIL) LIKE :q)"
+            params["q"] = q_val
 
         if entity and entity.strip():
-            sql += " AND UPPER(cwcu_entity) = :entity"
-            params["entity"] = entity.strip().upper()
+            e_val = entity.strip().upper()
+            where_clause += " AND UPPER(CWCU_ENTITY) = :entity"
+            params["entity"] = e_val
 
-        sql += f" ORDER BY cwcu_signature ASC"
+        sql = f"""
+            SELECT DISTINCT TOP {limit} PK_COSWIN_USER as pk, CWCU_CODE as code, CWCU_SIGNATURE as username, 
+                   CWCU_EMAIL as email, CWCU_ENTITY as entity, COALESCE(CWCU_PREFERRED_GROUP, 'USER') as preferred_group
+            FROM dbo.COSWIN_USER
+            {where_clause}
+            ORDER BY CWCU_SIGNATURE ASC
+        """
 
         try:
             with get_main_session() as session:
                 executor = SQLAlchemyQueryExecutor(session)
                 rows = executor.execute_query(sql, params=params)
-                results = []
-                for r in rows[:limit]:
-                    results.append({
-                        "pk": r[0],
-                        "code": r[1],
-                        "username": r[2],
-                        "email": r[3],
-                        "entity": r[4],
-                        "group": r[5]
-                    })
-                return results
+                return [cls._map_user_row(r) for r in rows]
         except Exception as e:
-            logger.error(f"Erreur recherche utilisateurs coswin_user: {e}")
-            return []
+            logger.error(f"❌ Erreur recherche utilisateurs dans gmao_mutualise_ODS.dbo.COSWIN_USER: {e}")
+            raise e
 
-    @staticmethod
-    def validate_employee_code(code: str) -> bool:
+    @classmethod
+    def validate_employee_code(cls, code: str) -> bool:
         """
-        Vérifie si un matricule/code utilisateur existe réellement dans coswin_user.
+        Vérifie si un matricule/code utilisateur existe dans gmao_mutualise_ODS.dbo.COSWIN_USER.
         """
-        if not code:
-            return False
-        
-        query = "SELECT 1 FROM coswin_user WHERE cwcu_code = :code OR cwcu_signature = :code"
-        try:
-            with get_main_session() as session:
-                executor = SQLAlchemyQueryExecutor(session)
-                rows = executor.execute_query(query, params={"code": str(code).strip()})
-                return len(rows) > 0
-        except Exception as e:
-            logger.error(f"Erreur validation matricule {code}: {e}")
-            return False
+        user = cls.get_user_by_code(code)
+        return user is not None

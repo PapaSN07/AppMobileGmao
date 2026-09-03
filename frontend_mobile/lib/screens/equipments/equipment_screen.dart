@@ -58,6 +58,23 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     });
   }
 
+  String? _lastScreenEntity;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final currentEntity = context.watch<AuthProvider>().activeEntity;
+    if (currentEntity.isNotEmpty && currentEntity != _lastScreenEntity) {
+      _lastScreenEntity = currentEntity;
+      final eqProvider = context.read<EquipmentProvider>();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          eqProvider.fetchEquipments(forceRefresh: true);
+        }
+      });
+    }
+  }
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -85,7 +102,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
         }
 
         unawaited(_loadSelectorsInBackground(equipmentProvider));
-        await equipmentProvider.fetchEquipments();
+        await equipmentProvider.fetchEquipments(forceRefresh: true);
 
         if (_searchController.text.isNotEmpty) {
           _performSearch(_searchController.text);
@@ -96,7 +113,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
         }
       }
     } else {
-      await equipmentProvider.fetchEquipments();
+      await equipmentProvider.fetchEquipments(forceRefresh: true);
     }
   }
 
@@ -138,7 +155,10 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     final responsive = context.responsive;
     final spacing = context.spacing;
 
-    final int totalCount = equipmentProvider.equipments.length;
+    final int visibleCount = equipmentProvider.visibleEquipments.length;
+    final String activeEntity = authProvider.activeEntity.isNotEmpty
+        ? authProvider.activeEntity
+        : (authProvider.currentUser?.entity ?? 'Non défini');
 
     return SafeArea(
       child: Column(
@@ -184,7 +204,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '$totalCount ${totalCount > 1 ? "Équipements" : "Équipement"}',
+                          '$visibleCount ${visibleCount > 1 ? "Équipements" : "Équipement"}',
                           style: TextStyle(
                             fontFamily: AppTheme.fontMontserrat,
                             fontWeight: FontWeight.w800,
@@ -193,7 +213,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                           ),
                         ),
                         Text(
-                          'Catalogue de maintenance',
+                          'Service : $activeEntity',
                           style: TextStyle(
                             fontFamily: AppTheme.fontRoboto,
                             fontWeight: FontWeight.w400,
@@ -212,7 +232,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
-                    Icons.dashboard_customize_rounded,
+                    Icons.flash_on_rounded,
                     color: Colors.white,
                     size: 20,
                   ),
@@ -250,7 +270,10 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
               padding: spacing.custom(horizontal: 16),
               child: EquipmentList(
                 isLoading: equipmentProvider.isLoading,
-                items: equipmentProvider.equipments,
+                isLoadingMore: equipmentProvider.isLoadingMore,
+                hasMore: equipmentProvider.hasMore,
+                onLoadMore: () => equipmentProvider.loadMore(),
+                items: equipmentProvider.visibleEquipments,
                 onRefresh: () => _refreshWithFilters(equipmentProvider),
                 itemBuilder: (item) => buildEquipmentItem(
                   item,

@@ -10,6 +10,7 @@ import logging
 from app.services.ot_service import OTService
 from app.repositories.dependency import get_workorder_repository
 from fastapi import Depends
+from app.dependencies import get_current_user  # ✅ FIX #3 : Import auth
 
 async def get_ot_service(repo = Depends(get_workorder_repository)) -> OTService:
     return OTService(repo)
@@ -20,6 +21,7 @@ logger = logging.getLogger(__name__)
 ot_router = APIRouter(
     prefix="/ot",
     tags=["Ordres de Travail - Mobile API"],
+    dependencies=[Depends(get_current_user)],  # ✅ FIX #3 : Auth obligatoire sur tous les endpoints
 )
 
 import httpx

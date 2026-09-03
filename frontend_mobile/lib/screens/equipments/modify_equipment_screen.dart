@@ -13,6 +13,7 @@ import 'package:appmobilegmao/widgets/tools.dart';
 import 'package:appmobilegmao/widgets/equipments/attributes_modal.dart';
 import 'package:appmobilegmao/utils/selector_loader.dart';
 import 'package:appmobilegmao/utils/equipment_helpers.dart';
+import 'package:appmobilegmao/utils/geolocation_helper.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -63,7 +64,9 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
       _initialEntity,
       _initialUnite,
       _initialCentreCharge,
-      _initialDescription;
+      _initialDescription,
+      _initialLongitude,
+      _initialLatitude;
   Map<String, String> _initialAttributeValues = {};
   bool _initialValuesSaved = false;
 
@@ -103,6 +106,8 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
         selectedUnite != _initialUnite ||
         selectedCentreCharge != _initialCentreCharge ||
         _descriptionController.text.trim() != _initialDescription?.trim() ||
+        (valueLongitude ?? '') != (_initialLongitude ?? '') ||
+        (valueLatitude ?? '') != (_initialLatitude ?? '') ||
         _initialAttributeValues.length != selectedAttributeValues.length) {
       return true;
     }
@@ -192,8 +197,10 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
       selectors['centreCharges'] ?? [],
     );
     _descriptionController.text = data['Description'] ?? '';
-    valueLongitude = data['Longitude']?.toString() ?? '12311231';
-    valueLatitude = data['Latitude']?.toString() ?? '12311231';
+    final rawLng = data['Longitude']?.toString().trim() ?? data['longitude']?.toString().trim();
+    final rawLat = data['Latitude']?.toString().trim() ?? data['latitude']?.toString().trim();
+    valueLongitude = (rawLng != null && rawLng.isNotEmpty && rawLng != '12311231' && rawLng != 'null') ? rawLng : '';
+    valueLatitude = (rawLat != null && rawLat.isNotEmpty && rawLat != '12311231' && rawLat != 'null') ? rawLat : '';
 
     if (!_initialValuesSaved) _saveInitialValues();
   }
@@ -208,6 +215,8 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     _initialUnite = selectedUnite;
     _initialCentreCharge = selectedCentreCharge;
     _initialDescription = _descriptionController.text.trim();
+    _initialLongitude = valueLongitude;
+    _initialLatitude = valueLatitude;
     _initialAttributeValues = Map<String, String>.from(selectedAttributeValues);
     _initialValuesSaved = true;
 
@@ -559,98 +568,319 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
     Responsive responsive,
     ResponsiveSpacing spacing,
   ) {
+    final hasCoords = (valueLongitude != null && valueLongitude!.isNotEmpty) ||
+        (valueLatitude != null && valueLatitude!.isNotEmpty);
+
     return Column(
       children: [
         Tools.buildFieldset(context, 'Informations de positionnement'),
         SizedBox(height: spacing.small),
-        Row(
-          children: [
-            Expanded(
-              child: Tools.buildText(
-                context,
-                label: 'Longitude',
-                value: valueLongitude ?? '12311231',
-              ),
+        InkWell(
+          onTap: _showPositionModal,
+          borderRadius: BorderRadius.circular(8),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Tools.buildText(
+                    context,
+                    label: 'Longitude',
+                    value: (valueLongitude != null && valueLongitude!.isNotEmpty)
+                        ? valueLongitude!
+                        : '------',
+                  ),
+                ),
+                SizedBox(width: spacing.small),
+                Expanded(
+                  child: Tools.buildText(
+                    context,
+                    label: 'Latitude',
+                    value: (valueLatitude != null && valueLatitude!.isNotEmpty)
+                        ? valueLatitude!
+                        : '------',
+                  ),
+                ),
+              ],
             ),
-            SizedBox(width: spacing.small),
-            Expanded(
-              child: Tools.buildText(
-                context,
-                label: 'Latitude',
-                value: valueLatitude ?? '12311231',
-              ),
-            ),
-          ],
+          ),
         ),
         SizedBox(height: spacing.medium),
-        _buildMapSection(responsive, spacing),
+        _buildMapSection(responsive, spacing, hasCoords),
         SizedBox(height: spacing.medium),
         _buildAttributesButton(responsive, spacing),
       ],
     );
   }
 
-  Widget _buildMapSection(Responsive responsive, ResponsiveSpacing spacing) {
-    return Container(
-      width: double.infinity,
-      height: responsive.spacing(200),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(responsive.spacing(8)),
-        image: const DecorationImage(
-          image: AssetImage('assets/images/map.png'),
-          fit: BoxFit.cover,
-        ),
-        color: Colors.grey[300],
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.boxShadowColor,
-            blurRadius: responsive.spacing(15),
-            offset: Offset(0, responsive.spacing(4)),
+  Widget _buildMapSection(
+    Responsive responsive,
+    ResponsiveSpacing spacing,
+    bool hasCoords,
+  ) {
+    return GestureDetector(
+      onTap: _showPositionModal,
+      child: Container(
+        width: double.infinity,
+        height: responsive.spacing(200),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(responsive.spacing(8)),
+          image: const DecorationImage(
+            image: AssetImage('assets/images/map.png'),
+            fit: BoxFit.cover,
           ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(responsive.spacing(8)),
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [AppTheme.primaryColor75, AppTheme.primaryColor75],
+          color: Colors.grey[300],
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.boxShadowColor,
+              blurRadius: responsive.spacing(15),
+              offset: Offset(0, responsive.spacing(4)),
+            ),
+          ],
+        ),
+        child: Stack(
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(responsive.spacing(8)),
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [AppTheme.primaryColor75, AppTheme.primaryColor75],
+                ),
               ),
             ),
-          ),
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'Position actuelle',
-                  style: TextStyle(
-                    fontFamily: AppTheme.fontMontserrat,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.secondaryColor,
-                    fontSize: responsive.sp(18),
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.location_on,
+                      color: Color(0xFF0F1B80),
+                      size: 28,
+                    ),
                   ),
-                ),
-                SizedBox(height: spacing.small),
-                GestureDetector(
-                  onTap: () {},
-                  child: Text(
-                    'Toucher pour modifier',
+                  const SizedBox(height: 8),
+                  Text(
+                    hasCoords
+                        ? '${valueLatitude ?? ""}, ${valueLongitude ?? ""}'
+                        : 'Position actuelle',
+                    style: TextStyle(
+                      fontFamily: AppTheme.fontMontserrat,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.secondaryColor,
+                      fontSize: responsive.sp(16),
+                    ),
+                  ),
+                  SizedBox(height: spacing.tiny),
+                  Text(
+                    'Toucher pour modifier 📍',
                     style: TextStyle(
                       fontFamily: AppTheme.fontMontserrat,
                       color: AppTheme.secondaryColor,
-                      fontSize: responsive.sp(14),
+                      fontSize: responsive.sp(13),
+                      fontWeight: FontWeight.w600,
                       decoration: TextDecoration.underline,
                     ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showPositionModal() {
+    final latController = TextEditingController(text: valueLatitude ?? '');
+    final lngController = TextEditingController(text: valueLongitude ?? '');
+    bool isLocating = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) {
+          final responsive = Responsive.of(ctx);
+
+          return Container(
+            padding: EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 24,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+            ),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '📍 Positionnement GPS',
+                      style: TextStyle(
+                        fontFamily: AppTheme.fontMontserrat,
+                        fontWeight: FontWeight.bold,
+                        fontSize: responsive.sp(18),
+                        color: AppTheme.secondaryColor,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: isLocating
+                      ? null
+                      : () async {
+                          setModalState(() => isLocating = true);
+                          try {
+                            final pos = await getCurrentGpsPosition();
+                            if (pos != null) {
+                              final lat = pos['latitude']!.toStringAsFixed(6);
+                              final lng = pos['longitude']!.toStringAsFixed(6);
+                              setModalState(() {
+                                latController.text = lat;
+                                lngController.text = lng;
+                                isLocating = false;
+                              });
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('📍 Position GPS détectée : $lat, $lng'),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
+                              }
+                            } else {
+                              setModalState(() => isLocating = false);
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('⚠️ Veuillez autoriser l\'accès GPS dans votre navigateur'),
+                                    backgroundColor: Colors.orange,
+                                  ),
+                                );
+                              }
+                            }
+                          } catch (e) {
+                            setModalState(() => isLocating = false);
+                          }
+                        },
+                  icon: isLocating
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.my_location, color: Colors.white),
+                  label: Text(
+                    isLocating ? 'Recherche GPS en cours...' : 'Utiliser ma position GPS actuelle',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0F1B80),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    const Expanded(child: Divider()),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                      child: Text(
+                        'OU SAISIE MANUELLE',
+                        style: TextStyle(
+                          fontSize: responsive.sp(11),
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ),
+                    const Expanded(child: Divider()),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: lngController,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                        decoration: InputDecoration(
+                          labelText: 'Longitude',
+                          hintText: '-17.4676',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          prefixIcon: const Icon(Icons.east_rounded, size: 18),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextField(
+                        controller: latController,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                        decoration: InputDecoration(
+                          labelText: 'Latitude',
+                          hintText: '14.7167',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          prefixIcon: const Icon(Icons.north_rounded, size: 18),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      valueLongitude = lngController.text.trim();
+                      valueLatitude = latController.text.trim();
+                    });
+                    _onFieldChanged();
+                    Navigator.pop(ctx);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.secondaryColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'Valider la position',
+                    style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
               ],
             ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
