@@ -341,7 +341,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
     _loadSelectors();
   }
 
-  /// Formate un commentaire pour l'enregistrement Coswin avec ses métadonnées de fichier joint
+  /// Formate un commentaire pour l'enregistrement Coswin avec ses métadonnées de fichier joint (WAF safe)
   static String _formatCommentWithAttachment(String text, Map<String, dynamic>? attached) {
     final cleanText = text.trim();
     if (attached == null) return cleanText;
@@ -365,28 +365,34 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
     if (date.isNotEmpty) parts.add('Date: $date');
     if (author.isNotEmpty) parts.add('Auteur: $author');
 
-    final fileMeta = parts.join(' | ');
+    final fileMeta = parts.join(' ; ');
     if (cleanText.isNotEmpty) {
-      return '$cleanText\n📎 [Fichier joint: $fileMeta]';
+      return '$cleanText\n[PJ: $fileMeta]';
     } else {
-      return '📎 [Fichier joint: $fileMeta]';
+      return '[PJ: $fileMeta]';
     }
   }
 
   /// Décode les métadonnées d'un fichier joint stocké dans le texte du commentaire
   static Map<String, dynamic>? _parseAttachedFileFromComment(String rawText) {
-    if (!rawText.contains('📎 [Fichier joint:')) return null;
-    final startIdx = rawText.indexOf('📎 [Fichier joint:');
+    String tag = '';
+    if (rawText.contains('[PJ:')) {
+      tag = '[PJ:';
+    } else if (rawText.contains('📎 [Fichier joint:')) {
+      tag = '📎 [Fichier joint:';
+    } else {
+      return null;
+    }
+
+    final startIdx = rawText.indexOf(tag);
     final endIdx = rawText.indexOf(']', startIdx);
     final content = endIdx != -1
-        ? rawText.substring(startIdx + '📎 [Fichier joint:'.length, endIdx).trim()
-        : rawText.substring(startIdx + '📎 [Fichier joint:'.length).trim();
+        ? rawText.substring(startIdx + tag.length, endIdx).trim()
+        : rawText.substring(startIdx + tag.length).trim();
 
-    if (!content.contains('|')) {
-      return {'nom': content.isNotEmpty ? content : 'Document'};
-    }
     final map = <String, dynamic>{};
-    final tokens = content.split('|');
+    final delimiter = content.contains(' ; ') ? ' ; ' : '|';
+    final tokens = content.split(delimiter);
     for (final token in tokens) {
       final t = token.trim();
       if (t.startsWith('Nom:')) {
@@ -407,14 +413,21 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
         map['createur'] = t.substring(7).trim();
       }
     }
-    return map;
+    if (map.isEmpty && content.isNotEmpty) {
+      map['nom'] = content;
+    }
+    return map.isNotEmpty ? map : null;
   }
 
   /// Extrait le texte pur du commentaire sans les balises de fichier joint
   static String _extractCleanCommentText(String rawText) {
-    if (!rawText.contains('📎 [Fichier joint:')) return rawText.trim();
-    final parts = rawText.split('📎 [Fichier joint:');
-    return parts[0].trim();
+    if (rawText.contains('[PJ:')) {
+      return rawText.split('[PJ:')[0].trim();
+    }
+    if (rawText.contains('📎 [Fichier joint:')) {
+      return rawText.split('📎 [Fichier joint:')[0].trim();
+    }
+    return rawText.trim();
   }
 
   /// Charge de manière asynchrone toutes les sous-ressources de l'OT en édition

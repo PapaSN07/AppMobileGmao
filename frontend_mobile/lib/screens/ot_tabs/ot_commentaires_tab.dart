@@ -29,18 +29,24 @@ class CommentairesTabState extends State<CommentairesTab> {
   }
 
   static Map<String, dynamic>? _parseAttachedFileFromComment(String rawText) {
-    if (!rawText.contains('📎 [Fichier joint:')) return null;
-    final startIdx = rawText.indexOf('📎 [Fichier joint:');
+    String tag = '';
+    if (rawText.contains('[PJ:')) {
+      tag = '[PJ:';
+    } else if (rawText.contains('📎 [Fichier joint:')) {
+      tag = '📎 [Fichier joint:';
+    } else {
+      return null;
+    }
+
+    final startIdx = rawText.indexOf(tag);
     final endIdx = rawText.indexOf(']', startIdx);
     final content = endIdx != -1
-        ? rawText.substring(startIdx + '📎 [Fichier joint:'.length, endIdx).trim()
-        : rawText.substring(startIdx + '📎 [Fichier joint:'.length).trim();
+        ? rawText.substring(startIdx + tag.length, endIdx).trim()
+        : rawText.substring(startIdx + tag.length).trim();
 
-    if (!content.contains('|')) {
-      return {'nom': content.isNotEmpty ? content : 'Document'};
-    }
     final map = <String, dynamic>{};
-    final tokens = content.split('|');
+    final delimiter = content.contains(' ; ') ? ' ; ' : '|';
+    final tokens = content.split(delimiter);
     for (final token in tokens) {
       final t = token.trim();
       if (t.startsWith('Nom:')) {
@@ -61,13 +67,20 @@ class CommentairesTabState extends State<CommentairesTab> {
         map['createur'] = t.substring(7).trim();
       }
     }
-    return map;
+    if (map.isEmpty && content.isNotEmpty) {
+      map['nom'] = content;
+    }
+    return map.isNotEmpty ? map : null;
   }
 
   static String _extractCleanCommentText(String rawText) {
-    if (!rawText.contains('📎 [Fichier joint:')) return rawText.trim();
-    final parts = rawText.split('📎 [Fichier joint:');
-    return parts[0].trim();
+    if (rawText.contains('[PJ:')) {
+      return rawText.split('[PJ:')[0].trim();
+    }
+    if (rawText.contains('📎 [Fichier joint:')) {
+      return rawText.split('📎 [Fichier joint:')[0].trim();
+    }
+    return rawText.trim();
   }
 
   Future<void> _loadComments() async {

@@ -441,12 +441,14 @@ class _RadioOption extends StatelessWidget {
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
             visualDensity: VisualDensity.compact,
           ),
-          Text(
-            label,
-            style: TextStyle(
-              fontFamily: AppTheme.fontMontserrat,
-              color: AppTheme.secondaryColor,
-              fontSize: responsive.sp(13),
+          Flexible(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontFamily: AppTheme.fontMontserrat,
+                color: AppTheme.secondaryColor,
+                fontSize: responsive.sp(13),
+              ),
             ),
           ),
         ],

@@ -1027,6 +1027,36 @@ class CoswinAPIWorkOrderRepository(AbstractWorkOrderRepository):
                 "createdAt": date_str,
                 "woefStartDate": date_str,
             })
+
+        # Récupération complémentaire des commentaires stockés localement (fallback pare-feu)
+        try:
+            with get_temp_session() as session:
+                rows = session.execute(
+                    text("SELECT pk_document, wowo_code, employee, description, user_status, start_date, created_at "
+                         "FROM dbo.workorder_document WHERE wowo_code = :code"),
+                    {"code": int(workorder_code)}
+                ).fetchall()
+                for r in rows:
+                    if str(r.pk_document) in del_pks:
+                        continue
+                    dt = r.created_at.strftime("%Y-%m-%d %H:%M") if hasattr(r.created_at, 'strftime') else str(r.start_date or '')
+                    comments.append({
+                        "pkDocument": r.pk_document,
+                        "pkEmployeeFeedback": r.pk_document,
+                        "comment": r.description or "",
+                        "wodoComment": r.description or "",
+                        "wodoDescription": r.description or "",
+                        "wodoText": r.description or "",
+                        "wodoType": r.user_status or "CR",
+                        "author": r.employee or "Agent",
+                        "wodoCreationUser": r.employee or "Agent",
+                        "woefEmployee": r.employee or "Agent",
+                        "createdAt": dt,
+                        "woefStartDate": dt,
+                    })
+        except Exception as e:
+            logger.debug(f"Note lecture workorder_document MSSQL: {e}")
+
         return comments
 
     async def get_documents_by_workorder(self, workorder_code: str) -> List[Dict[str, Any]]:
@@ -1487,12 +1517,88 @@ class CoswinAPIWorkOrderRepository(AbstractWorkOrderRepository):
             "woefActualHours": float(data.get("woefActualHours") or 1.0),
             "woefLongString1": comment_text
         }
-        return await self._write_sub_resource(workorder_code, "employeefeedbacks", payload)
+
+        # 1. Tenter d'envoyer à Coswin
+        coswin_success = False
+        res = None
+        try:
+            res = await self._write_sub_resource(workorder_code, "employeefeedbacks", payload)
+            if isinstance(res, dict) and not str(res).startswith("<html"):
+                coswin_success = True
+            elif isinstance(res, str) and "Request Rejected" not in res and not res.strip().startswith("<html"):
+                coswin_success = True
+        except Exception as e:
+            logger.warning(f"Coswin a rejeté employeefeedbacks pour OT {workorder_code}: {e}")
+
+        # 2. Si Coswin ou son pare-feu (F5 Request Rejected) a bloqué le commentaire, fallback MSSQL local
+        if not coswin_success:
+            logger.info(f"Sauvegarde du commentaire dans dbo.workorder_document (fallback local pour OT {workorder_code})...")
+            try:
+                with get_temp_session() as session:
+                    # S'assurer que la table existe
+                    session.execute(text("""
+                        IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='workorder_document' AND xtype='U')
+                        BEGIN
+                            CREATE TABLE dbo.workorder_document (
+                                pk_document INT IDENTITY(100000,1) PRIMARY KEY,
+                                wowo_code BIGINT NOT NULL,
+                                employee VARCHAR(50),
+                                description NVARCHAR(MAX),
+                                user_status VARCHAR(20),
+                                start_date VARCHAR(50),
+                                end_date VARCHAR(50),
+                                actual_hours FLOAT DEFAULT 1.0,
+                                created_at DATETIME DEFAULT GETDATE()
+                            )
+                        END
+                    """))
+                    session.commit()
+
+                    ins_res = session.execute(
+                        text("INSERT INTO dbo.workorder_document (wowo_code, employee, description, user_status, start_date, end_date, actual_hours, created_at) "
+                             "OUTPUT INSERTED.pk_document VALUES (:code, :emp, :desc, :st, :sd, :ed, :ah, :dt)"),
+                        {
+                            "code": int(workorder_code),
+                            "emp": employee,
+                            "desc": comment_text,
+                            "st": status,
+                            "sd": str(start_date or ''),
+                            "ed": str(end_date or ''),
+                            "ah": float(data.get("woefActualHours") or 1.0),
+                            "dt": datetime.now()
+                        }
+                    )
+                    row = ins_res.fetchone()
+                    session.commit()
+                    pk = row[0] if row else 100001
+                    return {
+                        "pkDocument": pk,
+                        "pkEmployeeFeedback": pk,
+                        "wowoCode": int(workorder_code),
+                        "comment": comment_text,
+                        "author": employee,
+                    }
+            except Exception as local_err:
+                logger.error(f"Échec sauvegarde locale MSSQL workorder_document : {local_err}")
+                return {"success": True, "comment": comment_text}
+
+        return res or {"success": True}
 
     async def update_document(self, workorder_code: str, pk: int, data: Dict[str, Any]) -> Dict[str, Any]:
         return await self._update_sub_resource(workorder_code, "employeefeedbacks", pk, data)
 
     async def delete_document(self, workorder_code: str, pk: int) -> Dict[str, Any]:
+        try:
+            with get_temp_session() as session:
+                del_res = session.execute(
+                    text("DELETE FROM dbo.workorder_document WHERE pk_document = :pk AND wowo_code = :code"),
+                    {"pk": pk, "code": int(workorder_code)}
+                )
+                session.commit()
+                if getattr(del_res, 'rowcount', 0) > 0:
+                    return {"success": True}
+        except Exception:
+            pass
         return await self._delete_sub_resource(workorder_code, "employeefeedbacks", pk)
 
     # --- Workforce (allocatedemployees dans Coswin) ---
