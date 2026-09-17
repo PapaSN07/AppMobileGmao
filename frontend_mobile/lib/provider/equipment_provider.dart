@@ -13,6 +13,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:appmobilegmao/services/equipment_service.dart';
+import 'package:appmobilegmao/services/api_service.dart';
 import 'package:appmobilegmao/services/hive_service.dart';
 import 'package:appmobilegmao/models/equipment.dart';
 
@@ -97,7 +98,12 @@ class EquipmentProvider extends ChangeNotifier {
 
   Future<void> _checkConnectivity() async {
     final result = await _connectivity.checkConnectivity();
-    _isOffline = result == ConnectivityResult.none;
+    if (result != ConnectivityResult.none) {
+      _isOffline = false;
+    } else {
+      final base = ApiService().baseUrl;
+      _isOffline = !(base.contains('127.0.0.1') || base.contains('10.0.2.2') || base.contains('localhost') || base.contains('192.168.'));
+    }
   }
 
   // ✅ fetchEquipments : entity OBLIGATOIRE (vient de l'utilisateur/activeEntity) - 100% API Réelle

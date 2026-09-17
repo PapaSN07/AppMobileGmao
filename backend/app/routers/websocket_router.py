@@ -57,7 +57,7 @@ async def websocket_notifications(
                             "message": f"Notification {notification_id} marquée comme lue"
                         }))
                 
-                elif message.get("action") == "ping":
+                elif message.get("action") == "ping" or message.get("type") == "ping":
                     # Heartbeat pour maintenir la connexion active
                     await websocket.send_text(json.dumps({"type": "pong"}))
                     logger.debug(f"🏓 Pong envoyé à {user_id}")

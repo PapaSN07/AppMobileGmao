@@ -48,11 +48,11 @@ JWT_REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("JWT_REFRESH_TOKEN_EXPIRE_DAYS", 7
 DEFAULT_PASSWORD_PRESTATAIRE = os.getenv("DEFAULT_PASSWORD_PRESTATAIRE", "changeMe123!")
 
 # Configuration API OT (Coswin)
-OT_API_BASE_URL = os.getenv("OT_API_BASE_URL", "http://10.101.1.102:8083/ws/rest")
-OT_API_USERNAME = os.getenv("OT_API_USERNAME", "coswinws")
-OT_API_PASSWORD = os.getenv("OT_API_PASSWORD", "supervisor")
-OT_DATASOURCE = os.getenv("OT_DATASOURCE", "Coswin")
-OT_CWUSER = os.getenv("OT_CWUSER", "coswinws")
+OT_API_BASE_URL = os.getenv("OT_API_BASE_URL", "https://nomcosw.senelec.sn:8083/ws/rest")
+OT_API_USERNAME = os.getenv("OT_API_USERNAME", "admin")
+OT_API_PASSWORD = os.getenv("OT_API_PASSWORD", "admin")
+OT_DATASOURCE = os.getenv("OT_DATASOURCE", "APPMOBILE")
+OT_CWUSER = os.getenv("OT_CWUSER", "supervisor")
 
 DATA_SOURCE = os.getenv("DATA_SOURCE", "coswin").lower()
 # Mode local OT: permet de continuer les tests sans dependre de l'API Coswin.

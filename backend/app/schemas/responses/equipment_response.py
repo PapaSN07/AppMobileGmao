@@ -75,6 +75,9 @@ class EquipmentListResponse(BaseModel):
     entity_hierarchy: Optional[Dict[str, Any]] = Field(None, description="Hiérarchie d'entité utilisée")
     status: str = Field("success", description="Statut de la réponse")
     message: str = Field("", description="Message de la réponse")
+    page: Optional[int] = Field(1, description="Page courante")
+    page_size: Optional[int] = Field(30, description="Taille de la page")
+    has_more: Optional[bool] = Field(False, description="Indique si d'autres pages sont disponibles")
 
     class Config:
         from_attributes = True

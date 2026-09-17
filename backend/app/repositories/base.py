@@ -156,3 +156,10 @@ class AbstractWorkOrderRepository(ABC):
     @abstractmethod
     async def delete_attribute(self, workorder_code: str, pk: int) -> Dict[str, Any]:
         pass
+
+    # ========== ITEMS & REFERENTIALS ==========
+    async def get_all_items(self) -> List[Dict[str, Any]]:
+        return []
+
+    async def get_referentials(self) -> Dict[str, Any]:
+        return {}

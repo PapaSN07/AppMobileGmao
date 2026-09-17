@@ -92,6 +92,7 @@ class SousAttributsTabState extends State<SousAttributsTab> {
                       "woatName": nameController.text.trim(),
                       "woatValue": valController.text.trim(),
                       "woatDescription": descController.text.trim(),
+                      "woatValueType": "ALPHANUMERIC",
                     });
                     _loadAttributes();
                   } catch (e) {
@@ -155,6 +156,7 @@ class SousAttributsTabState extends State<SousAttributsTab> {
                       "woatName": nameController.text.trim(),
                       "woatValue": valController.text.trim(),
                       "woatDescription": descController.text.trim(),
+                      "woatValueType": "ALPHANUMERIC",
                     });
                     _loadAttributes();
                   } catch (e) {

@@ -426,42 +426,45 @@ class ProfilMenu extends StatelessWidget {
         ), // ✅ Border radius responsive
         color: Colors.transparent,
       ),
-      child: ListTile(
-        leading: Container(
-          padding: spacing.custom(all: 6), // ✅ Padding responsive
-          decoration: BoxDecoration(
-            color: iconColor.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(
-              responsive.spacing(6),
-            ), // ✅ Border radius responsive
+      child: Material(
+        color: Colors.transparent,
+        child: ListTile(
+          leading: Container(
+            padding: spacing.custom(all: 6), // ✅ Padding responsive
+            decoration: BoxDecoration(
+              color: iconColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(
+                responsive.spacing(6),
+              ), // ✅ Border radius responsive
+            ),
+            child: Icon(
+              icon,
+              color: iconColor,
+              size: responsive.iconSize(20),
+            ), // ✅ Icône responsive
           ),
-          child: Icon(
-            icon,
-            color: iconColor,
-            size: responsive.iconSize(20),
-          ), // ✅ Icône responsive
-        ),
-        title: Text(
-          label,
-          style: TextStyle(
-            fontWeight: FontWeight.w500,
-            fontSize: responsive.sp(14), // ✅ Texte responsive
-            fontFamily: AppTheme.fontRoboto,
+          title: Text(
+            label,
+            style: TextStyle(
+              fontWeight: FontWeight.w500,
+              fontSize: responsive.sp(14), // ✅ Texte responsive
+              fontFamily: AppTheme.fontRoboto,
+            ),
           ),
+          trailing: Icon(
+            Icons.arrow_forward_ios,
+            size: responsive.iconSize(14), // ✅ Icône responsive
+            color: AppTheme.thirdColor,
+          ),
+          onTap: onTap,
+          contentPadding: spacing.custom(
+            horizontal: 12,
+            vertical: 2,
+          ), // ✅ Padding responsive
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(responsive.spacing(10)),
+          ), // ✅ Border radius responsive
         ),
-        trailing: Icon(
-          Icons.arrow_forward_ios,
-          size: responsive.iconSize(14), // ✅ Icône responsive
-          color: AppTheme.thirdColor,
-        ),
-        onTap: onTap,
-        contentPadding: spacing.custom(
-          horizontal: 12,
-          vertical: 2,
-        ), // ✅ Padding responsive
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(responsive.spacing(10)),
-        ), // ✅ Border radius responsive
       ),
     );
   }
@@ -483,56 +486,59 @@ class ProfilMenu extends StatelessWidget {
         ), // ✅ Border radius responsive
         color: Colors.transparent,
       ),
-      child: ListTile(
-        leading: Container(
-          padding: spacing.custom(all: 6), // ✅ Padding responsive
-          decoration: BoxDecoration(
-            color: iconColor.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(
-              responsive.spacing(6),
-            ), // ✅ Border radius responsive
+      child: Material(
+        color: Colors.transparent,
+        child: ListTile(
+          leading: Container(
+            padding: spacing.custom(all: 6), // ✅ Padding responsive
+            decoration: BoxDecoration(
+              color: iconColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(
+                responsive.spacing(6),
+              ), // ✅ Border radius responsive
+            ),
+            child: Icon(
+              icon,
+              color: iconColor,
+              size: responsive.iconSize(20),
+            ), // ✅ Icône responsive
           ),
-          child: Icon(
-            icon,
-            color: iconColor,
-            size: responsive.iconSize(20),
-          ), // ✅ Icône responsive
-        ),
-        title: Text(
-          label,
-          style: TextStyle(
-            fontWeight: FontWeight.w500,
-            fontSize: responsive.sp(14), // ✅ Texte responsive
-            fontFamily: AppTheme.fontRoboto,
+          title: Text(
+            label,
+            style: TextStyle(
+              fontWeight: FontWeight.w500,
+              fontSize: responsive.sp(14), // ✅ Texte responsive
+              fontFamily: AppTheme.fontRoboto,
+            ),
           ),
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              value,
-              style: TextStyle(
-                color: AppTheme.thirdColor,
-                fontWeight: FontWeight.w500,
-                fontSize: responsive.sp(12), // ✅ Texte responsive
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                value,
+                style: TextStyle(
+                  color: AppTheme.thirdColor,
+                  fontWeight: FontWeight.w500,
+                  fontSize: responsive.sp(12), // ✅ Texte responsive
+                ),
               ),
-            ),
-            SizedBox(width: spacing.small), // ✅ Espacement responsive
-            Icon(
-              Icons.arrow_forward_ios,
-              size: responsive.iconSize(14), // ✅ Icône responsive
-              color: AppTheme.thirdColor,
-            ),
-          ],
+              SizedBox(width: spacing.small), // ✅ Espacement responsive
+              Icon(
+                Icons.arrow_forward_ios,
+                size: responsive.iconSize(14), // ✅ Icône responsive
+                color: AppTheme.thirdColor,
+              ),
+            ],
+          ),
+          onTap: onTap,
+          contentPadding: spacing.custom(
+            horizontal: 12,
+            vertical: 2,
+          ), // ✅ Padding responsive
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(responsive.spacing(10)),
+          ), // ✅ Border radius responsive
         ),
-        onTap: onTap,
-        contentPadding: spacing.custom(
-          horizontal: 12,
-          vertical: 2,
-        ), // ✅ Padding responsive
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(responsive.spacing(10)),
-        ), // ✅ Border radius responsive
       ),
     );
   }

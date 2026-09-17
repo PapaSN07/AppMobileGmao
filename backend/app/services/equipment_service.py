@@ -1,6 +1,6 @@
 from app.db.sqlalchemy.session import get_main_session, get_temp_session, SQLAlchemyQueryExecutor
 from app.core.config import CACHE_TTL_SHORT
-from app.db.requests import (ATTRIBUTE_VALUES_QUERY, EQUIPMENT_BY_ID_QUERY, EQUIPMENT_CLASSE_ATTRIBUTS_QUERY, EQUIPMENT_INFINITE_QUERY, FEEDER_QUERY)
+from app.db.requests import (ATTRIBUTE_VALUES_QUERY, EQUIPMENT_BASE_SELECT, EQUIPMENT_BY_ID_QUERY, EQUIPMENT_CLASSE_ATTRIBUTS_QUERY, EQUIPMENT_INFINITE_QUERY, FEEDER_QUERY)
 from app.core.cache import cache, invalidate_equipment_insertion_cache
 from app.services.statistique_service import invalidate_statistics_cache
 from typing import Dict, Any, List, Optional
@@ -20,13 +20,19 @@ def get_equipments_infinite(
     entity: str,
     zone: Optional[str] = None,
     famille: Optional[str] = None,
-    search_term: Optional[str] = None
+    search_term: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 30
 ) -> Dict[str, Any]:
-    """Infinite scroll optimisé pour mobile avec hiérarchie d'entité obligatoire"""
+    """Infinite scroll optimisé pour mobile avec hiérarchie d'entité et pagination étape par étape"""
     
     from app.services.entity_service import extract_hierarchy
     
-    cache_key = f"mobile_eq_{entity}_{zone}_{famille}_{search_term}"
+    page = max(1, int(page or 1))
+    page_size = max(1, min(100, int(page_size or 30)))
+    offset = (page - 1) * page_size
+
+    cache_key = f"mobile_eq_{entity}_{zone}_{famille}_{search_term}_{page}_{page_size}"
 
     cached = cache.get_data_only(cache_key)
     if cached:
@@ -34,56 +40,92 @@ def get_equipments_infinite(
     
     # ✅ DRY : Utilisation de extract_hierarchy
     hierarchy_entities = extract_hierarchy(entity)
-    logger.info(f"Hiérarchie pour {entity}: {hierarchy_entities}")
+    logger.info(f"Hiérarchie pour {entity}: {hierarchy_entities} (Page {page}, Taille {page_size})")
     
-    # Query de base avec conditions
-    base_query = EQUIPMENT_INFINITE_QUERY
+    # Construction dynamique des filtres
+    where_parts = ["1=1"]
     params = {}
     
-    # Filtre par hiérarchie d'entités
-    placeholders = ','.join([f':entity_{i}' for i in range(len(hierarchy_entities))])
-    base_query += f" AND e.ereq_entity IN ({placeholders})"
-    
-    for i, entity_code in enumerate(hierarchy_entities):
-        params[f'entity_{i}'] = entity_code
-    
-    # Autres filtres
+    if hierarchy_entities and entity.strip().upper() != 'SENELEC':
+        placeholders = ','.join([f':entity_{i}' for i in range(len(hierarchy_entities))])
+        where_parts.append(f"e.ereq_entity IN ({placeholders})")
+        for i, entity_code in enumerate(hierarchy_entities):
+            params[f'entity_{i}'] = entity_code
+            
     if zone:
-        base_query += " AND e.ereq_zone = :zone"
+        where_parts.append("e.ereq_zone = :zone")
         params['zone'] = zone
     if famille:
-        base_query += " AND e.ereq_category = :famille" 
+        where_parts.append("e.ereq_category = :famille")
         params['famille'] = famille
     if search_term:
-        base_query += " AND (LOWER(e.ereq_code) LIKE LOWER(:search) OR LOWER(e.ereq_description) LIKE LOWER(:search))"
+        where_parts.append("(LOWER(e.ereq_code) LIKE LOWER(:search) OR LOWER(e.ereq_description) LIKE LOWER(:search))")
         params['search'] = f"%{search_term}%"
-    
-    # ORDER BY avec les bonnes colonnes
-    base_query += " ORDER BY e.pk_equipment DESC"
+
+    where_sql = " AND ".join(where_parts)
     
     try:
-        # ✅ CORRECTION: Utiliser SQLAlchemy session au lieu de l'ancienne DB
         with get_main_session() as session:
             executor = SQLAlchemyQueryExecutor(session)
-            results = executor.execute_query(base_query, params=params)
             
-            # ✅ CORRECTION: Utiliser le builder pour construire les équipements
-            equipments = EquipmentWithAttributesBuilder.build_from_query_results(results)
+            # Étape 1 : Récupérer uniquement les PK paginées (ultra-rapide, quelques ms)
+            id_query = f"""
+                SELECT e.pk_equipment 
+                FROM equipment e 
+                WHERE {where_sql} 
+                ORDER BY e.pk_equipment DESC 
+                OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
+            """
+            id_params = dict(params)
+            id_params['offset'] = offset
+            id_params['limit'] = page_size
             
-            # Convertir en format API
-            equipments_api = [eq.to_dict() for eq in equipments]
+            id_rows = executor.execute_query(id_query, params=id_params)
+            pk_ids = [r[0] for r in id_rows] if id_rows else []
             
-            # ✅ FALLBACK DRY (inspiré de famille_service.py) : Si l'entité n'a pas d’équipement propre, charger les équipements globaux
-            if not equipments_api:
-                logger.warning(f"⚠️ Aucun équipement trouvé pour l'entité {entity}. Fallback: récupération globale des équipements.")
-                fallback_query = EQUIPMENT_INFINITE_QUERY + " ORDER BY e.pk_equipment DESC"
-                fallback_results = executor.execute_query(fallback_query, params={})
-                fallback_equipments = EquipmentWithAttributesBuilder.build_from_query_results(fallback_results)
-                equipments_api = [eq.to_dict() for eq in fallback_equipments]
+            # Fallback si l'entité n'a aucun équipement et qu'on est sur la page 1
+            if not pk_ids and page == 1:
+                logger.warning(f"⚠️ Aucun équipement trouvé pour l'entité {entity}. Fallback: récupération globale paginée.")
+                fallback_where = ["1=1"]
+                fallback_params = {}
+                if zone:
+                    fallback_where.append("e.ereq_zone = :zone")
+                    fallback_params['zone'] = zone
+                if famille:
+                    fallback_where.append("e.ereq_category = :famille")
+                    fallback_params['famille'] = famille
+                if search_term:
+                    fallback_where.append("(LOWER(e.ereq_code) LIKE LOWER(:search) OR LOWER(e.ereq_description) LIKE LOWER(:search))")
+                    fallback_params['search'] = f"%{search_term}%"
+                
+                fallback_id_query = f"""
+                    SELECT e.pk_equipment 
+                    FROM equipment e 
+                    WHERE {" AND ".join(fallback_where)} 
+                    ORDER BY e.pk_equipment DESC 
+                    OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
+                """
+                fallback_params['offset'] = offset
+                fallback_params['limit'] = page_size
+                id_rows = executor.execute_query(fallback_id_query, params=fallback_params)
+                pk_ids = [r[0] for r in id_rows] if id_rows else []
+            
+            # Étape 2 : Si on a des IDs, charger les détails et attributs de ces équipements spécifiques
+            equipments_api = []
+            if pk_ids:
+                id_placeholders = ','.join([f':pk_{i}' for i in range(len(pk_ids))])
+                details_query = EQUIPMENT_BASE_SELECT + f"\nWHERE e.pk_equipment IN ({id_placeholders})\nORDER BY e.pk_equipment DESC"
+                details_params = {f'pk_{i}': pk for i, pk in enumerate(pk_ids)}
+                results = executor.execute_query(details_query, params=details_params)
+                equipments = EquipmentWithAttributesBuilder.build_from_query_results(results)
+                equipments_api = [eq.to_dict() for eq in equipments]
             
             response = {
                 'equipments': equipments_api,
                 'count': len(equipments_api),
+                'page': page,
+                'page_size': page_size,
+                'has_more': len(pk_ids) == page_size,
                 'entity_hierarchy': {
                     'requested_entity': entity,
                     'hierarchy_used': hierarchy_entities,
@@ -92,7 +134,7 @@ def get_equipments_infinite(
             }
             
             cache.set(cache_key, response, CACHE_TTL_SHORT)
-            logger.info(f"✅ SQLAlchemy méthode: {len(equipments_api)} équipements récupérés en une requête")
+            logger.info(f"✅ SQLAlchemy paginé: {len(equipments_api)} équipements récupérés (Page {page}, Limit {page_size})")
             return response
             
     except Exception as e:

@@ -18,21 +18,33 @@ class ApiException implements Exception {
 }
 
 class ApiService {
+  static ApiService? _instance;
   late final Dio _dio;
   late String baseUrl;
   String? _authToken;
+  bool _isRefreshing = false;
 
   static const Duration _timeout = Duration(seconds: 30);
   static const int _productionPort = 9099;
   static const String _productionHost = 'domtec.senelec.sn';
   static const int _localDevPort = 8003;
-  // IP fixe du point d'accès Hotspot Windows (192.168.137.1)
-  static const String _localDevHost = '192.168.137.1';
+  // IP du PC pour le téléphone connecté en Wi-Fi
+  static const String _localDevHost = '192.168.1.15';
 
   String get macIpAddress => _resolveHost();
   int get defaultPort => _resolvePort();
 
-  ApiService({int? port, String? customBaseUrl}) {
+  factory ApiService({int? port, String? customBaseUrl}) {
+    _instance ??= ApiService._internal(port: port, customBaseUrl: customBaseUrl);
+    if (customBaseUrl != null) {
+      _instance!.setCustomBaseUrl(customBaseUrl);
+    } else if (port != null) {
+      _instance!.setPort(port);
+    }
+    return _instance!;
+  }
+
+  ApiService._internal({int? port, String? customBaseUrl}) {
     final resolvedPort = port ?? _resolvePort();
     baseUrl = customBaseUrl ?? _buildBaseUrl(resolvedPort);
     _dio = Dio(
@@ -46,7 +58,7 @@ class ApiService {
           'Accept': 'application/json',
           'Bypass-Tunnel-Reminder': 'true',
         },
-        validateStatus: (status) => status != null && status < 500,
+        validateStatus: (status) => status != null && status >= 200 && status < 300,
       ),
     );
     _setupInterceptors();
@@ -63,6 +75,11 @@ class ApiService {
       if (webHost.isNotEmpty && webHost != 'localhost' && webHost != '127.0.0.1') {
         return webHost;
       }
+      return _localDevHost;
+    }
+
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      // Émulateur Android Studio vers le PC hôte (10.0.2.2)
       return _localDevHost;
     }
 
@@ -108,16 +125,18 @@ class ApiService {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          if (_authToken == null) {
-            _authToken = await HiveService.getAccessToken();
-            if (_authToken != null) {
-              options.headers['Authorization'] = 'Bearer $_authToken';
-            }
+          // DRY: Source unique de vérité pour le token JWT
+          final token = _authToken ?? await HiveService.getAccessToken();
+          if (token != null && token.isNotEmpty) {
+            _authToken = token;
+            options.headers['Authorization'] = 'Bearer $token';
+          } else {
+            options.headers.remove('Authorization');
           }
           handler.next(options);
         },
         onResponse: (response, handler) {
-          // ✅ NOUVEAU: Vérifier si la réponse est du HTML au lieu de JSON
+          // NOUVEAU: Vérifier si la réponse est du HTML au lieu de JSON
           if (response.statusCode == 200) {
             final contentType = response.headers.value('content-type');
 
@@ -151,9 +170,14 @@ class ApiService {
         },
         onError: (error, handler) async {
           final resp = error.response;
-          if (resp?.statusCode == 401) {
+          final path = error.requestOptions.path;
+          final isAuthRoute = path.contains('/auth/login') || path.contains('/auth/refresh');
+
+          // SOLID: Ne tenter le rafraîchissement que pour les requêtes métier (évite les boucles sur auth)
+          if (resp?.statusCode == 401 && !isAuthRoute) {
             final refresh = await HiveService.getRefreshToken();
-            if (refresh != null) {
+            if (refresh != null && !_isRefreshing) {
+              _isRefreshing = true;
               try {
                 final r = await _dio.post(
                   '/api/v1/auth/refresh',
@@ -168,9 +192,17 @@ class ApiService {
                   final retry = await _dio.fetch(error.requestOptions);
                   return handler.resolve(retry);
                 }
+              } on DioException catch (dioErr) {
+                // SOLID: Ne déconnecter QUE si le serveur rejette formellement le token (401/403)
+                final refreshStatus = dioErr.response?.statusCode;
+                if (refreshStatus == 401 || refreshStatus == 403) {
+                  await HiveService.clearAllCache();
+                  clearAuthToken();
+                }
               } catch (_) {
-                await HiveService.clearAllCache();
-                clearAuthToken();
+                // Erreur réseau ou abort de socket: ne pas déconnecter l'utilisateur
+              } finally {
+                _isRefreshing = false;
               }
             }
           }
@@ -290,12 +322,25 @@ class ApiService {
       }
     }
 
+    // Extraire le message d'erreur détaillé du backend si présent
+    String? serverDetail;
+    if (e.response?.data is Map) {
+      final dataMap = e.response!.data as Map;
+      serverDetail = dataMap['detail']?.toString() ??
+          dataMap['message']?.toString() ??
+          dataMap['error']?.toString();
+    } else if (e.response?.data is String && (e.response!.data as String).isNotEmpty) {
+      serverDetail = e.response!.data as String;
+    }
+
     if (e.type == DioExceptionType.connectionTimeout) {
       message = 'Connexion impossible - vérifiez le réseau';
     } else if (e.type == DioExceptionType.receiveTimeout) {
       message = 'Réponse trop lente du serveur';
     } else if (e.type == DioExceptionType.badResponse) {
-      if (status >= 500) {
+      if (serverDetail != null && serverDetail.isNotEmpty) {
+        message = serverDetail;
+      } else if (status >= 500) {
         message = 'Erreur serveur ($status)';
       } else if (status == 404) {
         message = 'Ressource non trouvée (404)';
@@ -307,7 +352,7 @@ class ApiService {
         message = 'Erreur API ($status)';
       }
     } else {
-      message = 'Erreur réseau: ${e.message}';
+      message = serverDetail ?? 'Erreur réseau: ${e.message}';
     }
 
     return ApiException(message, statusCode: status, endpoint: endpoint);

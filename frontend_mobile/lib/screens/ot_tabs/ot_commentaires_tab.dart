@@ -1,18 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:appmobilegmao/provider/auth_provider.dart';
-import 'package:appmobilegmao/models/order.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:appmobilegmao/utils/responsive.dart';
 import 'package:appmobilegmao/theme/responsive_spacing.dart';
-import 'package:appmobilegmao/widgets/custom_bottom_navigation_bar.dart';
-import 'package:appmobilegmao/widgets/custom_app_bar.dart';
 import 'package:appmobilegmao/screens/fichier_lie_screen.dart';
-import 'package:appmobilegmao/screens/main_screen.dart';
 import 'package:appmobilegmao/services/ot_service.dart';
-import 'package:appmobilegmao/services/api_service.dart';
-import 'package:appmobilegmao/services/hive_service.dart';
-import 'package:image_picker/image_picker.dart';
 
 /// Onglet "Commentaires" - Affiche les commentaires et les pièces jointes
 /// Principe SOLID: Single Responsibility - Gère uniquement l'affichage des commentaires et pièces jointes
@@ -30,12 +21,53 @@ class CommentairesTabState extends State<CommentairesTab> {
   List<dynamic> _comments = [];
   bool _isLoading = true;
   String? _error;
-  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
     super.initState();
     _loadComments();
+  }
+
+  static Map<String, dynamic>? _parseAttachedFileFromComment(String rawText) {
+    if (!rawText.contains('📎 [Fichier joint:')) return null;
+    final startIdx = rawText.indexOf('📎 [Fichier joint:');
+    final endIdx = rawText.indexOf(']', startIdx);
+    final content = endIdx != -1
+        ? rawText.substring(startIdx + '📎 [Fichier joint:'.length, endIdx).trim()
+        : rawText.substring(startIdx + '📎 [Fichier joint:'.length).trim();
+
+    if (!content.contains('|')) {
+      return {'nom': content.isNotEmpty ? content : 'Document'};
+    }
+    final map = <String, dynamic>{};
+    final tokens = content.split('|');
+    for (final token in tokens) {
+      final t = token.trim();
+      if (t.startsWith('Nom:')) {
+        map['nom'] = t.substring(4).trim();
+      } else if (t.startsWith('Desc:')) {
+        map['description'] = t.substring(5).trim();
+      } else if (t.startsWith('Type:')) {
+        map['type'] = t.substring(5).trim();
+      } else if (t.startsWith('Cat:')) {
+        map['categorie'] = t.substring(4).trim();
+      } else if (t.startsWith('URL:')) {
+        map['url'] = t.substring(4).trim();
+      } else if (t.startsWith('Imprimable:')) {
+        map['isImprimable'] = t.substring(11).trim() == 'Oui';
+      } else if (t.startsWith('Date:')) {
+        map['dateCreation'] = t.substring(5).trim();
+      } else if (t.startsWith('Auteur:')) {
+        map['createur'] = t.substring(7).trim();
+      }
+    }
+    return map;
+  }
+
+  static String _extractCleanCommentText(String rawText) {
+    if (!rawText.contains('📎 [Fichier joint:')) return rawText.trim();
+    final parts = rawText.split('📎 [Fichier joint:');
+    return parts[0].trim();
   }
 
   Future<void> _loadComments() async {
@@ -54,380 +86,6 @@ class CommentairesTabState extends State<CommentairesTab> {
     }
   }
 
-  void _showAddDialog() {
-    final formKey = GlobalKey<FormState>();
-    final contentController = TextEditingController();
-    final currentUser = HiveService.getCurrentUser();
-    final authorController = TextEditingController(text: currentUser?.code ?? '5893');
-    DateTime startDate = DateTime.now().subtract(const Duration(hours: 1));
-    DateTime endDate = DateTime.now();
-    XFile? selectedFile;
-
-    final startDateController = TextEditingController(
-      text: '${startDate.year}-${startDate.month.toString().padLeft(2, '0')}-${startDate.day.toString().padLeft(2, '0')} ${startDate.hour.toString().padLeft(2, '0')}:${startDate.minute.toString().padLeft(2, '0')}'
-    );
-    final endDateController = TextEditingController(
-      text: '${endDate.year}-${endDate.month.toString().padLeft(2, '0')}-${endDate.day.toString().padLeft(2, '0')} ${endDate.hour.toString().padLeft(2, '0')}:${endDate.minute.toString().padLeft(2, '0')}'
-    );
-
-    double actualHours = (endDate.difference(startDate).inMinutes / 60.0);
-    final actualHoursController = TextEditingController(text: actualHours.toStringAsFixed(1));
-    final totalHoursController = TextEditingController(text: actualHours.toStringAsFixed(1));
-
-    Future<DateTime?> pickDT(DateTime initial) async {
-      final date = await showDatePicker(
-        context: context,
-        initialDate: initial,
-        firstDate: DateTime(2020),
-        lastDate: DateTime(2100),
-      );
-      if (date == null) return null;
-      final time = await showTimePicker(
-        context: context,
-        initialTime: TimeOfDay.fromDateTime(initial),
-      );
-      if (time == null) return null;
-      return DateTime(date.year, date.month, date.day, time.hour, time.minute);
-    }
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            void recalc() {
-              final diff = endDate.difference(startDate).inMinutes;
-              if (diff >= 0) {
-                final h = (diff / 60.0).toStringAsFixed(1);
-                setDialogState(() {
-                  actualHoursController.text = h;
-                  totalHoursController.text = h;
-                });
-              }
-            }
-
-            return AlertDialog(
-              title: const Text('Ajouter un compte-rendu / fichier'),
-              content: SingleChildScrollView(
-                child: Form(
-                  key: formKey,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      TextFormField(
-                        controller: contentController,
-                        decoration: const InputDecoration(
-                          labelText: 'Commentaire / Rapport *',
-                          hintText: 'Description du travail effectué...',
-                        ),
-                        maxLines: 2,
-                        validator: (v) => v == null || v.isEmpty ? 'Champ requis' : null,
-                      ),
-                      const SizedBox(height: 8),
-                      TextFormField(
-                        controller: authorController,
-                        decoration: const InputDecoration(labelText: 'Auteur / Code Employé *'),
-                        validator: (v) => v == null || v.isEmpty ? 'Champ requis' : null,
-                      ),
-                      const SizedBox(height: 12),
-                      
-                      // 📎 Section Pièce Jointe / Fichier
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey.shade300),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              '📎 Pièce jointe / Photo',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                            ),
-                            const SizedBox(height: 8),
-                            if (selectedFile == null) ...[
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: OutlinedButton.icon(
-                                      onPressed: () async {
-                                        try {
-                                          final f = await _picker.pickImage(source: ImageSource.camera);
-                                          if (f != null) {
-                                            setDialogState(() => selectedFile = f);
-                                          }
-                                        } catch (e) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(content: Text('Erreur caméra: $e')),
-                                          );
-                                        }
-                                      },
-                                      icon: const Icon(Icons.camera_alt, size: 16),
-                                      label: const Text('Photo', style: TextStyle(fontSize: 12)),
-                                      style: OutlinedButton.styleFrom(
-                                        foregroundColor: const Color(0xFF0F1B80),
-                                        padding: const EdgeInsets.symmetric(vertical: 8),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: OutlinedButton.icon(
-                                      onPressed: () async {
-                                        try {
-                                          final f = await _picker.pickImage(source: ImageSource.gallery);
-                                          if (f != null) {
-                                            setDialogState(() => selectedFile = f);
-                                          }
-                                        } catch (e) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(content: Text('Erreur galerie: $e')),
-                                          );
-                                        }
-                                      },
-                                      icon: const Icon(Icons.photo_library, size: 16),
-                                      label: const Text('Galerie/Fichier', style: TextStyle(fontSize: 12)),
-                                      style: OutlinedButton.styleFrom(
-                                        foregroundColor: const Color(0xFF0F1B80),
-                                        padding: const EdgeInsets.symmetric(vertical: 8),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ] else ...[
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(color: const Color(0xFF0F1B80).withAlpha(50)),
-                                ),
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.attach_file, color: Color(0xFF0F1B80), size: 18),
-                                    const SizedBox(width: 6),
-                                    Expanded(
-                                      child: Text(
-                                        selectedFile!.name,
-                                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(Icons.close, color: Colors.red, size: 18),
-                                      padding: EdgeInsets.zero,
-                                      constraints: const BoxConstraints(),
-                                      onPressed: () => setDialogState(() => selectedFile = null),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: startDateController,
-                        readOnly: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Date/Heure Début',
-                          suffixIcon: Icon(Icons.calendar_today, size: 18),
-                        ),
-                        onTap: () async {
-                          final picked = await pickDT(startDate);
-                          if (picked != null) {
-                            setDialogState(() {
-                              startDate = picked;
-                              startDateController.text = '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')} ${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
-                            });
-                            recalc();
-                          }
-                        },
-                      ),
-                      const SizedBox(height: 8),
-                      TextFormField(
-                        controller: endDateController,
-                        readOnly: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Date/Heure Fin',
-                          suffixIcon: Icon(Icons.event_available, size: 18),
-                        ),
-                        onTap: () async {
-                          final picked = await pickDT(endDate);
-                          if (picked != null) {
-                            setDialogState(() {
-                              endDate = picked;
-                              endDateController.text = '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')} ${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
-                            });
-                            recalc();
-                          }
-                        },
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextFormField(
-                              controller: actualHoursController,
-                              decoration: const InputDecoration(labelText: 'Heures réelles (auto)'),
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: TextFormField(
-                              controller: totalHoursController,
-                              decoration: const InputDecoration(labelText: 'Heures totales (auto)'),
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Annuler'),
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    if (formKey.currentState?.validate() ?? false) {
-                      Navigator.pop(context);
-                      try {
-                        String commentBody = contentController.text.trim();
-                        if (selectedFile != null) {
-                          commentBody += "\n📎 [Fichier joint: ${selectedFile!.name}]";
-                        }
-
-                        await widget.otService.createDocument(widget.otCode, {
-                          "woefEmployee": authorController.text.trim(),
-                          "reemDescription": "Intervenant",
-                          "woefUserStatus": commentBody,
-                          "woefStartDate": startDate.toIso8601String(),
-                          "woefEndDate": endDate.toIso8601String(),
-                          "woefActualHours": double.tryParse(actualHoursController.text) ?? 0.0,
-                          "woefTotalHours": double.tryParse(totalHoursController.text) ?? 0.0,
-                        });
-                        _loadComments();
-                      } catch (e) {
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
-                      }
-                    }
-                  },
-                  child: const Text('Ajouter'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  void _showEditDialog(Map<String, dynamic> comment) {
-    final formKey = GlobalKey<FormState>();
-    final contentController = TextEditingController(text: comment['woefUserStatus']?.toString() ?? '');
-    final currentUser = HiveService.getCurrentUser();
-    final authorController = TextEditingController(
-      text: comment['woefEmployee']?.toString() ?? comment['reemCode']?.toString() ?? (currentUser?.code ?? '5893')
-    );
-    final pk = (comment['pkComment'] ?? comment['pkEmployeeFeedback'] ?? 0) as int;
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Modifier le commentaire'),
-          content: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: contentController,
-                  decoration: const InputDecoration(labelText: 'Commentaire *'),
-                  maxLines: 3,
-                  validator: (v) => v == null || v.isEmpty ? 'Champ requis' : null,
-                ),
-                TextFormField(
-                  controller: authorController,
-                  decoration: const InputDecoration(labelText: 'Auteur / Code Employé *'),
-                  validator: (v) => v == null || v.isEmpty ? 'Champ requis' : null,
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Annuler'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                if (formKey.currentState?.validate() ?? false) {
-                  Navigator.pop(context);
-                  try {
-                    await widget.otService.updateDocument(widget.otCode, pk, {
-                      "woefEmployee": authorController.text.trim(),
-                      "reemDescription": comment['reemDescription'] ?? "Intervenant",
-                      "woefUserStatus": contentController.text.trim(),
-                      "woefStartDate": comment['woefStartDate'] ?? DateTime.now().toIso8601String(),
-                      "woefEndDate": comment['woefEndDate'] ?? DateTime.now().toIso8601String(),
-                    });
-                    _loadComments();
-                  } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
-                  }
-                }
-              },
-              child: const Text('Enregistrer'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _confirmDelete(int pk) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Supprimer le commentaire'),
-          content: const Text('Voulez-vous supprimer ce commentaire ?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Annuler'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-              onPressed: () async {
-                Navigator.pop(context);
-                try {
-                  await widget.otService.deleteDocument(widget.otCode, pk);
-                  _loadComments();
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
-                }
-              },
-              child: const Text('Supprimer', style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -442,7 +100,6 @@ class CommentairesTabState extends State<CommentairesTab> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
                 'Commentaires / Rapports',
@@ -452,40 +109,30 @@ class CommentairesTabState extends State<CommentairesTab> {
                   fontSize: 18,
                 ),
               ),
-              ElevatedButton.icon(
-                onPressed: _showAddDialog,
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('Ajouter'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0F1B80),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-              ),
             ],
           ),
         ),
         Expanded(
           child: _comments.isEmpty
-              ? Center(
+              ? const Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.comment_bank, size: 64, color: Color(0xFF0F1B80)),
-                      const SizedBox(height: 16),
-                      const Text('Aucun commentaire pour cet OT', style: TextStyle(fontSize: 16, color: Colors.grey)),
-                      const SizedBox(height: 12),
-                      OutlinedButton.icon(
-                        onPressed: _showAddDialog,
-                        icon: const Icon(Icons.add, color: Color(0xFF0F1B80)),
-                        label: const Text('Ajouter un premier compte-rendu', style: TextStyle(color: Color(0xFF0F1B80))),
-                      ),
+                      Icon(Icons.comment_bank, size: 64, color: Color(0xFF0F1B80)),
+                      SizedBox(height: 16),
+                      Text('Aucun commentaire pour cet OT', style: TextStyle(fontSize: 16, color: Colors.grey)),
                     ],
                   ),
                 )
               : ListView.builder(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.fromLTRB(
+                    16,
+                    16,
+                    16,
+                    MediaQuery.of(context).viewPadding.bottom > 0
+                        ? MediaQuery.of(context).viewPadding.bottom + 16
+                        : 24,
+                  ),
                   itemCount: _comments.length,
                   itemBuilder: (context, index) {
                     final fb = _comments[index];
@@ -503,18 +150,10 @@ class CommentairesTabState extends State<CommentairesTab> {
                         'Agent';
                     final docType = fb['wodoType']?.toString() ?? fb['type']?.toString() ?? '';
                     final dateStr = _formatDate(fb['wodoCreationDate'] ?? fb['woefStartDate'] ?? fb['createdAt']);
-                    final pk = (fb['pkComment'] ?? fb['pkEmployeeFeedback'] ?? 0) as int;
 
                     // Détection des pièces jointes dans le texte
-                    String mainComment = rawCommentText;
-                    String? attachedFileName;
-                    if (rawCommentText.contains('📎 [Fichier joint:')) {
-                      final parts = rawCommentText.split('📎 [Fichier joint:');
-                      mainComment = parts[0].trim();
-                      if (parts.length > 1) {
-                        attachedFileName = parts[1].replaceAll(']', '').trim();
-                      }
-                    }
+                    final attachedData = (fb['attachedFile'] as Map<String, dynamic>?) ?? _parseAttachedFileFromComment(rawCommentText);
+                    final mainComment = _extractCleanCommentText(rawCommentText);
 
                     return Card(
                       margin: const EdgeInsets.only(bottom: 10),
@@ -523,112 +162,129 @@ class CommentairesTabState extends State<CommentairesTab> {
                         borderRadius: BorderRadius.circular(10),
                         side: BorderSide(color: Colors.grey.shade200),
                       ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                const Icon(Icons.account_circle, color: Color(0xFF0F1B80), size: 20),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    author,
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF2B1D4C)),
-                                  ),
-                                ),
-                                if (docType.isNotEmpty)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF0F1B80).withAlpha(20),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(10),
+                        onTap: () => _showCommentDetails(fb),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.account_circle, color: Color(0xFF0F1B80), size: 20),
+                                  const SizedBox(width: 8),
+                                  Expanded(
                                     child: Text(
-                                      docType,
-                                      style: const TextStyle(color: Color(0xFF0F1B80), fontSize: 11, fontWeight: FontWeight.bold),
+                                      author,
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF2B1D4C)),
                                     ),
                                   ),
-                                if (pk > 0)
-                                  PopupMenuButton<String>(
-                                    icon: const Icon(Icons.more_vert, size: 18, color: Colors.grey),
-                                    onSelected: (val) {
-                                      if (val == 'edit') {
-                                        _showEditDialog(fb);
-                                      } else if (val == 'delete') {
-                                        _confirmDelete(pk);
-                                      }
-                                    },
-                                    itemBuilder: (ctx) => [
-                                      const PopupMenuItem(
-                                        value: 'edit',
-                                        child: Row(
-                                          children: [
-                                            Icon(Icons.edit, size: 16, color: Colors.blue),
-                                            SizedBox(width: 8),
-                                            Text('Modifier'),
-                                          ],
-                                        ),
+                                  if (docType.isNotEmpty)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF0F1B80).withAlpha(20),
+                                        borderRadius: BorderRadius.circular(6),
                                       ),
-                                      const PopupMenuItem(
-                                        value: 'delete',
-                                        child: Row(
-                                          children: [
-                                            Icon(Icons.delete, size: 16, color: Colors.red),
-                                            SizedBox(width: 8),
-                                            Text('Supprimer'),
-                                          ],
-                                        ),
+                                      child: Text(
+                                        docType,
+                                        style: const TextStyle(color: Color(0xFF0F1B80), fontSize: 11, fontWeight: FontWeight.bold),
                                       ),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                mainComment.isNotEmpty ? mainComment : 'Compte-rendu d\'intervention',
+                                style: const TextStyle(fontSize: 13, color: Colors.black87, height: 1.3),
+                              ),
+                              if (attachedData != null) ...[
+                                const SizedBox(height: 8),
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFE8EDFF),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(color: const Color(0xFF0F1B80).withAlpha(50)),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.attach_file, size: 16, color: Color(0xFF0F1B80)),
+                                          const SizedBox(width: 6),
+                                          Expanded(
+                                            child: Text(
+                                              attachedData['nom']?.toString().isNotEmpty == true
+                                                  ? attachedData['nom'].toString()
+                                                  : 'Document joint',
+                                              style: const TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.bold,
+                                                color: Color(0xFF0F1B80),
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          if ((attachedData['type'] ?? '').toString().isNotEmpty)
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                              margin: const EdgeInsets.only(left: 4),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFF0F1B80),
+                                                borderRadius: BorderRadius.circular(4),
+                                              ),
+                                              child: Text(
+                                                attachedData['type'].toString().toUpperCase(),
+                                                style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                      if ((attachedData['description'] ?? '').toString().isNotEmpty) ...[
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'Description : ${attachedData['description']}',
+                                          style: const TextStyle(fontSize: 12, color: Colors.black87),
+                                        ),
+                                      ],
+                                      if ((attachedData['categorie'] ?? '').toString().isNotEmpty) ...[
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'Catégorie : ${attachedData['categorie']}',
+                                          style: const TextStyle(fontSize: 11, color: Colors.black54),
+                                        ),
+                                      ],
+                                      if ((attachedData['url'] ?? '').toString().isNotEmpty) ...[
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'URL : ${attachedData['url']}',
+                                          style: const TextStyle(fontSize: 11, color: Colors.blueAccent),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
                                     ],
                                   ),
+                                ),
                               ],
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              mainComment.isNotEmpty ? mainComment : 'Compte-rendu d\'intervention',
-                              style: const TextStyle(fontSize: 13, color: Colors.black87, height: 1.3),
-                            ),
-                            if (attachedFileName != null) ...[
                               const SizedBox(height: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF0F1B80).withAlpha(15),
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(color: const Color(0xFF0F1B80).withAlpha(40)),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.attach_file, size: 14, color: Color(0xFF0F1B80)),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      attachedFileName,
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: Color(0xFF0F1B80),
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  const Icon(Icons.access_time, size: 13, color: Colors.grey),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    dateStr,
+                                    style: const TextStyle(fontSize: 11, color: Colors.grey),
+                                  ),
+                                ],
                               ),
                             ],
-                            const SizedBox(height: 8),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                const Icon(Icons.access_time, size: 13, color: Colors.grey),
-                                const SizedBox(width: 4),
-                                Text(
-                                  dateStr,
-                                  style: const TextStyle(fontSize: 11, color: Colors.grey),
-                                ),
-                              ],
-                            ),
-                          ],
+                          ),
                         ),
                       ),
                     );
@@ -636,6 +292,248 @@ class CommentairesTabState extends State<CommentairesTab> {
                 ),
         ),
       ],
+    );
+  }
+
+  void _showCommentDetails(Map<String, dynamic> fb) {
+    final rawCommentText = fb['wodoComment']?.toString() ??
+        fb['wodoDescription']?.toString() ??
+        fb['wodoText']?.toString() ??
+        fb['comment']?.toString() ??
+        fb['reemDescription']?.toString() ??
+        fb['woefUserStatus']?.toString() ??
+        'Commentaire sans texte';
+    final author = fb['wodoCreationUser']?.toString() ??
+        fb['wodoUser']?.toString() ??
+        fb['author']?.toString() ??
+        fb['woefEmployee']?.toString() ??
+        'Agent';
+    final docType = fb['wodoType']?.toString() ?? fb['type']?.toString() ?? '';
+    final dateStr = _formatDate(fb['wodoCreationDate'] ?? fb['woefStartDate'] ?? fb['createdAt']);
+
+    final attachedData = (fb['attachedFile'] as Map<String, dynamic>?) ?? _parseAttachedFileFromComment(rawCommentText);
+    final mainComment = _extractCleanCommentText(rawCommentText);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.75,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  const Icon(Icons.comment, color: Color(0xFF0F1B80), size: 22),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'Détails du commentaire',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF0F1B80),
+                      ),
+                    ),
+                  ),
+                  if (docType.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0F1B80).withAlpha(20),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        docType,
+                        style: const TextStyle(
+                          color: Color(0xFF0F1B80),
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const Divider(height: 20),
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.account_circle, size: 16, color: Colors.grey),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Auteur : $author',
+                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                          ),
+                          const Spacer(),
+                          const Icon(Icons.access_time, size: 14, color: Colors.grey),
+                          const SizedBox(width: 4),
+                          Text(
+                            dateStr.isNotEmpty ? dateStr : '-',
+                            style: const TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      const Text(
+                        'Observation / Rapport :',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                          color: Color(0xFF2B1D4C),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: Text(
+                          mainComment.isNotEmpty ? mainComment : 'Aucun texte saisi',
+                          style: const TextStyle(fontSize: 13, color: Colors.black87, height: 1.4),
+                        ),
+                      ),
+                      if (attachedData != null) ...[
+                        const SizedBox(height: 14),
+                        const Text(
+                          'Fichier lié / Pièce jointe :',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            color: Color(0xFF2B1D4C),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE8EDFF),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFF0F1B80).withAlpha(40)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.attach_file, color: Color(0xFF0F1B80), size: 18),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      attachedData['nom']?.toString().isNotEmpty == true
+                                          ? attachedData['nom'].toString()
+                                          : 'Document',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                        color: Color(0xFF0F1B80),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if ((attachedData['description'] ?? '').toString().isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Description : ${attachedData['description']}',
+                                  style: const TextStyle(fontSize: 12, color: Colors.black87),
+                                ),
+                              ],
+                              if ((attachedData['type'] ?? '').toString().isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Type : ${attachedData['type']}',
+                                  style: const TextStyle(fontSize: 11, color: Colors.black54),
+                                ),
+                              ],
+                              if ((attachedData['categorie'] ?? '').toString().isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Catégorie : ${attachedData['categorie']}',
+                                  style: const TextStyle(fontSize: 11, color: Colors.black54),
+                                ),
+                              ],
+                              if (attachedData['isImprimable'] == true || attachedData['isImprimable']?.toString().toLowerCase() == 'true') ...[
+                                const SizedBox(height: 4),
+                                const Row(
+                                  children: [
+                                    Icon(Icons.check_circle, size: 14, color: Colors.green),
+                                    SizedBox(width: 4),
+                                    Text('Imprimable', style: TextStyle(fontSize: 11, color: Colors.green, fontWeight: FontWeight.w600)),
+                                  ],
+                                ),
+                              ],
+                              if ((attachedData['dateCreation'] ?? '').toString().isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Date création : ${attachedData['dateCreation']}',
+                                  style: const TextStyle(fontSize: 11, color: Colors.grey),
+                                ),
+                              ],
+                              if ((attachedData['url'] ?? '').toString().isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  'URL : ${attachedData['url']}',
+                                  style: const TextStyle(fontSize: 11, color: Colors.blueAccent),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0F1B80),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  child: const Text('Fermer', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

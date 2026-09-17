@@ -28,8 +28,12 @@ class CustomBottomNavigationBar extends StatelessWidget {
                 ? _buildPrestataireItems(responsive)
                 : _buildLdapItems(responsive);
 
+        final bottomInset = MediaQuery.of(context).viewPadding.bottom > 0
+            ? MediaQuery.of(context).viewPadding.bottom
+            : MediaQuery.of(context).padding.bottom;
+
         return Container(
-          height: responsive.spacing(100), // ✅ Hauteur responsive
+          height: responsive.spacing(100) + (bottomInset > 0 ? bottomInset : 0),
           decoration: BoxDecoration(
             color: AppTheme.secondaryColor, // Couleur de fond
             borderRadius: const BorderRadius.only(
@@ -38,9 +42,11 @@ class CustomBottomNavigationBar extends StatelessWidget {
             ),
           ),
           child: Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: spacing.small,
-            ), // ✅ Padding responsive
+            padding: EdgeInsets.only(
+              left: spacing.small,
+              right: spacing.small,
+              bottom: bottomInset > 0 ? bottomInset : 0,
+            ), // ✅ Padding responsive avec marge système bas
             child: BottomNavigationBar(
               currentIndex: currentIndex,
               onTap: onTap,

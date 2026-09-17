@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:appmobilegmao/utils/responsive.dart';
 import 'package:appmobilegmao/theme/responsive_spacing.dart';
+import 'package:appmobilegmao/services/hive_service.dart';
+import 'package:image_picker/image_picker.dart';
 
 /// Écran pour ajouter un fichier lié
 /// Principe SOLID: Single Responsibility - Cet écran gère uniquement l'ajout de fichiers liés
@@ -34,17 +36,24 @@ class _FichierLieScreenState extends State<FichierLieScreen> {
   @override
   void initState() {
     super.initState();
-    // Initialisation des contrôleurs
+    // Récupération de l'utilisateur connecté (DRY)
+    final currentUser = HiveService.getCurrentUser();
+    final userCode = currentUser?.code ?? currentUser?.username ?? 'supervisor';
+    final now = DateTime.now();
+    final formattedDate =
+        '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year} ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+
+    // Initialisation des contrôleurs - les champs grisâtres sont auto-déduits
     _nomController = TextEditingController();
     _descriptionController = TextEditingController();
     _urlController = TextEditingController(
       text:
           'http://10.101.1.103:8080/coswin-repository/content/default/SENELEC/DD/DXMD/SDDV',
     );
-    _typeFichierController = TextEditingController();
+    _typeFichierController = TextEditingController(text: 'FICHIER');
     _categorieController = TextEditingController();
-    _createurController = TextEditingController();
-    _dateCreationController = TextEditingController();
+    _createurController = TextEditingController(text: userCode);
+    _dateCreationController = TextEditingController(text: formattedDate);
   }
 
   @override
@@ -69,10 +78,23 @@ class _FichierLieScreenState extends State<FichierLieScreen> {
   void _handleSave() {
     // Validation du formulaire
     if (_formKey.currentState!.validate()) {
+      final fileData = {
+        'nom': _nomController.text.trim().isNotEmpty ? _nomController.text.trim() : 'Document_${DateTime.now().millisecondsSinceEpoch}',
+        'description': _descriptionController.text.trim(),
+        'url': _urlController.text.trim(),
+        'type': _typeFichierController.text.trim(),
+        'categorie': _categorieController.text.trim(),
+        'createur': _createurController.text.trim(),
+        'dateCreation': _dateCreationController.text.trim(),
+        'isImprimable': _isImprimable,
+      };
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Fichier enregistré avec succès')),
+        SnackBar(
+          content: Text('Fichier "${fileData['nom']}" associé avec succès'),
+          backgroundColor: const Color(0xFF0F1B80),
+        ),
       );
-      Navigator.pop(context);
+      Navigator.pop(context, fileData);
     }
   }
 
@@ -112,10 +134,30 @@ class _FichierLieScreenState extends State<FichierLieScreen> {
   }
 
   /// Gestion du clic sur l'icône trombone (attacher un fichier)
-  void _handleAttachFile() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Attacher un fichier (à implémenter)')),
-    );
+  Future<void> _handleAttachFile() async {
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(source: ImageSource.gallery);
+      if (picked != null) {
+        final ext = picked.name.contains('.')
+            ? picked.name.split('.').last.toUpperCase()
+            : 'IMG';
+        setState(() {
+          _nomController.text = picked.name;
+          _typeFichierController.text = ext;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Fichier sélectionné : ${picked.name} ($ext)'),
+            backgroundColor: const Color(0xFF0F1B80),
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Impossible de charger le fichier : $e')),
+      );
+    }
   }
 
   @override
@@ -283,13 +325,15 @@ class _FichierLieScreenState extends State<FichierLieScreen> {
                     ),
                     SizedBox(height: spacing.medium),
 
-                    // Ligne avec Type de fichier et Catégorie
+                    // Ligne avec Type de fichier (Grisâtre/Auto) et Catégorie
                     Row(
                       children: [
                         Expanded(
                           child: _SimpleFormField(
                             label: 'Type de fichier',
                             controller: _typeFichierController,
+                            readOnly: true,
+                            backgroundColor: const Color(0xFFEEEEEE),
                           ),
                         ),
                         SizedBox(width: spacing.medium),
@@ -303,13 +347,15 @@ class _FichierLieScreenState extends State<FichierLieScreen> {
                     ),
                     SizedBox(height: spacing.medium),
 
-                    // Ligne avec Créateur du lien et Date de création du lien
+                    // Ligne avec Créateur du lien (Grisâtre/Auto) et Date de création (Grisâtre/Auto)
                     Row(
                       children: [
                         Expanded(
                           child: _SimpleFormField(
                             label: 'Créateur du lien',
                             controller: _createurController,
+                            readOnly: true,
+                            backgroundColor: const Color(0xFFEEEEEE),
                           ),
                         ),
                         SizedBox(width: spacing.medium),
@@ -317,7 +363,9 @@ class _FichierLieScreenState extends State<FichierLieScreen> {
                           child: _DateFormField(
                             label: 'Date de création du lien',
                             controller: _dateCreationController,
-                            onDateTap: _selectDate,
+                            readOnly: true,
+                            backgroundColor: const Color(0xFFEEEEEE),
+                            onDateTap: null,
                           ),
                         ),
                       ],
@@ -552,66 +600,14 @@ class _UrlField extends StatelessWidget {
 class _SimpleFormField extends StatelessWidget {
   final String label;
   final TextEditingController controller;
+  final bool readOnly;
+  final Color? backgroundColor;
 
-  const _SimpleFormField({required this.label, required this.controller});
-
-  @override
-  Widget build(BuildContext context) {
-    final responsive = context.responsive;
-    final spacing = context.spacing;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontFamily: AppTheme.fontMontserrat,
-            fontWeight: FontWeight.w600,
-            color: AppTheme.secondaryColor,
-            fontSize: responsive.sp(14),
-          ),
-        ),
-        SizedBox(height: spacing.tiny),
-        TextFormField(
-          controller: controller,
-          style: TextStyle(
-            color: AppTheme.secondaryColor,
-            fontFamily: AppTheme.fontRoboto,
-            fontSize: responsive.sp(14),
-          ),
-          decoration: InputDecoration(
-            contentPadding: spacing.custom(vertical: 8, horizontal: 0),
-            border: const UnderlineInputBorder(
-              borderSide: BorderSide(color: AppTheme.thirdColor),
-            ),
-            enabledBorder: const UnderlineInputBorder(
-              borderSide: BorderSide(color: AppTheme.thirdColor),
-            ),
-            focusedBorder: const UnderlineInputBorder(
-              borderSide: BorderSide(
-                color: AppTheme.secondaryColor,
-                width: 2.0,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Widget pour afficher un champ de date avec icône calendrier
-/// Principe SOLID: Single Responsibility - Gère uniquement l'affichage d'un champ de date
-class _DateFormField extends StatelessWidget {
-  final String label;
-  final TextEditingController controller;
-  final VoidCallback onDateTap;
-
-  const _DateFormField({
+  const _SimpleFormField({
     required this.label,
     required this.controller,
-    required this.onDateTap,
+    this.readOnly = false,
+    this.backgroundColor,
   });
 
   @override
@@ -632,52 +628,151 @@ class _DateFormField extends StatelessWidget {
           ),
         ),
         SizedBox(height: spacing.tiny),
-        Row(
-          children: [
-            Expanded(
-              child: TextFormField(
-                controller: controller,
-                readOnly: true,
-                style: TextStyle(
-                  color: AppTheme.secondaryColor,
-                  fontFamily: AppTheme.fontRoboto,
-                  fontSize: responsive.sp(14),
-                ),
-                decoration: InputDecoration(
-                  contentPadding: spacing.custom(vertical: 8, horizontal: 0),
-                  hintText: 'dd/mm/yyyy HH:mm',
-                  hintStyle: TextStyle(
-                    color: const Color.fromARGB(255, 1, 92, 192),
+        Container(
+          decoration: backgroundColor != null
+              ? BoxDecoration(
+                  color: backgroundColor,
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: Colors.grey.shade400),
+                )
+              : null,
+          child: TextFormField(
+            controller: controller,
+            readOnly: readOnly,
+            style: TextStyle(
+              color: readOnly ? Colors.grey.shade800 : AppTheme.secondaryColor,
+              fontFamily: AppTheme.fontRoboto,
+              fontWeight: readOnly ? FontWeight.w600 : FontWeight.normal,
+              fontSize: responsive.sp(14),
+            ),
+            decoration: InputDecoration(
+              contentPadding: spacing.custom(
+                vertical: 8,
+                horizontal: backgroundColor != null ? 8 : 0,
+              ),
+              border: backgroundColor != null
+                  ? InputBorder.none
+                  : const UnderlineInputBorder(
+                      borderSide: BorderSide(color: AppTheme.thirdColor),
+                    ),
+              enabledBorder: backgroundColor != null
+                  ? InputBorder.none
+                  : const UnderlineInputBorder(
+                      borderSide: BorderSide(color: AppTheme.thirdColor),
+                    ),
+              focusedBorder: backgroundColor != null
+                  ? InputBorder.none
+                  : const UnderlineInputBorder(
+                      borderSide: BorderSide(
+                        color: AppTheme.secondaryColor,
+                        width: 2.0,
+                      ),
+                    ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Widget pour afficher un champ de date avec icône calendrier
+/// Principe SOLID: Single Responsibility - Gère uniquement l'affichage d'un champ de date
+class _DateFormField extends StatelessWidget {
+  final String label;
+  final TextEditingController controller;
+  final VoidCallback? onDateTap;
+  final bool readOnly;
+  final Color? backgroundColor;
+
+  const _DateFormField({
+    required this.label,
+    required this.controller,
+    this.onDateTap,
+    this.readOnly = false,
+    this.backgroundColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final responsive = context.responsive;
+    final spacing = context.spacing;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontFamily: AppTheme.fontMontserrat,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.secondaryColor,
+            fontSize: responsive.sp(14),
+          ),
+        ),
+        SizedBox(height: spacing.tiny),
+        Container(
+          decoration: backgroundColor != null
+              ? BoxDecoration(
+                  color: backgroundColor,
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: Colors.grey.shade400),
+                )
+              : null,
+          child: Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: controller,
+                  readOnly: true,
+                  style: TextStyle(
+                    color: readOnly ? Colors.grey.shade800 : AppTheme.secondaryColor,
+                    fontFamily: AppTheme.fontRoboto,
+                    fontWeight: readOnly ? FontWeight.w600 : FontWeight.normal,
                     fontSize: responsive.sp(14),
                   ),
-                  border: const UnderlineInputBorder(
-                    borderSide: BorderSide(color: AppTheme.thirdColor),
-                  ),
-                  enabledBorder: const UnderlineInputBorder(
-                    borderSide: BorderSide(color: AppTheme.thirdColor),
-                  ),
-                  focusedBorder: const UnderlineInputBorder(
-                    borderSide: BorderSide(
-                      color: AppTheme.secondaryColor,
-                      width: 2.0,
+                  decoration: InputDecoration(
+                    contentPadding: spacing.custom(
+                      vertical: 8,
+                      horizontal: backgroundColor != null ? 8 : 0,
                     ),
+                    hintText: 'dd/mm/yyyy HH:mm',
+                    hintStyle: TextStyle(
+                      color: Colors.grey.shade500,
+                      fontSize: responsive.sp(14),
+                    ),
+                    border: backgroundColor != null
+                        ? InputBorder.none
+                        : const UnderlineInputBorder(
+                            borderSide: BorderSide(color: AppTheme.thirdColor),
+                          ),
+                    enabledBorder: backgroundColor != null
+                        ? InputBorder.none
+                        : const UnderlineInputBorder(
+                            borderSide: BorderSide(color: AppTheme.thirdColor),
+                          ),
+                    focusedBorder: backgroundColor != null
+                        ? InputBorder.none
+                        : const UnderlineInputBorder(
+                            borderSide: BorderSide(
+                              color: AppTheme.secondaryColor,
+                              width: 2.0,
+                            ),
+                          ),
                   ),
                 ),
               ),
-            ),
-            // Icône calendrier cliquable
-            InkWell(
-              onTap: onDateTap,
-              child: Padding(
-                padding: const EdgeInsets.all(4),
+              // Icône calendrier
+              Padding(
+                padding: const EdgeInsets.all(6),
                 child: Icon(
                   Icons.calendar_today,
-                  color: AppTheme.secondaryColor,
+                  color: readOnly ? Colors.grey.shade600 : AppTheme.secondaryColor,
                   size: responsive.iconSize(18),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ],
     );
@@ -737,9 +832,18 @@ class _BottomButtons extends StatelessWidget {
     final spacing = context.spacing;
     final responsive = context.responsive;
 
+    final bottomInset = MediaQuery.of(context).viewPadding.bottom > 0
+        ? MediaQuery.of(context).viewPadding.bottom
+        : MediaQuery.of(context).padding.bottom;
+
     return Container(
       color: Colors.white,
-      padding: spacing.custom(horizontal: 20, vertical: 10, bottom: 20),
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: 10,
+        bottom: bottomInset + 14,
+      ),
       child: Row(
         children: [
           // Bouton Retour

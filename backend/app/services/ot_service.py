@@ -165,6 +165,33 @@ class OTService:
     async def delete_attribute(self, workorder_code: str, pk: int) -> Dict[str, Any]:
         return await self.repository.delete_attribute(workorder_code, pk)
 
+    async def create_facility_used(self, workorder_code: str, data: Dict[str, Any]) -> Dict[str, Any]:
+        return await self.repository.create_facility_used(workorder_code, data)
+
+    async def delete_facility_used(self, workorder_code: str, pk: int) -> Dict[str, Any]:
+        return await self.repository.delete_facility_used(workorder_code, pk)
+
+    async def create_service_used(self, workorder_code: str, data: Dict[str, Any]) -> Dict[str, Any]:
+        return await self.repository.create_service_used(workorder_code, data)
+
+    async def delete_service_used(self, workorder_code: str, pk: int) -> Dict[str, Any]:
+        return await self.repository.delete_service_used(workorder_code, pk)
+
+    async def get_referentials(self) -> Dict[str, Any]:
+        if hasattr(self.repository, "get_referentials"):
+            return await self.repository.get_referentials()
+        return {}
+
+    async def get_all_items(self) -> List[Dict[str, Any]]:
+        if hasattr(self.repository, "get_all_items"):
+            return await self.repository.get_all_items()
+        return []
+
+    async def get_all_specifications(self) -> List[Dict[str, Any]]:
+        if hasattr(self.repository, "get_all_specifications"):
+            return await self.repository.get_all_specifications()
+        return []
+
 
 # Instance globale pour compatibilité ascendante (fallback)
 ot_service = OTService()

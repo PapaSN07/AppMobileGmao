@@ -52,6 +52,22 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
     'EC',
   };
 
+  // Options de filtre Statut (code → libellé)
+  static const Map<String, String> _statusFilterOptions = {
+    'CR': 'Créé (CR)',
+    'OUV': 'Ouvert (OUV)',
+    'EC': 'En cours (EC)',
+    'SUSP': 'Suspendu (SUSP)',
+    'TE': 'Terminé (TE)',
+    'CL': 'Clôturé (CL)',
+  };
+
+  // Options de filtre Type de travail (code → libellé)
+  static const Map<String, String> _typeFilterOptions = {
+    'CORR': 'Correctif',
+    'PREV': 'Préventif',
+  };
+
   late final OTService _otService;
   final TextEditingController _serviceController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
@@ -63,6 +79,10 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
   String _selectedService = '';
   String _searchQuery = '';
   String? _errorMessage;
+
+  // Filtres Statut et Type
+  String? _selectedStatus;
+  String? _selectedType;
   
   // Variables de pagination
   String? _paginationContext;
@@ -151,9 +171,27 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
   }
 
   List<WorkOrder> _applyFilters(List<WorkOrder> source) {
-    final filtered = source.where(_isOpenOrder).where(_matchesSearch).toList();
+    final filtered = source
+        .where(_isOpenOrder)
+        .where(_matchesSearch)
+        .where(_matchesStatusAndType)
+        .toList();
     final seen = <String>{};
     return filtered.where((o) => seen.add(o.wowoCode.toString())).toList();
+  }
+
+  bool _matchesStatusAndType(WorkOrder order) {
+    // Filtre par statut
+    if (_selectedStatus != null &&
+        order.wowoUserStatus.trim().toUpperCase() != _selectedStatus) {
+      return false;
+    }
+    // Filtre par type de travail
+    if (_selectedType != null &&
+        order.wowoJobType.trim().toUpperCase() != _selectedType) {
+      return false;
+    }
+    return true;
   }
 
   Future<void> _loadOrders() async {
@@ -373,10 +411,9 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
         ),
         AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          height: _showSearchOptions ? responsive.spacing(180) : 0,
+          height: _showSearchOptions ? responsive.spacing(380) : 0,
           child: _showSearchOptions
               ? SingleChildScrollView(
-                  physics: const NeverScrollableScrollPhysics(),
                   child: Card(
                     elevation: 0,
                     margin: spacing.custom(top: 8),
@@ -468,6 +505,122 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
                               });
                             },
                           ),
+
+                          // ── Filtre par Statut ──
+                          const SizedBox(height: 4),
+                          DropdownButtonFormField<String?>(
+                            value: _selectedStatus,
+                            isExpanded: true,
+                            decoration: InputDecoration(
+                              labelText: 'Statut',
+                              labelStyle: const TextStyle(color: Color(0xFF64748B)),
+                              prefixIcon: const Icon(Icons.flag_outlined, color: Color(0xFF0F1B80), size: 20),
+                              filled: true,
+                              fillColor: const Color(0xFFF8FAFC),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: const BorderSide(color: Color(0xFF0F1B80), width: 1.5),
+                              ),
+                            ),
+                            items: [
+                              const DropdownMenuItem<String?>(
+                                value: null,
+                                child: Text('Tous les statuts', style: TextStyle(color: Color(0xFF64748B))),
+                              ),
+                              ..._statusFilterOptions.entries.map((e) => DropdownMenuItem<String?>(
+                                value: e.key,
+                                child: Text(e.value),
+                              )),
+                            ],
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedStatus = value;
+                                // Si un statut "clôturé" est choisi, désactiver le masquage automatique
+                                if (value != null && _closedStatuses.contains(value)) {
+                                  _hideClosedOrders = false;
+                                }
+                              });
+                            },
+                          ),
+
+                          // ── Filtre par Type de travail ──
+                          const SizedBox(height: 10),
+                          DropdownButtonFormField<String?>(
+                            value: _selectedType,
+                            isExpanded: true,
+                            decoration: InputDecoration(
+                              labelText: 'Type de travail',
+                              labelStyle: const TextStyle(color: Color(0xFF64748B)),
+                              prefixIcon: const Icon(Icons.build_outlined, color: Color(0xFF0F1B80), size: 20),
+                              filled: true,
+                              fillColor: const Color(0xFFF8FAFC),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: const BorderSide(color: Color(0xFF0F1B80), width: 1.5),
+                              ),
+                            ),
+                            items: [
+                              const DropdownMenuItem<String?>(
+                                value: null,
+                                child: Text('Tous les types', style: TextStyle(color: Color(0xFF64748B))),
+                              ),
+                              ..._typeFilterOptions.entries.map((e) => DropdownMenuItem<String?>(
+                                value: e.key,
+                                child: Text(e.value),
+                              )),
+                            ],
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedType = value;
+                              });
+                            },
+                          ),
+
+                          // ── Bouton Réinitialiser ──
+                          const SizedBox(height: 12),
+                          if (_selectedStatus != null || _selectedType != null || _searchQuery.isNotEmpty)
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                onPressed: () {
+                                  setState(() {
+                                    _selectedStatus = null;
+                                    _selectedType = null;
+                                    _searchQuery = '';
+                                    _searchController.clear();
+                                    _hideClosedOrders = true;
+                                  });
+                                },
+                                icon: const Icon(Icons.refresh, size: 18),
+                                label: const Text('Réinitialiser les filtres'),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: const Color(0xFF0F1B80),
+                                  side: const BorderSide(color: Color(0xFF0F1B80)),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(vertical: 10),
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                     ),
@@ -577,7 +730,6 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
                       setState(() => _isLoading = true);
                       try {
                         final authProvider = context.read<AuthProvider>();
-                        final currentUser = authProvider.currentUser;
                         final currentService = entityController.text.trim();
 
                         final data = {
@@ -674,7 +826,7 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '${visibleOrders.length} ${visibleOrders.length > 1 ? "OTs ouverts" : "OT ouvert"}',
+                          '${visibleOrders.length} ${_selectedStatus != null || !_hideClosedOrders ? "OT" : (visibleOrders.length > 1 ? "OTs ouverts" : "OT ouvert")}',
                           style: TextStyle(
                             fontFamily: AppTheme.fontMontserrat,
                             fontWeight: FontWeight.w800,
@@ -734,10 +886,42 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
                           retryButtonText: 'Réessayer',
                         )
                       : visibleOrders.isEmpty
-                          ? const EmptyState(
-                              title: 'Aucun OT trouvé',
-                              message: 'Aucun OT ouvert ne correspond à ce service.',
-                              icon: Icons.assignment_late,
+                          ? Center(
+                              child: SingleChildScrollView(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    EmptyState(
+                                      title: 'Aucun OT trouvé',
+                                      message: _hideClosedOrders
+                                          ? 'Aucun OT ouvert ne correspond à ce service.'
+                                          : 'Aucun OT ne correspond à ces critères.',
+                                      icon: Icons.assignment_late,
+                                    ),
+                                    if (_hasMore) ...[
+                                      const SizedBox(height: 16),
+                                      _isLoadingMore
+                                          ? const CircularProgressIndicator()
+                                          : ElevatedButton.icon(
+                                              onPressed: _loadMoreOrders,
+                                              icon: const Icon(Icons.add),
+                                              label: const Text("Charger plus d'OT"),
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: AppTheme.secondaryColor,
+                                                foregroundColor: Colors.white,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius: BorderRadius.circular(12),
+                                                ),
+                                                padding: const EdgeInsets.symmetric(
+                                                  horizontal: 24,
+                                                  vertical: 12,
+                                                ),
+                                              ),
+                                            ),
+                                    ],
+                                  ],
+                                ),
+                              ),
                             )
                           : ListView.separated(
                               physics: const AlwaysScrollableScrollPhysics(),

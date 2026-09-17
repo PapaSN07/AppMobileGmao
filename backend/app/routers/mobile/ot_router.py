@@ -153,6 +153,66 @@ async def debug_senelec_schemas():
         }
 
 @ot_router.get(
+    "/referentials",
+    summary="Référentiels officiels Coswin Senelec",
+    description="Retourne les dictionnaires dynamiques (types, classes, priorités, statuts, superviseurs) acceptés par Coswin Senelec.",
+    response_model=RestResponse
+)
+async def get_referentials(
+    service: OTService = Depends(get_ot_service)
+):
+    try:
+        data = await service.get_referentials()
+        return RestResponse(
+            success=True,
+            data=data,
+            message="Référentiels Coswin récupérés avec succès"
+        )
+    except Exception as e:
+        logger.error(f"Erreur récupération référentiels Coswin: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@ot_router.get(
+    "/items",
+    summary="Articles du stock Coswin Senelec",
+    description="Retourne les articles réels du stock Senelec depuis l'API Coswin.",
+    response_model=RestResponse
+)
+async def get_items(
+    service: OTService = Depends(get_ot_service)
+):
+    try:
+        data = await service.get_all_items()
+        return RestResponse(
+            success=True,
+            data=data,
+            message="Articles Coswin récupérés avec succès"
+        )
+    except Exception as e:
+        logger.error(f"Erreur récupération articles Coswin: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@ot_router.get(
+    "/specifications",
+    summary="Spécifications techniques officielles Coswin Senelec",
+    description="Retourne les caractéristiques et spécifications techniques configurées dans Coswin.",
+    response_model=RestResponse
+)
+async def get_specifications(
+    service: OTService = Depends(get_ot_service)
+):
+    try:
+        data = await service.get_all_specifications()
+        return RestResponse(
+            success=True,
+            data=data,
+            message="Spécifications Coswin récupérées avec succès"
+        )
+    except Exception as e:
+        logger.error(f"Erreur récupération spécifications Coswin: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@ot_router.get(
     "/workorders",
     summary="Liste les ordres de travail (filtrés, paginés)",
     description=(
@@ -383,9 +443,10 @@ async def delete_workorder(code: str, ot_service: OTService = Depends(get_ot_ser
     response_model=RestResponse
 )
 async def get_all_equipment(ot_service: OTService = Depends(get_ot_service)):
-    """Récupère la liste de tous les équipements"""
     try:
-        equipment = await ot_service.get_all_equipment()
+        from app.services.equipment_service import get_equipments_infinite
+        result = get_equipments_infinite(entity="SENELEC")
+        equipment = result.get("equipments", [])
         
         return RestResponse(
             success=True,
@@ -856,24 +917,30 @@ async def create_part(code: str, data: Dict[str, Any], ot_service: OTService = D
     try:
         res = await ot_service.create_part(code, data)
         return RestResponse(success=True, data=res, message="Article ajouté avec succès")
+    except HTTPException as he:
+        raise he
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
 
 @ot_router.put("/workorders/{code}/parts/{pk}", response_model=RestResponse)
 async def update_part(code: str, pk: int, data: Dict[str, Any], ot_service: OTService = Depends(get_ot_service)):
     try:
         res = await ot_service.update_part(code, pk, data)
         return RestResponse(success=True, data=res, message="Article mis à jour avec succès")
+    except HTTPException as he:
+        raise he
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
 
 @ot_router.delete("/workorders/{code}/parts/{pk}", response_model=RestResponse)
 async def delete_part(code: str, pk: int, ot_service: OTService = Depends(get_ot_service)):
     try:
         res = await ot_service.delete_part(code, pk)
         return RestResponse(success=True, data=res, message="Article supprimé avec succès")
+    except HTTPException as he:
+        raise he
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
 
 # ========== ATTRIBUTES CRUD ==========
 @ot_router.post("/workorders/{code}/attributes", response_model=RestResponse)
@@ -881,22 +948,69 @@ async def create_attribute(code: str, data: Dict[str, Any], ot_service: OTServic
     try:
         res = await ot_service.create_attribute(code, data)
         return RestResponse(success=True, data=res, message="Attribut ajouté avec succès")
+    except HTTPException as he:
+        raise he
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
 
 @ot_router.put("/workorders/{code}/attributes/{pk}", response_model=RestResponse)
 async def update_attribute(code: str, pk: int, data: Dict[str, Any], ot_service: OTService = Depends(get_ot_service)):
     try:
         res = await ot_service.update_attribute(code, pk, data)
         return RestResponse(success=True, data=res, message="Attribut mis à jour avec succès")
+    except HTTPException as he:
+        raise he
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
 
 @ot_router.delete("/workorders/{code}/attributes/{pk}", response_model=RestResponse)
 async def delete_attribute(code: str, pk: int, ot_service: OTService = Depends(get_ot_service)):
     try:
         res = await ot_service.delete_attribute(code, pk)
         return RestResponse(success=True, data=res, message="Attribut supprimé avec succès")
+    except HTTPException as he:
+        raise he
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
+
+@ot_router.post("/workorders/{code}/facilitiesused", response_model=RestResponse)
+async def create_facility_used(code: str, payload: dict, ot_service: OTService = Depends(get_ot_service)):
+    try:
+        res = await ot_service.create_facility_used(code, payload)
+        return RestResponse(success=True, data=res, message="Moyen enregistré avec succès")
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@ot_router.delete("/workorders/{code}/facilitiesused/{pk}", response_model=RestResponse)
+async def delete_facility_used(code: str, pk: int, ot_service: OTService = Depends(get_ot_service)):
+    try:
+        res = await ot_service.delete_facility_used(code, pk)
+        return RestResponse(success=True, data=res, message="Moyen supprimé avec succès")
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@ot_router.post("/workorders/{code}/services", response_model=RestResponse)
+async def create_service_used(code: str, payload: dict, ot_service: OTService = Depends(get_ot_service)):
+    try:
+        res = await ot_service.create_service_used(code, payload)
+        return RestResponse(success=True, data=res, message="Service enregistré avec succès")
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@ot_router.delete("/workorders/{code}/services/{pk}", response_model=RestResponse)
+async def delete_service_used(code: str, pk: int, ot_service: OTService = Depends(get_ot_service)):
+    try:
+        res = await ot_service.delete_service_used(code, pk)
+        return RestResponse(success=True, data=res, message="Service supprimé avec succès")
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 

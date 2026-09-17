@@ -1,17 +1,8 @@
 import 'package:flutter/material.dart';
-import 'ot_shared_widgets.dart';
-import 'package:provider/provider.dart';
-import 'package:appmobilegmao/provider/auth_provider.dart';
-import 'package:appmobilegmao/models/order.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:appmobilegmao/utils/responsive.dart';
 import 'package:appmobilegmao/theme/responsive_spacing.dart';
-import 'package:appmobilegmao/widgets/custom_bottom_navigation_bar.dart';
-import 'package:appmobilegmao/widgets/custom_app_bar.dart';
-import 'package:appmobilegmao/screens/fichier_lie_screen.dart';
-import 'package:appmobilegmao/screens/main_screen.dart';
 import 'package:appmobilegmao/services/ot_service.dart';
-import 'package:appmobilegmao/services/api_service.dart';
 import 'package:appmobilegmao/services/hive_service.dart';
 
 /// Onglet "Mains d'œuvre" - Affiche la liste des employés affectés avec sous-onglets
@@ -82,172 +73,8 @@ class MainsOeuvreTabState extends State<MainsOeuvreTab>
     }
   }
 
-  void _showAddDialog() {
-    final formKey = GlobalKey<FormState>();
-    final authProvider = context.read<AuthProvider>();
-    final currentUser = authProvider.currentUser;
-    final userMatricule = currentUser?.code ?? currentUser?.username ?? '';
-    final userName = currentUser?.username ?? '';
 
-    final codeController = TextEditingController(text: userMatricule);
-    final nameController = TextEditingController(text: userName);
-    final hoursController = TextEditingController(text: '1.0');
 
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Affecter un intervenant'),
-          content: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: codeController,
-                  decoration: const InputDecoration(labelText: 'Code employé *'),
-                  validator: (v) => v == null || v.isEmpty ? 'Champ requis' : null,
-                ),
-                TextFormField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Nom de l\'employé *'),
-                  validator: (v) => v == null || v.isEmpty ? 'Champ requis' : null,
-                ),
-                TextFormField(
-                  controller: hoursController,
-                  decoration: const InputDecoration(labelText: 'Heures planifiées'),
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Annuler'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                if (formKey.currentState?.validate() ?? false) {
-                  Navigator.pop(context);
-                  try {
-                    await widget.otService.createWorkforce(widget.otCode, {
-                      "woeaEmployee": codeController.text.trim(),
-                      "woeaResource": nameController.text.trim(),
-                      "woeaPlannedHours": double.tryParse(hoursController.text) ?? 1.0,
-                      "woeaAllocationDate": DateTime.now().toIso8601String(),
-                      "woeaIsPlanned": true,
-                    });
-                    _loadWorkforce();
-                  } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
-                  }
-                }
-              },
-              child: const Text('Affecter'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showEditDialog(Map<String, dynamic> emp) {
-    final formKey = GlobalKey<FormState>();
-    final codeController = TextEditingController(text: emp['employe']?.toString() ?? '');
-    final nameController = TextEditingController(text: emp['description']?.toString() ?? '');
-    final hoursController = TextEditingController(text: emp['heuresPlanifiees']?.toString() ?? '1.0');
-    final pk = emp['pk'] as int;
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Modifier l\'affectation'),
-          content: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: codeController,
-                  decoration: const InputDecoration(labelText: 'Code employé *'),
-                  validator: (v) => v == null || v.isEmpty ? 'Champ requis' : null,
-                ),
-                TextFormField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Nom de l\'employé *'),
-                  validator: (v) => v == null || v.isEmpty ? 'Champ requis' : null,
-                ),
-                TextFormField(
-                  controller: hoursController,
-                  decoration: const InputDecoration(labelText: 'Heures planifiées'),
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Annuler'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                if (formKey.currentState?.validate() ?? false) {
-                  Navigator.pop(context);
-                  try {
-                    await widget.otService.updateWorkforce(widget.otCode, pk, {
-                      "woeaEmployee": codeController.text.trim(),
-                      "woeaResource": nameController.text.trim(),
-                      "woeaPlannedHours": double.tryParse(hoursController.text) ?? 1.0,
-                      "woeaAllocationDate": DateTime.now().toIso8601String(),
-                      "woeaIsPlanned": true,
-                    });
-                    _loadWorkforce();
-                  } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
-                  }
-                }
-              },
-              child: const Text('Enregistrer'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _confirmDelete(int pk) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Supprimer l\'affectation'),
-          content: const Text('Voulez-vous retirer cet intervenant de l\'OT ?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Annuler'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-              onPressed: () async {
-                Navigator.pop(context);
-                try {
-                  await widget.otService.deleteWorkforce(widget.otCode, pk);
-                  _loadWorkforce();
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
-                }
-              },
-              child: const Text('Supprimer', style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        );
-      },
-    );
-  }
 
   String _formatDate(dynamic raw) {
     final s = raw?.toString() ?? '';
@@ -272,7 +99,7 @@ class MainsOeuvreTabState extends State<MainsOeuvreTab>
 
     return Column(
       children: [
-        _MainsOeuvreActionBar(onAddPressed: _showAddDialog),
+        _MainsOeuvreActionBar(),
         ActionSearchBar(),
         MainsOeuvreTabBar(tabController: _tabController),
         Expanded(
@@ -281,8 +108,6 @@ class MainsOeuvreTabState extends State<MainsOeuvreTab>
             children: [
               _IntervenantsContent(
                 employes: employes,
-                onEdit: _showEditDialog,
-                onDelete: _confirmDelete,
               ),
               _EmployesAllouesContent(employes: employes),
             ],
@@ -331,44 +156,8 @@ class MainsOeuvreTabBar extends StatelessWidget {
 /// Principe SOLID: Single Responsibility - Gère uniquement le contenu de l'onglet Intervenants
 class _IntervenantsContent extends StatelessWidget {
   final List<Map<String, dynamic>> employes;
-  final Function(Map<String, dynamic>) onEdit;
-  final Function(int) onDelete;
 
-  const _IntervenantsContent({
-    required this.employes,
-    required this.onEdit,
-    required this.onDelete,
-  });
-
-  void _showRowOptions(BuildContext context, Map<String, dynamic> emp) {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) {
-        return SafeArea(
-          child: Wrap(
-            children: [
-              ListTile(
-                leading: const Icon(Icons.edit, color: Colors.blue),
-                title: const Text('Modifier'),
-                onTap: () {
-                  Navigator.pop(context);
-                  onEdit(emp);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.delete, color: Colors.red),
-                title: const Text('Supprimer'),
-                onTap: () {
-                  Navigator.pop(context);
-                  onDelete(emp['pk'] as int);
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
+  const _IntervenantsContent({required this.employes});
 
   @override
   Widget build(BuildContext context) {
@@ -378,23 +167,19 @@ class _IntervenantsContent extends StatelessWidget {
       children: [
         // En-tête du tableau
         _TableHeader(),
-        // Corps du tableau avec liste d'employés
+        // Corps du tableau avec liste d'employés (lecture seule)
         Expanded(
           child: ListView.builder(
             padding: spacing.custom(horizontal: 10, vertical: 5),
             itemCount: employes.length,
             itemBuilder: (context, index) {
               final employe = employes[index];
-              return GestureDetector(
-                onTap: null,
-                behavior: HitTestBehavior.opaque,
-                child: _EmployeRow(
-                  index: index + 1,
-                  employe: employe['employe']!,
-                  description: employe['description']!,
-                  dateDebut: employe['dateDebut']!,
-                  dateFin: employe['dateFin']!,
-                ),
+              return _EmployeRow(
+                index: index + 1,
+                employe: employe['employe']!,
+                description: employe['description']!,
+                dateDebut: employe['dateDebut']!,
+                dateFin: employe['dateFin']!,
               );
             },
           ),
@@ -474,41 +259,6 @@ class _EmployesAllouesContentState extends State<_EmployesAllouesContent> {
                   },
                 ),
         ),
-
-        // Bouton DÉTAILS en bas (ouvre le premier employé s'il y en a)
-        Container(
-          color: Colors.white,
-          padding: spacing.custom(horizontal: 20, vertical: 10, bottom: 20),
-          child: SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                if (widget.employes.isNotEmpty) {
-                  _toggleDetails(widget.employes.first);
-                } else {
-                  _toggleDetails(null);
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0F1B80),
-                foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(vertical: responsive.hp(1.8)),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                elevation: 2,
-              ),
-              child: Text(
-                'DÉTAILS',
-                style: TextStyle(
-                  fontFamily: AppTheme.fontMontserrat,
-                  fontWeight: FontWeight.w600,
-                  fontSize: responsive.sp(16),
-                ),
-              ),
-            ),
-          ),
-        ),
       ],
     );
   }
@@ -587,33 +337,7 @@ class _EmployesAllouesDetailsTabState
   }
 
 
-  /// Affiche le sélecteur de date
-  Future<void> _selectDate() async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: AppTheme.primaryColor,
-              onPrimary: Colors.white,
-              onSurface: AppTheme.secondaryColor,
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-    if (picked != null) {
-      setState(() {
-        _dateAllocationController.text =
-            '${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}';
-      });
-    }
-  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -639,15 +363,16 @@ class _EmployesAllouesDetailsTabState
                       child: EmployeFormField(
                         label: 'Employé',
                         controller: _employeController,
-                        hasDropdown: true,
+                        readOnly: true,
                       ),
                     ),
                     SizedBox(width: spacing.medium),
                     Expanded(
                       child: EmployeFormField(
-                        label: 'Description de l\'employé',
+                        label: 'Description de l\'employé (Auto)',
                         controller: _descriptionController,
                         readOnly: true,
+                        backgroundColor: const Color(0xFFEEEEEE),
                       ),
                     ),
                   ],
@@ -661,9 +386,7 @@ class _EmployesAllouesDetailsTabState
                       child: EmployeFormField(
                         label: 'Date d\'allocation',
                         controller: _dateAllocationController,
-                        isDateField: true,
-                        backgroundColor: const Color(0xFFFFFF99), // Fond jaune
-                        onDateTap: _selectDate,
+                        readOnly: true,
                       ),
                     ),
                     SizedBox(width: spacing.medium),
@@ -671,7 +394,7 @@ class _EmployesAllouesDetailsTabState
                       child: EmployeFormField(
                         label: 'Heures allouées',
                         controller: _heuresAlloueesController,
-                        backgroundColor: const Color(0xFFFFFF99), // Fond jaune
+                        readOnly: true,
                       ),
                     ),
                   ],
@@ -685,7 +408,7 @@ class _EmployesAllouesDetailsTabState
                       child: EmployeFormField(
                         label: 'État de l\'allocation',
                         controller: _etatAllocationController,
-                        hasDropdown: true,
+                        readOnly: true,
                       ),
                     ),
                     SizedBox(width: spacing.medium),
@@ -693,7 +416,7 @@ class _EmployesAllouesDetailsTabState
                       child: EmployeFormField(
                         label: 'État de rejet de la qualification',
                         controller: _etatRejetController,
-                        hasDropdown: true,
+                        readOnly: true,
                       ),
                     ),
                   ],
@@ -707,7 +430,7 @@ class _EmployesAllouesDetailsTabState
                       child: EmployeFormField(
                         label: 'À des permis de travail',
                         controller: _aPermisController,
-                        hasDropdown: true,
+                        readOnly: true,
                       ),
                     ),
                     SizedBox(width: spacing.medium),
@@ -723,6 +446,7 @@ class _EmployesAllouesDetailsTabState
                       child: EmployeFormField(
                         label: 'N° de séquence',
                         controller: _numeroSequenceController,
+                        readOnly: true,
                       ),
                     ),
                     SizedBox(width: spacing.medium),
@@ -730,7 +454,7 @@ class _EmployesAllouesDetailsTabState
                       child: EmployeFormField(
                         label: 'Action',
                         controller: TextEditingController(),
-                        hasDropdown: true,
+                        readOnly: true,
                       ),
                     ),
                   ],
@@ -742,10 +466,12 @@ class _EmployesAllouesDetailsTabState
                   width: double.infinity,
                   height: responsive.hp(15),
                   decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
                     border: Border.all(color: Colors.grey[400]!),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: TextFormField(
+                    readOnly: true,
                     maxLines: null,
                     expands: true,
                     decoration: InputDecoration(
@@ -760,10 +486,20 @@ class _EmployesAllouesDetailsTabState
         ),
 
         // Bouton Retour en bas
-        Container(
-          color: Colors.white,
-          padding: spacing.custom(horizontal: 20, vertical: 10, bottom: 20),
-          child: SizedBox(
+        Builder(
+          builder: (context) {
+            final bottomInset = MediaQuery.of(context).viewPadding.bottom > 0
+                ? MediaQuery.of(context).viewPadding.bottom
+                : MediaQuery.of(context).padding.bottom;
+            return Container(
+              color: Colors.white,
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 10,
+                bottom: bottomInset + 14,
+              ),
+              child: SizedBox(
             width: double.infinity,
             child: ElevatedButton(
               onPressed: widget.onBack,
@@ -786,7 +522,9 @@ class _EmployesAllouesDetailsTabState
               ),
             ),
           ),
-        ),
+        );
+      },
+    ),
       ],
     );
   }
@@ -1278,9 +1016,7 @@ class _RessourcesContent extends StatelessWidget {
 /// Principe SOLID: Single Responsibility - Gère uniquement l'affichage de la barre d'actions avec icônes
 /// Principe DRY: Réutilise le pattern des autres barres d'action
 class _MainsOeuvreActionBar extends StatelessWidget {
-  final VoidCallback onAddPressed;
-
-  const _MainsOeuvreActionBar({required this.onAddPressed});
+  const _MainsOeuvreActionBar();
 
   @override
   Widget build(BuildContext context) {

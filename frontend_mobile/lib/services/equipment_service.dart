@@ -37,6 +37,8 @@ class EquipmentService {
     String? famille,
     String? search,
     String? description,
+    int? page,
+    int? pageSize,
   }) async {
     try {
       final queryParams = <String, dynamic>{
@@ -45,6 +47,8 @@ class EquipmentService {
         if (entity.trim().isNotEmpty) 'entity': entity.trim(),
         if (search != null && search.trim().isNotEmpty) 'search': search.trim(),
         if (description != null && description.trim().isNotEmpty) 'description': description.trim(),
+        if (page != null) 'page': page,
+        if (pageSize != null) 'page_size': pageSize,
       };
 
       if (kDebugMode) {

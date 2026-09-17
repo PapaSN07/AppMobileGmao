@@ -31,13 +31,63 @@ class OTService {
   static const bool useMockData = false;
   // Endpoint backend FastAPI qui proxy vers Coswin OT.
   static const String ordersEndpoint = '/api/v1/mobile/ot/workorders';
+  static const String referentialsEndpoint = '/api/v1/mobile/ot/referentials';
 
   OTService(this._apiService);
+
+  /// Récupérer les référentiels officiels de Coswin Senelec (types, classes, priorités, statuts, superviseurs)
+  Future<Map<String, dynamic>> getReferentials() async {
+    try {
+      final response = await _apiService.get(referentialsEndpoint);
+      if (response is Map<String, dynamic>) {
+        final data = response['data'] ?? response;
+        if (data is Map<String, dynamic>) {
+          return data;
+        }
+      }
+      return {};
+    } catch (e) {
+      print('⚠️ Impossible de charger les référentiels en ligne: $e');
+      return {};
+    }
+  }
+
+  /// Récupérer les articles réels du stock Coswin Senelec (0 base locale)
+  Future<List<dynamic>> getItems() async {
+    try {
+      final response = await _apiService.get('$ordersEndpoint/items');
+      final payload = _extractDataPayload(response);
+      return payload is List ? payload : [];
+    } catch (e) {
+      print('⚠️ Impossible de charger les articles Coswin: $e');
+      return [];
+    }
+  }
+
+  /// Récupérer les spécifications techniques officielles Coswin Senelec
+  Future<List<dynamic>> getSpecifications() async {
+    try {
+      final response = await _apiService.get('$ordersEndpoint/specifications');
+      final payload = _extractDataPayload(response);
+      return payload is List ? payload : [];
+    } catch (e) {
+      print('⚠️ Impossible de charger les spécifications Coswin: $e');
+      return [];
+    }
+  }
 
   /// Vérifier la connectivité Internet
   Future<bool> hasInternetConnection() async {
     final connectivityResult = await Connectivity().checkConnectivity();
-    return connectivityResult != ConnectivityResult.none;
+    if (connectivityResult != ConnectivityResult.none) {
+      return true;
+    }
+    // En mode dev local (câble USB adb reverse, Wi-Fi 192.168.x, ou émulateur)
+    final base = _apiService.baseUrl;
+    if (base.contains('127.0.0.1') || base.contains('10.0.2.2') || base.contains('localhost') || base.contains('192.168.')) {
+      return true;
+    }
+    return false;
   }
 
   /// Récupérer les détails d'un OT par son numéro
@@ -79,8 +129,8 @@ class OTService {
   }
 
   /// Timeout étendu pour la récupération de liste d'OT.
-  /// Chaque page Coswin prend ~9 secondes, on laisse 60s pour une page.
-  static const Duration _listOrdersTimeout = Duration(seconds: 60);
+  /// Les réponses Coswin avec DigestAuth peuvent prendre du temps sur le réseau.
+  static const Duration _listOrdersTimeout = Duration(seconds: 120);
 
   /// Récupère UNE PAGE d'OT filtrée selon le scope demandé.
   ///
@@ -426,6 +476,23 @@ class OTService {
     }
   }
 
+  /// Récupérer les équipements réels depuis l'API mobile Senelec
+  Future<List<dynamic>> getEquipments() async {
+    final hasInternet = await hasInternetConnection();
+    if (!hasInternet) throw Exception('Pas de connexion internet');
+    try {
+      final response = await _apiService.get('/api/v1/mobile/equipments', queryParameters: {'entity': 'SENELEC'});
+      if (response is Map && response['equipments'] is List) {
+        return response['equipments'];
+      }
+      final payload = _extractDataPayload(response);
+      return payload is List ? payload : [];
+    } catch (e) {
+      print('❌ Erreur getEquipments: $e');
+      rethrow;
+    }
+  }
+
 
   // ========== SUB-RESOURCES CRUD ==========
   Future<void> createOperation(String otCode, Map<String, dynamic> data) async {
@@ -590,6 +657,50 @@ class OTService {
       await _cacheService.clearCache();
     } catch (e) {
       throw Exception('Erreur suppression attribut: $e');
+    }
+  }
+
+  Future<void> createFacilityUsed(String otCode, Map<String, dynamic> data) async {
+    final hasInternet = await hasInternetConnection();
+    if (!hasInternet) throw Exception('Hors ligne : opération impossible');
+    try {
+      await _apiService.post('$ordersEndpoint/$otCode/facilitiesused', data: data);
+      await _cacheService.clearCache();
+    } catch (e) {
+      throw Exception('Erreur ajout moyen: $e');
+    }
+  }
+
+  Future<void> deleteFacilityUsed(String otCode, int pk) async {
+    final hasInternet = await hasInternetConnection();
+    if (!hasInternet) throw Exception('Hors ligne : opération impossible');
+    try {
+      await _apiService.delete('$ordersEndpoint/$otCode/facilitiesused/$pk');
+      await _cacheService.clearCache();
+    } catch (e) {
+      throw Exception('Erreur suppression moyen: $e');
+    }
+  }
+
+  Future<void> createServiceUsed(String otCode, Map<String, dynamic> data) async {
+    final hasInternet = await hasInternetConnection();
+    if (!hasInternet) throw Exception('Hors ligne : opération impossible');
+    try {
+      await _apiService.post('$ordersEndpoint/$otCode/services', data: data);
+      await _cacheService.clearCache();
+    } catch (e) {
+      throw Exception('Erreur ajout service: $e');
+    }
+  }
+
+  Future<void> deleteServiceUsed(String otCode, int pk) async {
+    final hasInternet = await hasInternetConnection();
+    if (!hasInternet) throw Exception('Hors ligne : opération impossible');
+    try {
+      await _apiService.delete('$ordersEndpoint/$otCode/services/$pk');
+      await _cacheService.clearCache();
+    } catch (e) {
+      throw Exception('Erreur suppression service: $e');
     }
   }
 

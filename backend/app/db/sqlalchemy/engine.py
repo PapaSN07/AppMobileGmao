@@ -20,7 +20,7 @@ BaseClicClac = declarative_base()
 
 def _make_odbc_engine_url(user: str | None, password: str | None, host: str | None, port: str | None, database: str | None, driver: str = "ODBC Driver 18 for SQL Server"):
     """Construit une URL ODBC sécurisée avec encodage des caractères spéciaux"""
-    dsn = f"DRIVER={{{driver}}};SERVER={host},{port};DATABASE={database};UID={user};PWD={password};TrustServerCertificate=yes;Encrypt=no"
+    dsn = f"DRIVER={{{driver}}};SERVER={host},{port};DATABASE={database};UID={user};PWD={password};TrustServerCertificate=yes;Encrypt=no;Connection Timeout=3"
     return "mssql+pyodbc:///?odbc_connect=" + urllib.parse.quote_plus(dsn)
 
 def create_main_engine():
@@ -33,11 +33,12 @@ def create_main_engine():
         pool_size=10,
         max_overflow=20,
         pool_pre_ping=True,
+        connect_args={"timeout": 3},
         echo=False,
         future=True
     )
     
-    logger.info(f"✅ Engine principal créé (gmao_backend): {DB_NAME}")
+    logger.info(f"Engine principal créé (gmao_backend): {DB_NAME}")
     return engine
 
 def create_temp_engine():
@@ -54,7 +55,7 @@ def create_temp_engine():
         future=True
     )
     
-    logger.info(f"✅ Engine temporaire créé (gmao_mobile): {TEMP_DB_NAME}")
+    logger.info(f"Engine temporaire créé (gmao_mobile): {TEMP_DB_NAME}")
     return engine
 
 # Créer les engines
@@ -112,4 +113,4 @@ def create_all_tables():
     """Crée toutes les tables (à utiliser avec précaution)"""
     Base.metadata.create_all(bind=main_engine)
     BaseClicClac.metadata.create_all(bind=temp_engine)
-    logger.info("✅ Tables créées dans les deux bases")
+    logger.info("Tables créées dans les deux bases")

@@ -52,7 +52,9 @@ async def get_equipments_mobile(
     entity: str = Query(..., description="Entité obligatoire (hiérarchie automatique)"),
     zone: Optional[str] = Query(None, description="Filtre zone"),
     famille: Optional[str] = Query(None, description="Filtre famille"),
-    search: Optional[str] = Query(None, description="Recherche textuelle")
+    search: Optional[str] = Query(None, description="Recherche textuelle"),
+    page: int = Query(1, ge=1, description="Numéro de page"),
+    page_size: int = Query(30, ge=1, le=100, description="Nombre d'éléments par page")
 ) -> EquipmentListResponse:
     """Endpoint principal optimisé pour mobile avec infinite scroll et hiérarchie"""
     try:
@@ -60,7 +62,9 @@ async def get_equipments_mobile(
             entity=entity,
             zone=zone,
             famille=famille,
-            search_term=search
+            search_term=search,
+            page=page,
+            page_size=page_size
         )
         
         return EquipmentListResponse(**result)

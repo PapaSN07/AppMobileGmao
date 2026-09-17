@@ -1100,7 +1100,10 @@ class _StockServicesTabState extends State<_StockServicesTab> {
 
     if (_showDetails) {
       return _StockServicesDetailsTab(
+        otCode: widget.otCode,
+        otService: widget.otService,
         onBack: () => _toggleDetails(null),
+        onSaved: _loadServices,
         initialData: _selectedService,
       );
     }
@@ -1108,7 +1111,7 @@ class _StockServicesTabState extends State<_StockServicesTab> {
     return Column(
       children: [
         // Barre d'icônes d'action
-        MaterielActionBar(onAddTap: () => _toggleDetails(services.isNotEmpty ? services.first : null)),
+        MaterielActionBar(onAddTap: () => _toggleDetails(null)),
         SizedBox(height: spacing.small),
         // En-tête du tableau
         _StockServicesTableHeader(),
@@ -1139,13 +1142,21 @@ class _StockServicesTabState extends State<_StockServicesTab> {
 }
 
 /// Widget pour afficher le formulaire de détails des services
-/// Principe SOLID: Single Responsibility - Gère uniquement l'affichage du formulaire
-/// Principe DRY: Réutilise EmployeFormField
+/// Conforme à la capture Coswin 8i (Article, Qté planifiée, Qté consommée, Unité)
 class _StockServicesDetailsTab extends StatefulWidget {
+  final String otCode;
+  final OTService otService;
   final VoidCallback onBack;
+  final VoidCallback onSaved;
   final Map<String, dynamic>? initialData;
 
-  const _StockServicesDetailsTab({required this.onBack, this.initialData});
+  const _StockServicesDetailsTab({
+    required this.otCode,
+    required this.otService,
+    required this.onBack,
+    required this.onSaved,
+    this.initialData,
+  });
 
   @override
   State<_StockServicesDetailsTab> createState() =>
@@ -1154,24 +1165,47 @@ class _StockServicesDetailsTab extends StatefulWidget {
 
 class _StockServicesDetailsTabState extends State<_StockServicesDetailsTab> {
   late TextEditingController _articleController;
+  late TextEditingController _designationController;
   late TextEditingController _quantitePlanifieeController;
+  late TextEditingController _uniteController;
+  late TextEditingController _coutMaterielController;
   late TextEditingController _quantiteConsommeeController;
+  late TextEditingController _numSequenceController;
+  late TextEditingController _compteurController;
+  late TextEditingController _actionController;
+  String _typeRemplacement = '0. Systématique';
+  bool _majDirecte = false;
+  bool _sansBS = false;
 
   @override
   void initState() {
     super.initState();
     final data = widget.initialData;
-    _articleController = TextEditingController(text: data?['article'] ?? 'SERVICE');
-    _quantitePlanifieeController = TextEditingController(text: data?['quantitePlanifiee'] ?? '0.00');
-    _quantiteConsommeeController = TextEditingController(text: data?['quantiteConsommee'] ?? '0.00');
+    _articleController = TextEditingController(text: data?['article'] ?? data?['woseService'] ?? '');
+    _designationController = TextEditingController(text: data?['designation'] ?? data?['woseDescription'] ?? '');
+    _quantitePlanifieeController = TextEditingController(text: data?['quantitePlanifiee']?.toString() ?? data?['wosePlannedQuantity']?.toString() ?? '0.00');
+    _uniteController = TextEditingController(text: data?['unite'] ?? data?['woseUnit'] ?? 'U');
+    _coutMaterielController = TextEditingController(text: data?['cout']?.toString() ?? data?['woseCost']?.toString() ?? '');
+    _quantiteConsommeeController = TextEditingController(text: data?['quantiteConsommee']?.toString() ?? data?['woseUsedQuantity']?.toString() ?? '0.00');
+    _numSequenceController = TextEditingController(text: data?['numSequence']?.toString() ?? data?['woseSequence']?.toString() ?? '');
+    _compteurController = TextEditingController(text: data?['compteur'] ?? data?['woseMeter'] ?? '');
+    _actionController = TextEditingController(text: data?['action'] ?? data?['woseAction'] ?? '');
+    _typeRemplacement = data?['typeRemplacement'] ?? data?['woseReplacementType'] ?? '0. Systématique';
+    _majDirecte = data?['majDirecte'] == true || data?['woseDirectUpdate'] == '1';
+    _sansBS = data?['sansBS'] == true || data?['woseWithoutBs'] == '1';
   }
-
 
   @override
   void dispose() {
     _articleController.dispose();
+    _designationController.dispose();
     _quantitePlanifieeController.dispose();
+    _uniteController.dispose();
+    _coutMaterielController.dispose();
     _quantiteConsommeeController.dispose();
+    _numSequenceController.dispose();
+    _compteurController.dispose();
+    _actionController.dispose();
     super.dispose();
   }
 
@@ -1191,38 +1225,191 @@ class _StockServicesDetailsTabState extends State<_StockServicesDetailsTab> {
                 MaterielActionBar(onAddTap: () {}),
                 SizedBox(height: spacing.large),
 
-                // Ligne 1: Article et Quantité planifiée
+                // Ligne 0: Type d'approvisionnement (0. Stock)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: Colors.grey.shade400),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('0. Stock', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      Icon(Icons.arrow_drop_down, size: 18),
+                    ],
+                  ),
+                ),
+                SizedBox(height: spacing.medium),
+
+                // Ligne 1: Article / Service (jaune requis) et Désignation (Auto)
                 Row(
                   children: [
                     Expanded(
+                      flex: 2,
                       child: EmployeFormField(
-                        label: 'Article',
+                        label: 'Article *',
                         controller: _articleController,
-                        hasDropdown: true,
+                        readOnly: true,
                       ),
                     ),
                     SizedBox(width: spacing.medium),
                     Expanded(
+                      flex: 3,
                       child: EmployeFormField(
-                        label: 'Quantité planifiée',
-                        controller: _quantitePlanifieeController,
+                        label: 'Désignation',
+                        controller: _designationController,
+                        readOnly: true,
                       ),
                     ),
                   ],
                 ),
                 SizedBox(height: spacing.medium),
 
-                // Ligne 2: Quantité consommée
+                // Onglet horizontal intérieur 'DÉTAILS'
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: const BoxDecoration(
+                    border: Border(bottom: BorderSide(color: Color(0xFF0F1B80), width: 2.5)),
+                  ),
+                  child: const Text(
+                    'DÉTAILS',
+                    style: TextStyle(color: Color(0xFF0F1B80), fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                ),
+                SizedBox(height: spacing.medium),
+
+                // Sous-Détails Ligne 1: Quantité planifiée, Unité, Coût matériel
                 Row(
                   children: [
                     Expanded(
+                      flex: 2,
+                      child: EmployeFormField(
+                        label: 'Quantité planifiée *',
+                        controller: _quantitePlanifieeController,
+                        readOnly: true,
+                      ),
+                    ),
+                    SizedBox(width: spacing.small),
+                    Expanded(
+                      flex: 1,
+                      child: EmployeFormField(
+                        label: 'Unité',
+                        controller: _uniteController,
+                        readOnly: true,
+                      ),
+                    ),
+                    SizedBox(width: spacing.small),
+                    Expanded(
+                      flex: 2,
+                      child: EmployeFormField(
+                        label: 'Coût matériel',
+                        controller: _coutMaterielController,
+                        readOnly: true,
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: spacing.medium),
+
+                // Sous-Détails Ligne 2: Quantité consommée et Type de remplacement
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 2,
                       child: EmployeFormField(
                         label: 'Quantité consommée',
                         controller: _quantiteConsommeeController,
+                        readOnly: true,
                       ),
                     ),
-                    SizedBox(width: spacing.medium),
-                    Expanded(child: Container()), // Espace vide
+                    SizedBox(width: spacing.small),
+                    Expanded(
+                      flex: 3,
+                      child: Row(
+                        children: [
+                          const Text('Type: ', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          Radio<String>(
+                            value: '0. Systématique',
+                            groupValue: _typeRemplacement,
+                            onChanged: null,
+                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          const Text('0. Syst.', style: TextStyle(fontSize: 11)),
+                          Radio<String>(
+                            value: '1. Conditionnel',
+                            groupValue: _typeRemplacement,
+                            onChanged: null,
+                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          const Text('1. Cond.', style: TextStyle(fontSize: 11)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: spacing.medium),
+
+                // Sous-Détails Ligne 3: Compteur et MàJ directe relevé
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: EmployeFormField(
+                        label: 'Compteur',
+                        controller: _compteurController,
+                        readOnly: true,
+                      ),
+                    ),
+                    SizedBox(width: spacing.small),
+                    Expanded(
+                      flex: 2,
+                      child: CheckboxListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('MàJ directe relevé', style: TextStyle(fontSize: 11)),
+                        value: _majDirecte,
+                        onChanged: null,
+                        controlAffinity: ListTileControlAffinity.leading,
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: spacing.small),
+
+                // Sous-Détails Ligne 4: N° de séquence, Action et Consommation PR sans BS
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 1,
+                      child: EmployeFormField(
+                        label: 'N° séq.',
+                        controller: _numSequenceController,
+                        readOnly: true,
+                      ),
+                    ),
+                    SizedBox(width: spacing.small),
+                    Expanded(
+                      flex: 2,
+                      child: EmployeFormField(
+                        label: 'Action',
+                        controller: _actionController,
+                        readOnly: true,
+                      ),
+                    ),
+                    SizedBox(width: spacing.small),
+                    Expanded(
+                      flex: 2,
+                      child: CheckboxListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('PR sans BS', style: TextStyle(fontSize: 11)),
+                        value: _sansBS,
+                        onChanged: null,
+                        controlAffinity: ListTileControlAffinity.leading,
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -1230,32 +1417,32 @@ class _StockServicesDetailsTabState extends State<_StockServicesDetailsTab> {
           ),
         ),
 
-        // Bouton Retour en bas
+        // Actions en bas (Retour uniquement)
         Container(
           color: Colors.white,
           padding: spacing.custom(horizontal: 20, vertical: 10, bottom: 20),
-          child: SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: widget.onBack,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0F1B80),
-                foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(vertical: responsive.hp(1.8)),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+          child: Row(
+            children: [
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: widget.onBack,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0F1B80),
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(vertical: responsive.hp(1.8)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  child: Text(
+                    'Retour',
+                    style: TextStyle(
+                      fontFamily: AppTheme.fontMontserrat,
+                      fontWeight: FontWeight.w600,
+                      fontSize: responsive.sp(14),
+                    ),
+                  ),
                 ),
-                elevation: 2,
               ),
-              child: Text(
-                'Retour',
-                style: TextStyle(
-                  fontFamily: AppTheme.fontMontserrat,
-                  fontWeight: FontWeight.w600,
-                  fontSize: responsive.sp(16),
-                ),
-              ),
-            ),
+            ],
           ),
         ),
       ],
