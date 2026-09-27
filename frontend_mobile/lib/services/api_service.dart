@@ -31,6 +31,13 @@ class ApiService {
   static const String _productionHost = 'domtec.senelec.sn';
   static const String _coswinBaseUrl = 'https://nomcosw.senelec.sn:8083/ws/rest';
 
+  /// Identifiants Coswin fournis à la construction de l'APK, jamais écrits dans le code :
+  ///   flutter build apk --debug --dart-define-from-file=coswin.local.json
+  /// (fichier local ignoré par git, modèle : coswin.local.example.json)
+  static const String _coswinUser = String.fromEnvironment('COSWIN_USER');
+  static const String _coswinPassword = String.fromEnvironment('COSWIN_PASSWORD');
+  static bool get _hasCoswinCredentials => _coswinUser.isNotEmpty && _coswinPassword.isNotEmpty;
+
   String get macIpAddress => _resolveHost();
   int get defaultPort => _resolvePort();
 
@@ -93,8 +100,8 @@ class ApiService {
 
     _dioCoswin.interceptors.add(
       CoswinDigestInterceptor(
-        username: 'admin',
-        password: 'admin',
+        username: _coswinUser,
+        password: _coswinPassword,
         dio: _dioCoswin,
       ),
     );
@@ -288,6 +295,13 @@ class ApiService {
     Map<String, dynamic>? queryParameters,
     Duration? timeout,
   }) async {
+    if (identical(client, _dioCoswin) && !_hasCoswinCredentials) {
+      throw ApiException(
+        'Identifiants Coswin absents de cette version de l\'application '
+        '(construire avec --dart-define-from-file=coswin.local.json).',
+        endpoint: endpoint,
+      );
+    }
     try {
       final r = await client.request(
         endpoint,

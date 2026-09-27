@@ -25,3 +25,7 @@ codif.md
 codif_attr_possible.md
 ~$*
 rapport_*.txt
+# Fichiers locaux sensibles ou binaires
+backend/scripts/find_sdrbd_users.py
+cloudflared.exe
+liste_ot_trouves.txt
