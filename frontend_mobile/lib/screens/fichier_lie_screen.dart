@@ -89,7 +89,7 @@ class _FichierLieScreenState extends State<FichierLieScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Fichier "${fileData['nom']}" noté dans le commentaire (non envoyé à Coswin)'),
-          backgroundColor: const Color(0xFF0F1B80),
+          backgroundColor: AppTheme.senelecReflexBlue,
         ),
       );
       Navigator.pop(context, fileData);
@@ -112,7 +112,7 @@ class _FichierLieScreenState extends State<FichierLieScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Fichier sélectionné : ${picked.name} ($ext)'),
-            backgroundColor: const Color(0xFF0F1B80),
+            backgroundColor: AppTheme.senelecReflexBlue,
           ),
         );
       }
@@ -140,7 +140,7 @@ class _FichierLieScreenState extends State<FichierLieScreen> {
             ),
             child: Icon(
               Icons.arrow_back,
-              color: const Color(0xFF2B1D4C),
+              color: AppTheme.senelecIndigo,
               size: responsive.iconSize(18),
             ),
           ),
@@ -151,7 +151,7 @@ class _FichierLieScreenState extends State<FichierLieScreen> {
           style: TextStyle(
             fontFamily: AppTheme.fontMontserrat,
             fontWeight: FontWeight.w700,
-            color: const Color(0xFF2B1D4C),
+            color: AppTheme.senelecIndigo,
             fontSize: responsive.sp(18),
           ),
         ),

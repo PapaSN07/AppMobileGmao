@@ -315,7 +315,7 @@ class ListItemCustom extends StatelessWidget {
       width: responsive.spacing(48),
       height: responsive.spacing(48),
       decoration: BoxDecoration(
-        color: iconColor ?? const Color(0xFF0F1B80).withValues(alpha: 0.1),
+        color: iconColor ?? AppTheme.senelecReflexBlue.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(
           responsive.spacing(12),
         ),
@@ -323,7 +323,7 @@ class ListItemCustom extends StatelessWidget {
       child: Icon(
         icon,
         size: responsive.iconSize(24),
-        color: const Color(0xFF0F1B80),
+        color: AppTheme.senelecReflexBlue,
       ),
     );
   }
@@ -347,7 +347,7 @@ class ListItemCustom extends StatelessWidget {
           style: TextStyle(
             fontFamily: AppTheme.fontMontserrat,
             fontWeight: FontWeight.w700,
-            color: const Color(0xFF2B1D4C),
+            color: AppTheme.senelecIndigo,
             fontSize: responsive.sp(14),
           ),
         ),
@@ -357,7 +357,7 @@ class ListItemCustom extends StatelessWidget {
             style: TextStyle(
               fontFamily: AppTheme.fontMontserrat,
               fontWeight: FontWeight.w800,
-              color: const Color(0xFF0F1B80),
+              color: AppTheme.senelecReflexBlue,
               fontSize: responsive.sp(14),
             ),
             overflow: TextOverflow.ellipsis,

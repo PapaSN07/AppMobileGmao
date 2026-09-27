@@ -1,3 +1,4 @@
+import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../provider/equipment_provider.dart';
@@ -120,7 +121,7 @@ class _EquipmentFormDialogState extends State<EquipmentFormDialog> {
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF0F1B80),
+                        color: AppTheme.senelecReflexBlue,
                       ),
                     ),
                     IconButton(
@@ -221,7 +222,7 @@ class _EquipmentFormDialogState extends State<EquipmentFormDialog> {
                           : const Icon(Icons.save, size: 18),
                       label: Text(_isEditMode ? 'Enregistrer' : 'Créer'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0F1B80),
+                        backgroundColor: AppTheme.senelecReflexBlue,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -248,7 +249,7 @@ class _EquipmentFormDialogState extends State<EquipmentFormDialog> {
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF0F1B80)),
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.senelecReflexBlue),
         ),
         const SizedBox(height: 4),
         TextFormField(

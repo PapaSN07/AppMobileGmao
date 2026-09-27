@@ -372,7 +372,7 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen>
             prefixIcon: IconButton(
               icon: Icon(
                 _showSearchOptions ? Icons.filter_list : Icons.tune,
-                color: const Color(0xFF0F1B80),
+                color: AppTheme.senelecReflexBlue,
               ),
               onPressed: () => setState(() => _showSearchOptions = !_showSearchOptions),
             ),
@@ -380,7 +380,7 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen>
               mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(
-                  icon: const Icon(Icons.search, color: Color(0xFF0F1B80)),
+                  icon: const Icon(Icons.search, color: AppTheme.senelecReflexBlue),
                   onPressed: _loadOrders,
                 ),
                 if (_serviceController.text.isNotEmpty)
@@ -402,7 +402,7 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen>
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(responsive.spacing(12)),
-              borderSide: const BorderSide(color: Color(0xFF0F1B80), width: 2),
+              borderSide: const BorderSide(color: AppTheme.senelecReflexBlue, width: 2),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(responsive.spacing(12)),
@@ -436,7 +436,7 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen>
                               fontFamily: AppTheme.fontMontserrat,
                               fontSize: 14,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF2B1D4C),
+                              color: AppTheme.senelecIndigo,
                             ),
                           ),
                           const SizedBox(height: 8),
@@ -450,7 +450,7 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen>
                                     labelText: 'Rechercher un OT',
                                     labelStyle: const TextStyle(color: Color(0xFF64748B)),
                                     hintText: 'Ex: Numéro OT, équipement...',
-                                    prefixIcon: const Icon(Icons.search, color: Color(0xFF0F1B80)),
+                                    prefixIcon: const Icon(Icons.search, color: AppTheme.senelecReflexBlue),
                                     filled: true,
                                     fillColor: const Color(0xFFF8FAFC),
                                     border: OutlineInputBorder(
@@ -459,7 +459,7 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen>
                                     ),
                                     focusedBorder: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(responsive.spacing(10)),
-                                      borderSide: const BorderSide(color: Color(0xFF0F1B80), width: 1.5),
+                                      borderSide: const BorderSide(color: AppTheme.senelecReflexBlue, width: 1.5),
                                     ),
                                     enabledBorder: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(responsive.spacing(10)),
@@ -518,7 +518,7 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen>
                             decoration: InputDecoration(
                               labelText: 'Statut',
                               labelStyle: const TextStyle(color: Color(0xFF64748B)),
-                              prefixIcon: const Icon(Icons.flag_outlined, color: Color(0xFF0F1B80), size: 20),
+                              prefixIcon: const Icon(Icons.flag_outlined, color: AppTheme.senelecReflexBlue, size: 20),
                               filled: true,
                               fillColor: const Color(0xFFF8FAFC),
                               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -532,7 +532,7 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen>
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(10),
-                                borderSide: const BorderSide(color: Color(0xFF0F1B80), width: 1.5),
+                                borderSide: const BorderSide(color: AppTheme.senelecReflexBlue, width: 1.5),
                               ),
                             ),
                             items: [
@@ -564,7 +564,7 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen>
                             decoration: InputDecoration(
                               labelText: 'Type de travail',
                               labelStyle: const TextStyle(color: Color(0xFF64748B)),
-                              prefixIcon: const Icon(Icons.build_outlined, color: Color(0xFF0F1B80), size: 20),
+                              prefixIcon: const Icon(Icons.build_outlined, color: AppTheme.senelecReflexBlue, size: 20),
                               filled: true,
                               fillColor: const Color(0xFFF8FAFC),
                               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -578,7 +578,7 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen>
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(10),
-                                borderSide: const BorderSide(color: Color(0xFF0F1B80), width: 1.5),
+                                borderSide: const BorderSide(color: AppTheme.senelecReflexBlue, width: 1.5),
                               ),
                             ),
                             items: [
@@ -617,8 +617,8 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen>
                                 icon: const Icon(Icons.refresh, size: 18),
                                 label: const Text('Réinitialiser les filtres'),
                                 style: OutlinedButton.styleFrom(
-                                  foregroundColor: const Color(0xFF0F1B80),
-                                  side: const BorderSide(color: Color(0xFF0F1B80)),
+                                  foregroundColor: AppTheme.senelecReflexBlue,
+                                  side: const BorderSide(color: AppTheme.senelecReflexBlue),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
@@ -655,12 +655,12 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen>
               gradient: const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [Color(0xFF2B1D4C), Color(0xFF0F1B80)],
+                colors: [AppTheme.senelecIndigo, AppTheme.senelecReflexBlue],
               ),
               borderRadius: BorderRadius.circular(responsive.spacing(16)),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF0F1B80).withValues(alpha: 0.25),
+                  color: AppTheme.senelecReflexBlue.withValues(alpha: 0.25),
                   blurRadius: 12,
                   offset: const Offset(0, 4),
                 ),
@@ -824,7 +824,7 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen>
                                                 height: 24,
                                                 child: CircularProgressIndicator(
                                                   strokeWidth: 2.5,
-                                                  color: Color(0xFF0F1B80),
+                                                  color: AppTheme.senelecReflexBlue,
                                                 ),
                                               ),
                                               const SizedBox(height: 8),
@@ -924,9 +924,9 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen>
                                           value: 'edit',
                                           child: Row(
                                             children: [
-                                              Icon(Icons.edit_outlined, color: Color(0xFF0F1B80), size: 20),
+                                              Icon(Icons.edit_outlined, color: AppTheme.senelecReflexBlue, size: 20),
                                               SizedBox(width: 10),
-                                              Text('Modifier', style: TextStyle(color: Color(0xFF0F1B80), fontWeight: FontWeight.w600, fontSize: 14)),
+                                              Text('Modifier', style: TextStyle(color: AppTheme.senelecReflexBlue, fontWeight: FontWeight.w600, fontSize: 14)),
                                             ],
                                           ),
                                         )

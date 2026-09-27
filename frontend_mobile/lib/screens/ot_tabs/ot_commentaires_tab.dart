@@ -1,3 +1,4 @@
+import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:appmobilegmao/services/ot_service.dart';
 import 'package:appmobilegmao/models/attached_file_note.dart';
@@ -45,7 +46,7 @@ class CommentairesTabState extends State<CommentairesTab> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator(color: Color(0xFF0F1B80)));
+      return const Center(child: CircularProgressIndicator(color: AppTheme.senelecReflexBlue));
     }
     if (_error != null) {
       return Center(
@@ -62,7 +63,7 @@ class CommentairesTabState extends State<CommentairesTab> {
                 onPressed: _loadComments,
                 icon: const Icon(Icons.refresh),
                 label: const Text('Réessayer'),
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0F1B80), foregroundColor: Colors.white),
+                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.senelecReflexBlue, foregroundColor: Colors.white),
               ),
             ],
           ),
@@ -80,14 +81,14 @@ class CommentairesTabState extends State<CommentairesTab> {
                 'Commentaires / Rapports',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF0F1B80),
+                  color: AppTheme.senelecReflexBlue,
                   fontSize: 17,
                 ),
               ),
               const Spacer(),
               IconButton(
                 tooltip: 'Actualiser depuis Coswin',
-                icon: const Icon(Icons.refresh, color: Color(0xFF0F1B80), size: 22),
+                icon: const Icon(Icons.refresh, color: AppTheme.senelecReflexBlue, size: 22),
                 onPressed: _loadComments,
               ),
             ],
@@ -99,7 +100,7 @@ class CommentairesTabState extends State<CommentairesTab> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.comment_bank, size: 64, color: Color(0xFF0F1B80)),
+                      Icon(Icons.comment_bank, size: 64, color: AppTheme.senelecReflexBlue),
                       SizedBox(height: 16),
                       Text('Aucun commentaire pour cet OT', style: TextStyle(fontSize: 16, color: Colors.grey)),
                     ],
@@ -152,24 +153,24 @@ class CommentairesTabState extends State<CommentairesTab> {
                             children: [
                               Row(
                                 children: [
-                                  const Icon(Icons.account_circle, color: Color(0xFF0F1B80), size: 20),
+                                  const Icon(Icons.account_circle, color: AppTheme.senelecReflexBlue, size: 20),
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
                                       author,
-                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF2B1D4C)),
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.senelecIndigo),
                                     ),
                                   ),
                                   if (docType.isNotEmpty)
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFF0F1B80).withAlpha(20),
+                                        color: AppTheme.senelecReflexBlue.withAlpha(20),
                                         borderRadius: BorderRadius.circular(6),
                                       ),
                                       child: Text(
                                         docType,
-                                        style: const TextStyle(color: Color(0xFF0F1B80), fontSize: 11, fontWeight: FontWeight.bold),
+                                        style: const TextStyle(color: AppTheme.senelecReflexBlue, fontSize: 11, fontWeight: FontWeight.bold),
                                       ),
                                     ),
                                 ],
@@ -187,14 +188,14 @@ class CommentairesTabState extends State<CommentairesTab> {
                                   decoration: BoxDecoration(
                                     color: const Color(0xFFE8EDFF),
                                     borderRadius: BorderRadius.circular(6),
-                                    border: Border.all(color: const Color(0xFF0F1B80).withAlpha(50)),
+                                    border: Border.all(color: AppTheme.senelecReflexBlue.withAlpha(50)),
                                   ),
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Row(
                                         children: [
-                                          const Icon(Icons.attach_file, size: 16, color: Color(0xFF0F1B80)),
+                                          const Icon(Icons.attach_file, size: 16, color: AppTheme.senelecReflexBlue),
                                           const SizedBox(width: 6),
                                           Expanded(
                                             child: Text(
@@ -204,7 +205,7 @@ class CommentairesTabState extends State<CommentairesTab> {
                                               style: const TextStyle(
                                                 fontSize: 13,
                                                 fontWeight: FontWeight.bold,
-                                                color: Color(0xFF0F1B80),
+                                                color: AppTheme.senelecReflexBlue,
                                               ),
                                               overflow: TextOverflow.ellipsis,
                                             ),
@@ -214,7 +215,7 @@ class CommentairesTabState extends State<CommentairesTab> {
                                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                               margin: const EdgeInsets.only(left: 4),
                                               decoration: BoxDecoration(
-                                                color: const Color(0xFF0F1B80),
+                                                color: AppTheme.senelecReflexBlue,
                                                 borderRadius: BorderRadius.circular(4),
                                               ),
                                               child: Text(
@@ -325,7 +326,7 @@ class CommentairesTabState extends State<CommentairesTab> {
               ),
               Row(
                 children: [
-                  const Icon(Icons.comment, color: Color(0xFF0F1B80), size: 22),
+                  const Icon(Icons.comment, color: AppTheme.senelecReflexBlue, size: 22),
                   const SizedBox(width: 8),
                   const Expanded(
                     child: Text(
@@ -333,7 +334,7 @@ class CommentairesTabState extends State<CommentairesTab> {
                       style: TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF0F1B80),
+                        color: AppTheme.senelecReflexBlue,
                       ),
                     ),
                   ),
@@ -341,13 +342,13 @@ class CommentairesTabState extends State<CommentairesTab> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF0F1B80).withAlpha(20),
+                        color: AppTheme.senelecReflexBlue.withAlpha(20),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
                         docType,
                         style: const TextStyle(
-                          color: Color(0xFF0F1B80),
+                          color: AppTheme.senelecReflexBlue,
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
                         ),
@@ -384,7 +385,7 @@ class CommentairesTabState extends State<CommentairesTab> {
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 13,
-                          color: Color(0xFF2B1D4C),
+                          color: AppTheme.senelecIndigo,
                         ),
                       ),
                       const SizedBox(height: 6),
@@ -408,7 +409,7 @@ class CommentairesTabState extends State<CommentairesTab> {
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 13,
-                            color: Color(0xFF2B1D4C),
+                            color: AppTheme.senelecIndigo,
                           ),
                         ),
                         const SizedBox(height: 6),
@@ -418,14 +419,14 @@ class CommentairesTabState extends State<CommentairesTab> {
                           decoration: BoxDecoration(
                             color: const Color(0xFFE8EDFF),
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: const Color(0xFF0F1B80).withAlpha(40)),
+                            border: Border.all(color: AppTheme.senelecReflexBlue.withAlpha(40)),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
                                 children: [
-                                  const Icon(Icons.attach_file, color: Color(0xFF0F1B80), size: 18),
+                                  const Icon(Icons.attach_file, color: AppTheme.senelecReflexBlue, size: 18),
                                   const SizedBox(width: 6),
                                   Expanded(
                                     child: Text(
@@ -435,7 +436,7 @@ class CommentairesTabState extends State<CommentairesTab> {
                                       style: const TextStyle(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 13,
-                                        color: Color(0xFF0F1B80),
+                                        color: AppTheme.senelecReflexBlue,
                                       ),
                                     ),
                                   ),
@@ -503,7 +504,7 @@ class CommentairesTabState extends State<CommentairesTab> {
                 child: ElevatedButton(
                   onPressed: () => Navigator.pop(context),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0F1B80),
+                    backgroundColor: AppTheme.senelecReflexBlue,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),

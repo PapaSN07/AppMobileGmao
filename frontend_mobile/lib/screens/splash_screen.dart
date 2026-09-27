@@ -105,55 +105,19 @@ class _SplashScreenState extends State<SplashScreen>
     final spacing = context.spacing;
 
     return Scaffold(
-      backgroundColor: AppTheme.senelecIndigo,
+      backgroundColor: AppTheme.senelecReflexBlue,
       body: Stack(
         children: [
-          // 💜 Fond Violet Foncé Senelec avec subtil dégradé
+          // Fond bleu Reflex Senelec (couleur principale de l'application) avec léger dégradé
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  AppTheme.senelecIndigo,
-                  Color(0xFF160A30), // Indigo encore plus profond pour le bas
+                  AppTheme.senelecReflexBlue,
+                  AppTheme.senelecReflexBlueDeep,
                 ],
-              ),
-            ),
-          ),
-
-          // 💡 Halo Lumineux subtil d'Arrière-Plan
-          Positioned(
-            top: -responsive.spacing(50),
-            right: -responsive.spacing(50),
-            child: Container(
-              width: responsive.spacing(280),
-              height: responsive.spacing(280),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    const Color(0xFF0F1B80).withValues(alpha: 0.15),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: -responsive.spacing(60),
-            left: -responsive.spacing(60),
-            child: Container(
-              width: responsive.spacing(300),
-              height: responsive.spacing(300),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    const Color(0xFFFFB800).withValues(alpha: 0.12),
-                    Colors.transparent,
-                  ],
-                ),
               ),
             ),
           ),
@@ -236,7 +200,7 @@ class _SplashScreenState extends State<SplashScreen>
                                     style: TextStyle(
                                       fontSize: responsive.sp(18),
                                       fontWeight: FontWeight.w900,
-                                      color: const Color(0xFF2B1D4C),
+                                      color: AppTheme.senelecIndigo,
                                       letterSpacing: 1.5,
                                       fontFamily: AppTheme.fontMontserrat,
                                     ),

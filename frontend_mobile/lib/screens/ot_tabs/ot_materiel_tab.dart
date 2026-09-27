@@ -77,7 +77,7 @@ class MaterielTabBar extends StatelessWidget {
         labelColor: Colors.white,
         unselectedLabelColor: AppTheme.secondaryColor,
         indicator: BoxDecoration(
-          color: const Color(0xFF0F1B80),
+          color: AppTheme.senelecReflexBlue,
           borderRadius: BorderRadius.circular(4),
         ),
         indicatorSize: TabBarIndicatorSize.tab,
@@ -164,7 +164,7 @@ class _StockSubTabBar extends StatelessWidget {
         labelColor: Colors.white,
         unselectedLabelColor: AppTheme.secondaryColor,
         indicator: BoxDecoration(
-          color: const Color(0xFF0F1B80),
+          color: AppTheme.senelecReflexBlue,
           borderRadius: BorderRadius.circular(4),
         ),
         indicatorSize: TabBarIndicatorSize.tab,
@@ -223,7 +223,7 @@ class _MoyensTabState extends State<_MoyensTab> {
       future: widget.otService.getMoyens(widget.otCode),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator(color: Color(0xFF0F1B80)));
+          return const Center(child: CircularProgressIndicator(color: AppTheme.senelecReflexBlue));
         }
         if (snapshot.hasError) {
           return Center(child: Text('Erreur: ${snapshot.error}', style: const TextStyle(color: Colors.red)));
@@ -235,7 +235,7 @@ class _MoyensTabState extends State<_MoyensTab> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.commute, size: 64, color: Color(0xFF0F1B80)),
+                Icon(Icons.commute, size: 64, color: AppTheme.senelecReflexBlue),
                 SizedBox(height: 16),
                 Text('Aucun moyen utilisé pour cet OT', style: TextStyle(fontSize: 16, color: Colors.grey)),
               ],
@@ -344,7 +344,7 @@ class _MoyensDetailsTabState extends State<_MoyensDetailsTab> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(primary: Color(0xFF0F1B80)),
+            colorScheme: const ColorScheme.light(primary: AppTheme.senelecReflexBlue),
           ),
           child: child!,
         );
@@ -476,7 +476,7 @@ class _MoyensDetailsTabState extends State<_MoyensDetailsTab> {
             child: ElevatedButton(
               onPressed: widget.onBack,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0F1B80),
+                backgroundColor: AppTheme.senelecReflexBlue,
                 foregroundColor: Colors.white,
                 padding: EdgeInsets.symmetric(vertical: responsive.hp(1.8)),
                 shape: RoundedRectangleBorder(
@@ -524,7 +524,7 @@ class _MoyensTableHeader extends StatelessWidget {
     final responsive = context.responsive;
 
     return Container(
-      color: const Color(0xFF0F1B80),
+      color: AppTheme.senelecReflexBlue,
       padding: spacing.custom(horizontal: 10, vertical: 12),
       child: Row(
         children: [
@@ -679,7 +679,7 @@ class _StockPiecesTabState extends State<_StockPiecesTab> {
     final spacing = context.spacing;
 
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator(color: Color(0xFF0F1B80)));
+      return const Center(child: CircularProgressIndicator(color: AppTheme.senelecReflexBlue));
     }
     if (_error != null) {
       return Center(child: Text('Erreur: $_error', style: const TextStyle(color: Colors.red)));
@@ -818,7 +818,7 @@ class _StockPiecesDetailsTabState extends State<_StockPiecesDetailsTab> {
                 child: ElevatedButton(
                   onPressed: widget.onBack,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0F1B80),
+                    backgroundColor: AppTheme.senelecReflexBlue,
                     foregroundColor: Colors.white,
                     padding: EdgeInsets.symmetric(vertical: responsive.hp(1.8)),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -850,7 +850,7 @@ class _StockPiecesTableHeader extends StatelessWidget {
     final responsive = context.responsive;
 
     return Container(
-      color: const Color(0xFF0F1B80),
+      color: AppTheme.senelecReflexBlue,
       padding: spacing.custom(horizontal: 10, vertical: 12),
       child: Row(
         children: [
@@ -1001,7 +1001,7 @@ class _StockServicesTabState extends State<_StockServicesTab> {
     final spacing = context.spacing;
 
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator(color: Color(0xFF0F1B80)));
+      return const Center(child: CircularProgressIndicator(color: AppTheme.senelecReflexBlue));
     }
     if (_error != null) {
       return Center(child: Text('Erreur: $_error', style: const TextStyle(color: Colors.red)));
@@ -1180,11 +1180,11 @@ class _StockServicesDetailsTabState extends State<_StockServicesDetailsTab> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: const BoxDecoration(
-                    border: Border(bottom: BorderSide(color: Color(0xFF0F1B80), width: 2.5)),
+                    border: Border(bottom: BorderSide(color: AppTheme.senelecReflexBlue, width: 2.5)),
                   ),
                   child: const Text(
                     'DÉTAILS',
-                    style: TextStyle(color: Color(0xFF0F1B80), fontWeight: FontWeight.bold, fontSize: 13),
+                    style: TextStyle(color: AppTheme.senelecReflexBlue, fontWeight: FontWeight.bold, fontSize: 13),
                   ),
                 ),
                 SizedBox(height: spacing.medium),
@@ -1336,7 +1336,7 @@ class _StockServicesDetailsTabState extends State<_StockServicesDetailsTab> {
                 child: ElevatedButton(
                   onPressed: widget.onBack,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0F1B80),
+                    backgroundColor: AppTheme.senelecReflexBlue,
                     foregroundColor: Colors.white,
                     padding: EdgeInsets.symmetric(vertical: responsive.hp(1.8)),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -1368,7 +1368,7 @@ class _StockServicesTableHeader extends StatelessWidget {
     final responsive = context.responsive;
 
     return Container(
-      color: const Color(0xFF0F1B80),
+      color: AppTheme.senelecReflexBlue,
       padding: spacing.custom(horizontal: 10, vertical: 12),
       child: Row(
         children: [
@@ -1494,7 +1494,7 @@ class MaterielTableHeader extends StatelessWidget {
     final responsive = context.responsive;
 
     return Container(
-      color: const Color(0xFF0F1B80),
+      color: AppTheme.senelecReflexBlue,
       padding: spacing.custom(horizontal: 10, vertical: 12),
       child: Row(
         children: [

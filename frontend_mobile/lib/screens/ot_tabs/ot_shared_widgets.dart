@@ -127,7 +127,7 @@ class ActionIconButton extends StatelessWidget {
         padding: const EdgeInsets.all(6),
         child: Icon(
           icon,
-          color: const Color(0xFF0F1B80),
+          color: AppTheme.senelecReflexBlue,
           size: responsive.iconSize(20),
         ),
       ),
@@ -180,7 +180,7 @@ class FormField extends StatelessWidget {
         Text(
           label,
           style: const TextStyle(
-            color: Color(0xFF0F1B80), // Bleu
+            color: AppTheme.senelecReflexBlue, // Bleu
             fontSize: 12,
             fontWeight: FontWeight.w500,
           ),
@@ -217,7 +217,7 @@ class FormField extends StatelessWidget {
                   onTap: () => _selectDate(context),
                   child: const Icon(
                     Icons.calendar_today,
-                    color: Color(0xFF0F1B80),
+                    color: AppTheme.senelecReflexBlue,
                     size: 20,
                   ),
                 )
@@ -226,7 +226,7 @@ class FormField extends StatelessWidget {
                   onTap: onDropdownTap ?? () => _showDropdownOptions(context),
                   child: const Icon(
                     Icons.arrow_drop_down,
-                    color: Color(0xFF0F1B80),
+                    color: AppTheme.senelecReflexBlue,
                     size: 24,
                   ),
                 ),
@@ -247,7 +247,7 @@ class FormField extends StatelessWidget {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
-              primary: Color(0xFF0F1B80), // Couleur bleue
+              primary: AppTheme.senelecReflexBlue, // Couleur bleue
               onPrimary: Colors.white,
               onSurface: Colors.black,
             ),
@@ -278,7 +278,7 @@ class FormField extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF0F1B80),
+                  color: AppTheme.senelecReflexBlue,
                 ),
               ),
               const SizedBox(height: 16),

@@ -1,3 +1,4 @@
+import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:appmobilegmao/models/order.dart';
@@ -67,7 +68,7 @@ class _OTDetailScreenState extends State<OTDetailScreen>
       // Barre d'application en haut avec le titre et le bouton retour
       appBar: CustomAppBar(
         backgroundColor: Colors.white,
-        iconColor: const Color(0xFF2B1D4C),
+        iconColor: AppTheme.senelecIndigo,
         title: 'Détails OT ${widget.order.code}',
         bottom: CustomTabBar(
           tabController: _tabController,

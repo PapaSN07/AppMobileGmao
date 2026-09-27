@@ -1,3 +1,4 @@
+import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:appmobilegmao/models/work_request.dart';
 
@@ -16,7 +17,7 @@ class DIInfoScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text('Fiche DI ${request.dinqCode}'),
-        backgroundColor: const Color(0xFF0F1B80),
+        backgroundColor: AppTheme.senelecReflexBlue,
       ),
       body: Center(
         child: Padding(
@@ -24,7 +25,7 @@ class DIInfoScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.article_outlined, size: 64, color: Color(0xFF0F1B80)),
+              const Icon(Icons.article_outlined, size: 64, color: AppTheme.senelecReflexBlue),
               const SizedBox(height: 16),
               Text(
                 "Fiche d'information DI ${request.dinqCode}",
@@ -96,7 +97,7 @@ CODE D'ORIGINE COMPLET DE DI_INFO_SCREEN (CONSERVÉ EN BACKUP) :
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: CustomAppBar(
         backgroundColor: Colors.white,
-        iconColor: const Color(0xFF2B1D4C),
+        iconColor: AppTheme.senelecIndigo,
         title: 'DI ${request.dinqCode}',
       ),
       body: ListView(

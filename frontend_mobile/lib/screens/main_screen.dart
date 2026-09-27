@@ -96,7 +96,7 @@ class _MainScreenState extends State<MainScreen> {
 
   // Obtenir la couleur du texte selon la page
   Color _getAppBarTextColor() {
-    return const Color(0xFF2B1D4C);
+    return AppTheme.senelecIndigo;
   }
 
   void _openProfile() {

@@ -21,7 +21,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.title,
     this.showBackButton = true,
     this.onBackPressed,
-    this.backgroundColor = const Color(0xFF0F1B80),
+    this.backgroundColor = AppTheme.senelecReflexBlue,
     this.iconColor = Colors.white,
     this.titleColor,
     this.bottom,
@@ -81,8 +81,8 @@ class CustomTabBar extends StatelessWidget implements PreferredSizeWidget {
     super.key,
     required this.tabController,
     required this.tabLabels,
-    this.indicatorColor = const Color(0xFF0F1B80),
-    this.selectedLabelColor = const Color(0xFF0F1B80),
+    this.indicatorColor = AppTheme.senelecReflexBlue,
+    this.selectedLabelColor = AppTheme.senelecReflexBlue,
     this.unselectedLabelColor = Colors.grey,
   });
 

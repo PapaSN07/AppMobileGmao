@@ -142,7 +142,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         style: TextStyle(
                           fontSize: responsive.sp(22),
                           fontWeight: FontWeight.w800,
-                          color: const Color(0xFF2B1D4C),
+                          color: AppTheme.senelecIndigo,
                           fontFamily: AppTheme.fontMontserrat,
                         ),
                       ),
@@ -215,7 +215,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         decoration: InputDecoration(
                           labelText: 'Nom d\'utilisateur',
                           labelStyle: const TextStyle(color: Color(0xFF64748B)),
-                          prefixIcon: const Icon(Icons.person_outline, color: Color(0xFF0F1B80)),
+                          prefixIcon: const Icon(Icons.person_outline, color: AppTheme.senelecReflexBlue),
                           filled: true,
                           fillColor: const Color(0xFFF8FAFC),
                           border: OutlineInputBorder(
@@ -224,7 +224,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(responsive.spacing(14)),
-                            borderSide: const BorderSide(color: Color(0xFF0F1B80), width: 2),
+                            borderSide: const BorderSide(color: AppTheme.senelecReflexBlue, width: 2),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(responsive.spacing(14)),
@@ -253,7 +253,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         decoration: InputDecoration(
                           labelText: 'Mot de passe',
                           labelStyle: const TextStyle(color: Color(0xFF64748B)),
-                          prefixIcon: const Icon(Icons.lock_outlined, color: Color(0xFF0F1B80)),
+                          prefixIcon: const Icon(Icons.lock_outlined, color: AppTheme.senelecReflexBlue),
                           suffixIcon: IconButton(
                             icon: Icon(
                               _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
@@ -273,7 +273,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(responsive.spacing(14)),
-                            borderSide: const BorderSide(color: Color(0xFF0F1B80), width: 2),
+                            borderSide: const BorderSide(color: AppTheme.senelecReflexBlue, width: 2),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(responsive.spacing(14)),

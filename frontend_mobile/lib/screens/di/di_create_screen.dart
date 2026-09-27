@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:appmobilegmao/models/work_request.dart';
 
 /// =====================================================================
@@ -21,7 +22,7 @@ class _DICreateScreenState extends State<DICreateScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.requestToEdit != null ? 'Modifier la DI' : 'Créer une DI'),
-        backgroundColor: const Color(0xFF0F1B80),
+        backgroundColor: AppTheme.senelecReflexBlue,
       ),
       body: const Center(
         child: Padding(
@@ -29,7 +30,7 @@ class _DICreateScreenState extends State<DICreateScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.edit_note_outlined, size: 64, color: Color(0xFF0F1B80)),
+              Icon(Icons.edit_note_outlined, size: 64, color: AppTheme.senelecReflexBlue),
               SizedBox(height: 16),
               Text(
                 "Écran de création / modification DI",
@@ -207,7 +208,7 @@ import 'package:appmobilegmao/widgets/custom_app_bar.dart';
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: CustomAppBar(
         backgroundColor: Colors.white,
-        iconColor: const Color(0xFF2B1D4C),
+        iconColor: AppTheme.senelecIndigo,
         title: _isEditMode ? 'Modifier la DI ${_codeController.text}' : 'Créer une DI',
         bottom: CustomTabBar(
           tabController: _tabController,

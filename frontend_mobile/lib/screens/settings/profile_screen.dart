@@ -30,7 +30,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               style: TextStyle(
                 fontFamily: AppTheme.fontMontserrat,
                 fontWeight: FontWeight.w700,
-                color: const Color(0xFF2B1D4C),
+                color: AppTheme.senelecIndigo,
                 fontSize: responsive.sp(18),
               ),
             ),
@@ -45,7 +45,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 child: Icon(
                   Icons.arrow_back,
-                  color: const Color(0xFF2B1D4C),
+                  color: AppTheme.senelecIndigo,
                   size: responsive.iconSize(18),
                 ),
               ),
@@ -111,9 +111,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       width: responsive.spacing(100),
       height: responsive.spacing(100),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F1B80).withValues(alpha: 0.1),
+        color: AppTheme.senelecReflexBlue.withValues(alpha: 0.1),
         shape: BoxShape.circle,
-        border: Border.all(color: const Color(0xFF0F1B80), width: 3),
+        border: Border.all(color: AppTheme.senelecReflexBlue, width: 3),
       ),
       child: ClipOval(
         child:

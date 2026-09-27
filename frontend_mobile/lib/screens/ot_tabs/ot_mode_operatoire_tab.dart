@@ -1,3 +1,4 @@
+import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:appmobilegmao/services/ot_service.dart';
 
@@ -43,7 +44,7 @@ class ModeOperatoireTabState extends State<ModeOperatoireTab> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator(color: Color(0xFF0F1B80)));
+      return const Center(child: CircularProgressIndicator(color: AppTheme.senelecReflexBlue));
     }
     if (_error != null) {
       return Center(child: Text('Erreur: $_error', style: const TextStyle(color: Colors.red)));
@@ -60,7 +61,7 @@ class ModeOperatoireTabState extends State<ModeOperatoireTab> {
                 'Prérequis / Étapes',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF0F1B80),
+                  color: AppTheme.senelecReflexBlue,
                   fontSize: 18,
                 ),
               ),
@@ -91,7 +92,7 @@ class ModeOperatoireTabState extends State<ModeOperatoireTab> {
                               '${index + 1}. ',
                               style: const TextStyle(
                                 fontWeight: FontWeight.w600,
-                                color: Color(0xFF0F1B80),
+                                color: AppTheme.senelecReflexBlue,
                                 fontSize: 14,
                               ),
                             ),
@@ -100,7 +101,7 @@ class ModeOperatoireTabState extends State<ModeOperatoireTab> {
                                 text,
                                 style: const TextStyle(
                                   fontWeight: FontWeight.normal,
-                                  color: Color(0xFF0F1B80),
+                                  color: AppTheme.senelecReflexBlue,
                                   fontSize: 14,
                                   height: 1.4,
                                 ),

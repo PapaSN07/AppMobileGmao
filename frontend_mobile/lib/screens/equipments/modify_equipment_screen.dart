@@ -236,7 +236,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
           style: TextStyle(
             fontFamily: AppTheme.fontMontserrat,
             fontWeight: FontWeight.w700,
-            color: const Color(0xFF2B1D4C),
+            color: AppTheme.senelecIndigo,
             fontSize: responsive.sp(18),
           ),
         ),
@@ -251,7 +251,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
             ),
             child: Icon(
               Icons.arrow_back,
-              color: const Color(0xFF2B1D4C),
+              color: AppTheme.senelecIndigo,
               size: responsive.iconSize(18),
             ),
           ),
@@ -662,7 +662,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                     ),
                     child: const Icon(
                       Icons.location_on,
-                      color: Color(0xFF0F1B80),
+                      color: AppTheme.senelecReflexBlue,
                       size: 28,
                     ),
                   ),
@@ -798,7 +798,7 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0F1B80),
+                    backgroundColor: AppTheme.senelecReflexBlue,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(

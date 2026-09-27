@@ -185,7 +185,7 @@ class _HomeScreenState extends State<HomeScreen> {
               style: TextStyle(
                 fontFamily: AppTheme.fontMontserrat,
                 fontWeight: FontWeight.w800,
-                color: const Color(0xFF2B1D4C),
+                color: AppTheme.senelecIndigo,
                 fontSize: responsive.sp(18),
               ),
             ),
@@ -194,7 +194,7 @@ class _HomeScreenState extends State<HomeScreen> {
               style: TextStyle(
                 fontFamily: AppTheme.fontRoboto,
                 fontWeight: FontWeight.w500,
-                color: const Color(0xFF0F1B80),
+                color: AppTheme.senelecReflexBlue,
                 fontSize: responsive.sp(12),
               ),
             ),
@@ -217,7 +217,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   count: _isLoadingOT ? 0 : _otOrders.length,
                   icon: Icons.assignment_rounded,
                   categoryKey: 'OT',
-                  gradientColors: [const Color(0xFF0F1B80), const Color(0xFF2B1D4C)],
+                  gradientColors: [AppTheme.senelecReflexBlue, AppTheme.senelecIndigo],
                   responsive: responsive,
                   spacing: spacing,
                   onTap: () {
@@ -240,7 +240,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   count: diOrders.length,
                   icon: Icons.build_circle_rounded,
                   categoryKey: 'DI',
-                  gradientColors: [const Color(0xFF2B1D4C), const Color(0xFF2B1D4C)],
+                  gradientColors: [AppTheme.senelecIndigo, AppTheme.senelecIndigo],
                   responsive: responsive,
                   spacing: spacing,
                   onTap: () {
@@ -272,7 +272,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   style: TextStyle(
                     fontFamily: AppTheme.fontMontserrat,
                     fontWeight: FontWeight.bold,
-                    color: const Color(0xFF2B1D4C),
+                    color: AppTheme.senelecIndigo,
                     fontSize: responsive.sp(16),
                   ),
                 ),
@@ -280,7 +280,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   decoration: BoxDecoration(
                     color: selectedCategory == 'OT' 
-                        ? const Color(0xFF0F1B80).withValues(alpha: 0.1)
+                        ? AppTheme.senelecReflexBlue.withValues(alpha: 0.1)
                         : const Color(0xFFFFB800).withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(20),
                   ),
@@ -292,7 +292,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       fontFamily: AppTheme.fontMontserrat,
                       fontWeight: FontWeight.w700,
                       color: selectedCategory == 'OT'
-                          ? const Color(0xFF0F1B80)
+                          ? AppTheme.senelecReflexBlue
                           : const Color(0xFFCC4600),
                       fontSize: responsive.sp(12),
                     ),
@@ -308,7 +308,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 duration: const Duration(milliseconds: 250),
                 child: selectedCategory == 'OT' && _isLoadingOT
                     ? const Center(
-                        child: CircularProgressIndicator(color: Color(0xFF0F1B80)),
+                        child: CircularProgressIndicator(color: AppTheme.senelecReflexBlue),
                       )
                     : selectedCategory == 'OT' && _errorMessage != null
                         ? Center(
@@ -358,7 +358,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         if (_isLoadingMoreOT)
                                           const Column(
                                             children: [
-                                              CircularProgressIndicator(color: Color(0xFF0F1B80)),
+                                              CircularProgressIndicator(color: AppTheme.senelecReflexBlue),
                                               SizedBox(height: 8),
                                               Text("Recherche des OT plus anciens..."),
                                             ],
@@ -369,7 +369,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                             icon: const Icon(Icons.history_rounded, size: 16),
                                             label: Text("Chercher les OT de ${_currentYear - 1}"),
                                             style: ElevatedButton.styleFrom(
-                                              backgroundColor: const Color(0xFF0F1B80),
+                                              backgroundColor: AppTheme.senelecReflexBlue,
                                               foregroundColor: Colors.white,
                                               shape: RoundedRectangleBorder(
                                                 borderRadius: BorderRadius.circular(10),
@@ -401,7 +401,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       return const Padding(
                                         padding: EdgeInsets.symmetric(vertical: 16.0),
                                         child: Center(
-                                          child: CircularProgressIndicator(color: Color(0xFF0F1B80)),
+                                          child: CircularProgressIndicator(color: AppTheme.senelecReflexBlue),
                                         ),
                                       );
                                     }
@@ -434,7 +434,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                                 : "Charger les OT de ${_currentYear - 1}",
                                           ),
                                           style: ElevatedButton.styleFrom(
-                                            backgroundColor: const Color(0xFF0F1B80),
+                                            backgroundColor: AppTheme.senelecReflexBlue,
                                             foregroundColor: Colors.white,
                                             shape: RoundedRectangleBorder(
                                               borderRadius: BorderRadius.circular(10),
@@ -500,7 +500,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       value: 'edit',
                                       child: Row(
                                         children: [
-                                          Icon(Icons.edit_outlined, size: 18, color: Color(0xFF0F1B80)),
+                                          Icon(Icons.edit_outlined, size: 18, color: AppTheme.senelecReflexBlue),
                                           SizedBox(width: 8),
                                           Text('Modifier'),
                                         ],

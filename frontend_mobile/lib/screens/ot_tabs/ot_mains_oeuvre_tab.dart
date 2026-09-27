@@ -99,7 +99,7 @@ class MainsOeuvreTabState extends State<MainsOeuvreTab>
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator(color: Color(0xFF0F1B80)));
+      return const Center(child: CircularProgressIndicator(color: AppTheme.senelecReflexBlue));
     }
     if (_error != null) {
       return Center(child: Text('Erreur: $_error', style: const TextStyle(color: Colors.red)));
@@ -145,7 +145,7 @@ class MainsOeuvreTabBar extends StatelessWidget {
         labelColor: Colors.white,
         unselectedLabelColor: AppTheme.secondaryColor,
         indicator: BoxDecoration(
-          color: const Color(0xFF0F1B80),
+          color: AppTheme.senelecReflexBlue,
           borderRadius: BorderRadius.circular(4),
         ),
         indicatorSize: TabBarIndicatorSize.tab,
@@ -510,7 +510,7 @@ class _EmployesAllouesDetailsTabState
             child: ElevatedButton(
               onPressed: widget.onBack,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0F1B80),
+                backgroundColor: AppTheme.senelecReflexBlue,
                 foregroundColor: Colors.white,
                 padding: EdgeInsets.symmetric(vertical: responsive.hp(1.8)),
                 shape: RoundedRectangleBorder(
@@ -688,7 +688,7 @@ class ActionIconButton extends StatelessWidget {
         padding: const EdgeInsets.all(6),
         child: Icon(
           icon,
-          color: const Color(0xFF0F1B80),
+          color: AppTheme.senelecReflexBlue,
           size: responsive.iconSize(20),
         ),
       ),
@@ -716,7 +716,7 @@ class _TableHeader extends StatelessWidget {
     final responsive = context.responsive;
 
     return Container(
-      color: const Color(0xFF0F1B80),
+      color: AppTheme.senelecReflexBlue,
       padding: spacing.custom(horizontal: 10, vertical: 12),
       child: Row(
         children: [
@@ -820,7 +820,7 @@ class _EmployesAllouesTableHeader extends StatelessWidget {
     final responsive = context.responsive;
 
     return Container(
-      color: const Color(0xFF0F1B80),
+      color: AppTheme.senelecReflexBlue,
       padding: spacing.custom(horizontal: 10, vertical: 12),
       child: Row(
         children: [

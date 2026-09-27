@@ -136,7 +136,7 @@ class _OTInfoDetailsScreenState extends State<OTInfoDetailsScreen> {
           style: TextStyle(
             fontFamily: AppTheme.fontMontserrat,
             fontWeight: FontWeight.w700,
-            color: const Color(0xFF2B1D4C),
+            color: AppTheme.senelecIndigo,
             fontSize: responsive.sp(18),
           ),
         ),
@@ -151,7 +151,7 @@ class _OTInfoDetailsScreenState extends State<OTInfoDetailsScreen> {
             ),
             child: Icon(
               Icons.arrow_back,
-              color: const Color(0xFF2B1D4C),
+              color: AppTheme.senelecIndigo,
               size: responsive.iconSize(18),
             ),
           ),
@@ -161,7 +161,7 @@ class _OTInfoDetailsScreenState extends State<OTInfoDetailsScreen> {
       ),
       body: _isLoading
           ? const Center(
-              child: CircularProgressIndicator(color: Color(0xFF0F1B80)),
+              child: CircularProgressIndicator(color: AppTheme.senelecReflexBlue),
             )
           : _errorMessage != null
               ? _buildErrorState(spacing)
@@ -199,7 +199,7 @@ class _OTInfoDetailsScreenState extends State<OTInfoDetailsScreen> {
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF0F1B80),
+                      color: AppTheme.senelecReflexBlue,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -222,7 +222,7 @@ class _OTInfoDetailsScreenState extends State<OTInfoDetailsScreen> {
                       icon: const Icon(Icons.dashboard),
                       label: const Text('Voir les détails complets'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0F1B80),
+                        backgroundColor: AppTheme.senelecReflexBlue,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
@@ -268,7 +268,7 @@ class _OTInfoDetailsScreenState extends State<OTInfoDetailsScreen> {
             icon: const Icon(Icons.refresh),
             label: const Text('Réessayer'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0F1B80),
+              backgroundColor: AppTheme.senelecReflexBlue,
               foregroundColor: Colors.white,
             ),
           ),

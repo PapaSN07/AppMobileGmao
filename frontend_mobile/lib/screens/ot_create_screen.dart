@@ -1,3 +1,4 @@
+import 'package:appmobilegmao/theme/app_theme.dart';
 import 'dart:async';
 import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
@@ -1087,7 +1088,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
             children: [
               const Text(
                 'Sélectionner le taux de réalisation',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F1B80)),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.senelecReflexBlue),
               ),
               const SizedBox(height: 10),
               Expanded(
@@ -1139,7 +1140,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                     onChanged: (val) {
                       setState(() => _autoGenerateCode = val ?? true);
                     },
-                    activeColor: const Color(0xFF0F1B80),
+                    activeColor: AppTheme.senelecReflexBlue,
                   ),
                   const Text('Générer automatiquement le Code OT'),
                 ],
@@ -1159,7 +1160,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
               controller: _jobController,
               validator: (val) => val == null || val.isEmpty ? 'Champ obligatoire' : null,
               maxLength: 15,
-              suffixIcon: const Icon(Icons.arrow_drop_down, color: Color(0xFF0F1B80)),
+              suffixIcon: const Icon(Icons.arrow_drop_down, color: AppTheme.senelecReflexBlue),
               onTap: () {
                 final List<_GenericSelectionItem> jobSuggestions = [
                   _GenericSelectionItem(code: 'Inspection', description: 'Contrôle et inspection générale de l\'équipement'),
@@ -1186,7 +1187,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                     label: 'Famille (Type) *',
                     controller: _jobTypeController,
                     validator: (val) => val == null || val.isEmpty ? 'Obligatoire' : null,
-                    suffixIcon: const Icon(Icons.arrow_drop_down, color: Color(0xFF0F1B80)),
+                    suffixIcon: const Icon(Icons.arrow_drop_down, color: AppTheme.senelecReflexBlue),
                     onTap: () {
                       _showReferentialSelector(
                         title: 'Choisir la Famille (Type)',
@@ -1203,7 +1204,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                     controller: _jobClassController,
                     validator: (val) => val == null || val.isEmpty ? 'Obligatoire' : null,
                     maxLength: 8,
-                    suffixIcon: const Icon(Icons.arrow_drop_down, color: Color(0xFF0F1B80)),
+                    suffixIcon: const Icon(Icons.arrow_drop_down, color: AppTheme.senelecReflexBlue),
                     onTap: () {
                       _showReferentialSelector(
                         title: 'Choisir la Classe de travail',
@@ -1223,7 +1224,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                     label: 'Zone *',
                     controller: _zoneController,
                     validator: (val) => val == null || val.isEmpty ? 'Obligatoire' : null,
-                    suffixIcon: const Icon(Icons.arrow_drop_down, color: Color(0xFF0F1B80)),
+                    suffixIcon: const Icon(Icons.arrow_drop_down, color: AppTheme.senelecReflexBlue),
                     onTap: () {
                       _showGenericSelector(
                         title: 'Choisir la Zone',
@@ -1239,7 +1240,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                     label: 'Entité *',
                     controller: _entityController,
                     validator: (val) => val == null || val.isEmpty ? 'Obligatoire' : null,
-                    suffixIcon: const Icon(Icons.arrow_drop_down, color: Color(0xFF0F1B80)),
+                    suffixIcon: const Icon(Icons.arrow_drop_down, color: AppTheme.senelecReflexBlue),
                     onTap: () {
                       _showGenericSelector(
                         title: 'Choisir l\'Entité',
@@ -1265,7 +1266,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                     label: 'Centre de charge *',
                     controller: _costcentreController,
                     validator: (val) => val == null || val.isEmpty ? 'Obligatoire' : null,
-                    suffixIcon: const Icon(Icons.arrow_drop_down, color: Color(0xFF0F1B80)),
+                    suffixIcon: const Icon(Icons.arrow_drop_down, color: AppTheme.senelecReflexBlue),
                     onTap: () {
                       _showGenericSelector(
                         title: 'Choisir le Centre de charge',
@@ -1282,7 +1283,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                     children: [
                       const Text(
                         'Taux de réalisation',
-                        style: TextStyle(color: Color(0xFF0F1B80), fontSize: 12, fontWeight: FontWeight.w500),
+                        style: TextStyle(color: AppTheme.senelecReflexBlue, fontSize: 12, fontWeight: FontWeight.w500),
                       ),
                       const SizedBox(height: 4),
                       InkWell(
@@ -1296,7 +1297,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text('${_completionRate.toInt()}%', style: const TextStyle(fontSize: 14)),
-                              const Icon(Icons.arrow_drop_down, color: Color(0xFF0F1B80)),
+                              const Icon(Icons.arrow_drop_down, color: AppTheme.senelecReflexBlue),
                             ],
                           ),
                         ),
@@ -1316,7 +1317,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                     validator: (val) => val == null || val.isEmpty ? 'Obligatoire' : null,
                     onTap: _showEquipmentSelector,
                     suffixIcon: IconButton(
-                      icon: const Icon(Icons.search, color: Color(0xFF0F1B80), size: 20),
+                      icon: const Icon(Icons.search, color: AppTheme.senelecReflexBlue, size: 20),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
                       onPressed: _showEquipmentSelector,
@@ -1329,7 +1330,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                     label: 'Technicien / Superviseur *',
                     controller: _supervisorController,
                     validator: (val) => val == null || val.isEmpty ? 'Obligatoire' : null,
-                    suffixIcon: const Icon(Icons.arrow_drop_down, color: Color(0xFF0F1B80)),
+                    suffixIcon: const Icon(Icons.arrow_drop_down, color: AppTheme.senelecReflexBlue),
                     onTap: () {
                       _showGenericSelector(
                         title: 'Choisir le Superviseur',
@@ -1357,7 +1358,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                   child: _buildInputField(
                     label: 'Priorité',
                     controller: _priorityController,
-                    suffixIcon: const Icon(Icons.arrow_drop_down, color: Color(0xFF0F1B80)),
+                    suffixIcon: const Icon(Icons.arrow_drop_down, color: AppTheme.senelecReflexBlue),
                     onTap: () {
                       _showGenericSelector(
                         title: 'Choisir la Priorité',
@@ -1379,7 +1380,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                     children: [
                       const Text(
                         'Statut de départ',
-                        style: TextStyle(color: Color(0xFF0F1B80), fontSize: 12, fontWeight: FontWeight.w500),
+                        style: TextStyle(color: AppTheme.senelecReflexBlue, fontSize: 12, fontWeight: FontWeight.w500),
                       ),
                       DropdownButtonFormField<String>(
                         value: _status,
@@ -1422,7 +1423,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                     labelText: 'Saisir ou choisir une étape...',
                     isDense: true,
                     suffixIcon: IconButton(
-                      icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF0F1B80)),
+                      icon: const Icon(Icons.arrow_drop_down, color: AppTheme.senelecReflexBlue),
                       tooltip: 'Choisir une action type',
                       onPressed: () => _showActionSelector((match) {
                         setState(() => _tempOpController.text = '${match.code} - ${match.description}');
@@ -1449,7 +1450,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                     _tempOpController.clear();
                   });
                 },
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0F1B80)),
+                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.senelecReflexBlue),
                 child: const Icon(Icons.add, color: Colors.white),
               ),
             ],
@@ -1467,8 +1468,8 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                       margin: const EdgeInsets.only(bottom: 8),
                       child: ListTile(
                         leading: CircleAvatar(
-                          backgroundColor: const Color(0xFF0F1B80).withAlpha(30),
-                          child: Text('${index + 1}', style: const TextStyle(color: Color(0xFF0F1B80), fontWeight: FontWeight.bold)),
+                          backgroundColor: AppTheme.senelecReflexBlue.withAlpha(30),
+                          child: Text('${index + 1}', style: const TextStyle(color: AppTheme.senelecReflexBlue, fontWeight: FontWeight.bold)),
                         ),
                         title: Text(op['description']),
                         trailing: IconButton(
@@ -1520,7 +1521,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Color(0xFF0F1B80), width: 1.5),
+                    borderSide: const BorderSide(color: AppTheme.senelecReflexBlue, width: 1.5),
                   ),
                   isDense: true,
                   contentPadding: const EdgeInsets.all(12),
@@ -1537,14 +1538,14 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                   decoration: BoxDecoration(
                     color: const Color(0xFFE8EDFF),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFF0F1B80).withAlpha(80)),
+                    border: Border.all(color: AppTheme.senelecReflexBlue.withAlpha(80)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.attach_file, size: 18, color: Color(0xFF0F1B80)),
+                          const Icon(Icons.attach_file, size: 18, color: AppTheme.senelecReflexBlue),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
@@ -1554,7 +1555,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                               style: const TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF0F1B80),
+                                color: AppTheme.senelecReflexBlue,
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -1564,7 +1565,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                               margin: const EdgeInsets.only(right: 8),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF0F1B80),
+                                color: AppTheme.senelecReflexBlue,
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
@@ -1627,17 +1628,17 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                         });
                       }
                     },
-                    icon: const Icon(Icons.attach_file, size: 16, color: Color(0xFF0F1B80)),
+                    icon: const Icon(Icons.attach_file, size: 16, color: AppTheme.senelecReflexBlue),
                     label: Text(
                       _tempCommentAttachedFile == null ? 'Joindre un fichier lié' : 'Modifier le fichier',
                       style: const TextStyle(
-                        color: Color(0xFF0F1B80),
+                        color: AppTheme.senelecReflexBlue,
                         fontWeight: FontWeight.w600,
                         fontSize: 12,
                       ),
                     ),
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Color(0xFF0F1B80)),
+                      side: const BorderSide(color: AppTheme.senelecReflexBlue),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     ),
@@ -1684,7 +1685,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white),
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0F1B80),
+                      backgroundColor: AppTheme.senelecReflexBlue,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                     ),
@@ -1719,7 +1720,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                             children: [
                               Row(
                                 children: [
-                                  const Icon(Icons.comment, color: Color(0xFF0F1B80), size: 18),
+                                  const Icon(Icons.comment, color: AppTheme.senelecReflexBlue, size: 18),
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
@@ -1755,14 +1756,14 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                                   decoration: BoxDecoration(
                                     color: const Color(0xFFE8EDFF),
                                     borderRadius: BorderRadius.circular(6),
-                                    border: Border.all(color: const Color(0xFF0F1B80).withAlpha(50)),
+                                    border: Border.all(color: AppTheme.senelecReflexBlue.withAlpha(50)),
                                   ),
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Row(
                                         children: [
-                                          const Icon(Icons.attach_file, size: 16, color: Color(0xFF0F1B80)),
+                                          const Icon(Icons.attach_file, size: 16, color: AppTheme.senelecReflexBlue),
                                           const SizedBox(width: 6),
                                           Expanded(
                                             child: Text(
@@ -1772,7 +1773,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                                               style: const TextStyle(
                                                 fontSize: 13,
                                                 fontWeight: FontWeight.bold,
-                                                color: Color(0xFF0F1B80),
+                                                color: AppTheme.senelecReflexBlue,
                                               ),
                                               overflow: TextOverflow.ellipsis,
                                             ),
@@ -1782,7 +1783,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                               margin: const EdgeInsets.only(left: 4),
                                               decoration: BoxDecoration(
-                                                color: const Color(0xFF0F1B80),
+                                                color: AppTheme.senelecReflexBlue,
                                                 borderRadius: BorderRadius.circular(4),
                                               ),
                                               child: Text(
@@ -1870,14 +1871,14 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
               ),
               const Row(
                 children: [
-                  Icon(Icons.comment, color: Color(0xFF0F1B80), size: 22),
+                  Icon(Icons.comment, color: AppTheme.senelecReflexBlue, size: 22),
                   SizedBox(width: 8),
                   Text(
                     'Détails du commentaire',
                     style: TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF0F1B80),
+                      color: AppTheme.senelecReflexBlue,
                     ),
                   ),
                 ],
@@ -1911,7 +1912,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 13,
-                          color: Color(0xFF2B1D4C),
+                          color: AppTheme.senelecIndigo,
                         ),
                       ),
                       const SizedBox(height: 6),
@@ -1935,7 +1936,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 13,
-                            color: Color(0xFF2B1D4C),
+                            color: AppTheme.senelecIndigo,
                           ),
                         ),
                         const SizedBox(height: 6),
@@ -1945,14 +1946,14 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                           decoration: BoxDecoration(
                             color: const Color(0xFFE8EDFF),
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: const Color(0xFF0F1B80).withAlpha(40)),
+                            border: Border.all(color: AppTheme.senelecReflexBlue.withAlpha(40)),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
                                 children: [
-                                  const Icon(Icons.attach_file, color: Color(0xFF0F1B80), size: 18),
+                                  const Icon(Icons.attach_file, color: AppTheme.senelecReflexBlue, size: 18),
                                   const SizedBox(width: 6),
                                   Expanded(
                                     child: Text(
@@ -1960,7 +1961,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                                       style: const TextStyle(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 13,
-                                        color: Color(0xFF0F1B80),
+                                        color: AppTheme.senelecReflexBlue,
                                       ),
                                     ),
                                   ),
@@ -2028,7 +2029,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                 child: ElevatedButton(
                   onPressed: () => Navigator.pop(context),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0F1B80),
+                    backgroundColor: AppTheme.senelecReflexBlue,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -2063,7 +2064,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                         hintText: 'Code',
                         isDense: true,
                         suffixIcon: IconButton(
-                          icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF0F1B80)),
+                          icon: const Icon(Icons.arrow_drop_down, color: AppTheme.senelecReflexBlue),
                           tooltip: 'Choisir un intervenant',
                           onPressed: () {
                             final sups = _supervisors.isNotEmpty ? _supervisors : _extractSelectionItems('supervisors');
@@ -2286,7 +2287,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                         _tempWfEndDateTime = null;
                       });
                     },
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0F1B80)),
+                    style: ElevatedButton.styleFrom(backgroundColor: AppTheme.senelecReflexBlue),
                     child: const Icon(Icons.add, color: Colors.white),
                   ),
                 ],
@@ -2306,7 +2307,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                       margin: const EdgeInsets.only(bottom: 8),
                       child: ListTile(
                         leading: const CircleAvatar(
-                          backgroundColor: Color(0xFF0F1B80),
+                          backgroundColor: AppTheme.senelecReflexBlue,
                           child: Icon(Icons.person, color: Colors.white, size: 20),
                         ),
                         title: Text(
@@ -2335,12 +2336,12 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF0F1B80).withAlpha(20),
+                                    color: AppTheme.senelecReflexBlue.withAlpha(20),
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: Text(
                                     'État : ${wf['status'] ?? 'AV'}',
-                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF0F1B80)),
+                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.senelecReflexBlue),
                                   ),
                                 ),
                               ],
@@ -2391,8 +2392,8 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _materielSubTabIndex == 0 ? const Color(0xFF0F1B80) : Colors.white,
-                    foregroundColor: _materielSubTabIndex == 0 ? Colors.white : const Color(0xFF0F1B80),
+                    backgroundColor: _materielSubTabIndex == 0 ? AppTheme.senelecReflexBlue : Colors.white,
+                    foregroundColor: _materielSubTabIndex == 0 ? Colors.white : AppTheme.senelecReflexBlue,
                     elevation: _materielSubTabIndex == 0 ? 2 : 0,
                     padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
@@ -2409,8 +2410,8 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _materielSubTabIndex == 1 ? const Color(0xFF0F1B80) : Colors.white,
-                    foregroundColor: _materielSubTabIndex == 1 ? Colors.white : const Color(0xFF0F1B80),
+                    backgroundColor: _materielSubTabIndex == 1 ? AppTheme.senelecReflexBlue : Colors.white,
+                    foregroundColor: _materielSubTabIndex == 1 ? Colors.white : AppTheme.senelecReflexBlue,
                     elevation: _materielSubTabIndex == 1 ? 2 : 0,
                     padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
@@ -2427,8 +2428,8 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _materielSubTabIndex == 2 ? const Color(0xFF0F1B80) : Colors.white,
-                    foregroundColor: _materielSubTabIndex == 2 ? Colors.white : const Color(0xFF0F1B80),
+                    backgroundColor: _materielSubTabIndex == 2 ? AppTheme.senelecReflexBlue : Colors.white,
+                    foregroundColor: _materielSubTabIndex == 2 ? Colors.white : AppTheme.senelecReflexBlue,
                     elevation: _materielSubTabIndex == 2 ? 2 : 0,
                     padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
@@ -2465,7 +2466,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                             isDense: true,
                             border: InputBorder.none,
                             suffixIcon: IconButton(
-                              icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF0F1B80)),
+                              icon: const Icon(Icons.arrow_drop_down, color: AppTheme.senelecReflexBlue),
                               tooltip: 'Rechercher un article Coswin',
                               onPressed: () => _showCoswinSearch(
                                 title: 'Rechercher un article Coswin',
@@ -2563,7 +2564,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                           _tempPartQtyController.text = '1.00';
                         });
                       },
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0F1B80)),
+                      style: ElevatedButton.styleFrom(backgroundColor: AppTheme.senelecReflexBlue),
                       child: const Icon(Icons.add, color: Colors.white),
                     ),
                   ],
@@ -2582,7 +2583,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                       return Card(
                         margin: const EdgeInsets.only(bottom: 8),
                         child: ListTile(
-                          leading: const Icon(Icons.settings, color: Color(0xFF0F1B80)),
+                          leading: const Icon(Icons.settings, color: AppTheme.senelecReflexBlue),
                           title: Text(
                             '${part['article']} (${part['partCode']})',
                             style: const TextStyle(fontWeight: FontWeight.bold),
@@ -2702,7 +2703,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                           _tempFacDurationController.text = '1.0';
                         });
                       },
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0F1B80)),
+                      style: ElevatedButton.styleFrom(backgroundColor: AppTheme.senelecReflexBlue),
                       child: const Icon(Icons.add, color: Colors.white),
                     ),
                   ],
@@ -2733,7 +2734,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                       return Card(
                         margin: const EdgeInsets.only(bottom: 8),
                         child: ListTile(
-                          leading: const Icon(Icons.directions_car, color: Color(0xFF0F1B80)),
+                          leading: const Icon(Icons.directions_car, color: AppTheme.senelecReflexBlue),
                           title: Text(
                             moyenTitle,
                             style: const TextStyle(fontWeight: FontWeight.bold),
@@ -2786,7 +2787,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                             isDense: true,
                             border: InputBorder.none,
                             suffixIcon: IconButton(
-                              icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF0F1B80)),
+                              icon: const Icon(Icons.arrow_drop_down, color: AppTheme.senelecReflexBlue),
                               tooltip: 'Rechercher un article Coswin',
                               onPressed: () => _showCoswinSearch(
                                 title: 'Rechercher un article Coswin',
@@ -2831,11 +2832,11 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: const BoxDecoration(
-                    border: Border(bottom: BorderSide(color: Color(0xFF0F1B80), width: 2.5)),
+                    border: Border(bottom: BorderSide(color: AppTheme.senelecReflexBlue, width: 2.5)),
                   ),
                   child: const Text(
                     'DÉTAILS',
-                    style: TextStyle(color: Color(0xFF0F1B80), fontWeight: FontWeight.bold, fontSize: 13),
+                    style: TextStyle(color: AppTheme.senelecReflexBlue, fontWeight: FontWeight.bold, fontSize: 13),
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -2945,7 +2946,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                           isDense: true,
                           border: const OutlineInputBorder(),
                           suffixIcon: IconButton(
-                            icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF0F1B80)),
+                            icon: const Icon(Icons.arrow_drop_down, color: AppTheme.senelecReflexBlue),
                             tooltip: 'Rechercher un compteur Coswin',
                             onPressed: () => _showCoswinSearch(
                               title: 'Rechercher un compteur Coswin',
@@ -2984,7 +2985,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                           isDense: true,
                           border: const OutlineInputBorder(),
                           suffixIcon: IconButton(
-                            icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF0F1B80)),
+                            icon: const Icon(Icons.arrow_drop_down, color: AppTheme.senelecReflexBlue),
                             onPressed: () => _showActionSelector((match) {
                               setState(() => _tempServiceActionController.text = match.code);
                             }),
@@ -3041,7 +3042,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                         });
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0F1B80),
+                        backgroundColor: AppTheme.senelecReflexBlue,
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                       ),
                       child: const Icon(Icons.add, color: Colors.white),
@@ -3077,7 +3078,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                             return Card(
                               margin: const EdgeInsets.only(bottom: 8),
                               child: ListTile(
-                                leading: const Icon(Icons.handyman, color: Color(0xFF0F1B80)),
+                                leading: const Icon(Icons.handyman, color: AppTheme.senelecReflexBlue),
                                 title: Text(
                                   title,
                                   style: const TextStyle(fontWeight: FontWeight.bold),
@@ -3127,7 +3128,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                         labelText: 'Nom Attribut *',
                         isDense: true,
                         suffixIcon: IconButton(
-                          icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF0F1B80)),
+                          icon: const Icon(Icons.arrow_drop_down, color: AppTheme.senelecReflexBlue),
                           tooltip: 'Choisir une caractéristique Coswin',
                           onPressed: () {
                             _showGenericSelector(
@@ -3197,7 +3198,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                         _tempAttrUnitController.clear();
                       });
                     },
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0F1B80)),
+                    style: ElevatedButton.styleFrom(backgroundColor: AppTheme.senelecReflexBlue),
                     child: const Icon(Icons.add, color: Colors.white),
                   ),
                 ],
@@ -3217,7 +3218,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                     return Card(
                       margin: const EdgeInsets.only(bottom: 8),
                       child: ListTile(
-                        leading: const Icon(Icons.tune, color: Color(0xFF0F1B80)),
+                        leading: const Icon(Icons.tune, color: AppTheme.senelecReflexBlue),
                         title: Text('${attr['name']} : ${attr['value']}${unit.isNotEmpty ? ' $unit' : ''}'),
                         subtitle: attr['description'].toString().isNotEmpty ? Text(attr['description']) : null,
                         trailing: IconButton(
@@ -3258,7 +3259,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
         Text(
           label,
           style: TextStyle(
-            color: const Color(0xFF0F1B80),
+            color: AppTheme.senelecReflexBlue,
             fontSize: 12,
             fontWeight: isGreyedOut ? FontWeight.bold : FontWeight.w500,
           ),
@@ -3284,7 +3285,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
               fontSize: 14,
               fontWeight: isGreyedOut ? FontWeight.w600 : FontWeight.normal,
               color: isGreyedOut
-                  ? const Color(0xFF2B1D4C)
+                  ? AppTheme.senelecIndigo
                   : (effectiveReadOnly ? Colors.grey.shade700 : Colors.black),
             ),
             decoration: InputDecoration(
@@ -3306,7 +3307,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
               focusedBorder: isGreyedOut
                   ? InputBorder.none
                   : const UnderlineInputBorder(
-                      borderSide: BorderSide(color: Color(0xFF0F1B80), width: 2),
+                      borderSide: BorderSide(color: AppTheme.senelecReflexBlue, width: 2),
                     ),
               errorBorder: const UnderlineInputBorder(
                 borderSide: BorderSide(color: Colors.redAccent, width: 2),
@@ -3331,7 +3332,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: CustomAppBar(
         backgroundColor: Colors.white,
-        iconColor: const Color(0xFF2B1D4C),
+        iconColor: AppTheme.senelecIndigo,
         title: widget.orderToEdit != null ? 'Modifier l\'OT' : 'Créer un OT',
         bottom: CustomTabBar(
           tabController: _tabController,
@@ -3350,7 +3351,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  CircularProgressIndicator(color: Color(0xFF0F1B80)),
+                  CircularProgressIndicator(color: AppTheme.senelecReflexBlue),
                   SizedBox(height: 16),
                   Text('Chargement des données de l\'OT en cours...', style: TextStyle(fontWeight: FontWeight.w600)),
                 ],
@@ -3361,7 +3362,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      CircularProgressIndicator(color: Color(0xFF0F1B80)),
+                      CircularProgressIndicator(color: AppTheme.senelecReflexBlue),
                       SizedBox(height: 16),
                       Text('Enregistrement des modifications en cours...', style: TextStyle(fontWeight: FontWeight.w600)),
                     ],
@@ -3419,7 +3420,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                       icon: const Icon(Icons.arrow_forward, size: 16),
                       label: const Text('Suivant', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0F1B80),
+                        backgroundColor: AppTheme.senelecReflexBlue,
                         foregroundColor: Colors.white,
                         padding: EdgeInsets.symmetric(vertical: responsive.hp(1.6)),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -3437,8 +3438,8 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                       icon: const Icon(Icons.arrow_back, size: 16),
                       label: const Text('Précédent', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF0F1B80),
-                        side: const BorderSide(color: Color(0xFF0F1B80), width: 1.5),
+                        foregroundColor: AppTheme.senelecReflexBlue,
+                        side: const BorderSide(color: AppTheme.senelecReflexBlue, width: 1.5),
                         padding: EdgeInsets.symmetric(vertical: responsive.hp(1.6)),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
@@ -3451,7 +3452,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                       icon: const Icon(Icons.save, size: 18),
                       label: const Text('Enregistrer l\'OT', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0F1B80),
+                        backgroundColor: AppTheme.senelecReflexBlue,
                         foregroundColor: Colors.white,
                         padding: EdgeInsets.symmetric(vertical: responsive.hp(1.6)),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -3617,7 +3618,7 @@ class _EquipmentSelectionModalState extends State<_EquipmentSelectionModal> {
                     Text(
                       'Choisir un équipement',
                       style: const TextStyle(
-                        color: Color(0xFF0F1B80),
+                        color: AppTheme.senelecReflexBlue,
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
@@ -3645,9 +3646,9 @@ class _EquipmentSelectionModalState extends State<_EquipmentSelectionModal> {
             onSubmitted: (_) => _loadEquipments(page: 1),
             decoration: InputDecoration(
               hintText: 'Rechercher par code ou description...',
-              prefixIcon: const Icon(Icons.search, color: Color(0xFF0F1B80)),
+              prefixIcon: const Icon(Icons.search, color: AppTheme.senelecReflexBlue),
               suffixIcon: IconButton(
-                icon: const Icon(Icons.search, color: Color(0xFF0F1B80)),
+                icon: const Icon(Icons.search, color: AppTheme.senelecReflexBlue),
                 tooltip: 'Rechercher',
                 onPressed: () => _loadEquipments(page: 1),
               ),
@@ -3660,7 +3661,7 @@ class _EquipmentSelectionModalState extends State<_EquipmentSelectionModal> {
           const SizedBox(height: 12),
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF0F1B80))))
+                ? const Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(AppTheme.senelecReflexBlue)))
                 : _errorMessage.isNotEmpty
                     ? Center(child: Text('Erreur: $_errorMessage'))
                     : _equipments.isEmpty
@@ -3679,7 +3680,7 @@ class _EquipmentSelectionModalState extends State<_EquipmentSelectionModal> {
                                       height: 24,
                                       child: CircularProgressIndicator(
                                         strokeWidth: 2,
-                                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF0F1B80)),
+                                        valueColor: AlwaysStoppedAnimation<Color>(AppTheme.senelecReflexBlue),
                                       ),
                                     ),
                                   ),
@@ -3692,7 +3693,7 @@ class _EquipmentSelectionModalState extends State<_EquipmentSelectionModal> {
                                   eq.code,
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    color: Color(0xFF0F1B80),
+                                    color: AppTheme.senelecReflexBlue,
                                   ),
                                 ),
                                 subtitle: Text(
@@ -3797,7 +3798,7 @@ class _CoswinSearchModalState extends State<_CoswinSearchModal> {
     final query = _queryController.text.trim();
     Widget body;
     if (_loading) {
-      body = const Center(child: CircularProgressIndicator(color: Color(0xFF0F1B80)));
+      body = const Center(child: CircularProgressIndicator(color: AppTheme.senelecReflexBlue));
     } else if (_error != null) {
       body = Center(child: Text('Erreur Coswin : $_error', textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)));
     } else if (query.length < OTService.minSearchLength) {
@@ -3814,7 +3815,7 @@ class _CoswinSearchModalState extends State<_CoswinSearchModal> {
         itemBuilder: (context, index) {
           final item = _results[index];
           return ListTile(
-            title: Text(item.code, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0F1B80))),
+            title: Text(item.code, style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.senelecReflexBlue)),
             subtitle: Text(item.unit.isEmpty ? item.description : '${item.description} (${item.unit})'),
             onTap: () {
               Navigator.pop(context);
@@ -3834,7 +3835,7 @@ class _CoswinSearchModalState extends State<_CoswinSearchModal> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(widget.title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF0F1B80))),
+              Text(widget.title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppTheme.senelecReflexBlue)),
               const SizedBox(height: 12),
               TextField(
                 controller: _queryController,
@@ -3903,7 +3904,7 @@ class _GenericSelectionModalState extends State<_GenericSelectionModal> {
                 child: Text(
                   widget.title,
                   style: const TextStyle(
-                    color: Color(0xFF0F1B80),
+                    color: AppTheme.senelecReflexBlue,
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
@@ -3922,7 +3923,7 @@ class _GenericSelectionModalState extends State<_GenericSelectionModal> {
             onChanged: (val) => setState(() {}),
             decoration: InputDecoration(
               hintText: 'Rechercher...',
-              prefixIcon: const Icon(Icons.search, color: Color(0xFF0F1B80)),
+              prefixIcon: const Icon(Icons.search, color: AppTheme.senelecReflexBlue),
               isDense: true,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -3944,7 +3945,7 @@ class _GenericSelectionModalState extends State<_GenericSelectionModal> {
                           item.code,
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF0F1B80),
+                            color: AppTheme.senelecReflexBlue,
                           ),
                         ),
                         subtitle: Text(item.description),

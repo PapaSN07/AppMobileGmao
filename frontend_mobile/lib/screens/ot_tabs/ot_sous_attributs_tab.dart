@@ -48,7 +48,7 @@ class SousAttributsTabState extends State<SousAttributsTab> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator(color: Color(0xFF0F1B80)));
+      return const Center(child: CircularProgressIndicator(color: AppTheme.senelecReflexBlue));
     }
     if (_error != null) {
       return Center(child: Text('Erreur: $_error', style: const TextStyle(color: Colors.red)));
@@ -63,7 +63,7 @@ class SousAttributsTabState extends State<SousAttributsTab> {
             children: [
               const Text(
                 'Sous-attributs',
-                style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0F1B80), fontSize: 16),
+                style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.senelecReflexBlue, fontSize: 16),
               ),
               // Bouton d'ajout masqué en mode lecture seule
             ],
@@ -75,7 +75,7 @@ class SousAttributsTabState extends State<SousAttributsTab> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.list_alt, size: 64, color: Color(0xFF0F1B80)),
+                      Icon(Icons.list_alt, size: 64, color: AppTheme.senelecReflexBlue),
                       SizedBox(height: 16),
                       Text('Aucun sous-attribut pour cet OT', style: TextStyle(fontSize: 16, color: Colors.grey)),
                     ],
@@ -97,10 +97,10 @@ class SousAttributsTabState extends State<SousAttributsTab> {
                       elevation: 1,
                       child: ListTile(
                         leading: CircleAvatar(
-                          backgroundColor: const Color(0xFF0F1B80).withAlpha(20),
+                          backgroundColor: AppTheme.senelecReflexBlue.withAlpha(20),
                           child: Text(
                             '${index + 1}',
-                            style: const TextStyle(color: Color(0xFF0F1B80), fontWeight: FontWeight.bold, fontSize: 12),
+                            style: const TextStyle(color: AppTheme.senelecReflexBlue, fontWeight: FontWeight.bold, fontSize: 12),
                           ),
                         ),
                         title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
@@ -114,7 +114,7 @@ class SousAttributsTabState extends State<SousAttributsTab> {
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
                                 color: value.isNotEmpty
-                                    ? const Color(0xFF0F1B80).withAlpha(20)
+                                    ? AppTheme.senelecReflexBlue.withAlpha(20)
                                     : Colors.grey.withAlpha(30),
                                 borderRadius: BorderRadius.circular(8),
                               ),
@@ -122,7 +122,7 @@ class SousAttributsTabState extends State<SousAttributsTab> {
                                 displayVal,
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  color: value.isNotEmpty ? const Color(0xFF0F1B80) : Colors.grey,
+                                  color: value.isNotEmpty ? AppTheme.senelecReflexBlue : Colors.grey,
                                   fontSize: 12,
                                 ),
                               ),
@@ -274,7 +274,7 @@ class _AttributsDetailsTabState extends State<_AttributsDetailsTab> {
             child: ElevatedButton(
               onPressed: widget.onBack,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0F1B80),
+                backgroundColor: AppTheme.senelecReflexBlue,
                 foregroundColor: Colors.white,
                 padding: EdgeInsets.symmetric(vertical: responsive.hp(1.8)),
                 shape: RoundedRectangleBorder(

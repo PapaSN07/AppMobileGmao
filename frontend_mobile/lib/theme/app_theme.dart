@@ -11,6 +11,7 @@ class AppTheme {
   static const Color primaryColor10 = Color.fromRGBO(255, 255, 255, 0.1);
   // Senelec Brand Colors (Charte Graphique 2017)
   static const Color senelecReflexBlue = Color(0xFF0F1B80); // Reflex Blue C
+  static const Color senelecReflexBlueDeep = Color(0xFF0A1257); // Reflex Blue assombri (bas des dégradés)
   static const Color senelecIndigo = Color(0xFF2B1D4C); // Pantone 2695 C
   static const Color senelecMagenta = Color(0xFFA20067); // Pantone 234 C
   static const Color senelecOrange = Color(0xFFFF5800); // Pantone 021 C

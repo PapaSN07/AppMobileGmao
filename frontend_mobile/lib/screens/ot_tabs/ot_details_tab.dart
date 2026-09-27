@@ -1,3 +1,4 @@
+import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:appmobilegmao/models/order.dart';
 import 'package:appmobilegmao/theme/responsive_spacing.dart';
@@ -95,7 +96,7 @@ class DetailsTabState extends State<DetailsTab> {
             const Text(
               'Taux de réalisation',
               style: TextStyle(
-                color: Color(0xFF0F1B80),
+                color: AppTheme.senelecReflexBlue,
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
               ),
@@ -150,7 +151,7 @@ class DetailsTabState extends State<DetailsTab> {
         Text(
           label,
           style: const TextStyle(
-            color: Color(0xFF0F1B80),
+            color: AppTheme.senelecReflexBlue,
             fontSize: 12,
             fontWeight: FontWeight.w500,
           ),

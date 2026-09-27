@@ -49,7 +49,7 @@ class ProfilMenu extends StatelessWidget {
           style: TextStyle(
             fontFamily: AppTheme.fontMontserrat,
             fontWeight: FontWeight.w700,
-            color: const Color(0xFF2B1D4C),
+            color: AppTheme.senelecIndigo,
             fontSize: responsive.sp(18),
           ),
         ),
@@ -64,7 +64,7 @@ class ProfilMenu extends StatelessWidget {
             ),
             child: Icon(
               Icons.arrow_back,
-              color: const Color(0xFF2B1D4C),
+              color: AppTheme.senelecIndigo,
               size: responsive.iconSize(18),
             ),
           ),
@@ -87,7 +87,7 @@ class ProfilMenu extends StatelessWidget {
                       ),
                       child: Icon(
                         Icons.notifications_none,
-                        color: const Color(0xFF2B1D4C),
+                        color: AppTheme.senelecIndigo,
                         size: responsive.iconSize(18),
                       ),
                     ),

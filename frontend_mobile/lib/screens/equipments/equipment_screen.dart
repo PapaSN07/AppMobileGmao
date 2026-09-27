@@ -170,12 +170,12 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
               gradient: const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [Color(0xFF2B1D4C), Color(0xFF0F1B80)],
+                colors: [AppTheme.senelecIndigo, AppTheme.senelecReflexBlue],
               ),
               borderRadius: BorderRadius.circular(responsive.spacing(16)),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF0F1B80).withValues(alpha: 0.25),
+                  color: AppTheme.senelecReflexBlue.withValues(alpha: 0.25),
                   blurRadius: 12,
                   offset: const Offset(0, 4),
                 ),
