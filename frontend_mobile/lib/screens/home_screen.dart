@@ -8,13 +8,13 @@ import 'package:appmobilegmao/theme/responsive_spacing.dart';
 import 'package:provider/provider.dart';
 import 'package:appmobilegmao/provider/auth_provider.dart';
 import 'package:appmobilegmao/services/ot_service.dart';
-import 'package:appmobilegmao/services/api_service.dart';
+import 'package:appmobilegmao/services/ot_paginator.dart';
 import 'package:appmobilegmao/models/work_order.dart';
 import 'package:appmobilegmao/screens/ot_detail_screen.dart';
 import 'package:appmobilegmao/screens/di/di_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+  const HomeScreen({super.key});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -22,32 +22,26 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   String selectedCategory = 'OT';
-  late final OTService _otService;
+  late final OTYearPaginator _paginator;
   List<WorkOrder> _otOrders = [];
   bool _isLoadingOT = true;
   String? _errorMessage;
 
-  final List<Order> diOrders = List.generate(
-    5,
-    (index) => Order(
-      id: '$index',
-      icon: Icons.build,
-      code: '#DI12345$index',
-      famille: 'Famille DI $index',
-      zone: 'Zone DI $index',
-      entity: 'Entité DI $index',
-      unite: 'Unité DI $index',
-      centre: 'Centre DI $index',
-      description: 'Description de la demande d\'intervention DI $index',
-      status: 'CREE',
-      completionRate: 10.0 * index,
-    ),
-  );
+  // Pagination multi-années (état porté par OTYearPaginator)
+  static const int _targetOrderCount = 10; // OT à afficher avant d'arrêter la recherche
+  static const int _maxWindowsPerLoad = 4; // fenêtres Coswin (~5 s chacune) par chargement
+  bool _isLoadingMoreOT = false;
+  bool _noOlderFound = false;
+  int get _currentYear => _paginator.currentYear;
+  bool get _hasMoreInYear => _paginator.hasMoreInYear;
+  bool get _canLoadPreviousYear => _paginator.canLoadPreviousYear;
+
+  final List<Order> diOrders = [];
 
   @override
   void initState() {
     super.initState();
-    _otService = OTService(ApiService());
+    _paginator = OTYearPaginator(context.read<OTService>());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadOTs();
     });
@@ -68,27 +62,38 @@ class _HomeScreenState extends State<HomeScreen> {
 
   String? _lastLoadedEntity;
 
+  String get _serviceCode {
+    final activeEntity = context.read<AuthProvider>().activeEntity;
+    return activeEntity.isNotEmpty ? activeEntity : 'SDDV';
+  }
+
   Future<void> _loadOTs() async {
     if (!mounted) return;
     setState(() {
       _isLoadingOT = true;
       _errorMessage = null;
+      _noOlderFound = false;
     });
 
     try {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final activeEntity = authProvider.activeEntity;
-      final serviceCode = activeEntity.isNotEmpty ? activeEntity : 'SDDV';
-
-      final result = await _otService.getOrdersPage(
-        scope: 'service',
-        requestEntity: serviceCode,
-        excludeClosed: true,
+      final orders = await _paginator.loadFirst(
+        requestEntity: _serviceCode,
+        excludeClosed: false,
+        maxBatches: _maxWindowsPerLoad,
+        stopWhen: (found) => found.length >= _targetOrderCount,
+        // Affichage progressif : la liste apparaît dès la première fenêtre non vide
+        onBatch: (found) {
+          if (mounted && found.isNotEmpty) {
+            setState(() {
+              _otOrders = List.of(found);
+              _isLoadingOT = false;
+            });
+          }
+        },
       );
-
       if (mounted) {
         setState(() {
-          _otOrders = result.workorders;
+          _otOrders = orders;
           _isLoadingOT = false;
         });
       }
@@ -99,6 +104,41 @@ class _HomeScreenState extends State<HomeScreen> {
           _isLoadingOT = false;
           _errorMessage = e.toString();
         });
+      }
+    }
+  }
+
+  Future<void> _loadMoreOTs() async {
+    if (_isLoadingMoreOT || !mounted) return;
+    setState(() {
+      _isLoadingMoreOT = true;
+    });
+
+    try {
+      final known = _otOrders.map((o) => o.wowoCode).toSet();
+      final newOrders = await _paginator.loadMore(
+        knownCodes: known,
+        maxBatches: _maxWindowsPerLoad,
+        minNew: _targetOrderCount,
+      );
+      if (mounted) {
+        setState(() {
+          _otOrders.addAll(newOrders);
+          _noOlderFound = newOrders.isEmpty && _paginator.isExhausted;
+          _isLoadingMoreOT = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingMoreOT = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur lors du chargement des OT: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
@@ -281,39 +321,156 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             ),
                           )
+                        : selectedCategory == 'DI' && diOrders.isEmpty
+                            ? Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(32.0),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.inbox_outlined, size: 48, color: Colors.grey[400]),
+                                      const SizedBox(height: 12),
+                                      Text(
+                                        'Aucune demande d\'intervention disponible',
+                                        style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              )
+                        : selectedCategory == 'OT' && _otOrders.isEmpty
+                            ? SingleChildScrollView(
+                                  physics: const AlwaysScrollableScrollPhysics(),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(32.0),
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.assignment_late_outlined, size: 48, color: Colors.grey[400]),
+                                        const SizedBox(height: 12),
+                                        Text(
+                                          'Aucun ordre de travail ouvert trouvé ($_currentYear)',
+                                          style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                        const SizedBox(height: 16),
+                                        if (_isLoadingMoreOT)
+                                          const Column(
+                                            children: [
+                                              CircularProgressIndicator(color: Color(0xFF0F1B80)),
+                                              SizedBox(height: 8),
+                                              Text("Recherche des OT plus anciens..."),
+                                            ],
+                                          )
+                                        else if (_canLoadPreviousYear)
+                                          ElevatedButton.icon(
+                                            onPressed: _loadMoreOTs,
+                                            icon: const Icon(Icons.history_rounded, size: 16),
+                                            label: Text("Chercher les OT de ${_currentYear - 1}"),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: const Color(0xFF0F1B80),
+                                              foregroundColor: Colors.white,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(10),
+                                              ),
+                                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                            ),
+                                          )
+                                        else if (_noOlderFound)
+                                          Text(
+                                            "Aucun OT plus ancien trouvé",
+                                            style: TextStyle(color: Colors.grey[500], fontSize: 12, fontStyle: FontStyle.italic),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                )
                         : ListView.builder(
-                            key: ValueKey(selectedCategory),
-                            padding: EdgeInsets.zero,
-                            itemCount: selectedCategory == 'OT'
-                                ? _otOrders.length
-                                : diOrders.length,
-                            itemBuilder: (context, index) {
-                              if (selectedCategory == 'OT') {
-                                final order = _otOrders[index];
-                                return Padding(
-                                  padding: spacing.custom(bottom: 12),
-                                  child: ListItemCustom.order(
-                                    id: order.wowoCode.toString(),
-                                    code: '#OT${order.wowoCode}',
-                                    famille: order.wowoJobClassDescription ?? order.wowoJobClass,
-                                    zone: order.wowoZone ?? '-',
-                                    entity: order.wowoActionEntity,
-                                    unite: order.wowoRequestEntity,
-                                    centre: order.wowoCostcentre,
-                                    description: order.mdjbDescription ?? order.wowoEquipmentDescription,
-                                    status: order.wowoUserStatus,
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => OTDetailScreen(order: _convertToOrder(order)),
+                              key: ValueKey(selectedCategory),
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              padding: EdgeInsets.zero,
+                              itemCount: selectedCategory == 'OT'
+                                  ? _otOrders.length +
+                                      ((_hasMoreInYear || _canLoadPreviousYear || _noOlderFound) ? 1 : 0)
+                                  : diOrders.length,
+                              itemBuilder: (context, index) {
+                                if (selectedCategory == 'OT') {
+                                  if (index == _otOrders.length) {
+                                    if (_isLoadingMoreOT) {
+                                      return const Padding(
+                                        padding: EdgeInsets.symmetric(vertical: 16.0),
+                                        child: Center(
+                                          child: CircularProgressIndicator(color: Color(0xFF0F1B80)),
                                         ),
                                       );
-                                    },
-                                    trailing: const SizedBox.shrink(),
-                                  ),
-                                );
-                              } else {
+                                    }
+
+                                    if (_noOlderFound && !_canLoadPreviousYear && !_hasMoreInYear) {
+                                      return Padding(
+                                        padding: const EdgeInsets.symmetric(vertical: 12.0),
+                                        child: Center(
+                                          child: Text(
+                                            "Aucun OT plus ancien trouvé",
+                                            style: TextStyle(
+                                              color: Colors.grey.shade500,
+                                              fontSize: 12,
+                                              fontStyle: FontStyle.italic,
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    }
+
+                                    return Padding(
+                                      padding: const EdgeInsets.symmetric(vertical: 12.0),
+                                      child: Center(
+                                        child: ElevatedButton.icon(
+                                          onPressed: _loadMoreOTs,
+                                          icon: const Icon(Icons.history_rounded, size: 16),
+                                          label: Text(
+                                            _hasMoreInYear
+                                                ? "Charger plus d'OT ($_currentYear)"
+                                                : "Charger les OT de ${_currentYear - 1}",
+                                          ),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: const Color(0xFF0F1B80),
+                                            foregroundColor: Colors.white,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(10),
+                                            ),
+                                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }
+
+                                  final order = _otOrders[index];
+                                  return Padding(
+                                    padding: spacing.custom(bottom: 12),
+                                    child: ListItemCustom.order(
+                                      id: order.wowoCode.toString(),
+                                      code: '#OT${order.wowoCode}',
+                                      famille: order.wowoJobClassDescription ?? order.wowoJobClass,
+                                      zone: order.wowoZone ?? '-',
+                                      entity: order.wowoActionEntity,
+                                      unite: order.wowoRequestEntity,
+                                      centre: order.wowoCostcentre,
+                                      description: order.mdjbDescription ?? order.wowoEquipmentDescription,
+                                      status: order.wowoUserStatus,
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => OTDetailScreen(order: _convertToOrder(order)),
+                                          ),
+                                        );
+                                      },
+                                      trailing: const SizedBox.shrink(),
+                                    ),
+                                  );
+                                } else {
                             final order = diOrders[index];
                             return Padding(
                               padding: spacing.custom(bottom: 12),

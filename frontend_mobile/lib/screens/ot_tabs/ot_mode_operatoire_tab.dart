@@ -1,17 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:appmobilegmao/provider/auth_provider.dart';
-import 'package:appmobilegmao/models/order.dart';
-import 'package:appmobilegmao/theme/app_theme.dart';
-import 'package:appmobilegmao/utils/responsive.dart';
-import 'package:appmobilegmao/theme/responsive_spacing.dart';
-import 'package:appmobilegmao/widgets/custom_bottom_navigation_bar.dart';
-import 'package:appmobilegmao/widgets/custom_app_bar.dart';
-import 'package:appmobilegmao/screens/fichier_lie_screen.dart';
-import 'package:appmobilegmao/screens/main_screen.dart';
 import 'package:appmobilegmao/services/ot_service.dart';
-import 'package:appmobilegmao/services/api_service.dart';
-import 'package:appmobilegmao/services/hive_service.dart';
 
 /// Onglet "Mode Opératoire" - Affiche les prérequis et permet d'ajouter des fichiers
 /// Principe SOLID: Single Responsibility - Gère uniquement l'affichage du mode opératoire
@@ -19,7 +7,7 @@ class ModeOperatoireTab extends StatefulWidget {
   final String otCode;
   final OTService otService;
 
-  const ModeOperatoireTab({Key? key, required this.otCode, required this.otService}) : super(key: key);
+  const ModeOperatoireTab({super.key, required this.otCode, required this.otService});
 
   @override
   State<ModeOperatoireTab> createState() => ModeOperatoireTabState();
@@ -50,155 +38,6 @@ class ModeOperatoireTabState extends State<ModeOperatoireTab> {
         _isLoading = false;
       });
     }
-  }
-
-  void _showAddDialog() {
-    final formKey = GlobalKey<FormState>();
-    final descController = TextEditingController();
-    final durationController = TextEditingController(text: '1.0');
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Ajouter une étape'),
-          content: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: descController,
-                  decoration: const InputDecoration(labelText: 'Description de l\'opération *'),
-                  validator: (v) => v == null || v.isEmpty ? 'Champ requis' : null,
-                ),
-                TextFormField(
-                  controller: durationController,
-                  decoration: const InputDecoration(labelText: 'Durée (heures)'),
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Annuler'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                if (formKey.currentState?.validate() ?? false) {
-                  Navigator.pop(context);
-                  try {
-                    await widget.otService.createOperation(widget.otCode, {
-                      "operationCode": "OP_${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}",
-                      "opopDescription": descController.text.trim(),
-                      "opopJobDescription": descController.text.trim(),
-                      "duration": double.tryParse(durationController.text) ?? 1.0,
-                    });
-                    _loadOperations();
-                  } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
-                  }
-                }
-              },
-              child: const Text('Ajouter'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showEditDialog(Map<String, dynamic> op) {
-    final formKey = GlobalKey<FormState>();
-    final desc = op['opopDescription']?.toString() ?? op['opopJobDescription']?.toString() ?? '';
-    final descController = TextEditingController(text: desc);
-    final durationController = TextEditingController(text: (op['duration'] ?? 1.0).toString());
-    final pk = (op['pkOperation'] ?? op['pkWorkAction'] ?? 0) as int;
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Modifier l\'étape'),
-          content: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: descController,
-                  decoration: const InputDecoration(labelText: 'Description de l\'opération *'),
-                  validator: (v) => v == null || v.isEmpty ? 'Champ requis' : null,
-                ),
-                TextFormField(
-                  controller: durationController,
-                  decoration: const InputDecoration(labelText: 'Durée (heures)'),
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Annuler'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                if (formKey.currentState?.validate() ?? false) {
-                  Navigator.pop(context);
-                  try {
-                    await widget.otService.updateOperation(widget.otCode, pk, {
-                      "operationCode": op['operationCode'] ?? 'OP',
-                      "opopDescription": descController.text.trim(),
-                      "opopJobDescription": descController.text.trim(),
-                      "duration": double.tryParse(durationController.text) ?? 1.0,
-                    });
-                    _loadOperations();
-                  } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
-                  }
-                }
-              },
-              child: const Text('Enregistrer'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _confirmDelete(int pk) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Supprimer l\'étape'),
-          content: const Text('Voulez-vous supprimer cette étape du mode opératoire ?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Annuler'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-              onPressed: () async {
-                Navigator.pop(context);
-                try {
-                  await widget.otService.deleteOperation(widget.otCode, pk);
-                  _loadOperations();
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
-                }
-              },
-              child: const Text('Supprimer', style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        );
-      },
-    );
   }
 
   @override
@@ -242,7 +81,6 @@ class ModeOperatoireTabState extends State<ModeOperatoireTab> {
                       int index = entry.key;
                       final op = entry.value;
                       String text = op['opopDescription']?.toString() ?? op['opopJobDescription']?.toString() ?? 'Opération sans description';
-                      final pk = (op['pkOperation'] ?? op['pkWorkAction'] ?? 0) as int;
 
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 12),

@@ -1,3 +1,4 @@
+import 'package:appmobilegmao/services/coswin_digest_interceptor.dart';
 import 'package:appmobilegmao/services/hive_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
@@ -20,6 +21,7 @@ class ApiException implements Exception {
 class ApiService {
   static ApiService? _instance;
   late final Dio _dio;
+  late final Dio _dioCoswin;
   late String baseUrl;
   String? _authToken;
   bool _isRefreshing = false;
@@ -27,9 +29,7 @@ class ApiService {
   static const Duration _timeout = Duration(seconds: 30);
   static const int _productionPort = 9099;
   static const String _productionHost = 'domtec.senelec.sn';
-  static const int _localDevPort = 8003;
-  // IP du PC pour le téléphone connecté en Wi-Fi
-  static const String _localDevHost = '192.168.1.15';
+  static const String _coswinBaseUrl = 'https://nomcosw.senelec.sn:8083/ws/rest';
 
   String get macIpAddress => _resolveHost();
   int get defaultPort => _resolvePort();
@@ -47,6 +47,8 @@ class ApiService {
   ApiService._internal({int? port, String? customBaseUrl}) {
     final resolvedPort = port ?? _resolvePort();
     baseUrl = customBaseUrl ?? _buildBaseUrl(resolvedPort);
+
+    // 1️⃣ Client FastAPI (Auth JWT & Équipements)
     _dio = Dio(
       BaseOptions(
         baseUrl: baseUrl,
@@ -57,16 +59,75 @@ class ApiService {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
           'Bypass-Tunnel-Reminder': 'true',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
         },
         validateStatus: (status) => status != null && status >= 200 && status < 300,
       ),
     );
+
+
     _setupInterceptors();
+    _dio.interceptors.add(_wafRejectionInterceptor());
     _loadAuthToken();
+
+    // 2️⃣ Client Coswin Natif (OT, DI, Spécifications, Articles)
+    _dioCoswin = Dio(
+      BaseOptions(
+        baseUrl: _coswinBaseUrl,
+        connectTimeout: const Duration(seconds: 60),
+        receiveTimeout: const Duration(seconds: 60),
+        sendTimeout: const Duration(seconds: 60),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
+        validateStatus: (status) => status != null && status >= 200 && status < 300,
+      ),
+    );
+
+
+    _dioCoswin.interceptors.add(
+      CoswinDigestInterceptor(
+        username: 'admin',
+        password: 'admin',
+        dio: _dioCoswin,
+      ),
+    );
+    _dioCoswin.interceptors.add(_wafRejectionInterceptor());
   }
 
+  /// Le pare-feu Senelec (WAF) répond « Request Rejected » en HTML avec un code 200.
+  /// Sans ce contrôle, un refus serait pris pour un succès : on le transforme en erreur.
+  static Interceptor _wafRejectionInterceptor() => InterceptorsWrapper(
+        onResponse: (response, handler) {
+          final contentType = response.headers.value('content-type') ?? '';
+          final body = response.data is String ? response.data as String : '';
+          if (contentType.contains('text/html') &&
+              (body.contains('Request Rejected') || body.contains('<html>'))) {
+            if (kDebugMode) {
+              debugPrint('⚠️ ApiService: requête ${response.requestOptions.method} '
+                  '${response.requestOptions.path} rejetée par le pare-feu');
+            }
+            return handler.reject(
+              DioException(
+                requestOptions: response.requestOptions,
+                response: response,
+                type: DioExceptionType.badResponse,
+                error: 'La requête a été rejetée par le pare-feu Senelec',
+              ),
+            );
+          }
+          handler.next(response);
+        },
+      );
+
   int _resolvePort() {
-    return _localDevPort;
+    return _productionPort; 
   }
 
   String _resolveHost() {
@@ -75,21 +136,22 @@ class ApiService {
       if (webHost.isNotEmpty && webHost != 'localhost' && webHost != '127.0.0.1') {
         return webHost;
       }
-      return _localDevHost;
+      return _productionHost;
     }
 
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      // Émulateur Android Studio vers le PC hôte (10.0.2.2)
-      return _localDevHost;
-    }
-
-    return _localDevHost;
+    return _productionHost;
   }
 
+  // Configuration Production vs Dev
+  static const bool isProduction = true;
+  static const String _productionBaseUrl = 'https://domtec.senelec.sn:9099';
   static const bool useTunnel = false;
-  static const String _publicTunnelUrl = 'https://gmao-senelec-mobile.loca.lt';
+  static const String _publicTunnelUrl = 'https://lovers-concerned-customs-finding.trycloudflare.com';
 
   String _buildBaseUrl(int port) {
+    if (isProduction) {
+      return _productionBaseUrl;
+    }
     if (useTunnel && _publicTunnelUrl.isNotEmpty) {
       return _publicTunnelUrl;
     }
@@ -118,13 +180,21 @@ class ApiService {
   }
 
   void _setupInterceptors() {
-    _dio.interceptors.add(
-      LogInterceptor(requestBody: true, responseBody: true),
-    );
+    // Journal HTTP en debug uniquement : il contient identifiants de connexion et tokens.
+    if (kDebugMode) {
+      _dio.interceptors.add(
+        LogInterceptor(requestBody: true, responseBody: true),
+      );
+    }
 
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
+          // Forcer le non-cache sur chaque requête
+          options.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+          options.headers['Pragma'] = 'no-cache';
+          options.headers['Expires'] = '0';
+
           // DRY: Source unique de vérité pour le token JWT
           final token = _authToken ?? await HiveService.getAccessToken();
           if (token != null && token.isNotEmpty) {
@@ -134,39 +204,6 @@ class ApiService {
             options.headers.remove('Authorization');
           }
           handler.next(options);
-        },
-        onResponse: (response, handler) {
-          // NOUVEAU: Vérifier si la réponse est du HTML au lieu de JSON
-          if (response.statusCode == 200) {
-            final contentType = response.headers.value('content-type');
-
-            // Détecter les réponses HTML (pare-feu WAF, erreurs serveur, etc.)
-            if (contentType != null && contentType.contains('text/html')) {
-              final responseText = response.data?.toString() ?? '';
-
-              // Vérifier si c'est une page de rejet
-              if (responseText.contains('Request Rejected') ||
-                  responseText.contains('<html>')) {
-                if (kDebugMode) {
-                  print('⚠️ ApiService: Réponse HTML détectée au lieu de JSON');
-                  print('Content-Type: $contentType');
-                }
-
-                // Transformer en erreur DioException
-                return handler.reject(
-                  DioException(
-                    requestOptions: response.requestOptions,
-                    response: response,
-                    type: DioExceptionType.badResponse,
-                    error:
-                        'La requête a été rejetée par le serveur (pare-feu ou filtre de sécurité)',
-                  ),
-                );
-              }
-            }
-          }
-
-          handler.next(response);
         },
         onError: (error, handler) async {
           final resp = error.response;
@@ -216,92 +253,58 @@ class ApiService {
     String endpoint, {
     Map<String, dynamic>? queryParameters,
     Duration? timeout,
-  }) async {
-    try {
-      final options = timeout != null
-          ? Options(receiveTimeout: timeout, sendTimeout: timeout)
-          : null;
-      final r = await _dio.get(
-        endpoint,
-        queryParameters: queryParameters,
-        options: options,
-      );
-      return r.data;
-    } on DioException catch (e) {
-      throw _handleDioError(e, endpoint);
-    } catch (e) {
-      throw ApiException('Erreur de connexion: $e', endpoint: endpoint);
-    }
-  }
+  }) => _send(_dio, 'GET', endpoint, queryParameters: queryParameters, timeout: timeout);
 
   Future<dynamic> post(
     String endpoint, {
     dynamic data,
     Map<String, dynamic>? queryParameters,
-  }) async {
-    try {
-      final r = await _dio.post(
-        endpoint,
-        data: data,
-        queryParameters: queryParameters,
-      );
-      return r.data;
-    } on DioException catch (e) {
-      throw _handleDioError(e, endpoint);
-    } catch (e) {
-      throw ApiException('Erreur de connexion: $e', endpoint: endpoint);
-    }
-  }
+  }) => _send(_dio, 'POST', endpoint, data: data, queryParameters: queryParameters);
 
   Future<dynamic> put(
     String endpoint, {
     dynamic data,
     Map<String, dynamic>? queryParameters,
-  }) async {
-    try {
-      final r = await _dio.put(
-        endpoint,
-        data: data,
-        queryParameters: queryParameters,
-      );
-      return r.data;
-    } on DioException catch (e) {
-      throw _handleDioError(e, endpoint);
-    } catch (e) {
-      throw ApiException('Erreur de connexion: $e', endpoint: endpoint);
-    }
-  }
+  }) => _send(_dio, 'PUT', endpoint, data: data, queryParameters: queryParameters);
 
   Future<dynamic> patch(
     String endpoint, {
     dynamic data,
     Map<String, dynamic>? queryParameters,
+  }) => _send(_dio, 'PATCH', endpoint, data: data, queryParameters: queryParameters);
+
+  Future<dynamic> delete(
+    String endpoint, {
+    Map<String, dynamic>? queryParameters,
+  }) => _send(_dio, 'DELETE', endpoint, queryParameters: queryParameters);
+
+  /// Point d'entrée unique des appels HTTP (FastAPI et Coswin) :
+  /// même gestion des timeouts et même traduction des erreurs.
+  Future<dynamic> _send(
+    Dio client,
+    String method,
+    String endpoint, {
+    dynamic data,
+    Map<String, dynamic>? queryParameters,
+    Duration? timeout,
   }) async {
     try {
-      final r = await _dio.patch(
+      final r = await client.request(
         endpoint,
         data: data,
         queryParameters: queryParameters,
+        options: Options(
+          method: method,
+          receiveTimeout: timeout,
+          sendTimeout: timeout,
+        ),
       );
       return r.data;
     } on DioException catch (e) {
       throw _handleDioError(e, endpoint);
     } catch (e) {
-      throw ApiException('Erreur de connexion: $e', endpoint: endpoint);
-    }
-  }
-
-  Future<dynamic> delete(
-    String endpoint, {
-    Map<String, dynamic>? queryParameters,
-  }) async {
-    try {
-      final r = await _dio.delete(endpoint, queryParameters: queryParameters);
-      return r.data;
-    } on DioException catch (e) {
-      throw _handleDioError(e, endpoint);
-    } catch (e) {
-      throw ApiException('Erreur de connexion: $e', endpoint: endpoint);
+      final source = identical(client, _dioCoswin) ? 'Coswin' : 'de connexion';
+      throw ApiException('Erreur $source: $e', endpoint: endpoint);
     }
   }
 
@@ -313,8 +316,11 @@ class ApiService {
     if (e.type == DioExceptionType.badResponse && status == 200) {
       final contentType = e.response?.headers.value('content-type');
       if (contentType != null && contentType.contains('text/html')) {
-        message =
-            'La requête a été bloquée par un pare-feu ou un filtre de sécurité';
+        final method = e.requestOptions.method.toUpperCase();
+        message = (method == 'PUT' || method == 'DELETE')
+            ? 'Le pare-feu Senelec bloque les ${method == 'PUT' ? 'modifications' : 'suppressions'} '
+                "vers Coswin : rien n'a été enregistré."
+            : 'La requête a été bloquée par le pare-feu Senelec.';
         if (kDebugMode) {
           print('⚠️ ApiService: Réponse HTML au lieu de JSON (WAF/Firewall)');
         }
@@ -322,37 +328,59 @@ class ApiService {
       }
     }
 
-    // Extraire le message d'erreur détaillé du backend si présent
+    // Extraire le message d'erreur détaillé du backend ou de Coswin si présent
     String? serverDetail;
     if (e.response?.data is Map) {
       final dataMap = e.response!.data as Map;
       serverDetail = dataMap['detail']?.toString() ??
+          dataMap['faultstring']?.toString() ??
           dataMap['message']?.toString() ??
-          dataMap['error']?.toString();
+          dataMap['error']?.toString() ??
+          dataMap['description']?.toString();
     } else if (e.response?.data is String && (e.response!.data as String).isNotEmpty) {
-      serverDetail = e.response!.data as String;
+      final rawStr = (e.response!.data as String).trim();
+      // Extraction des balises d'erreur XML/SOAP typiques de Coswin
+      final faultMatch = RegExp(r'<faultstring>(.*?)</faultstring>', dotAll: true).firstMatch(rawStr);
+      final msgMatch = RegExp(r'<message>(.*?)</message>', dotAll: true).firstMatch(rawStr);
+      if (faultMatch != null) {
+        serverDetail = faultMatch.group(1)?.trim();
+      } else if (msgMatch != null) {
+        serverDetail = msgMatch.group(1)?.trim();
+      } else if (rawStr.contains('Request Rejected')) {
+        serverDetail = 'Requête rejetée par le filtre de sécurité réseau Senelec (Request Rejected).';
+      } else if (!rawStr.startsWith('<')) {
+        serverDetail = rawStr.length > 300 ? rawStr.substring(0, 300) : rawStr;
+      }
     }
 
     if (e.type == DioExceptionType.connectionTimeout) {
-      message = 'Connexion impossible - vérifiez le réseau';
+      message = 'Délai d\'attente dépassé : impossible de joindre le serveur Senelec.';
+    } else if (e.type == DioExceptionType.sendTimeout) {
+      message = 'Délai d\'envoi dépassé. Vérifiez votre connexion internet.';
     } else if (e.type == DioExceptionType.receiveTimeout) {
-      message = 'Réponse trop lente du serveur';
+      message = 'Le serveur Senelec met trop de temps à répondre. Veuillez réessayer.';
+    } else if (e.type == DioExceptionType.connectionError) {
+      message = 'Impossible de joindre le serveur (domtec.senelec.sn). Vérifiez votre connexion internet.';
+    } else if (e.type == DioExceptionType.badCertificate) {
+      message = 'Erreur de sécurité SSL : le certificat du serveur n\'a pas pu être validé.';
+    } else if (e.type == DioExceptionType.cancel) {
+      message = 'La requête a été annulée.';
     } else if (e.type == DioExceptionType.badResponse) {
       if (serverDetail != null && serverDetail.isNotEmpty) {
         message = serverDetail;
       } else if (status >= 500) {
-        message = 'Erreur serveur ($status)';
+        message = 'Erreur interne du serveur Senelec ($status). Veuillez réessayer plus tard.';
       } else if (status == 404) {
-        message = 'Ressource non trouvée (404)';
+        message = 'Ressource non trouvée sur le serveur (404).';
       } else if (status == 401) {
-        message = 'Non autorisé (401)';
+        message = 'Session expirée ou non autorisée (401).';
       } else if (status == 403) {
-        message = 'Accès interdit (403)';
+        message = 'Accès refusé par le serveur (403).';
       } else {
-        message = 'Erreur API ($status)';
+        message = 'Erreur du serveur ($status).';
       }
     } else {
-      message = serverDetail ?? 'Erreur réseau: ${e.message}';
+      message = serverDetail ?? 'Erreur réseau : impossible de joindre le serveur.';
     }
 
     return ApiException(message, statusCode: status, endpoint: endpoint);
@@ -369,5 +397,32 @@ class ApiService {
   }
 
   Dio get dio => _dio;
+  Dio get dioCoswin => _dioCoswin;
   String get currentBaseUrl => baseUrl;
+  String get coswinBaseUrl => _coswinBaseUrl;
+
+  // ========== MÉTHODES CLIENT COSWIN NATIF (OT, DI, ARTICLES, SPÉCIFICATIONS) ==========
+
+  Future<dynamic> getCoswin(
+    String endpoint, {
+    Map<String, dynamic>? queryParameters,
+    Duration? timeout,
+  }) => _send(_dioCoswin, 'GET', endpoint, queryParameters: queryParameters, timeout: timeout);
+
+  Future<dynamic> postCoswin(
+    String endpoint, {
+    dynamic data,
+    Map<String, dynamic>? queryParameters,
+  }) => _send(_dioCoswin, 'POST', endpoint, data: data, queryParameters: queryParameters);
+
+  Future<dynamic> putCoswin(
+    String endpoint, {
+    dynamic data,
+    Map<String, dynamic>? queryParameters,
+  }) => _send(_dioCoswin, 'PUT', endpoint, data: data, queryParameters: queryParameters);
+
+  Future<dynamic> deleteCoswin(
+    String endpoint, {
+    Map<String, dynamic>? queryParameters,
+  }) => _send(_dioCoswin, 'DELETE', endpoint, queryParameters: queryParameters);
 }

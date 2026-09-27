@@ -130,7 +130,7 @@ class ListItemCustom extends StatelessWidget {
         ItemField(label: 'Famille', value: famille),
         ItemField(label: 'Zone', value: zone),
         ItemField(label: 'Entité', value: entity),
-        ItemField(label: 'Unité', value: unite),
+        ItemField(label: 'Équipement', value: unite),
       ],
       overlayDetails: {
         'Code': code,
@@ -138,7 +138,7 @@ class ListItemCustom extends StatelessWidget {
         'Famille': famille,
         'Zone': zone,
         'Entité': entity,
-        'Unité': unite,
+        'Équipement': unite,
         'Centre': centre,
         'Description': description,
       },

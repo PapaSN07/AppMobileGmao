@@ -12,51 +12,7 @@ class DiScreen extends StatefulWidget {
 }
 
 class _DiScreenState extends State<DiScreen> {
-  // Dummy data matching the mockup
-  final List<Map<String, dynamic>> diList = [
-    {
-      "id": "DI00062653",
-      "status1": "Actif",
-      "status2": "Urgent",
-      "title": "DECHARGE PARTIELLE",
-      "subtitle": "POSTE FANN FROBENIUS -",
-    },
-    {
-      "id": "DI00062540",
-      "status1": "Actif",
-      "status2": "Urgent",
-      "title": "FUITE JOINT MECANIQUE",
-      "subtitle": "POMPE CENTRIFUGE P-204 - STATION",
-    },
-    {
-      "id": "DI00062480",
-      "status1": "Actif",
-      "status2": "Urgent",
-      "title": "DERIVE CAPTEUR PRESSION",
-      "subtitle": "CAPTEUR PRESSION PT-302 - LIGNE",
-    },
-    {
-      "id": "DI00062350",
-      "status1": "Actif",
-      "status2": null,
-      "title": "REVISION GENERALE 500H",
-      "subtitle": "CONVOYEUR CV-08 - ATELIER",
-    },
-    {
-      "id": "DI00061900",
-      "status1": "Suspendu",
-      "status2": null,
-      "title": "FISSURES TOITURE ATELIER",
-      "subtitle": "BÂTIMENT ATELIER - SAINT-LOUIS",
-    },
-    {
-      "id": "DI00062600",
-      "status1": "Actif",
-      "status2": "Urgent",
-      "title": "FUITE VAPEUR BRIDE DN100",
-      "subtitle": "CHAUDIÈRE CHD-01 - SALLE DES",
-    },
-  ];
+  final List<Map<String, dynamic>> diList = [];
 
   @override
   Widget build(BuildContext context) {
@@ -102,7 +58,7 @@ class _DiScreenState extends State<DiScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '${diList.length} Domaines',
+                        '${diList.length} Demande${diList.length > 1 ? 's' : ''}',
                         style: TextStyle(
                           fontFamily: AppTheme.fontMontserrat,
                           color: Colors.white,
@@ -111,7 +67,7 @@ class _DiScreenState extends State<DiScreen> {
                         ),
                       ),
                       Text(
-                        'Domaines d\'Intervention',
+                        'Demandes d\'Intervention',
                         style: TextStyle(
                           fontFamily: AppTheme.fontRoboto,
                           color: Colors.white.withOpacity(0.8),
@@ -125,16 +81,39 @@ class _DiScreenState extends State<DiScreen> {
             ),
           ),
           
-          // List of DI
+          // List of DI ou état vide
           Expanded(
-            child: ListView.builder(
-              padding: spacing.custom(horizontal: 16, bottom: 16),
-              itemCount: diList.length,
-              itemBuilder: (context, index) {
-                final di = diList[index];
-                return _buildDiCard(context, di, responsive, spacing);
-              },
-            ),
+            child: diList.isEmpty
+                ? Center(
+                    child: Padding(
+                      padding: spacing.custom(all: 32),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.inbox_outlined, size: 64, color: Colors.grey[400]),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Aucune demande d\'intervention disponible',
+                            style: TextStyle(
+                              fontFamily: AppTheme.fontRoboto,
+                              fontSize: responsive.sp(15),
+                              color: Colors.grey[600],
+                              fontWeight: FontWeight.w500,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                : ListView.builder(
+                    padding: spacing.custom(horizontal: 16, bottom: 16),
+                    itemCount: diList.length,
+                    itemBuilder: (context, index) {
+                      final di = diList[index];
+                      return _buildDiCard(context, di, responsive, spacing);
+                    },
+                  ),
           ),
         ],
       ),

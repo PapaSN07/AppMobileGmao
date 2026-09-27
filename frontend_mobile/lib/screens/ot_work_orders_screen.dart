@@ -1,10 +1,12 @@
 import 'package:appmobilegmao/models/work_order.dart';
+import 'package:appmobilegmao/models/ot_status.dart';
+import 'package:appmobilegmao/models/ot_referentials.dart';
 import 'package:appmobilegmao/models/order.dart';
 import 'package:appmobilegmao/provider/auth_provider.dart';
 import 'package:appmobilegmao/screens/ot_detail_screen.dart';
 import 'package:appmobilegmao/screens/ot_create_screen.dart';
-import 'package:appmobilegmao/services/api_service.dart';
 import 'package:appmobilegmao/services/ot_service.dart';
+import 'package:appmobilegmao/services/ot_paginator.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:appmobilegmao/theme/responsive_spacing.dart';
 import 'package:appmobilegmao/utils/responsive.dart';
@@ -30,43 +32,15 @@ class OTWorkOrdersScreen extends StatefulWidget {
   State<OTWorkOrdersScreen> createState() => _OTWorkOrdersScreenState();
 }
 
-class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
-  static const Set<String> _closedStatuses = {
-    'CL',
-    'TE',
-    'AY',
-    'CLOSE',
-    'CLOSED',
-    'TERMINE',
-    'TERMINEE',
-    'TERMINATED',
-    'FINI',
-    'FINISHED',
-    'ARCHIVABLE',
-  };
+class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen>
+    with AutomaticKeepAliveClientMixin {
+  
+  @override
+  bool get wantKeepAlive => true; // Garde la liste en mémoire même quand on change d'onglet
 
-  // Statuts pour lesquels la modification est autorisée (source unique — DRY)
-  static const Set<String> _editableStatuses = {
-    'CR',
-    'OUV',
-    'EC',
-  };
-
-  // Options de filtre Statut (code → libellé)
-  static const Map<String, String> _statusFilterOptions = {
-    'CR': 'Créé (CR)',
-    'OUV': 'Ouvert (OUV)',
-    'EC': 'En cours (EC)',
-    'SUSP': 'Suspendu (SUSP)',
-    'TE': 'Terminé (TE)',
-    'CL': 'Clôturé (CL)',
-  };
-
-  // Options de filtre Type de travail (code → libellé)
-  static const Map<String, String> _typeFilterOptions = {
-    'CORR': 'Correctif',
-    'PREV': 'Préventif',
-  };
+  // Options des filtres Statut / Type (code → libellé), chargées depuis Coswin
+  Map<String, String> _statusFilterOptions = {};
+  Map<String, String> _typeFilterOptions = {};
 
   late final OTService _otService;
   final TextEditingController _serviceController = TextEditingController();
@@ -84,20 +58,37 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
   String? _selectedStatus;
   String? _selectedType;
   
-  // Variables de pagination
-  String? _paginationContext;
-  bool _hasMore = false;
+  // Pagination multi-années (état porté par OTYearPaginator)
+  static const int _targetVisibleCount = 10; // OT visibles à trouver avant d'arrêter la recherche
+  static const int _maxWindowsFirstLoad = 8; // fenêtres Coswin (~5 s chacune) au 1er chargement
+  static const int _maxWindowsPerClick = 6; // fenêtres Coswin par clic « charger plus »
+  late final OTYearPaginator _paginator;
+  bool _noOlderFound = false;
   bool _isLoadingMore = false;
+  int get _currentYear => _paginator.currentYear;
+  bool get _hasMoreInYear => _paginator.hasMoreInYear;
+  bool get _canLoadPreviousYear => _paginator.canLoadPreviousYear;
 
   @override
   void initState() {
     super.initState();
-    _otService = OTService(ApiService());
+    _otService = context.read<OTService>();
+    _paginator = OTYearPaginator(_otService);
     _selectedService = widget.initialService?.trim() ?? '';
     _serviceController.text = _selectedService;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _bootstrapService();
+    });
+    _loadFilterOptions();
+  }
+
+  Future<void> _loadFilterOptions() async {
+    final refs = await _otService.getReferentials();
+    if (!mounted) return;
+    setState(() {
+      _statusFilterOptions = OTReferentials.toLabelMap(refs.statuses);
+      _typeFilterOptions = OTReferentials.toLabelMap(refs.jobTypes);
     });
   }
 
@@ -132,20 +123,12 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
     await _loadOrders();
   }
 
-  bool _isOpenOrder(WorkOrder order) {
-    final status = order.wowoUserStatus.trim().toUpperCase();
-    if (!_hideClosedOrders) {
-      return true;
-    }
-    return !_closedStatuses.contains(status);
-  }
+  bool _isOpenOrder(WorkOrder order) =>
+      !_hideClosedOrders || !OTStatus.isClosed(order.wowoUserStatus);
 
   /// Retourne true si l'OT peut être modifié selon son statut.
   /// Suit le même principe que [_isOpenOrder] (principe DRY/SRP).
-  bool _isEditable(WorkOrder order) {
-    final status = order.wowoUserStatus.trim().toUpperCase();
-    return _editableStatuses.contains(status);
-  }
+  bool _isEditable(WorkOrder order) => OTStatus.isEditable(order.wowoUserStatus);
 
   bool _matchesSearch(WorkOrder order) {
     final query = _searchQuery.trim().toLowerCase();
@@ -177,7 +160,9 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
         .where(_matchesStatusAndType)
         .toList();
     final seen = <String>{};
-    return filtered.where((o) => seen.add(o.wowoCode.toString())).toList();
+    final unique = filtered.where((o) => seen.add(o.wowoCode.toString())).toList();
+    unique.sort((a, b) => b.wowoCode.compareTo(a.wowoCode));
+    return unique;
   }
 
   bool _matchesStatusAndType(WorkOrder order) {
@@ -194,7 +179,10 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
     return true;
   }
 
-  Future<void> _loadOrders() async {
+  /// Nombre d'OT de la liste qui seront visibles à l'écran (hors OT fermés masqués).
+  int _visibleCount(List<WorkOrder> orders) => orders.where(_isOpenOrder).length;
+
+  Future<void> _loadOrders({bool isRefresh = false}) async {
     final service = _serviceController.text.trim();
     if (service.isEmpty) {
       setState(() {
@@ -204,70 +192,85 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
       return;
     }
 
-    // ✅ Mettre à jour l'entité active globale réactive dans AuthProvider
+    // Mettre à jour l'entité active globale réactive dans AuthProvider
     context.read<AuthProvider>().updateActiveEntity(service);
 
     setState(() {
-      _isLoading = true;
+      // Pull-to-refresh : on garde la liste visible ; 1er chargement : spinner plein écran
+      if (!isRefresh) _isLoading = true;
       _errorMessage = null;
-      _paginationContext = null;
-      _hasMore = false;
+      _noOlderFound = false;
     });
 
     try {
-      final result = await _otService.getOrdersPage(
-        scope: 'service',
+      // Du plus récent au plus ancien, jusqu'à avoir assez d'OT visibles
+      final orders = await _paginator.loadFirst(
         requestEntity: service,
         excludeClosed: _hideClosedOrders,
+        maxBatches: _maxWindowsFirstLoad,
+        stopWhen: (found) => _visibleCount(found) >= _targetVisibleCount,
+        // Affichage progressif : la liste apparaît dès la première fenêtre non vide
+        onBatch: (found) {
+          if (mounted && found.isNotEmpty) {
+            setState(() {
+              _selectedService = service;
+              _orders = List.of(found);
+              _isLoading = false;
+            });
+          }
+        },
       );
 
-      final seen = <String>{};
-      final uniqueOrders = result.workorders.where((o) => seen.add(o.wowoCode.toString())).toList();
-
-      setState(() {
-        _selectedService = service;
-        _orders = uniqueOrders;
-        _paginationContext = result.paginationContext;
-        _hasMore = result.hasMore;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _selectedService = service;
+          _orders = orders;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _orders = [];
-        _isLoading = false;
-        _errorMessage = e.toString();
-        _paginationContext = null;
-        _hasMore = false;
-      });
+      if (mounted) {
+        setState(() {
+          _orders = [];
+          _isLoading = false;
+          _errorMessage = e.toString();
+        });
+      }
     }
   }
 
   Future<void> _loadMoreOrders() async {
-    if (_isLoadingMore || !_hasMore || _paginationContext == null) return;
+    if (_isLoadingMore) return;
+    if (_serviceController.text.trim().isEmpty) return;
 
     setState(() {
       _isLoadingMore = true;
     });
 
     try {
-      final service = _serviceController.text.trim();
-      final result = await _otService.getOrdersPage(
-        scope: 'service',
-        requestEntity: service,
-        excludeClosed: _hideClosedOrders,
-        paginationContext: _paginationContext,
+      final newlyFound = await _paginator.loadMore(
+        knownCodes: _orders.map((o) => o.wowoCode).toSet(),
+        maxBatches: _maxWindowsPerClick,
+        minNew: _targetVisibleCount,
       );
-
-      final existingCodes = _orders.map((o) => o.wowoCode.toString()).toSet();
-      final newOrders = result.workorders.where((o) => existingCodes.add(o.wowoCode.toString())).toList();
+      if (!mounted) return;
 
       setState(() {
-        _orders.addAll(newOrders);
-        _paginationContext = result.paginationContext;
-        _hasMore = result.hasMore;
+        _orders.addAll(newlyFound);
+        _noOlderFound = newlyFound.isEmpty && _paginator.isExhausted;
         _isLoadingMore = false;
       });
+
+      if (newlyFound.isEmpty && !_noOlderFound) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Lot scanné : aucun nouvel OT ouvert dans cette tranche. Cliquez à nouveau pour continuer.'),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoadingMore = false;
       });
@@ -308,7 +311,7 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
     );
 
     if (refresh == true) {
-      _loadOrders();
+      _loadOrders(isRefresh: true);
     }
   }
 
@@ -338,7 +341,7 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
                       const SnackBar(content: Text('OT supprimé avec succès !')),
                     );
                   }
-                  _loadOrders();
+                  _loadOrders(isRefresh: true);
                 } catch (e) {
                   if (mounted) {
                     messenger.showSnackBar(
@@ -503,6 +506,7 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
                               setState(() {
                                 _hideClosedOrders = value;
                               });
+                              _loadOrders();
                             },
                           ),
 
@@ -545,7 +549,7 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
                               setState(() {
                                 _selectedStatus = value;
                                 // Si un statut "clôturé" est choisi, désactiver le masquage automatique
-                                if (value != null && _closedStatuses.contains(value)) {
+                                if (value != null && OTStatus.isClosed(value)) {
                                   _hideClosedOrders = false;
                                 }
                               });
@@ -608,6 +612,7 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
                                     _searchController.clear();
                                     _hideClosedOrders = true;
                                   });
+                                  _loadOrders();
                                 },
                                 icon: const Icon(Icons.refresh, size: 18),
                                 label: const Text('Réinitialiser les filtres'),
@@ -632,152 +637,9 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
     );
   }
 
-  void _showAddOTDialog() {
-    final formKey = GlobalKey<FormState>();
-    final codeController = TextEditingController();
-    final jobController = TextEditingController();
-    final eqController = TextEditingController();
-    final supervisorController = TextEditingController();
-    final jobClassController = TextEditingController();
-    final zoneController = TextEditingController();
-    final entityController = TextEditingController(text: _selectedService);
-    final rateController = TextEditingController(text: '0');
-    String priority = 'URGENT';
-    String status = 'OUV';
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: const Text('Créer un Ordre de Travail (OT)'),
-              content: SingleChildScrollView(
-                child: Form(
-                  key: formKey,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      TextFormField(
-                        controller: codeController,
-                        decoration: const InputDecoration(labelText: 'Code OT (laisser vide pour générer)'),
-                        keyboardType: TextInputType.number,
-                      ),
-                      TextFormField(
-                        controller: jobController,
-                        decoration: const InputDecoration(labelText: 'Description / Travail *'),
-                        validator: (value) => value == null || value.isEmpty ? 'Ce champ est obligatoire' : null,
-                      ),
-                      TextFormField(
-                        controller: eqController,
-                        decoration: const InputDecoration(labelText: 'Équipement *'),
-                        validator: (value) => value == null || value.isEmpty ? 'Ce champ est obligatoire' : null,
-                      ),
-                      TextFormField(
-                        controller: supervisorController,
-                        decoration: const InputDecoration(labelText: 'Technicien / Superviseur *'),
-                        validator: (value) => value == null || value.isEmpty ? 'Ce champ est obligatoire' : null,
-                      ),
-                      TextFormField(
-                        controller: zoneController,
-                        decoration: const InputDecoration(labelText: 'Zone'),
-                      ),
-                      TextFormField(
-                        controller: entityController,
-                        decoration: const InputDecoration(labelText: 'Entité / Service'),
-                      ),
-                      TextFormField(
-                        controller: rateController,
-                        decoration: const InputDecoration(labelText: 'Taux de réalisation (%)'),
-                        keyboardType: TextInputType.number,
-                      ),
-                      TextFormField(
-                        controller: jobClassController,
-                        decoration: const InputDecoration(labelText: 'Classe de travail'),
-                      ),
-                      DropdownButtonFormField<String>(
-                        value: priority,
-                        decoration: const InputDecoration(labelText: 'Priorité'),
-                        items: ['URGENT', 'MOYEN', 'BAS'].map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
-                        onChanged: (val) {
-                          if (val != null) setDialogState(() => priority = val);
-                        },
-                      ),
-                      DropdownButtonFormField<String>(
-                        value: status,
-                        decoration: const InputDecoration(labelText: 'Statut de départ'),
-                        items: [
-                          DropdownMenuItem(value: 'OUV', child: const Text('OUVERT (OUV)')),
-                          DropdownMenuItem(value: 'CR', child: const Text('CRÉÉ (CR)')),
-                        ].toList(),
-                        onChanged: (val) {
-                          if (val != null) setDialogState(() => status = val);
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Annuler'),
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    if (formKey.currentState?.validate() ?? false) {
-                      Navigator.pop(context);
-                      setState(() => _isLoading = true);
-                      try {
-                        final authProvider = context.read<AuthProvider>();
-                        final currentService = entityController.text.trim();
-
-                        final data = {
-                          "wowoUserStatus": status,
-                          "wowoEquipment": eqController.text.trim(),
-                          "wowoJob": jobController.text.trim(),
-                          "wowoJobType": "CORR",
-                          "wowoJobClass": jobClassController.text.trim(),
-                          "wowoPriority": priority,
-                          "wowoActionEntity": currentService,
-                          "wowoRequestEntity": currentService,
-                          "wowoSupervisor": supervisorController.text.trim(),
-                          "wowoCostcentre": "DD304",
-                          "wowoZone": zoneController.text.trim(),
-                          "wowoFunction": "UMP-PG",
-                          "wowoEquipmentDescription": "Équipement de test créé par mobile",
-                          "wowoCompletionRate": double.tryParse(rateController.text.trim()) ?? 0.0,
-                        };
-
-                        if (codeController.text.trim().isNotEmpty) {
-                          data["wowoCode"] = int.parse(codeController.text.trim());
-                        }
-
-                        await _otService.createOT(data);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('OT créé avec succès en base locale !')),
-                        );
-                        _loadOrders();
-                      } catch (e) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Erreur: $e')),
-                        );
-                        setState(() => _isLoading = false);
-                      }
-                    }
-                  },
-                  child: const Text('Créer'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Requis par AutomaticKeepAliveClientMixin
     final responsive = context.responsive;
     final spacing = context.spacing;
     final visibleOrders = _applyFilters(_orders);
@@ -886,76 +748,144 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
                           retryButtonText: 'Réessayer',
                         )
                       : visibleOrders.isEmpty
-                          ? Center(
-                              child: SingleChildScrollView(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    EmptyState(
-                                      title: 'Aucun OT trouvé',
-                                      message: _hideClosedOrders
-                                          ? 'Aucun OT ouvert ne correspond à ce service.'
-                                          : 'Aucun OT ne correspond à ces critères.',
-                                      icon: Icons.assignment_late,
-                                    ),
-                                    if (_hasMore) ...[
+                          ? SingleChildScrollView(
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 32.0),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      EmptyState(
+                                        title: 'Aucun OT trouvé ($_currentYear)',
+                                        message: _hideClosedOrders
+                                            ? 'Aucun OT ouvert pour ce service en $_currentYear.'
+                                            : 'Aucun OT ne correspond aux critères en $_currentYear.',
+                                        icon: Icons.assignment_late,
+                                      ),
                                       const SizedBox(height: 16),
-                                      _isLoadingMore
-                                          ? const CircularProgressIndicator()
-                                          : ElevatedButton.icon(
-                                              onPressed: _loadMoreOrders,
-                                              icon: const Icon(Icons.add),
-                                              label: const Text("Charger plus d'OT"),
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor: AppTheme.secondaryColor,
-                                                foregroundColor: Colors.white,
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius: BorderRadius.circular(12),
-                                                ),
-                                                padding: const EdgeInsets.symmetric(
-                                                  horizontal: 24,
-                                                  vertical: 12,
-                                                ),
-                                              ),
+                                      if (_isLoadingMore)
+                                        const Column(
+                                          children: [
+                                            CircularProgressIndicator(),
+                                            SizedBox(height: 8),
+                                            Text("Recherche des OT plus anciens..."),
+                                          ],
+                                        )
+                                      else if (_hasMoreInYear || _canLoadPreviousYear)
+                                        ElevatedButton.icon(
+                                          onPressed: _loadMoreOrders,
+                                          icon: const Icon(Icons.history_rounded),
+                                          label: Text(
+                                            _hasMoreInYear
+                                                ? "Chercher la suite des OT ($_currentYear)"
+                                                : "Chercher les OT de ${_currentYear - 1}",
+                                          ),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: AppTheme.secondaryColor,
+                                            foregroundColor: Colors.white,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(12),
                                             ),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 24,
+                                              vertical: 12,
+                                            ),
+                                          ),
+                                        )
+                                      else if (_noOlderFound)
+                                        Text(
+                                          "Aucun OT plus ancien trouvé",
+                                          style: TextStyle(
+                                            color: Colors.grey.shade500,
+                                            fontSize: 13,
+                                            fontStyle: FontStyle.italic,
+                                          ),
+                                        ),
                                     ],
-                                  ],
+                                  ),
                                 ),
-                              ),
-                            )
+                              )
                           : ListView.separated(
-                              physics: const AlwaysScrollableScrollPhysics(),
-                              itemCount: visibleOrders.length + (_hasMore ? 1 : 0),
-                              separatorBuilder: (_, __) => SizedBox(height: spacing.small),
-                              itemBuilder: (context, index) {
-                                if (index == visibleOrders.length) {
-                                  return Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: 16.0),
-                                    child: Center(
-                                      child: _isLoadingMore
-                                          ? const CircularProgressIndicator()
-                                          : ElevatedButton.icon(
-                                              onPressed: _loadMoreOrders,
-                                              icon: const Icon(Icons.add),
-                                              label: const Text("Charger plus d'OT"),
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor: AppTheme.secondaryColor,
-                                                foregroundColor: Colors.white,
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius: BorderRadius.circular(12),
-                                                ),
-                                                padding: const EdgeInsets.symmetric(
-                                                  horizontal: 24,
-                                                  vertical: 12,
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                itemCount: visibleOrders.length +
+                                    ((_hasMoreInYear || _canLoadPreviousYear || _noOlderFound) ? 1 : 0),
+                                separatorBuilder: (_, __) => SizedBox(height: spacing.small),
+                                itemBuilder: (context, index) {
+                                  if (index == visibleOrders.length) {
+                                    if (_isLoadingMore) {
+                                      return Padding(
+                                        padding: const EdgeInsets.symmetric(vertical: 16.0),
+                                        child: Center(
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const SizedBox(
+                                                width: 24,
+                                                height: 24,
+                                                child: CircularProgressIndicator(
+                                                  strokeWidth: 2.5,
+                                                  color: Color(0xFF0F1B80),
                                                 ),
                                               ),
+                                              const SizedBox(height: 8),
+                                              Text(
+                                                "Recherche des OT plus anciens...",
+                                                style: TextStyle(
+                                                  color: Colors.grey.shade600,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    }
+
+                                    if (_noOlderFound && !_canLoadPreviousYear && !_hasMoreInYear) {
+                                      return Padding(
+                                        padding: const EdgeInsets.symmetric(vertical: 16.0),
+                                        child: Center(
+                                          child: Text(
+                                            "Aucun OT plus ancien trouvé",
+                                            style: TextStyle(
+                                              color: Colors.grey.shade500,
+                                              fontSize: 13,
+                                              fontStyle: FontStyle.italic,
                                             ),
-                                    ),
-                                  );
-                                }
+                                          ),
+                                        ),
+                                      );
+                                    }
+
+                                    return Padding(
+                                      padding: const EdgeInsets.symmetric(vertical: 16.0),
+                                      child: Center(
+                                        child: ElevatedButton.icon(
+                                          onPressed: _loadMoreOrders,
+                                          icon: const Icon(Icons.history_rounded, size: 18),
+                                          label: Text(
+                                            _hasMoreInYear
+                                                ? "Charger plus d'OT ($_currentYear)"
+                                                : "Charger les OT de ${_currentYear - 1}",
+                                          ),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: AppTheme.secondaryColor,
+                                            foregroundColor: Colors.white,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(12),
+                                            ),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 20,
+                                              vertical: 12,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }
 
                                 final order = visibleOrders[index];
-                                final isClosed = _closedStatuses.contains(order.wowoUserStatus.trim().toUpperCase());
+                                final isClosed = OTStatus.isClosed(order.wowoUserStatus);
                                 return ListItemCustom.order(
                                   code: order.wowoCode.toString(),
                                   famille: order.wowoJobType.isNotEmpty
@@ -982,7 +912,7 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
                                           ),
                                         );
                                         if (result == true) {
-                                          _loadOrders();
+                                          _loadOrders(isRefresh: true);
                                         }
                                       } else if (value == 'delete') {
                                         _confirmDeleteOT(order);
@@ -1039,8 +969,8 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
                                     ),
                                   ),
                                 );
-                              },
-                            ),
+                                },
+                              ),
             ),
           ),
         ],
@@ -1059,7 +989,7 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
               MaterialPageRoute(builder: (_) => const OTCreateScreen()),
             );
             if (result == true) {
-              _loadOrders();
+              _loadOrders(isRefresh: true);
             }
           },
           backgroundColor: AppTheme.secondaryColor,
@@ -1083,7 +1013,7 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen> {
               MaterialPageRoute(builder: (_) => const OTCreateScreen()),
             );
             if (result == true) {
-              _loadOrders();
+              _loadOrders(isRefresh: true);
             }
           },
           backgroundColor: AppTheme.secondaryColor,

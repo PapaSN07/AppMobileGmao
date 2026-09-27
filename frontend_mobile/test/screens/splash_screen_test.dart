@@ -6,6 +6,9 @@ import 'package:provider/provider.dart';
 import 'package:appmobilegmao/provider/auth_provider.dart';
 import 'package:appmobilegmao/provider/equipment_provider.dart';
 import 'package:appmobilegmao/provider/notification_provider.dart';
+import 'package:appmobilegmao/services/ot_service.dart';
+
+import '../helpers/fake_ot_service.dart';
 import 'dart:io';
 import 'package:hive/hive.dart';
 
@@ -22,6 +25,7 @@ void main() {
           ChangeNotifierProvider.value(value: authProvider),
           ChangeNotifierProvider(create: (_) => EquipmentProvider(authProvider)),
           ChangeNotifierProvider(create: (_) => NotificationProvider()),
+          Provider<OTService>.value(value: FakeOTService()),
         ],
         child: const MaterialApp(home: SplashScreen(testMode: true)),
       );

@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:appmobilegmao/provider/auth_provider.dart';
 import 'package:appmobilegmao/provider/equipment_provider.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
-import 'package:appmobilegmao/widgets/tools.dart';
 // ✅ NOUVEAUX imports pour les widgets factorisés
 import 'package:appmobilegmao/widgets/search_bar.dart' as custom;
 import 'package:appmobilegmao/widgets/equipments/equipment_list.dart';

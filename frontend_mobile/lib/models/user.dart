@@ -40,18 +40,28 @@ class User extends HiveObject {
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      id: json['id'].toString(),
-      code: json['code'] ?? '',
-      username: json['username'] ?? '',
-      password: json['password'] ?? '',
-      email: json['email'] ?? '',
-      entity: json['entity'] ?? '',
-      group: json['group'] ?? '',
-      urlImage: json['urlImage'] ?? '',
-      isAbsent: json['isAbsent'] ?? '',
-      role: json['role'] ?? '',
+      id: json['id']?.toString() ?? '',
+      code: (json['code'] ??
+              json['matricule'] ??
+              json['employeeId'] ??
+              json['cwcu_code'] ??
+              json['cwcuCode'])
+              ?.toString()
+              .trim() ??
+          '',
+      username: json['username']?.toString() ?? '',
+      password: json['password']?.toString() ?? '',
+      email: json['email']?.toString() ?? '',
+      entity: json['entity']?.toString() ?? '',
+      group: json['group']?.toString() ?? '',
+      urlImage: (json['urlImage'] ?? json['url_image'])?.toString() ?? '',
+      isAbsent: (json['isAbsent'] ?? json['is_absent'])?.toString() ?? '',
+      role: json['role']?.toString() ?? '',
     );
   }
+
+  /// Matricule / Code employé de l'utilisateur pour Coswin (dynamique et nettoyé)
+  String get matricule => (code != null && code!.trim().isNotEmpty) ? code!.trim() : '';
 
   Map<String, dynamic> toJson() {
     return {

@@ -1,4 +1,3 @@
-import 'dart:convert';
 
 import 'package:appmobilegmao/models/centre_charge.dart';
 import 'package:appmobilegmao/models/entity.dart';
@@ -10,7 +9,6 @@ import 'package:appmobilegmao/models/unite.dart';
 import 'package:appmobilegmao/models/zone.dart';
 import 'package:appmobilegmao/provider/auth_provider.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:appmobilegmao/services/equipment_service.dart';
 import 'package:appmobilegmao/services/api_service.dart';
@@ -173,49 +171,6 @@ class EquipmentProvider extends ChangeNotifier {
     return result;
   }
 
-  Future<void> _loadDebugLocalEquipments({String? entity}) async {
-    final raw = await rootBundle.loadString('assets/data/equipment_debug.json');
-    final decoded = jsonDecode(raw) as List<dynamic>;
-
-    final equipments =
-        decoded
-            .whereType<Map<String, dynamic>>()
-            .map(Equipment.fromJson)
-            .toList();
-
-    final debugList = equipments.map(_toMap).toList();
-    _allEquipments = _deduplicateList([..._allEquipments, ...debugList]);
-    _equipments = List.from(_allEquipments);
-
-    if (kDebugMode) {
-      print('🧪 EquipmentProvider: ${_equipments.length} équipements uniques chargés au total');
-    }
-  }
-
-  List<Equipment> _filterCachedEquipments(
-    List<Equipment> cached,
-    String entity,
-  ) {
-    var filtered = cached.where((eq) => eq.entity == entity);
-
-    if (_filters['zone'] != null && _filters['zone']!.isNotEmpty) {
-      filtered = filtered.where((eq) => eq.zone == _filters['zone']);
-    }
-    if (_filters['famille'] != null && _filters['famille']!.isNotEmpty) {
-      filtered = filtered.where((eq) => eq.famille == _filters['famille']);
-    }
-    if (_filters['search'] != null && _filters['search']!.isNotEmpty) {
-      final search = _filters['search']!.toLowerCase();
-      filtered = filtered.where(
-        (eq) =>
-            eq.code.toLowerCase().contains(search) ||
-            eq.description.toLowerCase().contains(search),
-      );
-    }
-
-    return filtered.toList();
-  }
-
     /// ✅ CORRIGÉ: Charge l'historique avec cache Hive
   Future<List<HistoriqueEquipment>> loadHistoriqueEquipmentPrestataire({
     required String username,
@@ -304,17 +259,9 @@ class EquipmentProvider extends ChangeNotifier {
     }
   }
 
-  // ✅ loadSelectors : entity OBLIGATOIRE (vient de l'utilisateur) avec fallback complet sur les 50 équipements
+  // ✅ loadSelectors : entity OBLIGATOIRE (vient de l'utilisateur) depuis l'API réelle
   Future<Map<String, dynamic>> loadSelectors() async {
     final entity = _authProvider.currentUser?.entity ?? 'SDDRCO2';
-
-    // S'assurer que _allEquipments contient les 50 équipements
-    if (_allEquipments.isEmpty) {
-      try {
-        await _loadDebugLocalEquipments();
-      } catch (_) {}
-    }
-
     final extracted = _buildSelectorsFromEquipments();
 
     try {

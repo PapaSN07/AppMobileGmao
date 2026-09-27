@@ -1,13 +1,14 @@
+import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
 import 'package:appmobilegmao/models/work_order.dart';
 import 'package:appmobilegmao/utils/responsive.dart';
 import 'package:appmobilegmao/theme/responsive_spacing.dart';
 import 'package:appmobilegmao/widgets/custom_app_bar.dart';
 import 'package:appmobilegmao/services/ot_service.dart';
-import 'package:appmobilegmao/services/api_service.dart';
+import 'package:appmobilegmao/models/ot_referentials.dart';
+import 'package:appmobilegmao/models/ot_status.dart';
 import 'package:appmobilegmao/services/hive_service.dart';
 import 'package:appmobilegmao/services/equipment_service.dart';
-import 'package:appmobilegmao/models/equipment.dart';
 import 'package:appmobilegmao/screens/fichier_lie_screen.dart';
 import 'dart:math';
 
@@ -17,7 +18,7 @@ import 'dart:math';
 class OTCreateScreen extends StatefulWidget {
   final WorkOrder? orderToEdit;
 
-  const OTCreateScreen({Key? key, this.orderToEdit}) : super(key: key);
+  const OTCreateScreen({super.key, this.orderToEdit});
 
   @override
   State<OTCreateScreen> createState() => _OTCreateScreenState();
@@ -36,7 +37,6 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
 
   final EquipmentService _equipmentService = EquipmentService();
   Map<String, dynamic> _selectorsData = {};
-  bool _isLoadingSelectors = false;
 
   // Contrôleurs pour l'onglet "Détails"
   final TextEditingController _codeController = TextEditingController();
@@ -51,35 +51,14 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
   final TextEditingController _supervisorController = TextEditingController();
   final TextEditingController _priorityController = TextEditingController(text: 'Non définie / Par défaut');
 
+  // Référentiels Coswin (chargés par _loadSelectors, mis en cache sur l'appareil)
   List<_GenericSelectionItem> _priorities = [
-    _GenericSelectionItem(code: 'NORMALE', description: 'Normale'),
     _GenericSelectionItem(code: '', description: 'Non définie / Par défaut'),
   ];
-
-  List<_GenericSelectionItem> _jobTypes = [
-    _GenericSelectionItem(code: 'CORR', description: 'Correctif'),
-    _GenericSelectionItem(code: 'PREV', description: 'Préventif'),
-    _GenericSelectionItem(code: 'AMEL', description: 'Amélioration'),
-    _GenericSelectionItem(code: 'EXPT', description: 'Exploitation'),
-    _GenericSelectionItem(code: 'PALL', description: 'Palliatif'),
-  ];
-
-  List<_GenericSelectionItem> _jobClasses = [
-    _GenericSelectionItem(code: 'POSTE', description: 'Poste HTA/BT'),
-    _GenericSelectionItem(code: 'HTA_S', description: 'Réseau Souterrain HTA'),
-    _GenericSelectionItem(code: 'LIGNE', description: 'Ligne Aérienne HTA/BT'),
-    _GenericSelectionItem(code: 'CEL-HTA', description: 'Cellules HTA'),
-    _GenericSelectionItem(code: 'ARM-PROT', description: 'Armoire de Protection'),
-    _GenericSelectionItem(code: 'DEPART', description: 'Départ BT/HTA'),
-    _GenericSelectionItem(code: 'BT', description: 'Réseau Basse Tension'),
-    _GenericSelectionItem(code: 'ELEC', description: 'Électricité générale'),
-  ];
-
-  List<_GenericSelectionItem> _supervisors = [
-    _GenericSelectionItem(code: '6073', description: 'Technicien Référent (6073)'),
-    _GenericSelectionItem(code: '5286', description: 'ERIC DASYLVA CARDOZO (5286)'),
-    _GenericSelectionItem(code: '6732', description: 'Mouhamadou Mansour KEBE (6732)'),
-  ];
+  List<_GenericSelectionItem> _jobTypes = [];
+  List<_GenericSelectionItem> _jobClasses = [];
+  List<_GenericSelectionItem> _supervisors = [];
+  List<_GenericSelectionItem> _statuses = [];
 
   static final List<_GenericSelectionItem> _standardActions = [
     _GenericSelectionItem(code: 'DIAG', description: 'Diagnostic et contrôle préliminaire'),
@@ -92,26 +71,6 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
     _GenericSelectionItem(code: 'SECUR', description: 'Consignation et mise en sécurité'),
   ];
 
-  static final List<_GenericSelectionItem> _standardResources = [
-    _GenericSelectionItem(code: 'RDEF', description: 'Ressource par défaut (RDEF)'),
-    _GenericSelectionItem(code: 'ELEC', description: 'Électricien Réseau'),
-    _GenericSelectionItem(code: 'MECAN', description: 'Mécanicien'),
-    _GenericSelectionItem(code: 'TECH', description: 'Technicien de Maintenance'),
-    _GenericSelectionItem(code: 'CHEF', description: 'Chef d\'équipe / Superviseur'),
-    _GenericSelectionItem(code: 'LIGNE', description: 'Lignard HTA/BT'),
-    _GenericSelectionItem(code: 'AGENT', description: 'Agent d\'intervention'),
-  ];
-
-  List<_GenericSelectionItem> _resources = [
-    _GenericSelectionItem(code: 'RDEF', description: 'Ressource par défaut (RDEF)'),
-    _GenericSelectionItem(code: 'ELEC', description: 'Électricien Réseau'),
-    _GenericSelectionItem(code: 'MECAN', description: 'Mécanicien'),
-    _GenericSelectionItem(code: 'TECH', description: 'Technicien de Maintenance'),
-    _GenericSelectionItem(code: 'CHEF', description: 'Chef d\'équipe / Superviseur'),
-    _GenericSelectionItem(code: 'LIGNE', description: 'Lignard HTA/BT'),
-    _GenericSelectionItem(code: 'AGENT', description: 'Agent d\'intervention'),
-  ];
-
   List<_GenericSelectionItem> _standardParts = [
     _GenericSelectionItem(code: '0110002', description: 'POTEAU BOIS S140  10 M (P)'),
     _GenericSelectionItem(code: '1R0750', description: 'ROULEAU DE FIL SOUPLE (PI)'),
@@ -120,13 +79,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
     _GenericSelectionItem(code: '123456', description: 'Test reparable (PI)'),
   ];
 
-  List<_GenericSelectionItem> _standardAttributes = [
-    _GenericSelectionItem(code: 'Tension assignée', description: 'Tension assignée [kV]'),
-    _GenericSelectionItem(code: 'Section câble', description: 'Section câble [MM²]'),
-    _GenericSelectionItem(code: 'Longueur ligne', description: 'Longueur ligne [KM]'),
-    _GenericSelectionItem(code: 'Puissance nominale', description: 'Puissance nominale [kVA]'),
-    _GenericSelectionItem(code: 'Courant assigné', description: 'Courant assigné [A]'),
-  ];
+  List<_GenericSelectionItem> _standardAttributes = [];
 
   final List<_GenericSelectionItem> _standardFacilities = [
     _GenericSelectionItem(code: 'VEH_LEGER', description: 'Véhicule Léger'),
@@ -136,6 +89,9 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
     _GenericSelectionItem(code: 'GROUPE_ELEC', description: 'Groupe électrogène'),
     _GenericSelectionItem(code: 'OUTILLAGE_SPEC', description: 'Outillage spécialisé'),
   ];
+
+  /// Matricule de l'utilisateur connecté (vide si inconnu : le champ devra être choisi).
+  String get _currentMatricule => HiveService.getCurrentUser()?.matricule ?? '';
 
   String _formatPriorityLabel(String code) {
     if (code.isEmpty) return 'Non définie / Par défaut';
@@ -270,7 +226,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
   @override
   void initState() {
     super.initState();
-    _otService = OTService(ApiService());
+    _otService = context.read<OTService>();
     _tabController = TabController(length: 6, vsync: this);
     _tabController.addListener(() {
       if (mounted && _tabController.indexIsChanging) setState(() {});
@@ -299,7 +255,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
       _equipmentDescController.text = ot.wowoEquipmentDescription;
       _supervisorController.text = (ot.wowoSupervisor != null && ot.wowoSupervisor!.isNotEmpty && ot.wowoSupervisor!.toLowerCase() != 'supervisor')
           ? ot.wowoSupervisor!
-          : '6073';
+          : _currentMatricule;
       _tempWfEmployeeController.text = _supervisorController.text;
       _completionRate = ot.wowoCompletionRate ?? 0.0;
       
@@ -308,7 +264,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
       _priorityController.text = _formatPriorityLabel(_priority);
 
       final normStatus = ot.wowoUserStatus.trim().toUpperCase();
-      _status = ['CR', 'OUV', 'EC', 'CL', 'TE', 'SUSP', 'AY'].contains(normStatus) ? normStatus : 'OUV';
+      _status = OTStatus.normalize(normStatus) ?? normStatus;
 
       _isLoadingData = true;
       _loadAllSubResources();
@@ -322,9 +278,6 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
           if (userCode.isNotEmpty && userCode.toLowerCase() != 'test' && RegExp(r'^\d+$').hasMatch(userCode)) {
             _supervisorController.text = userCode;
             _tempWfEmployeeController.text = userCode;
-          } else {
-            _supervisorController.text = '6073';
-            _tempWfEmployeeController.text = '6073';
           }
           if (username.isNotEmpty) {
             _tempWfDescriptionController.text = username;
@@ -616,94 +569,8 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
   }
 
   Future<void> _loadSelectors() async {
-    // 1. Charger les référentiels officiels Coswin Senelec (types, classes, priorités, superviseurs)
-    try {
-      final refs = await _otService.getReferentials();
-      if (mounted && refs.isNotEmpty) {
-        setState(() {
-          if (refs['jobTypes'] is List) {
-            final items = (refs['jobTypes'] as List)
-                .map((e) => _GenericSelectionItem(
-                      code: e['code']?.toString() ?? '',
-                      description: e['description']?.toString() ?? e['code']?.toString() ?? '',
-                    ))
-                .where((item) => item.code.isNotEmpty)
-                .toList();
-            if (items.isNotEmpty) _jobTypes = items;
-          }
-
-          if (refs['jobClasses'] is List) {
-            final items = (refs['jobClasses'] as List)
-                .map((e) => _GenericSelectionItem(
-                      code: e['code']?.toString() ?? '',
-                      description: e['description']?.toString() ?? e['code']?.toString() ?? '',
-                    ))
-                .where((item) => item.code.isNotEmpty)
-                .toList();
-            if (items.isNotEmpty) _jobClasses = items;
-          }
-
-          if (refs['priorities'] is List) {
-            final items = (refs['priorities'] as List)
-                .map((e) => _GenericSelectionItem(
-                      code: e['code']?.toString() ?? '',
-                      description: e['description']?.toString() ??
-                          (e['code']?.toString().isNotEmpty == true
-                              ? e['code'].toString()
-                              : 'Non définie / Par défaut'),
-                    ))
-                .toList();
-            if (items.isNotEmpty) _priorities = items;
-          }
-
-          if (refs['supervisors'] is List) {
-            final items = (refs['supervisors'] as List)
-                .map((e) => _GenericSelectionItem(
-                      code: e['code']?.toString() ?? '',
-                      description: e['description']?.toString() ?? e['code']?.toString() ?? '',
-                    ))
-                .where((item) => item.code.isNotEmpty)
-                .toList();
-            if (items.isNotEmpty) _supervisors = items;
-          }
-
-          if (refs['resources'] is List) {
-            final items = (refs['resources'] as List)
-                .map((e) => _GenericSelectionItem(
-                      code: e['code']?.toString() ?? '',
-                      description: e['description']?.toString() ?? e['code']?.toString() ?? '',
-                    ))
-                .where((item) => item.code.isNotEmpty)
-                .toList();
-            if (items.isNotEmpty) _resources = items;
-          }
-
-          if (refs['items'] is List) {
-            final items = (refs['items'] as List)
-                .map((e) => _GenericSelectionItem(
-                      code: e['code']?.toString() ?? '',
-                      description: e['description']?.toString() ?? e['code']?.toString() ?? '',
-                    ))
-                .where((item) => item.code.isNotEmpty)
-                .toList();
-            if (items.isNotEmpty) _standardParts = items;
-          }
-
-          if (refs['specifications'] is List) {
-            final items = (refs['specifications'] as List)
-                .map((e) => _GenericSelectionItem(
-                      code: e['code']?.toString() ?? '',
-                      description: e['description']?.toString() ?? e['code']?.toString() ?? '',
-                    ))
-                .where((item) => item.code.isNotEmpty)
-                .toList();
-            if (items.isNotEmpty) _standardAttributes = items;
-          }
-        });
-      }
-    } catch (e) {
-      debugPrint('Erreur chargement référentiels Coswin: $e');
-    }
+    // 1. Charger les référentiels officiels Coswin Senelec (types, classes, priorités, statuts, superviseurs)
+    await _loadCoswinReferentials();
 
     // Charger les articles Coswin si non encore chargés dans les référentiels
     try {
@@ -728,18 +595,17 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
       debugPrint('Erreur chargement articles Coswin: $e');
     }
 
-    // Charger les spécifications Coswin si non encore chargées
+    // Charger les spécifications Coswin en direct (100% réel, 0 mock)
     try {
-      if (_standardAttributes.length <= 5) {
+      if (_standardAttributes.isEmpty) {
         final realSpecs = await _otService.getSpecifications();
         if (mounted && realSpecs.isNotEmpty) {
           setState(() {
             _standardAttributes = realSpecs
                 .map((e) {
-                  final n = (e['name'] ?? e['code'])?.toString() ?? '';
-                  final u = (e['unit'] ?? '')?.toString() ?? '';
-                  final full = u.isNotEmpty && !n.contains(u) ? '$n [$u]' : n;
-                  return _GenericSelectionItem(code: n, description: full);
+                  final code = (e['code'] ?? e['name'])?.toString() ?? '';
+                  final desc = (e['description'] ?? e['name'] ?? code)?.toString() ?? '';
+                  return _GenericSelectionItem(code: code, description: desc);
                 })
                 .where((it) => it.code.isNotEmpty)
                 .toList();
@@ -754,25 +620,15 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
     final entityCode = _entityController.text.trim();
     if (entityCode.isEmpty) return;
 
-    setState(() {
-      _isLoadingSelectors = true;
-    });
-
     try {
       final data = await _equipmentService.getEquipmentSelectors(entity: entityCode);
       if (mounted) {
         setState(() {
           _selectorsData = data;
-          _isLoadingSelectors = false;
         });
       }
     } catch (e) {
       debugPrint('Erreur lors du chargement des sélecteurs: $e');
-      if (mounted) {
-        setState(() {
-          _isLoadingSelectors = false;
-        });
-      }
     }
   }
 
@@ -801,6 +657,51 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
     return items;
   }
 
+  Future<void> _loadCoswinReferentials() async {
+    try {
+      final refs = await _otService.getReferentials();
+      if (mounted && !refs.isEmpty) {
+        List<_GenericSelectionItem> toItems(List<RefItem> list) =>
+            list.map((e) => _GenericSelectionItem(code: e.code, description: e.label)).toList();
+        setState(() {
+          _jobTypes = toItems(refs.jobTypes);
+          _jobClasses = toItems(refs.jobClasses);
+          _priorities = [
+            _GenericSelectionItem(code: '', description: 'Non définie / Par défaut'),
+            ...toItems(refs.priorities),
+          ];
+          _supervisors = toItems(refs.supervisors);
+          _statuses = toItems(refs.statuses);
+        });
+      }
+    } catch (e) {
+      debugPrint('Erreur chargement référentiels Coswin: $e');
+    }
+  }
+
+  /// Ouvre un sélecteur de référentiel Coswin ; si la liste est vide
+  /// (Coswin injoignable au chargement de l'écran), elle est rechargée d'abord.
+  Future<void> _showReferentialSelector({
+    required String title,
+    required List<_GenericSelectionItem> Function() items,
+    required Function(String) onSelected,
+  }) async {
+    if (items().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Chargement de la liste depuis Coswin…'), duration: Duration(seconds: 2)),
+      );
+      await _loadCoswinReferentials();
+      if (!mounted) return;
+    }
+    if (items().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Liste Coswin indisponible. Vérifiez la connexion puis réessayez.')),
+      );
+      return;
+    }
+    _showGenericSelector(title: title, items: items(), onSelected: onSelected);
+  }
+
   void _showGenericSelector({
     required String title,
     required List<_GenericSelectionItem> items,
@@ -824,7 +725,10 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
   }
 
   void _showEquipmentSelector() {
-    final entityCode = _entityController.text.trim();
+    // Priorité : entité de l'utilisateur connecté, sinon champ entité du formulaire
+    final userEntity = HiveService.getCurrentUser()?.entity ?? '';
+    final formEntity = _entityController.text.trim();
+    final entityCode = userEntity.isNotEmpty ? userEntity : formEntity;
 
     showModalBottomSheet(
       context: context,
@@ -888,7 +792,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
         'wowoZone': _zoneController.text.trim(),
         'wowoRequestEntity': _entityController.text.trim(),
         'wowoCostcentre': _costcentreController.text.trim(),
-        'wowoEquipment': _equipmentController.text.trim().isNotEmpty ? _equipmentController.text.trim() : 'MOCK_EQ',
+        'wowoEquipment': _equipmentController.text.trim(),
         'wowoSupervisor': (RegExp(r'^\d+$').hasMatch(_supervisorController.text.trim()) || _supervisorController.text.trim() == 'supervisor') ? _supervisorController.text.trim() : 'supervisor',
         'wowoCompletionRate': _completionRate,
         if (_priority.trim().isNotEmpty) 'wowoPriority': _priority.trim(),
@@ -999,8 +903,12 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
               comment['description']?.toString() ?? '',
               comment['attachedFile'] as Map<String, dynamic>?,
             );
+            final dynamicMatricule = HiveService.getCurrentUser()?.matricule;
+            final emp = (comment['employee']?.toString().trim().isNotEmpty == true)
+                ? comment['employee']
+                : dynamicMatricule;
             await _otService.createDocument(finalOTCode, {
-              'woefEmployee': comment['employee'],
+              'woefEmployee': emp,
               'reemDescription': fullDesc,
               'woefStartDate': comment['startDate'],
               'woefEndDate': comment['endDate'],
@@ -1026,7 +934,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
             }
             final emp = (wf['employee'] != null && wf['employee'].toString().trim().isNotEmpty && wf['employee'].toString().trim().toLowerCase() != 'supervisor')
                 ? wf['employee'].toString().trim()
-                : (_supervisorController.text.trim().isNotEmpty && _supervisorController.text.trim().toLowerCase() != 'supervisor' ? _supervisorController.text.trim() : '6073');
+                : (_supervisorController.text.trim().isNotEmpty && _supervisorController.text.trim().toLowerCase() != 'supervisor' ? _supervisorController.text.trim() : _currentMatricule);
             await _otService.createWorkforce(finalOTCode, {
               'woeaEmployee': emp,
               'woeaResource': resourceCode,
@@ -1123,23 +1031,55 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
     } catch (e) {
       debugPrint('Erreur lors de l\'enregistrement de l\'OT global: $e');
       final errorMsg = e.toString().replaceFirst('Exception: ', '');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: Colors.red.shade800,
-          duration: const Duration(seconds: 5),
-          content: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          title: const Row(
             children: [
-              const Icon(Icons.error_outline, color: Colors.white),
-              const SizedBox(width: 8),
+              Icon(Icons.error_outline, color: Colors.red),
+              SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  errorMsg,
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  'Rejet de la saisie Coswin',
+                  style: TextStyle(color: Colors.red, fontSize: 17, fontWeight: FontWeight.bold),
                 ),
               ),
             ],
           ),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'La mise à jour de l\'OT a été refusée par Coswin :',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: Colors.red.shade200),
+                  ),
+                  child: Text(
+                    errorMsg,
+                    style: TextStyle(fontFamily: 'monospace', fontSize: 12, color: Colors.red.shade900),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Fermer', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
         ),
       );
     } finally {
@@ -1261,9 +1201,9 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                     validator: (val) => val == null || val.isEmpty ? 'Obligatoire' : null,
                     suffixIcon: const Icon(Icons.arrow_drop_down, color: Color(0xFF0F1B80)),
                     onTap: () {
-                      _showGenericSelector(
+                      _showReferentialSelector(
                         title: 'Choisir la Famille (Type)',
-                        items: _jobTypes,
+                        items: () => _jobTypes,
                         onSelected: (val) => setState(() => _jobTypeController.text = val),
                       );
                     },
@@ -1278,9 +1218,9 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                     maxLength: 8,
                     suffixIcon: const Icon(Icons.arrow_drop_down, color: Color(0xFF0F1B80)),
                     onTap: () {
-                      _showGenericSelector(
+                      _showReferentialSelector(
                         title: 'Choisir la Classe de travail',
-                        items: _jobClasses,
+                        items: () => _jobClasses,
                         onSelected: (val) => setState(() => _jobClassController.text = val),
                       );
                     },
@@ -1404,10 +1344,9 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                     validator: (val) => val == null || val.isEmpty ? 'Obligatoire' : null,
                     suffixIcon: const Icon(Icons.arrow_drop_down, color: Color(0xFF0F1B80)),
                     onTap: () {
-                      final items = _extractSelectionItems('supervisors');
                       _showGenericSelector(
                         title: 'Choisir le Superviseur',
-                        items: items.isNotEmpty ? items : _supervisors,
+                        items: _supervisors.isNotEmpty ? _supervisors : _extractSelectionItems('supervisors'),
                         onSelected: (val) => setState(() => _supervisorController.text = val),
                       );
                     },
@@ -1458,14 +1397,15 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                       DropdownButtonFormField<String>(
                         value: _status,
                         onChanged: (val) => setState(() => _status = val ?? 'CR'),
-                        items: const [
-                          DropdownMenuItem(value: 'CR', child: Text('Créé (CR)')),
-                          DropdownMenuItem(value: 'OUV', child: Text('Ouvert (OUV)')),
-                          DropdownMenuItem(value: 'EC', child: Text('En cours (EC)')),
-                          DropdownMenuItem(value: 'SUSP', child: Text('Suspendu (SUSP)')),
-                          DropdownMenuItem(value: 'CL', child: Text('Clôturé (CL)')),
-                          DropdownMenuItem(value: 'TE', child: Text('Terminé (TE)')),
-                          DropdownMenuItem(value: 'AY', child: Text('Archivé (AY)')),
+                        isExpanded: true,
+                        items: [
+                          // Le statut courant reste sélectionnable même si le référentiel n'est pas chargé
+                          if (!_statuses.any((st) => st.code == _status))
+                            DropdownMenuItem(value: _status, child: Text(_status)),
+                          ..._statuses.map((st) => DropdownMenuItem(
+                                value: st.code,
+                                child: Text(st.description, overflow: TextOverflow.ellipsis),
+                              )),
                         ],
                       ),
                     ],
@@ -2138,14 +2078,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                           tooltip: 'Choisir un intervenant',
                           onPressed: () {
                             final sups = _supervisors.isNotEmpty ? _supervisors : _extractSelectionItems('supervisors');
-                            final allItems = sups.isNotEmpty ? sups : [
-                              _GenericSelectionItem(code: '6073', description: 'Technicien Référent (6073)'),
-                              _GenericSelectionItem(code: '5893', description: 'Mbaye NIANG (5893)'),
-                              _GenericSelectionItem(code: '6062', description: 'Agent 6062 (6062)'),
-                              _GenericSelectionItem(code: '5286', description: 'ERIC DASYLVA CARDOZO (5286)'),
-                              _GenericSelectionItem(code: '6732', description: 'Mouhamadou Mansour KEBE (6732)'),
-                              _GenericSelectionItem(code: 'EXTERNE', description: 'Prestataire Externe (EXTERNE)'),
-                            ];
+                            final allItems = sups;
                             _showGenericSelector(
                               title: 'Choisir un Intervenant',
                               items: allItems,
@@ -3658,12 +3591,11 @@ class _EquipmentSelectionModal extends StatefulWidget {
   final EquipmentService equipmentService;
 
   const _EquipmentSelectionModal({
-    Key? key,
     required this.entity,
     required this.zone,
     required this.onSelected,
     required this.equipmentService,
-  }) : super(key: key);
+  });
 
   @override
   State<_EquipmentSelectionModal> createState() => _EquipmentSelectionModalState();
@@ -3715,9 +3647,11 @@ class _EquipmentSelectionModalState extends State<_EquipmentSelectionModal> {
     }
 
     try {
-      final entityToUse = widget.entity.trim().isNotEmpty && widget.entity.trim().toUpperCase() != 'REFORME'
+      // Utilise l'entité passée, sans jamais basculer sur SENELEC (qui charge 27 979 équipements)
+      final entityToUse = widget.entity.trim().isNotEmpty &&
+              widget.entity.trim().toUpperCase() != 'REFORME'
           ? widget.entity.trim()
-          : 'SENELEC';
+          : 'SDDV'; // Entité de base par défaut Senelec
 
       final query = _searchController.text.trim();
 
@@ -3729,20 +3663,7 @@ class _EquipmentSelectionModalState extends State<_EquipmentSelectionModal> {
         pageSize: 30,
       );
 
-      List<Equipment> eqList = response.items;
-
-      // Si l'entité ne retourne aucun équipement, basculer sur SENELEC
-      if (eqList.isEmpty && entityToUse != 'SENELEC' && page == 1) {
-        final fallbackResponse = await widget.equipmentService.getEquipments(
-          entity: 'SENELEC',
-          search: query.isNotEmpty ? query : null,
-          page: 1,
-          pageSize: 30,
-        );
-        eqList = fallbackResponse.items;
-      }
-
-      final List<_GenericSelectionItem> items = eqList.map((eq) =>
+      final List<_GenericSelectionItem> items = response.items.map((eq) =>
         _GenericSelectionItem(
           code: eq.code,
           description: eq.description.isNotEmpty ? eq.description : eq.code,
@@ -3786,14 +3707,27 @@ class _EquipmentSelectionModalState extends State<_EquipmentSelectionModal> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                widget.entity.isNotEmpty
-                    ? 'Choisir un équipement (${widget.entity})'
-                    : 'Choisir un équipement',
-                style: const TextStyle(
-                  color: Color(0xFF0F1B80),
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Choisir un équipement',
+                      style: const TextStyle(
+                        color: Color(0xFF0F1B80),
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    if (widget.entity.isNotEmpty)
+                      Text(
+                        'Entité : ${widget.entity}',
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 12,
+                        ),
+                      ),
+                  ],
                 ),
               ),
               IconButton(
@@ -3890,11 +3824,10 @@ class _GenericSelectionModal extends StatefulWidget {
   final Function(String) onSelected;
 
   const _GenericSelectionModal({
-    Key? key,
     required this.title,
     required this.items,
     required this.onSelected,
-  }) : super(key: key);
+  });
 
   @override
   State<_GenericSelectionModal> createState() => _GenericSelectionModalState();

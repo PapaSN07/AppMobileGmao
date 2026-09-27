@@ -1,24 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:appmobilegmao/provider/auth_provider.dart';
 import 'package:appmobilegmao/models/order.dart';
-import 'package:appmobilegmao/theme/app_theme.dart';
-import 'package:appmobilegmao/utils/responsive.dart';
 import 'package:appmobilegmao/theme/responsive_spacing.dart';
-import 'package:appmobilegmao/widgets/custom_bottom_navigation_bar.dart';
-import 'package:appmobilegmao/widgets/custom_app_bar.dart';
-import 'package:appmobilegmao/screens/fichier_lie_screen.dart';
-import 'package:appmobilegmao/screens/main_screen.dart';
-import 'package:appmobilegmao/services/ot_service.dart';
-import 'package:appmobilegmao/services/api_service.dart';
-import 'package:appmobilegmao/services/hive_service.dart';
 
 /// Onglet "Détails" - Affiche le taux de réalisation et un bouton pour accéder aux détails complets
 /// Principe SOLID: Single Responsibility - Gère uniquement l'affichage du taux de réalisation
 class DetailsTab extends StatefulWidget {
   final Order order;
 
-  const DetailsTab({required this.order});
+  const DetailsTab({super.key, required this.order});
 
   @override
   State<DetailsTab> createState() => DetailsTabState();
@@ -63,6 +52,12 @@ class DetailsTabState extends State<DetailsTab> {
             _buildDetailField(
               label: 'Code OT',
               value: widget.order.code,
+              spacing: spacing,
+            ),
+            const SizedBox(height: 16),
+            _buildDetailField(
+              label: 'Équipement',
+              value: widget.order.unite,
               spacing: spacing,
             ),
             const SizedBox(height: 16),
@@ -185,47 +180,4 @@ class DetailsTabState extends State<DetailsTab> {
     );
   }
 
-  void _showTauxRealisationPicker(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      builder: (BuildContext context) {
-        return Container(
-          height: 300,
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              const Text(
-                'Sélectionner le taux de réalisation',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF0F1B80),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: 101,
-                  itemBuilder: (context, index) {
-                    return ListTile(
-                      title: Text(
-                        '$index%',
-                        style: const TextStyle(fontSize: 14),
-                      ),
-                      onTap: () {
-                        setState(() {
-                          _tauxRealisationController.text = '$index%';
-                        });
-                        Navigator.pop(context);
-                      },
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
 }

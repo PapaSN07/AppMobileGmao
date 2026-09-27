@@ -1,3 +1,5 @@
+import 'package:appmobilegmao/models/ot_status.dart';
+
 class WorkOrder {
   // Propriétés principales
   final int pkWorkOrder;
@@ -22,7 +24,7 @@ class WorkOrder {
   final String? wowoFeedbackNote;
 
   // Taux de réalisation
-  final double? wowoCompletionRate; // ✅ AJOUTÉ
+  final double? wowoCompletionRate; // AJOUTÉ
 
   // Descriptions
   final String wowoEquipmentDescription;
@@ -71,45 +73,69 @@ class WorkOrder {
     this.wowoString2,
     this.wowoString4,
     this.mdusDescription,
-    this.wowoCompletionRate, // ✅ AJOUTÉ
+    this.wowoCompletionRate, //  AJOUTÉ
   });
 
   factory WorkOrder.fromJson(Map<String, dynamic> json) {
+    final extra = json['workOrderExtraViewworkorderfind'] as Map<String, dynamic>?;
+
+    // Calcul dynamique du taux d'avancement si non fourni
+    double? completionRate =
+        double.tryParse(json['wowoCompletionRate']?.toString() ?? '') ??
+            OTStatus.completionRate(json['wowoUserStatus']?.toString());
+    final longString2 = json['wowoLongString2']?.toString() ?? '';
+    if (completionRate == null && longString2.contains('%')) {
+      completionRate = double.tryParse(longString2.replaceAll('%', '').trim());
+    }
+
+    // Extraction robuste des descriptions (Coswin natif vs format aplati)
+    final equipDesc = json['wowoEquipmentDescription'] ??
+        extra?['ereqDescription'] ??
+        json['wowoSystemEquipmentDescription'] ??
+        '';
+
+    final jobDesc = json['mdjbDescription'] ??
+        extra?['mdjbDescription'] ??
+        json['wowoJob'] ??
+        '';
+
     return WorkOrder(
-      wowoCompletionRate: json['wowoCompletionRate'] != null
-          ? (json['wowoCompletionRate'] as num).toDouble()
-          : null, // ✅ AJOUTÉ
-      pkWorkOrder: json['pkWorkOrder'] ?? 0,
-      wowoCode: json['wowoCode'] ?? 0,
-      wowoUserStatus: json['wowoUserStatus'] ?? '',
-      wowoEquipment: json['wowoEquipment'] ?? '',
-      wowoJob: json['wowoJob'] ?? '',
-      wowoJobType: json['wowoJobType'] ?? '',
-      wowoJobClass: json['wowoJobClass'] ?? '',
-      wowoPriority: json['wowoPriority'],
-      wowoActionEntity: json['wowoActionEntity'] ?? '',
-      wowoRequestEntity: json['wowoRequestEntity'] ?? '',
-      wowoScheduleDate: json['wowoScheduleDate'],
-      wowoSupervisor: json['wowoSupervisor'],
-      wowoCostcentre: json['wowoCostcentre'] ?? '',
-      wowoTargetDate: json['wowoTargetDate'],
-      wowoStartDate: json['wowoStartDate'],
-      wowoEndDate: json['wowoEndDate'],
-      wowoJobRequest: json['wowoJobRequest'],
-      wowoZone: json['wowoZone'],
-      wowoFunction: json['wowoFunction'],
-      wowoFeedbackNote: json['wowoFeedbackNote'],
-      wowoEquipmentDescription: json['wowoEquipmentDescription'] ?? '',
-      wowoActionEntityDescription: json['wowoActionEntityDescription'],
-      wowoCostcentreDescription: json['wowoCostcentreDescription'],
-      wowoJobClassDescription: json['wowoJobClassDescription'],
-      wowoJobTypeDescription: json['wowoJobTypeDescription'],
-      wowoSupervisorDescription: json['wowoSupervisorDescription'],
-      mdjbDescription: json['mdjbDescription'],
-      wowoString1: json['wowoString1'],
-      wowoString2: json['wowoString2'],
-      wowoString4: json['wowoString4'],
-      mdusDescription: json['mdusDescription'],
+      wowoCompletionRate: completionRate,
+      pkWorkOrder: json['pkWorkOrder'] is int
+          ? json['pkWorkOrder']
+          : int.tryParse(json['pkWorkOrder']?.toString() ?? '') ?? 0,
+      wowoCode: json['wowoCode'] is int
+          ? json['wowoCode']
+          : int.tryParse(json['wowoCode']?.toString() ?? '') ?? 0,
+      wowoUserStatus: (json['wowoUserStatus'] ?? '').toString(),
+      wowoEquipment: (json['wowoEquipment'] ?? '').toString(),
+      wowoJob: (json['wowoJob'] ?? '').toString(),
+      wowoJobType: (json['wowoJobType'] ?? '').toString(),
+      wowoJobClass: (json['wowoJobClass'] ?? '').toString(),
+      wowoPriority: json['wowoPriority']?.toString(),
+      wowoActionEntity: (json['wowoActionEntity'] ?? '').toString(),
+      wowoRequestEntity: (json['wowoRequestEntity'] ?? '').toString(),
+      wowoScheduleDate: json['wowoScheduleDate']?.toString(),
+      wowoSupervisor: json['wowoSupervisor']?.toString(),
+      wowoCostcentre: (json['wowoCostcentre'] ?? '').toString(),
+      wowoTargetDate: json['wowoTargetDate']?.toString(),
+      wowoStartDate: json['wowoStartDate']?.toString(),
+      wowoEndDate: json['wowoEndDate']?.toString(),
+      wowoJobRequest: json['wowoJobRequest']?.toString(),
+      wowoZone: json['wowoZone']?.toString(),
+      wowoFunction: json['wowoFunction']?.toString(),
+      wowoFeedbackNote: json['wowoFeedbackNote']?.toString(),
+      wowoEquipmentDescription: equipDesc.toString(),
+      wowoActionEntityDescription: json['wowoActionEntityDescription']?.toString(),
+      wowoCostcentreDescription: json['wowoCostcentreDescription']?.toString(),
+      wowoJobClassDescription: json['wowoJobClassDescription']?.toString(),
+      wowoJobTypeDescription: json['wowoJobTypeDescription']?.toString(),
+      wowoSupervisorDescription: json['wowoSupervisorDescription']?.toString(),
+      mdjbDescription: jobDesc.toString(),
+      wowoString1: json['wowoString1']?.toString(),
+      wowoString2: json['wowoString2']?.toString(),
+      wowoString4: json['wowoString4']?.toString(),
+      mdusDescription: json['mdusDescription']?.toString(),
     );
   }
 
@@ -146,7 +172,7 @@ class WorkOrder {
       'wowoString2': wowoString2,
       'wowoString4': wowoString4,
       'mdusDescription': mdusDescription,
-      'wowoCompletionRate': wowoCompletionRate, // ✅ AJOUTÉ
+      'wowoCompletionRate': wowoCompletionRate, //  AJOUTÉ
     };
   }
 

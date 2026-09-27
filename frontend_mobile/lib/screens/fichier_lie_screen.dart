@@ -8,7 +8,7 @@ import 'package:image_picker/image_picker.dart';
 /// Écran pour ajouter un fichier lié
 /// Principe SOLID: Single Responsibility - Cet écran gère uniquement l'ajout de fichiers liés
 class FichierLieScreen extends StatefulWidget {
-  const FichierLieScreen({Key? key}) : super(key: key);
+  const FichierLieScreen({super.key});
 
   @override
   State<FichierLieScreen> createState() => _FichierLieScreenState();
@@ -95,34 +95,6 @@ class _FichierLieScreenState extends State<FichierLieScreen> {
         ),
       );
       Navigator.pop(context, fileData);
-    }
-  }
-
-  /// Affiche le sélecteur de date
-  Future<void> _selectDate() async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: AppTheme.primaryColor,
-              onPrimary: Colors.white,
-              onSurface: AppTheme.secondaryColor,
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-    if (picked != null) {
-      setState(() {
-        _dateCreationController.text =
-            '${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}';
-      });
     }
   }
 

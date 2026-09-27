@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:appmobilegmao/screens/home_screen.dart';
 import 'package:appmobilegmao/provider/auth_provider.dart';
+import 'package:appmobilegmao/services/ot_service.dart';
+
+import '../helpers/fake_ot_service.dart';
 import 'package:provider/provider.dart';
 import 'dart:io';
 import 'package:hive/hive.dart';
@@ -17,6 +20,7 @@ void main() {
       return MultiProvider(
         providers: [
           ChangeNotifierProvider.value(value: authProvider),
+          Provider<OTService>.value(value: FakeOTService()),
         ],
         child: const MaterialApp(home: HomeScreen()),
       );

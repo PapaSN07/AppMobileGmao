@@ -5,6 +5,7 @@ import 'package:appmobilegmao/models/feeder.dart';
 import 'package:appmobilegmao/models/unite.dart';
 import 'package:appmobilegmao/models/zone.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../models/equipment.dart';
@@ -112,12 +113,27 @@ class HiveService {
     await userBox.clear();
     await selectorsBox.clear();
     await metadataBox.clear();
-    await pendingActionsBox.clear();
     await workOrderBox.clear();
     await interventionBox.clear();
     await attributeValuesBox.clear();
     await historiqueEquipmentBox.clear(); // ✅ AJOUTÉ
+    await clearTokens();
     if (kDebugMode) print('HiveService: tout le cache vidé');
+  }
+
+  /// Vide tout le cache de données métier (OT, équipements, sélecteurs, etc.)
+  /// tout en préservant la session de l'utilisateur (tokens et profil)
+  /// et les actions hors-ligne pas encore synchronisées (pendingActionsBox).
+  static Future<void> clearDataCache() async {
+    await equipmentBox.clear();
+    await selectorsBox.clear();
+    await metadataBox.clear();
+    await pendingActionsBox.clear();
+    await workOrderBox.clear();
+    await interventionBox.clear();
+    await attributeValuesBox.clear();
+    await historiqueEquipmentBox.clear();
+    if (kDebugMode) print('HiveService: cache de données métier vidé (mode 100% direct)');
   }
 
   // -------------------------
@@ -155,36 +171,62 @@ class HiveService {
   }
 
   // -------------------------
-  // Gestion minimale des tokens (auth)
+  // Tokens d'authentification : stockage chiffré du système
+  // (Keystore Android / Keychain iOS), jamais dans Hive en clair.
   // -------------------------
+  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
+  static const String _accessTokenKey = 'access_token';
+  static const String _refreshTokenKey = 'refresh_token';
+
+  static Future<String?> _readSecure(String key) async {
+    try {
+      return await _secureStorage.read(key: key);
+    } catch (e) {
+      if (kDebugMode) print('HiveService: lecture sécurisée impossible ($key): $e');
+      return null;
+    }
+  }
+
+  static Future<void> _writeSecure(String key, String? value) async {
+    try {
+      if (value == null) {
+        await _secureStorage.delete(key: key);
+      } else {
+        await _secureStorage.write(key: key, value: value);
+      }
+    } catch (e) {
+      if (kDebugMode) print('HiveService: écriture sécurisée impossible ($key): $e');
+    }
+  }
+
+  /// Supprime les tokens des anciennes versions, stockés en clair dans Hive.
+  static Future<void> _purgeLegacyTokens() async {
+    try {
+      final box = await Hive.openBox(_authBoxName);
+      await box.delete(_accessTokenKey);
+      await box.delete(_refreshTokenKey);
+    } catch (_) {}
+  }
+
   static Future<void> saveTokens(
     String accessToken,
     String refreshToken,
   ) async {
-    final box = await Hive.openBox(_authBoxName);
-    await box.put('access_token', accessToken);
-    await box.put('refresh_token', refreshToken);
+    await _writeSecure(_accessTokenKey, accessToken);
+    await _writeSecure(_refreshTokenKey, refreshToken);
+    await _purgeLegacyTokens();
   }
 
-  static Future<String?> getAccessToken() async {
-    final box = await Hive.openBox(_authBoxName);
-    return box.get('access_token') as String?;
-  }
+  static Future<String?> getAccessToken() => _readSecure(_accessTokenKey);
 
-  static Future<String?> getRefreshToken() async {
-    final box = await Hive.openBox(_authBoxName);
-    return box.get('refresh_token') as String?;
-  }
+  static Future<String?> getRefreshToken() => _readSecure(_refreshTokenKey);
 
-  static Future<void> saveAccessToken(String token) async {
-    final box = await Hive.openBox(_authBoxName);
-    await box.put('access_token', token);
-  }
+  static Future<void> saveAccessToken(String token) => _writeSecure(_accessTokenKey, token);
 
   static Future<void> clearTokens() async {
-    final box = await Hive.openBox(_authBoxName);
-    await box.delete('access_token');
-    await box.delete('refresh_token');
+    await _writeSecure(_accessTokenKey, null);
+    await _writeSecure(_refreshTokenKey, null);
+    await _purgeLegacyTokens();
   }
 
   // -------------------------

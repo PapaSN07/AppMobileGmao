@@ -5,7 +5,6 @@ import 'package:appmobilegmao/models/user.dart';
 import 'package:appmobilegmao/services/api_service.dart';
 import 'package:appmobilegmao/services/hive_service.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/widgets.dart';
 
 class AuthService {
   final ApiService apiClient;
@@ -88,16 +87,16 @@ class AuthService {
         return _failureResponse("Erreur serveur (${e.statusCode}). Veuillez réessayer plus tard.");
       }
 
-      // ✅ Si erreur réseau ou service indisponible (0, null, 503) => mode hors-ligne
+      // ✅ Si erreur réseau ou service indisponible (0, null, 503)
       if (e.statusCode == null || e.statusCode == 0 || e.statusCode == 503) {
-        return _offlineLoginFallback(username, password);
+        return _failureResponse(e.message.isNotEmpty ? e.message : "Impossible de joindre le serveur Senelec. Vérifiez votre connexion internet.");
       }
 
       return _failureResponse("Erreur serveur : ${e.message}");
     } on SocketException {
-      return _offlineLoginFallback(username, password);
+      return _failureResponse("Impossible de joindre le serveur. Vérifiez votre connexion internet.");
     } on TimeoutException {
-      return _offlineLoginFallback(username, password);
+      return _failureResponse("Le serveur met trop de temps à répondre. Veuillez réessayer.");
     } catch (e) {
       if (kDebugMode) {
         print('❌ AuthService: Erreur inattendue durant login: $e');
@@ -111,36 +110,6 @@ class AuthService {
       'success': false,
       'message': message,
     };
-  }
-
-  Map<String, dynamic> _offlineLoginFallback(String username, String password) {
-    final cleanUsername = username.trim();
-    final cleanPassword = password.trim();
-
-    if (cleanUsername.isEmpty || cleanPassword.isEmpty) {
-      return _failureResponse(
-        "Veuillez saisir un nom d'utilisateur et un mot de passe.",
-      );
-    }
-
-    // Récupérer l'utilisateur stocké lors d'une précédente connexion en ligne réussie
-    final User? cachedUser = HiveService.getCurrentUser();
-
-    if (cachedUser != null &&
-        cachedUser.username.toLowerCase() == cleanUsername.toLowerCase()) {
-      if (kDebugMode) {
-        print('✅ Connexion hors-ligne réussie pour ${cachedUser.username}');
-      }
-      return {
-        'success': true,
-        'data': cachedUser,
-        'message': 'Connexion réussie (mode hors-ligne)',
-      };
-    }
-
-    return _failureResponse(
-      "Mode hors-ligne : Cet utilisateur n'est pas enregistré sur cet appareil.",
-    );
   }
 
   Future<void> logout(String username) async {

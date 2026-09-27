@@ -1,17 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:appmobilegmao/provider/auth_provider.dart';
 import 'package:appmobilegmao/models/order.dart';
-import 'package:appmobilegmao/theme/app_theme.dart';
-import 'package:appmobilegmao/utils/responsive.dart';
-import 'package:appmobilegmao/theme/responsive_spacing.dart';
 import 'package:appmobilegmao/widgets/custom_bottom_navigation_bar.dart';
 import 'package:appmobilegmao/widgets/custom_app_bar.dart';
-import 'package:appmobilegmao/screens/fichier_lie_screen.dart';
 import 'package:appmobilegmao/screens/main_screen.dart';
 import 'package:appmobilegmao/services/ot_service.dart';
-import 'package:appmobilegmao/services/api_service.dart';
-import 'package:appmobilegmao/services/hive_service.dart';
 import 'ot_tabs/ot_details_tab.dart';
 import 'ot_tabs/ot_mode_operatoire_tab.dart';
 import 'ot_tabs/ot_commentaires_tab.dart';
@@ -26,7 +19,7 @@ class OTDetailScreen extends StatefulWidget {
   // L'ordre de travail dont on veut afficher les détails
   final Order order;
 
-  const OTDetailScreen({Key? key, required this.order}) : super(key: key);
+  const OTDetailScreen({super.key, required this.order});
 
   @override
   State<OTDetailScreen> createState() => _OTDetailScreenState();
@@ -38,27 +31,16 @@ class _OTDetailScreenState extends State<OTDetailScreen>
   late TabController _tabController;
   late final OTService _otService;
 
-  // Index de l'onglet actuellement sélectionné (0 = Détails, 1 = Mode Opératoire, etc.)
-  int _currentTabIndex = 0;
 
   // Index pour la barre de navigation en bas (initialisé à 2 pour "OT")
-  int _currentBottomIndex = 2;
+  final int _currentBottomIndex = 2;
 
   @override
   void initState() {
     super.initState();
-    _otService = OTService(ApiService());
+    _otService = context.read<OTService>();
     // Initialisation du TabController avec 6 onglets
     _tabController = TabController(length: 6, vsync: this);
-
-    // Écouter les changements d'onglets pour mettre à jour l'état
-    _tabController.addListener(() {
-      if (_tabController.indexIsChanging) {
-        setState(() {
-          _currentTabIndex = _tabController.index;
-        });
-      }
-    });
   }
 
   @override

@@ -1,7 +1,7 @@
+import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
 import 'package:appmobilegmao/models/work_order.dart';
 import 'package:appmobilegmao/services/ot_service.dart';
-import 'package:appmobilegmao/services/api_service.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:appmobilegmao/theme/responsive_spacing.dart';
 import 'package:appmobilegmao/screens/ot_detail_screen.dart';
@@ -16,10 +16,10 @@ class OTInfoDetailsScreen extends StatefulWidget {
   final bool showBottomNavigationBar;
 
   const OTInfoDetailsScreen({
-    Key? key,
+    super.key,
     this.otNumber,
     this.showBottomNavigationBar = true,
-  }) : super(key: key);
+  });
 
   @override
   State<OTInfoDetailsScreen> createState() => _OTInfoDetailsScreenState();
@@ -44,13 +44,12 @@ class _OTInfoDetailsScreenState extends State<OTInfoDetailsScreen> {
   List<WorkOrder> _allOrders = [];
   List<WorkOrder> _filteredOrders = [];
   String? _errorMessage;
-  String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _otService = OTService(ApiService());
+    _otService = context.read<OTService>();
     _loadAllOrders();
   }
 
@@ -85,7 +84,6 @@ class _OTInfoDetailsScreenState extends State<OTInfoDetailsScreen> {
   /// Filtrer les OT par recherche
   void _filterOrders(String query) {
     setState(() {
-      _searchQuery = query;
       if (query.isEmpty) {
         _filteredOrders = _allOrders;
       } else {

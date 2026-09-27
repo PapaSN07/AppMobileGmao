@@ -11,6 +11,7 @@ from fastapi.security import HTTPBearer
 from fastapi.staticfiles import StaticFiles
 
 from app.db.sqlalchemy.session import SQLAlchemyQueryExecutor, get_main_session, get_temp_session, test_connection
+from app.core.config import ENABLE_API_DOCS
 from app.routers.auth_router import authenticate_user_router
 from app.routers.mobile.equipment_router import equipment_router
 from app.routers.web.equipment_router import equipment_router_web
@@ -73,6 +74,10 @@ app = FastAPI(
     description="API optimisée pour application mobile Flutter",
     version="1.0.0",
     lifespan=lifespan,
+    # Documentation exposée uniquement si ENABLE_API_DOCS=true
+    docs_url="/docs" if ENABLE_API_DOCS else None,
+    redoc_url="/redoc" if ENABLE_API_DOCS else None,
+    openapi_url="/openapi.json" if ENABLE_API_DOCS else None,
     # Configuration Swagger pour l'authentification
     swagger_ui_parameters={
         "persistAuthorization": True,  # Garde l'auth entre les rechargements

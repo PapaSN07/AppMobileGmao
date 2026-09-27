@@ -15,6 +15,13 @@ class AuthProvider with ChangeNotifier {
 
   User? get currentUser => _currentUser;
 
+  /// Matricule / Code agent de l'utilisateur connecté (pour Coswin)
+  String? get currentMatricule {
+    final mat = _currentUser?.matricule;
+    if (mat != null && mat.isNotEmpty) return mat;
+    return null;
+  }
+
   // ✅ Entité active réactive synchronisée sur toute l'app (Accueil + OT + Équipements)
   String get activeEntity {
     if (_activeEntity != null && _activeEntity!.isNotEmpty) {

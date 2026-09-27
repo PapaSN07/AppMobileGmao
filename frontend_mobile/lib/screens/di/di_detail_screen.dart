@@ -745,7 +745,7 @@ class _DiDetailScreenState extends State<DiDetailScreen> with SingleTickerProvid
       // REMARQUE DU LOT TAB
       return Padding(
         padding: spacing.custom(all: 16),
-        child: Container(
+        child: SizedBox(
           height: responsive.spacing(250),
           child: TextField(
             maxLines: null,
@@ -1147,36 +1147,6 @@ class _DiDetailScreenState extends State<DiDetailScreen> with SingleTickerProvid
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildTableHeaderCol(String text, Responsive responsive, {int flex = 1, bool isLast = false}) {
-    return Expanded(
-      flex: flex,
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: responsive.spacing(8), vertical: responsive.spacing(12)),
-        decoration: BoxDecoration(
-          border: isLast ? null : Border(right: BorderSide(color: Colors.white.withOpacity(0.3))),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.block, color: Colors.white, size: responsive.iconSize(12)), // Placeholder icon
-            SizedBox(width: responsive.spacing(4)),
-            Expanded(
-              child: Text(
-                text,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: responsive.sp(12),
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

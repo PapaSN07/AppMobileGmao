@@ -1,8 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:appmobilegmao/theme/app_theme.dart';
-import 'package:appmobilegmao/utils/responsive.dart';
-import 'package:appmobilegmao/theme/responsive_spacing.dart';
-import 'package:appmobilegmao/screens/fichier_lie_screen.dart';
 import 'package:appmobilegmao/services/ot_service.dart';
 
 /// Onglet "Commentaires" - Affiche les commentaires et les pièces jointes
@@ -11,7 +7,7 @@ class CommentairesTab extends StatefulWidget {
   final String otCode;
   final OTService otService;
 
-  const CommentairesTab({Key? key, required this.otCode, required this.otService}) : super(key: key);
+  const CommentairesTab({super.key, required this.otCode, required this.otService});
 
   @override
   State<CommentairesTab> createState() => CommentairesTabState();
@@ -105,13 +101,32 @@ class CommentairesTabState extends State<CommentairesTab> {
       return const Center(child: CircularProgressIndicator(color: Color(0xFF0F1B80)));
     }
     if (_error != null) {
-      return Center(child: Text('Erreur: $_error', style: const TextStyle(color: Colors.red)));
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, color: Colors.red, size: 48),
+              const SizedBox(height: 12),
+              Text('Erreur: $_error', style: const TextStyle(color: Colors.red), textAlign: TextAlign.center),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: _loadComments,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Réessayer'),
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0F1B80), foregroundColor: Colors.white),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           child: Row(
             children: [
               const Text(
@@ -119,8 +134,14 @@ class CommentairesTabState extends State<CommentairesTab> {
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   color: Color(0xFF0F1B80),
-                  fontSize: 18,
+                  fontSize: 17,
                 ),
+              ),
+              const Spacer(),
+              IconButton(
+                tooltip: 'Actualiser depuis Coswin',
+                icon: const Icon(Icons.refresh, color: Color(0xFF0F1B80), size: 22),
+                onPressed: _loadComments,
               ),
             ],
           ),
@@ -554,269 +575,5 @@ class CommentairesTabState extends State<CommentairesTab> {
     final s = raw?.toString() ?? '';
     if (s.isEmpty) return '';
     return s.replaceAll('T', ' ').substring(0, s.length > 16 ? 16 : s.length);
-  }
-}
-
-/// Widget pour afficher la barre d'actions en haut de l'onglet Commentaires
-/// Principe SOLID: Single Responsibility - Gère uniquement l'affichage de la barre d'actions
-class _CommentairesActionBar extends StatelessWidget {
-  final VoidCallback onAddTap;
-
-  const _CommentairesActionBar({required this.onAddTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final spacing = context.spacing;
-
-    return Container(
-      color: Colors.grey[200],
-      padding: spacing.custom(horizontal: 20, vertical: 10),
-      child: Row(
-        children: [
-          // Icône maison (home)
-          InkWell(
-            onTap: () {
-              Navigator.pop(context);
-            },
-            child: const Icon(Icons.home, color: Color(0xFF0F1B80), size: 24),
-          ),
-          SizedBox(width: spacing.medium),
-          // Icône ajouter - ajoute une nouvelle pièce jointe
-          InkWell(
-            onTap: onAddTap,
-            child: const Icon(Icons.add, color: Color(0xFF0F1B80), size: 24),
-          ),
-          SizedBox(width: spacing.medium),
-          // Icône télécharger
-          InkWell(
-            onTap: () {
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(const SnackBar(content: Text('Télécharger')));
-            },
-            child: const Icon(
-              Icons.download,
-              color: Color(0xFF0F1B80),
-              size: 24,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Widget qui affiche une pièce jointe avec son commentaire
-/// Principe SOLID: Single Responsibility - Gère uniquement l'affichage d'un bloc pièce jointe + commentaire
-/// Principe DRY: Widget réutilisable pour tous les blocs
-class _CommentaireWithAttachmentItem extends StatelessWidget {
-  final VoidCallback onDelete;
-
-  const _CommentaireWithAttachmentItem({required this.onDelete});
-
-  /// Gestion du clic sur l'icône de trombone
-  void _handleAttachFile(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const FichierLieScreen()),
-    );
-  }
-
-  /// Gestion du clic sur l'icône de microphone
-  void _handleMicrophone(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Enregistrement vocal (à implémenter)')),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final spacing = context.spacing;
-    final responsive = context.responsive;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Zone de pièce jointe avec icône de trombone et poubelle
-        Container(
-          width: double.infinity,
-          height: responsive.hp(10),
-          padding: spacing.custom(all: 12),
-          decoration: BoxDecoration(
-            color: Colors.grey[200],
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Row(
-            children: [
-              // Icône de trombone dans un cercle bleu (cliquable)
-              InkWell(
-                onTap: () => _handleAttachFile(context),
-                borderRadius: BorderRadius.circular(100),
-                child: Container(
-                  width: responsive.wp(10),
-                  height: responsive.wp(10),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF0F1B80),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.attach_file,
-                    color: Colors.white,
-                    size: responsive.iconSize(20),
-                  ),
-                ),
-              ),
-              SizedBox(width: spacing.small),
-              // Espace pour afficher le nom du fichier
-              Expanded(
-                child: Text(
-                  '', // Vide pour l'instant
-                  style: TextStyle(
-                    fontFamily: AppTheme.fontRoboto,
-                    fontSize: responsive.sp(14),
-                    color: AppTheme.secondaryColor,
-                  ),
-                ),
-              ),
-              // Icône de poubelle pour supprimer
-              InkWell(
-                onTap: onDelete,
-                child: Icon(
-                  Icons.delete,
-                  color: Colors.red,
-                  size: responsive.iconSize(24),
-                ),
-              ),
-            ],
-          ),
-        ),
-        SizedBox(height: spacing.small),
-
-        // Zone de commentaire avec icône de microphone cliquable
-        Container(
-          width: double.infinity,
-          height: responsive.hp(12),
-          padding: spacing.custom(all: 12),
-          decoration: BoxDecoration(
-            color: Colors.grey[100],
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey[300]!, width: 1),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Icône de microphone cliquable
-              InkWell(
-                onTap: () => _handleMicrophone(context),
-                child: Icon(
-                  Icons.mic_none,
-                  color: const Color(0xFF0F1B80),
-                  size: responsive.iconSize(24),
-                ),
-              ),
-              SizedBox(width: spacing.small),
-              // Zone de texte pour écrire le commentaire
-              Expanded(
-                child: TextFormField(
-                  maxLines: null,
-                  decoration: InputDecoration(
-                    hintText: 'Écrire un commentaire...',
-                    hintStyle: TextStyle(
-                      fontFamily: AppTheme.fontRoboto,
-                      fontSize: responsive.sp(14),
-                      color: Colors.grey[500],
-                    ),
-                    border: InputBorder.none,
-                  ),
-                  style: TextStyle(
-                    fontFamily: AppTheme.fontRoboto,
-                    fontSize: responsive.sp(14),
-                    color: const Color(0xFF0F1B80),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Widget qui affiche les boutons en bas de l'onglet Commentaires
-/// Principe SOLID: Single Responsibility - Gère uniquement l'affichage des boutons d'action
-class _CommentairesBottomButton extends StatelessWidget {
-  /// Gestion du clic sur le bouton Enregistrer
-  void _handleSave(BuildContext context) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Commentaires enregistrés')));
-  }
-
-  /// Gestion du clic sur le bouton Retour - retour à la page OT Info
-  void _handleBack(BuildContext context) {
-    Navigator.pop(context);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final spacing = context.spacing;
-    final responsive = context.responsive;
-
-    return Container(
-      color: Colors.white,
-      padding: spacing.custom(horizontal: 20, vertical: 10, bottom: 20),
-      child: Row(
-        children: [
-          // Bouton Enregistrer
-          Expanded(
-            child: ElevatedButton(
-              onPressed: () => _handleSave(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color.fromARGB(255, 1, 92, 192), // bleu
-                foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(vertical: responsive.hp(1.8)),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                elevation: 2,
-              ),
-              child: Text(
-                'Enregistrer',
-                style: TextStyle(
-                  fontFamily: AppTheme.fontMontserrat,
-                  fontWeight: FontWeight.w600,
-                  fontSize: responsive.sp(16),
-                ),
-              ),
-            ),
-          ),
-          SizedBox(width: spacing.medium),
-          // Bouton Retour
-          Expanded(
-            child: ElevatedButton(
-              onPressed: () => _handleBack(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                foregroundColor: const Color.fromARGB(255, 1, 92, 192),
-                padding: EdgeInsets.symmetric(vertical: responsive.hp(1.8)),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                elevation: 2,
-              ),
-              child: Text(
-                'Retour',
-                style: TextStyle(
-                  fontFamily: AppTheme.fontMontserrat,
-                  fontWeight: FontWeight.w600,
-                  fontSize: responsive.sp(16),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }

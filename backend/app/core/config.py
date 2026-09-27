@@ -8,6 +8,15 @@ _env_prod_path = _base_dir / '.env.prod'
 
 load_dotenv(_env_prod_path, override=True)
 
+
+def _required(name: str) -> str:
+    """Secret obligatoire : on refuse de démarrer plutôt que d'utiliser une valeur par défaut connue."""
+    value = os.getenv(name, "").strip()
+    if not value:
+        raise RuntimeError(f"Variable d'environnement obligatoire manquante : {name} (voir .env.example)")
+    return value
+
+
 # Configuration de la base de données Oracle
 DB_NAME = os.getenv("DB_NAME")
 DB_USERNAME = os.getenv("DB_USERNAME") 
@@ -39,7 +48,7 @@ CACHE_TTL_MEDIUM = 1800  # 30 minutes
 CACHE_TTL_LONG = 3600    # 1 heure
 
 # Configuration JWT
-JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-prod")
+JWT_SECRET_KEY = _required("JWT_SECRET_KEY")
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 JWT_ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", 30))
 JWT_REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("JWT_REFRESH_TOKEN_EXPIRE_DAYS", 7))
@@ -49,8 +58,8 @@ DEFAULT_PASSWORD_PRESTATAIRE = os.getenv("DEFAULT_PASSWORD_PRESTATAIRE", "change
 
 # Configuration API OT (Coswin)
 OT_API_BASE_URL = os.getenv("OT_API_BASE_URL", "https://nomcosw.senelec.sn:8083/ws/rest")
-OT_API_USERNAME = os.getenv("OT_API_USERNAME", "admin")
-OT_API_PASSWORD = os.getenv("OT_API_PASSWORD", "admin")
+OT_API_USERNAME = _required("OT_API_USERNAME")
+OT_API_PASSWORD = _required("OT_API_PASSWORD")
 OT_DATASOURCE = os.getenv("OT_DATASOURCE", "APPMOBILE")
 OT_CWUSER = os.getenv("OT_CWUSER", "supervisor")
 
@@ -66,3 +75,7 @@ if not all(required_vars):
     raise ValueError("Variables d'environnement de base de données manquantes dans .env.prod")
 
 print(f"Configuration chargée - DB: {DB_HOST}:{DB_PORT}/{DB_NAME}, TEMP DB: {TEMP_DB_HOST}:{TEMP_DB_PORT}/{TEMP_DB_NAME}")
+
+# Documentation Swagger (/docs, /redoc, /openapi.json) : désactivée par défaut,
+# car elle expose la carte complète de l'API. Mettre ENABLE_API_DOCS=true pour l'activer.
+ENABLE_API_DOCS = os.getenv("ENABLE_API_DOCS", "false").lower() == "true"

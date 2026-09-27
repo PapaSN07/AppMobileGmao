@@ -7,6 +7,9 @@ import 'package:appmobilegmao/provider/auth_provider.dart';
 import 'package:appmobilegmao/provider/equipment_provider.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:appmobilegmao/services/hive_service.dart';
+import 'package:appmobilegmao/services/cache_service.dart';
+import 'package:appmobilegmao/services/api_service.dart';
+import 'package:appmobilegmao/services/ot_service.dart';
 
 // Auth normale: laisser false pour afficher l'écran de connexion quand nécessaire.
 // MODIFICATION: Desactivation du mode test pour afficher l'ecran de connexion.
@@ -19,7 +22,9 @@ void main() async {
   // Initialiser le service Hive (qui gère l'init et les adaptateurs)
   await HiveService.init();
 
-  // HiveService.clearAllCache();  // Nettoyer le cache au démarrage
+  // Nettoyer les anciens caches de données au démarrage pour forcer 100% de données fraîches en direct
+  await HiveService.clearDataCache();
+  await CacheService().clearCache();
 
   runApp(
     // CORRIGÉ: Injection correcte avec ProxyProvider
@@ -47,7 +52,10 @@ void main() async {
           },
         ),
 
-        // 3️⃣ Provider pour les notifications
+        // 3️⃣ Service OT partagé (injecté dans les écrans, remplaçable dans les tests)
+        Provider<OTService>(create: (_) => OTService(ApiService())),
+
+        // 4️⃣ Provider pour les notifications
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
       ],
       child: const MyApp(),

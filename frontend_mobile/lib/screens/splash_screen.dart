@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
-import 'package:appmobilegmao/services/auth_service.dart';
 import 'package:appmobilegmao/screens/auth/login_screen.dart';
 import 'package:appmobilegmao/screens/main_screen.dart';
 import 'package:appmobilegmao/utils/responsive.dart';

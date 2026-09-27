@@ -11,7 +11,7 @@ class MainsOeuvreTab extends StatefulWidget {
   final String otCode;
   final OTService otService;
 
-  const MainsOeuvreTab({Key? key, required this.otCode, required this.otService}) : super(key: key);
+  const MainsOeuvreTab({super.key, required this.otCode, required this.otService});
 
   @override
   State<MainsOeuvreTab> createState() => MainsOeuvreTabState();
@@ -124,7 +124,7 @@ class MainsOeuvreTabState extends State<MainsOeuvreTab>
 class MainsOeuvreTabBar extends StatelessWidget {
   final TabController tabController;
 
-  const MainsOeuvreTabBar({required this.tabController});
+  const MainsOeuvreTabBar({super.key, required this.tabController});
 
   @override
   Widget build(BuildContext context) {
@@ -215,8 +215,6 @@ class _EmployesAllouesContentState extends State<_EmployesAllouesContent> {
 
   @override
   Widget build(BuildContext context) {
-    final spacing = context.spacing;
-    final responsive = context.responsive;
 
     if (_showDetails) {
       // Affiche le formulaire de détails avec les données de l'employé sélectionné
@@ -298,7 +296,7 @@ class _EmployesAllouesDetailsTabState
     
     // Initialisation des contrôleurs avec données réelles si disponibles, sinon exemples
     _employeController = TextEditingController(
-      text: data != null ? '${data['employe']}' : '${currentUser?.code ?? "5893"}',
+      text: data != null ? '${data['employe']}' : currentUser?.code ?? "5893",
     );
     _descriptionController = TextEditingController(
       text: data != null ? (data['description']?.toString() ?? '') : (currentUser?.username ?? 'Intervenant'),
@@ -555,7 +553,7 @@ class EmployeFormField extends StatelessWidget {
   final VoidCallback? onDateTap;
   final Function(String)? onChanged;
 
-  const EmployeFormField({
+  const EmployeFormField({super.key, 
     required this.label,
     required this.controller,
     this.hasDropdown = false,
@@ -650,368 +648,6 @@ class EmployeFormField extends StatelessWidget {
   }
 }
 
-/// Widget pour afficher la barre de sous-onglets avec bouton +
-/// Principe SOLID: Single Responsibility - Gère uniquement l'affichage des sous-onglets
-class _SubTabsBar extends StatelessWidget {
-  final List<String> tabs;
-  final TabController tabController;
-  final VoidCallback onAddTap;
-
-  const _SubTabsBar({
-    required this.tabs,
-    required this.tabController,
-    required this.onAddTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final responsive = context.responsive;
-    final spacing = context.spacing;
-
-    return Container(
-      color: Colors.grey[200],
-      padding: spacing.custom(horizontal: 10, vertical: 5),
-      child: Row(
-        children: [
-          // Flèche gauche pour navigation
-          IconButton(
-            icon: const Icon(Icons.arrow_back_ios, size: 16),
-            onPressed: () {},
-            color: AppTheme.secondaryColor,
-          ),
-          // Flèche droite pour navigation
-          IconButton(
-            icon: const Icon(Icons.arrow_forward_ios, size: 16),
-            onPressed: () {},
-            color: AppTheme.secondaryColor,
-          ),
-          // Bouton +
-          IconButton(
-            icon: const Icon(Icons.add, size: 20),
-            onPressed: onAddTap,
-            color: AppTheme.secondaryColor,
-            tooltip: 'Ajouter un employé',
-          ),
-          SizedBox(width: spacing.small),
-          // Onglets DÉTAILS / GLOBAL
-          Expanded(
-            child: TabBar(
-              controller: tabController,
-              labelColor: Colors.white,
-              unselectedLabelColor: AppTheme.secondaryColor,
-              indicator: BoxDecoration(
-                color: const Color(0xFF0F1B80),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              indicatorSize: TabBarIndicatorSize.tab,
-              labelStyle: TextStyle(
-                fontFamily: AppTheme.fontMontserrat,
-                fontWeight: FontWeight.w600,
-                fontSize: responsive.sp(12),
-              ),
-              tabs: tabs.map((tab) => Tab(text: tab)).toList(),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Widget pour afficher l'onglet DÉTAILS avec les informations de l'employé
-/// Principe SOLID: Single Responsibility - Gère uniquement l'affichage des détails de l'employé
-/// Principe DRY: Réutilise le pattern de formulaire de ot_info_details_screen
-class _EmployeDetailsTab extends StatelessWidget {
-  final Map<String, dynamic> employe;
-
-  const _EmployeDetailsTab({required this.employe});
-
-  @override
-  Widget build(BuildContext context) {
-    final spacing = context.spacing;
-    final responsive = context.responsive;
-
-    return SingleChildScrollView(
-      padding: spacing.custom(horizontal: 20, vertical: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Ligne 1: Employé et Description
-          Row(
-            children: [
-              Expanded(
-                child: _DetailField(
-                  label: 'Employé',
-                  value: employe['employe'] ?? '5893',
-                  hasDropdown: true,
-                ),
-              ),
-              SizedBox(width: spacing.medium),
-              Expanded(
-                child: _DetailField(
-                  label: '',
-                  value: employe['description'] ?? 'Intervenant',
-                  readOnly: true,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: spacing.medium),
-
-          // Ligne 2: Date d'allocation et Heures allouées
-          Row(
-            children: [
-              Expanded(
-                child: _DetailField(
-                  label: 'Date d\'allocation',
-                  value: employe['dateDebut'] ?? '22/10/2025 07:30',
-                  hasDatePicker: true,
-                ),
-              ),
-              SizedBox(width: spacing.medium),
-              Expanded(
-                child: _DetailField(
-                  label: 'Heures allouées',
-                  value: employe['heuresRealisees'] ?? '3,00',
-                  backgroundColor: const Color(0xFFFFFF99), // Fond jaune
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: spacing.medium),
-
-          // Ligne 3: État de l'allocation et État de rejet de la qualification
-          Row(
-            children: [
-              Expanded(
-                child: _DetailField(
-                  label: 'État de l\'allocation',
-                  value: employe['etatOT'] ?? '0. Non réalisé',
-                  hasDropdown: true,
-                ),
-              ),
-              SizedBox(width: spacing.medium),
-              Expanded(
-                child: _DetailField(
-                  label: 'État de rejet de la qualification',
-                  value: '0. Pas d\'objection',
-                  hasDropdown: true,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: spacing.medium),
-
-          // Ligne 4: À des permis de travail et N° de séquence
-          Row(
-            children: [
-              Expanded(
-                child: _DetailField(
-                  label: 'À des permis de travail',
-                  value: '0. Non',
-                  hasDropdown: true,
-                ),
-              ),
-              SizedBox(width: spacing.medium),
-              Expanded(child: _DetailField(label: 'N° de séquence', value: '')),
-            ],
-          ),
-          SizedBox(height: spacing.medium),
-
-          // Ligne 5: Action
-          Row(
-            children: [
-              Expanded(
-                flex: 1,
-                child: _DetailField(label: 'Action', value: ''),
-              ),
-              SizedBox(width: spacing.medium),
-              Expanded(flex: 1, child: Container()),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Widget pour afficher l'onglet GLOBAL
-/// Principe SOLID: Single Responsibility - Gère uniquement l'affichage de la vue globale
-class _GlobalTab extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Text(
-        'Vue globale (à implémenter)',
-        style: TextStyle(
-          fontFamily: AppTheme.fontMontserrat,
-          color: AppTheme.secondaryColor,
-        ),
-      ),
-    );
-  }
-}
-
-/// Widget pour afficher un champ de détail avec label
-/// Principe SOLID: Single Responsibility - Gère uniquement l'affichage d'un champ
-/// Principe DRY: Réutilisable pour tous les champs de détails
-class _DetailField extends StatelessWidget {
-  final String label;
-  final String value;
-  final bool hasDropdown;
-  final bool hasDatePicker;
-  final bool readOnly;
-  final Color? backgroundColor;
-
-  const _DetailField({
-    required this.label,
-    required this.value,
-    this.hasDropdown = false,
-    this.hasDatePicker = false,
-    this.readOnly = false,
-    this.backgroundColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final responsive = context.responsive;
-    final spacing = context.spacing;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (label.isNotEmpty)
-          Text(
-            label,
-            style: TextStyle(
-              fontFamily: AppTheme.fontMontserrat,
-              fontWeight: FontWeight.w600,
-              color: AppTheme.secondaryColor,
-              fontSize: responsive.sp(13),
-            ),
-          ),
-        if (label.isNotEmpty) SizedBox(height: spacing.tiny),
-        Container(
-          decoration: BoxDecoration(
-            color: backgroundColor,
-            border: Border.all(color: AppTheme.thirdColor),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  initialValue: value,
-                  readOnly: readOnly,
-                  style: TextStyle(
-                    color: AppTheme.secondaryColor,
-                    fontFamily: AppTheme.fontRoboto,
-                    fontSize: responsive.sp(13),
-                  ),
-                  decoration: InputDecoration(
-                    contentPadding: spacing.custom(vertical: 8, horizontal: 8),
-                    border: InputBorder.none,
-                  ),
-                ),
-              ),
-              if (hasDropdown)
-                Icon(
-                  Icons.arrow_drop_down,
-                  color: AppTheme.secondaryColor,
-                  size: responsive.iconSize(24),
-                ),
-              if (hasDatePicker)
-                Icon(
-                  Icons.calendar_today,
-                  color: AppTheme.secondaryColor,
-                  size: responsive.iconSize(18),
-                ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Widget pour afficher une carte d'employé avec ses informations
-/// Principe SOLID: Single Responsibility - Gère uniquement l'affichage d'une carte d'employé
-/// Principe DRY: Réutilise le pattern _FormField pour chaque champ
-class _EmployeCard extends StatelessWidget {
-  final String employe;
-  final String dateDebut;
-  final String dateFin;
-
-  const _EmployeCard({
-    required this.employe,
-    required this.dateDebut,
-    required this.dateFin,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final spacing = context.spacing;
-
-    return Container(
-      padding: spacing.custom(all: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade300),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Champ Employé (lecture seule via _DetailField)
-          _DetailField(label: 'Employé', value: employe, readOnly: true),
-          SizedBox(height: spacing.large),
-
-          // Champ Date de début (utilise hasDatePicker pour afficher l'icône)
-          _DetailField(
-            label: 'Date de début',
-            value: dateDebut,
-            hasDatePicker: true,
-          ),
-          SizedBox(height: spacing.large),
-
-          // Champ Date de fin
-          _DetailField(
-            label: 'Date de fin',
-            value: dateFin,
-            hasDatePicker: true,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Widget pour afficher un champ de formulaire dans la carte employé
-/// Principe SOLID: Single Responsibility - Gère uniquement l'affichage d'un champ
-/// Principe DRY: Inspiré du widget _FormField de ot_info_details_screen
-/// Widget pour afficher le contenu de l'onglet Ressources
-/// Principe SOLID: Single Responsibility - Gère uniquement le contenu de l'onglet Ressources
-class _RessourcesContent extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Text(
-        'Contenu Ressources à implémenter',
-        style: TextStyle(
-          fontFamily: AppTheme.fontMontserrat,
-          color: AppTheme.secondaryColor,
-        ),
-      ),
-    );
-  }
-}
-
 /// Widget pour afficher la barre d'actions en haut de l'onglet Mains d'œuvre
 /// Principe SOLID: Single Responsibility - Gère uniquement l'affichage de la barre d'actions avec icônes
 /// Principe DRY: Réutilise le pattern des autres barres d'action
@@ -1031,7 +667,7 @@ class ActionIconButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onPressed;
 
-  const ActionIconButton({required this.icon, required this.onPressed});
+  const ActionIconButton({super.key, required this.icon, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
@@ -1055,69 +691,11 @@ class ActionIconButton extends StatelessWidget {
 /// Widget pour afficher la barre "Action" avec champ de recherche
 /// Principe SOLID: Single Responsibility - Gère uniquement l'affichage de la barre de recherche
 class ActionSearchBar extends StatelessWidget {
+  const ActionSearchBar({super.key});
+
   @override
   Widget build(BuildContext context) {
     return const SizedBox.shrink();
-  }
-}
-
-/// Widget pour afficher la barre des onglets (Intervenants / Employés Alloués / Ressources)
-/// Principe SOLID: Single Responsibility - Gère uniquement l'affichage des onglets
-class _TabsBar extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final spacing = context.spacing;
-    final responsive = context.responsive;
-
-    return Container(
-      color: Colors.grey[200],
-      padding: spacing.custom(horizontal: 15, vertical: 8),
-      child: Row(
-        children: [
-          _TabButton(label: 'INTERVENANTS', isActive: true),
-          SizedBox(width: spacing.small),
-          _TabButton(label: 'EMPLOYÉS ALLOUÉS', isActive: false),
-          SizedBox(width: spacing.small),
-          _TabButton(label: 'RESSOURCES', isActive: false),
-        ],
-      ),
-    );
-  }
-}
-
-/// Widget pour afficher un bouton d'onglet
-/// Principe SOLID: Single Responsibility - Gère uniquement l'affichage d'un bouton d'onglet
-/// Principe DRY: Réutilisable pour tous les onglets
-class _TabButton extends StatelessWidget {
-  final String label;
-  final bool isActive;
-
-  const _TabButton({required this.label, required this.isActive});
-
-  @override
-  Widget build(BuildContext context) {
-    final spacing = context.spacing;
-    final responsive = context.responsive;
-
-    return Container(
-      padding: spacing.custom(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: isActive ? const Color(0xFF0F1B80) : Colors.white,
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(
-          color: isActive ? const Color(0xFF0F1B80) : AppTheme.thirdColor,
-        ),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontFamily: AppTheme.fontMontserrat,
-          fontWeight: FontWeight.w600,
-          color: isActive ? Colors.white : AppTheme.secondaryColor,
-          fontSize: responsive.sp(12),
-        ),
-      ),
-    );
   }
 }
 

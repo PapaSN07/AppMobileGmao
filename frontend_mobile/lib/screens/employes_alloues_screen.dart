@@ -6,7 +6,7 @@ import 'package:appmobilegmao/theme/responsive_spacing.dart';
 /// Écran qui affiche la liste des employés alloués à un Ordre de Travail
 /// Principe SOLID: Single Responsibility - Gère uniquement l'affichage de la liste des employés alloués
 class EmployesAllouesScreen extends StatefulWidget {
-  const EmployesAllouesScreen({Key? key}) : super(key: key);
+  const EmployesAllouesScreen({super.key});
 
   @override
   State<EmployesAllouesScreen> createState() => _EmployesAllouesScreenState();

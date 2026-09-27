@@ -320,7 +320,7 @@ ORDER BY a.cwat_index
 #   ================================================================================
 #   REQUÊTES DE Utilisateurs
 #   ================================================================================
-# ✅ CORRIGÉ : Remplacer ROWNUM <= 1 par TOP 1
+#  CORRIGÉ : Remplacer ROWNUM <= 1 par TOP 1
 GET_USER_AUTHENTICATION_QUERY = """
 SELECT TOP 1
     pk_coswin_user, 
@@ -350,7 +350,7 @@ SET
 WHERE pk_coswin_user = :pk
 """
 
-# ✅ CORRIGÉ : Remplacer ROWNUM <= 1 par TOP 1
+# CORRIGÉ : Remplacer ROWNUM <= 1 par TOP 1
 GET_USER_CONNECT_QUERY = """
 SELECT TOP 1
     pk_coswin_user, 

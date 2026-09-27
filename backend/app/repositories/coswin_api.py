@@ -377,68 +377,68 @@ class CoswinAPIWorkOrderRepository(AbstractWorkOrderRepository):
                         coswin_cursor = pagination_context
 
                 # Si premier appel (sans token), cibler la tranche récente de l'année en cours
-                if start_code is None or end_code is None:
-                    start_code = current_year * 1000000 + 260000
-                    end_code = current_year * 1000000 + 999999
+                # Balayage rapide (max 3 requêtes Coswin par clic pour éviter les timeouts)
+                max_fetches = 3
+                seen_codes = {x.get("wowoCode") for x in matched}
+                fetches_done = 0
+                current_start = start_code
+                current_end = end_code
+                current_cursor = coswin_cursor
 
-                # Conserver systématiquement filterOperator et les bornes (requis par Coswin même en pagination)
-                params = {
-                    "usePagination": "true",
-                    "filterOperator": "between",
-                    "filterOperand1": str(start_code),
-                    "filterOperand2": str(end_code),
-                }
-                if coswin_cursor:
-                    params["paginationContext"] = coswin_cursor
+                while fetches_done < max_fetches:
+                    if current_start is None or current_end is None:
+                        current_start = current_year * 1000000 + 260000
+                        current_end = current_year * 1000000 + 999999
 
-                res = await self._fetch_workorders_page(
-                    params,
-                    page_limit=1,
-                    supervisor_code=supervisor_code,
-                    allowed_entities=allowed_entities,
-                    exclude_closed=exclude_closed
-                )
-                matched = res["workorders"]
-
-                # Si Coswin a plus de données dans cette tranche précise
-                if res["hasMore"] and res["paginationContext"]:
-                    next_token = f"coswin:{start_code}:{end_code}:{res['paginationContext']}"
-                    has_more = True
-                else:
-                    # Tranche terminée -> passer à la tranche antéchronologique suivante
-                    next_range_token = self._get_next_range_token(start_code, end_code, current_year)
-                    if next_range_token:
-                        next_token = next_range_token
-                        has_more = True
-                    else:
-                        next_token = None
-                        has_more = False
-
-                # Si premier appel et aucun OT trouvé dans la tranche récente (ex: entité avec peu d'activité en 2026),
-                # on bascule directement sur le début d'année sans bloquer l'utilisateur
-                if not pagination_context and len(matched) == 0:
-                    early_start = current_year * 1000000
-                    early_end = current_year * 1000000 + 259999
-                    early_params = {
+                    params = {
                         "usePagination": "true",
                         "filterOperator": "between",
-                        "filterOperand1": str(early_start),
-                        "filterOperand2": str(early_end)
+                        "filterOperand1": str(current_start),
+                        "filterOperand2": str(current_end),
                     }
-                    res_early = await self._fetch_workorders_page(
-                        early_params,
+                    if current_cursor:
+                        params["paginationContext"] = current_cursor
+
+                    res = await self._fetch_workorders_page(
+                        params,
                         page_limit=1,
                         supervisor_code=supervisor_code,
                         allowed_entities=allowed_entities,
                         exclude_closed=exclude_closed
                     )
-                    matched = res_early["workorders"]
-                    if res_early["hasMore"] and res_early["paginationContext"]:
-                        next_token = f"coswin:{early_start}:{early_end}:{res_early['paginationContext']}"
+                    fetches_done += 1
+
+                    new_wos = res.get("workorders", [])
+                    for w in new_wos:
+                        c = w.get("wowoCode")
+                        if c and c not in seen_codes:
+                            seen_codes.add(c)
+                            matched.append(w)
+
+                    if res.get("hasMore") and res.get("paginationContext"):
+                        # Coswin a encore des données dans cette tranche précise
+                        current_cursor = res["paginationContext"]
+                        next_token = f"coswin:{current_start}:{current_end}:{current_cursor}"
                         has_more = True
                     else:
-                        next_token = self._get_next_range_token(early_start, early_end, current_year)
-                        has_more = next_token is not None
+                        # Tranche actuelle terminée -> basculer sur la tranche suivante (2025, 2024...)
+                        current_cursor = None
+                        next_range_token = self._get_next_range_token(current_start, current_end, current_year)
+                        if next_range_token:
+                            parts = next_range_token.split(":")
+                            current_start = int(parts[1])
+                            current_end = int(parts[2])
+                            next_token = next_range_token
+                            has_more = True
+                        else:
+                            # Plus de tranches antérieures jusqu'à 2018
+                            next_token = None
+                            has_more = False
+                            break
+
+                    # Si on a déjà trouvé des OT pour ce clic, on renvoie immédiatement à l'utilisateur
+                    if len(matched) >= 3:
+                        break
 
         except Exception as e:
             logger.error(f"Erreur Coswin API OT: {e}")

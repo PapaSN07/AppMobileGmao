@@ -51,8 +51,8 @@ android {
 
     buildTypes {
         release {
-            // ✅ Utiliser la configuration de signature
-            signingConfig signingConfigs.release
+            // Clé de production si key.properties existe, sinon clé de debug (APK de test uniquement)
+            signingConfig keystorePropertiesFile.exists() ? signingConfigs.release : signingConfigs.debug
             
             // ✅ Désactiver complètement la minification
             minifyEnabled false

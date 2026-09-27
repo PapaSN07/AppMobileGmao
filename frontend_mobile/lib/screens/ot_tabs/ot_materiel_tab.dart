@@ -1,18 +1,9 @@
 import 'package:flutter/material.dart';
 import 'ot_shared_widgets.dart';
-import 'package:provider/provider.dart';
-import 'package:appmobilegmao/provider/auth_provider.dart';
-import 'package:appmobilegmao/models/order.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:appmobilegmao/utils/responsive.dart';
 import 'package:appmobilegmao/theme/responsive_spacing.dart';
-import 'package:appmobilegmao/widgets/custom_bottom_navigation_bar.dart';
-import 'package:appmobilegmao/widgets/custom_app_bar.dart';
-import 'package:appmobilegmao/screens/fichier_lie_screen.dart';
-import 'package:appmobilegmao/screens/main_screen.dart';
 import 'package:appmobilegmao/services/ot_service.dart';
-import 'package:appmobilegmao/services/api_service.dart';
-import 'package:appmobilegmao/services/hive_service.dart';
 
 /// Onglet "Matériel" - Affiche la liste du matériel utilisé avec sous-onglets
 /// Principe SOLID: Single Responsibility - Gère uniquement l'affichage du matériel
@@ -21,7 +12,7 @@ class MaterielTab extends StatefulWidget {
   final String otCode;
   final OTService otService;
 
-  const MaterielTab({Key? key, required this.otCode, required this.otService}) : super(key: key);
+  const MaterielTab({super.key, required this.otCode, required this.otService});
 
   @override
   State<MaterielTab> createState() => MaterielTabState();
@@ -73,7 +64,7 @@ class MaterielTabState extends State<MaterielTab>
 class MaterielTabBar extends StatelessWidget {
   final TabController tabController;
 
-  const MaterielTabBar({required this.tabController});
+  const MaterielTabBar({super.key, required this.tabController});
 
   @override
   Widget build(BuildContext context) {
@@ -108,7 +99,7 @@ class _StockTab extends StatefulWidget {
   final String otCode;
   final OTService otService;
 
-  const _StockTab({Key? key, required this.otCode, required this.otService}) : super(key: key);
+  const _StockTab({required this.otCode, required this.otService});
 
   @override
   State<_StockTab> createState() => _StockTabState();
@@ -193,7 +184,7 @@ class _MoyensTab extends StatefulWidget {
   final String otCode;
   final OTService otService;
 
-  const _MoyensTab({Key? key, required this.otCode, required this.otService}) : super(key: key);
+  const _MoyensTab({required this.otCode, required this.otService});
 
   @override
   State<_MoyensTab> createState() => _MoyensTabState();
@@ -515,7 +506,7 @@ class _MoyensDetailsTabState extends State<_MoyensDetailsTab> {
 class MaterielActionBar extends StatelessWidget {
   final VoidCallback onAddTap;
 
-  const MaterielActionBar({required this.onAddTap});
+  const MaterielActionBar({super.key, required this.onAddTap});
 
   @override
   Widget build(BuildContext context) {
@@ -622,7 +613,7 @@ class _StockPiecesTab extends StatefulWidget {
   final String otCode;
   final OTService otService;
 
-  const _StockPiecesTab({Key? key, required this.otCode, required this.otService}) : super(key: key);
+  const _StockPiecesTab({required this.otCode, required this.otService});
 
   @override
   State<_StockPiecesTab> createState() => _StockPiecesTabState();
@@ -756,7 +747,6 @@ class _StockPiecesDetailsTabState extends State<_StockPiecesDetailsTab> {
   late TextEditingController _partCodeController;
   late TextEditingController _articleController;
   late TextEditingController _quantiteUtiliseController;
-  bool _isSaving = false;
 
   @override
   void initState() {
@@ -773,87 +763,6 @@ class _StockPiecesDetailsTabState extends State<_StockPiecesDetailsTab> {
     _articleController.dispose();
     _quantiteUtiliseController.dispose();
     super.dispose();
-  }
-
-  Future<void> _handleSave() async {
-    final partCode = _partCodeController.text.trim();
-    final article = _articleController.text.trim();
-    final qty = double.tryParse(_quantiteUtiliseController.text) ?? 1.0;
-
-    if (partCode.isEmpty || article.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Veuillez remplir le code article et la description.')),
-      );
-      return;
-    }
-
-    setState(() => _isSaving = true);
-    try {
-      if (widget.initialData == null) {
-        // Ajouter
-        await widget.otService.createPart(widget.otCode, {
-          "wosyPart": partCode,
-          "wosyCode": partCode,
-          "wosyDescription": article,
-          "wosyUsedQuantity": qty,
-          "wosyQuantity": qty,
-          "wosyUnit": "U",
-        });
-      } else {
-        // Modifier
-        final pk = widget.initialData!['pk'] as int;
-        await widget.otService.updatePart(widget.otCode, pk, {
-          "wosyPart": partCode,
-          "wosyCode": partCode,
-          "wosyDescription": article,
-          "wosyUsedQuantity": qty,
-          "wosyQuantity": qty,
-          "wosyUnit": "U",
-        });
-      }
-      widget.onSaved();
-      widget.onBack();
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur lors de l\'enregistrement: $e')));
-    } finally {
-      setState(() => _isSaving = false);
-    }
-  }
-
-  void _confirmDelete() {
-    final pk = widget.initialData!['pk'] as int;
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Supprimer la pièce'),
-          content: const Text('Voulez-vous retirer cette pièce de rechange de l\'OT ?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Annuler'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-              onPressed: () async {
-                Navigator.pop(context);
-                setState(() => _isSaving = true);
-                try {
-                  await widget.otService.deletePart(widget.otCode, pk);
-                  widget.onSaved();
-                  widget.onBack();
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur lors de la suppression: $e')));
-                } finally {
-                  setState(() => _isSaving = false);
-                }
-              },
-              child: const Text('Supprimer', style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        );
-      },
-    );
   }
 
   @override
@@ -1544,7 +1453,7 @@ class _StockServicesRow extends StatelessWidget {
 class MaterielActionBarOld extends StatelessWidget {
   final VoidCallback onAddTap;
 
-  const MaterielActionBarOld({required this.onAddTap});
+  const MaterielActionBarOld({super.key, required this.onAddTap});
 
   @override
   Widget build(BuildContext context) {
@@ -1577,6 +1486,8 @@ class MaterielActionBarOld extends StatelessWidget {
 /// Widget pour afficher l'en-tête du tableau Matériel
 /// Principe SOLID: Single Responsibility - Gère uniquement l'affichage de l'en-tête
 class MaterielTableHeader extends StatelessWidget {
+  const MaterielTableHeader({super.key});
+
   @override
   Widget build(BuildContext context) {
     final spacing = context.spacing;
@@ -1607,59 +1518,6 @@ class MaterielTableHeader extends StatelessWidget {
         color: Colors.white,
       ),
       textAlign: TextAlign.center,
-    );
-  }
-}
-
-/// Widget pour afficher une ligne de matériel dans le tableau
-/// Principe SOLID: Single Responsibility - Gère uniquement l'affichage d'une ligne
-class _MaterielRow extends StatelessWidget {
-  final int index;
-  final String moyen;
-  final String equipement;
-  final String dateDebut;
-  final String tempsUtilise;
-  final String dateFin;
-
-  const _MaterielRow({
-    required this.index,
-    required this.moyen,
-    required this.equipement,
-    required this.dateDebut,
-    required this.tempsUtilise,
-    required this.dateFin,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final spacing = context.spacing;
-    final responsive = context.responsive;
-
-    return Container(
-      color: index % 2 == 0 ? Colors.white : Colors.grey[100],
-      padding: spacing.custom(horizontal: 10, vertical: 12),
-      child: Row(
-        children: [
-          Expanded(flex: 2, child: _CellText(moyen, responsive)),
-          Expanded(flex: 2, child: _CellText(equipement, responsive)),
-          Expanded(flex: 2, child: _CellText(dateDebut, responsive)),
-          Expanded(flex: 2, child: _CellText(tempsUtilise, responsive)),
-          Expanded(flex: 2, child: _CellText(dateFin, responsive)),
-        ],
-      ),
-    );
-  }
-
-  Widget _CellText(String text, Responsive responsive) {
-    return Text(
-      text,
-      style: TextStyle(
-        fontFamily: AppTheme.fontMontserrat,
-        fontSize: responsive.sp(11),
-        color: Colors.black87,
-      ),
-      textAlign: TextAlign.center,
-      overflow: TextOverflow.ellipsis,
     );
   }
 }

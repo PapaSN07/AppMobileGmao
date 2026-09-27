@@ -79,7 +79,7 @@ def create_mock_engine():
         echo=False,
         future=True
     )
-    logger.info("✅ Engine coswin_mock créé")
+    logger.info(" Engine coswin_mock créé")
     return engine
 
 mock_engine = create_mock_engine()

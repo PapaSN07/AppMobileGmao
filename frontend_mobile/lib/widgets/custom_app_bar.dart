@@ -17,7 +17,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final double? customHeight;
 
   const CustomAppBar({
-    Key? key,
+    super.key,
     this.title,
     this.showBackButton = true,
     this.onBackPressed,
@@ -27,7 +27,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.bottom,
     this.actions,
     this.customHeight,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -78,13 +78,13 @@ class CustomTabBar extends StatelessWidget implements PreferredSizeWidget {
   final Color unselectedLabelColor;
 
   const CustomTabBar({
-    Key? key,
+    super.key,
     required this.tabController,
     required this.tabLabels,
     this.indicatorColor = const Color(0xFF0F1B80),
     this.selectedLabelColor = const Color(0xFF0F1B80),
     this.unselectedLabelColor = Colors.grey,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
