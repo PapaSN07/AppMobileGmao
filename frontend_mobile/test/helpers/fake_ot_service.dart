@@ -10,6 +10,9 @@ class FakeOTService extends OTService {
   Future<OTReferentials> getReferentials() async => OTReferentials.empty;
 
   @override
+  Future<List<RefItem>> getActions() async => const [];
+
+  @override
   Future<OTPageResult> getOrdersPage({
     String scope = 'mine',
     String? supervisorCode,

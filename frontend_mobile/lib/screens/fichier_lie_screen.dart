@@ -3,6 +3,7 @@ import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:appmobilegmao/utils/responsive.dart';
 import 'package:appmobilegmao/theme/responsive_spacing.dart';
 import 'package:appmobilegmao/services/hive_service.dart';
+import 'package:appmobilegmao/models/attached_file_note.dart';
 import 'package:image_picker/image_picker.dart';
 
 /// Écran pour ajouter un fichier lié
@@ -29,9 +30,6 @@ class _FichierLieScreenState extends State<FichierLieScreen> {
 
   // État pour la checkbox "Imprimable"
   bool _isImprimable = false;
-
-  // État pour les options radio de l'action
-  String _selectedAction = 'copier_webdav'; // Option sélectionnée par défaut
 
   @override
   void initState() {
@@ -90,19 +88,12 @@ class _FichierLieScreenState extends State<FichierLieScreen> {
       };
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Fichier "${fileData['nom']}" associé avec succès'),
+          content: Text('Fichier "${fileData['nom']}" noté dans le commentaire (non envoyé à Coswin)'),
           backgroundColor: const Color(0xFF0F1B80),
         ),
       );
       Navigator.pop(context, fileData);
     }
-  }
-
-  /// Gestion du clic sur l'icône de lien (URL)
-  void _handleAddUrl() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Ouvrir le lien (à implémenter)')),
-    );
   }
 
   /// Gestion du clic sur l'icône trombone (attacher un fichier)
@@ -166,32 +157,6 @@ class _FichierLieScreenState extends State<FichierLieScreen> {
         ),
         backgroundColor: Colors.white,
         elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.arrow_forward, color: Color(0xFF2B1D4C)),
-            onPressed: () {},
-          ),
-          IconButton(
-            icon: const Icon(Icons.add, color: Color(0xFF2B1D4C)),
-            onPressed: () {},
-          ),
-          IconButton(
-            icon: const Icon(Icons.link, color: Color(0xFF2B1D4C)),
-            onPressed: () {},
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Color(0xFF2B1D4C)),
-            onPressed: () {},
-          ),
-          IconButton(
-            icon: const Icon(Icons.save, color: Color(0xFF2B1D4C)),
-            onPressed: () {},
-          ),
-          IconButton(
-            icon: const Icon(Icons.help_outline, color: Color(0xFF2B1D4C)),
-            onPressed: () {},
-          ),
-        ],
       ),
       body: Column(
         children: [
@@ -204,62 +169,29 @@ class _FichierLieScreenState extends State<FichierLieScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Section "Action" avec les options radio horizontales
-                    Row(
-                      children: [
-                        _SectionTitle(title: 'Action'),
-                        SizedBox(width: spacing.medium),
-                        // Options radio en ligne
-                        Expanded(
-                          child: Wrap(
-                            spacing: spacing.small,
-                            runSpacing: spacing.tiny,
-                            children: [
-                              _RadioOption(
-                                value: 'sauver_base',
-                                groupValue: _selectedAction,
-                                label: 'Sauver le fichier dans la base',
-                                onChanged: (value) {
-                                  setState(() {
-                                    _selectedAction = value!;
-                                  });
-                                },
-                              ),
-                              _RadioOption(
-                                value: 'copier_webdav',
-                                groupValue: _selectedAction,
-                                label: 'Copier le fichier sur un WebDAV',
-                                onChanged: (value) {
-                                  setState(() {
-                                    _selectedAction = value!;
-                                  });
-                                },
-                              ),
-                              _RadioOption(
-                                value: 'lier_webdav',
-                                groupValue: _selectedAction,
-                                label:
-                                    'Lier à un fichier présent sur le WebDAV',
-                                onChanged: (value) {
-                                  setState(() {
-                                    _selectedAction = value!;
-                                  });
-                                },
-                              ),
-                              _RadioOption(
-                                value: 'sauver_repertoire',
-                                groupValue: _selectedAction,
-                                label: 'Sauver un répertoire WebDAV',
-                                onChanged: (value) {
-                                  setState(() {
-                                    _selectedAction = value!;
-                                  });
-                                },
-                              ),
-                            ],
+                    // Avertissement : le fichier n'est pas encore transmis à Coswin
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.orange.shade300),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.warning_amber_rounded, color: Colors.orange.shade800),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              '${AttachedFileNote.notSentWarning} '
+                              "L'envoi réel du fichier sera disponible avec le passage par le serveur.",
+                              style: TextStyle(fontSize: 13, color: Colors.orange.shade900),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
 
                     SizedBox(height: spacing.large),
@@ -279,10 +211,7 @@ class _FichierLieScreenState extends State<FichierLieScreen> {
                     SizedBox(height: spacing.medium),
 
                     // Champ URL avec icône de lien
-                    _UrlField(
-                      controller: _urlController,
-                      onLinkTap: _handleAddUrl,
-                    ),
+                    _UrlField(controller: _urlController),
                     SizedBox(height: spacing.medium),
 
                     // Checkbox "Imprimable"
@@ -357,78 +286,6 @@ class _FichierLieScreenState extends State<FichierLieScreen> {
   }
 }
 
-/// Widget pour afficher le titre d'une section
-/// Principe SOLID: Single Responsibility - Gère uniquement l'affichage du titre
-class _SectionTitle extends StatelessWidget {
-  final String title;
-
-  const _SectionTitle({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    final responsive = context.responsive;
-
-    return Text(
-      title,
-      style: TextStyle(
-        fontFamily: AppTheme.fontMontserrat,
-        fontWeight: FontWeight.bold,
-        color: AppTheme.secondaryColor,
-        fontSize: responsive.sp(14),
-      ),
-    );
-  }
-}
-
-/// Widget pour afficher une option radio
-/// Principe SOLID: Single Responsibility - Gère uniquement l'affichage d'une option radio
-/// Principe DRY: Réutilisable pour toutes les options radio
-class _RadioOption extends StatelessWidget {
-  final String value;
-  final String groupValue;
-  final String label;
-  final ValueChanged<String?> onChanged;
-
-  const _RadioOption({
-    required this.value,
-    required this.groupValue,
-    required this.label,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final responsive = context.responsive;
-
-    return InkWell(
-      onTap: () => onChanged(value),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Radio<String>(
-            value: value,
-            groupValue: groupValue,
-            onChanged: onChanged,
-            activeColor: const Color.fromARGB(255, 1, 92, 192),
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            visualDensity: VisualDensity.compact,
-          ),
-          Flexible(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontFamily: AppTheme.fontMontserrat,
-                color: AppTheme.secondaryColor,
-                fontSize: responsive.sp(13),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 /// Widget pour afficher le champ Nom avec fond jaune et icône trombone
 /// Principe SOLID: Single Responsibility - Gère uniquement l'affichage du champ Nom
 class _NomField extends StatelessWidget {
@@ -497,13 +354,12 @@ class _NomField extends StatelessWidget {
   }
 }
 
-/// Widget pour afficher le champ URL avec icône lien
+/// Widget pour afficher le champ URL
 /// Principe SOLID: Single Responsibility - Gère uniquement l'affichage du champ URL
 class _UrlField extends StatelessWidget {
   final TextEditingController controller;
-  final VoidCallback onLinkTap;
 
-  const _UrlField({required this.controller, required this.onLinkTap});
+  const _UrlField({required this.controller});
 
   @override
   Widget build(BuildContext context) {
@@ -547,18 +403,6 @@ class _UrlField extends StatelessWidget {
                       width: 2.0,
                     ),
                   ),
-                ),
-              ),
-            ),
-            // Icône lien cliquable
-            InkWell(
-              onTap: onLinkTap,
-              child: Padding(
-                padding: const EdgeInsets.all(4),
-                child: Icon(
-                  Icons.link,
-                  color: AppTheme.secondaryColor,
-                  size: responsive.iconSize(20),
                 ),
               ),
             ),

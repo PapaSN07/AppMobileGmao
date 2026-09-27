@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:appmobilegmao/services/ot_service.dart';
+import 'package:appmobilegmao/models/attached_file_note.dart';
+import 'package:appmobilegmao/widgets/attachment_warning.dart';
 
 /// Onglet "Commentaires" - Affiche les commentaires et les pièces jointes
 /// Principe SOLID: Single Responsibility - Gère uniquement l'affichage des commentaires et pièces jointes
@@ -22,61 +24,6 @@ class CommentairesTabState extends State<CommentairesTab> {
   void initState() {
     super.initState();
     _loadComments();
-  }
-
-  static Map<String, dynamic>? _parseAttachedFileFromComment(String rawText) {
-    String tag = '';
-    if (rawText.contains('[PJ:')) {
-      tag = '[PJ:';
-    } else if (rawText.contains('📎 [Fichier joint:')) {
-      tag = '📎 [Fichier joint:';
-    } else {
-      return null;
-    }
-
-    final startIdx = rawText.indexOf(tag);
-    final endIdx = rawText.indexOf(']', startIdx);
-    final content = endIdx != -1
-        ? rawText.substring(startIdx + tag.length, endIdx).trim()
-        : rawText.substring(startIdx + tag.length).trim();
-
-    final map = <String, dynamic>{};
-    final delimiter = content.contains(' ; ') ? ' ; ' : '|';
-    final tokens = content.split(delimiter);
-    for (final token in tokens) {
-      final t = token.trim();
-      if (t.startsWith('Nom:')) {
-        map['nom'] = t.substring(4).trim();
-      } else if (t.startsWith('Desc:')) {
-        map['description'] = t.substring(5).trim();
-      } else if (t.startsWith('Type:')) {
-        map['type'] = t.substring(5).trim();
-      } else if (t.startsWith('Cat:')) {
-        map['categorie'] = t.substring(4).trim();
-      } else if (t.startsWith('URL:')) {
-        map['url'] = t.substring(4).trim();
-      } else if (t.startsWith('Imprimable:')) {
-        map['isImprimable'] = t.substring(11).trim() == 'Oui';
-      } else if (t.startsWith('Date:')) {
-        map['dateCreation'] = t.substring(5).trim();
-      } else if (t.startsWith('Auteur:')) {
-        map['createur'] = t.substring(7).trim();
-      }
-    }
-    if (map.isEmpty && content.isNotEmpty) {
-      map['nom'] = content;
-    }
-    return map.isNotEmpty ? map : null;
-  }
-
-  static String _extractCleanCommentText(String rawText) {
-    if (rawText.contains('[PJ:')) {
-      return rawText.split('[PJ:')[0].trim();
-    }
-    if (rawText.contains('📎 [Fichier joint:')) {
-      return rawText.split('📎 [Fichier joint:')[0].trim();
-    }
-    return rawText.trim();
   }
 
   Future<void> _loadComments() async {
@@ -175,7 +122,6 @@ class CommentairesTabState extends State<CommentairesTab> {
                         fb['wodoText']?.toString() ??
                         fb['comment']?.toString() ??
                         fb['reemDescription']?.toString() ??
-                        fb['woefUserStatus']?.toString() ??
                         'Commentaire sans texte';
                     final author = fb['wodoCreationUser']?.toString() ??
                         fb['wodoUser']?.toString() ??
@@ -186,8 +132,8 @@ class CommentairesTabState extends State<CommentairesTab> {
                     final dateStr = _formatDate(fb['wodoCreationDate'] ?? fb['woefStartDate'] ?? fb['createdAt']);
 
                     // Détection des pièces jointes dans le texte
-                    final attachedData = (fb['attachedFile'] as Map<String, dynamic>?) ?? _parseAttachedFileFromComment(rawCommentText);
-                    final mainComment = _extractCleanCommentText(rawCommentText);
+                    final attachedData = (fb['attachedFile'] as Map<String, dynamic>?) ?? AttachedFileNote.parse(rawCommentText);
+                    final mainComment = AttachedFileNote.stripFrom(rawCommentText);
 
                     return Card(
                       margin: const EdgeInsets.only(bottom: 10),
@@ -278,6 +224,7 @@ class CommentairesTabState extends State<CommentairesTab> {
                                             ),
                                         ],
                                       ),
+                                      const AttachmentNotSentWarning(),
                                       if ((attachedData['description'] ?? '').toString().isNotEmpty) ...[
                                         const SizedBox(height: 4),
                                         Text(
@@ -335,7 +282,6 @@ class CommentairesTabState extends State<CommentairesTab> {
         fb['wodoText']?.toString() ??
         fb['comment']?.toString() ??
         fb['reemDescription']?.toString() ??
-        fb['woefUserStatus']?.toString() ??
         'Commentaire sans texte';
     final author = fb['wodoCreationUser']?.toString() ??
         fb['wodoUser']?.toString() ??
@@ -345,8 +291,8 @@ class CommentairesTabState extends State<CommentairesTab> {
     final docType = fb['wodoType']?.toString() ?? fb['type']?.toString() ?? '';
     final dateStr = _formatDate(fb['wodoCreationDate'] ?? fb['woefStartDate'] ?? fb['createdAt']);
 
-    final attachedData = (fb['attachedFile'] as Map<String, dynamic>?) ?? _parseAttachedFileFromComment(rawCommentText);
-    final mainComment = _extractCleanCommentText(rawCommentText);
+    final attachedData = (fb['attachedFile'] as Map<String, dynamic>?) ?? AttachedFileNote.parse(rawCommentText);
+    final mainComment = AttachedFileNote.stripFrom(rawCommentText);
 
     showModalBottomSheet(
       context: context,
@@ -495,6 +441,7 @@ class CommentairesTabState extends State<CommentairesTab> {
                                   ),
                                 ],
                               ),
+                              const AttachmentNotSentWarning(),
                               if ((attachedData['description'] ?? '').toString().isNotEmpty) ...[
                                 const SizedBox(height: 4),
                                 Text(
@@ -571,9 +518,11 @@ class CommentairesTabState extends State<CommentairesTab> {
     );
   }
 
+  /// Date Coswin (ISO 8601, UTC) affichée en heure locale : jj/mm/aaaa hh:mm.
   String _formatDate(dynamic raw) {
-    final s = raw?.toString() ?? '';
-    if (s.isEmpty) return '';
-    return s.replaceAll('T', ' ').substring(0, s.length > 16 ? 16 : s.length);
+    final d = DateTime.tryParse(raw?.toString() ?? '')?.toLocal();
+    if (d == null) return '';
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${two(d.day)}/${two(d.month)}/${d.year} ${two(d.hour)}:${two(d.minute)}';
   }
 }

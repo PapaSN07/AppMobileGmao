@@ -61,9 +61,8 @@ class OTPayloadRules {
   }
 
   static bool _isValidSupervisor(OTReferentials refs, String sup) {
-    if (sup.toLowerCase() == systemSupervisor) return true;
-    if (refs.supervisors.isNotEmpty) return _codeIn(refs.supervisors, sup) != null;
-    return RegExp(r'^\d+$').hasMatch(sup);
+    if (sup.isEmpty) return false;
+    return refs.supervisors.isEmpty || _codeIn(refs.supervisors, sup) != null;
   }
 
   /// Payload de création : champs obligatoires complétés par des valeurs par défaut.
@@ -79,6 +78,13 @@ class OTPayloadRules {
 
     if (payload.containsKey('wowoJobType')) {
       _setOrRemove(payload, 'wowoJobType', _codeIn(refs.jobTypes, _str(payload['wowoJobType']).toUpperCase()));
+    }
+
+    if (payload.containsKey('wowoSupervisor')) {
+      final sup = _str(payload['wowoSupervisor']);
+      if (!_isValidSupervisor(refs, sup)) {
+        throw ArgumentError("Le superviseur « $sup » n'existe pas dans Coswin.");
+      }
     }
 
     if (_str(payload['wowoScheduleDate']).isEmpty) {
@@ -114,8 +120,9 @@ class OTPayloadRules {
     }
 
     if (payload.containsKey('wowoSupervisor')) {
+      // Superviseur inconnu de Coswin : on ne l'envoie pas (Coswin le refuserait).
       final sup = _str(payload['wowoSupervisor']);
-      if (!_isValidSupervisor(refs, sup)) payload['wowoSupervisor'] = systemSupervisor;
+      _setOrRemove(payload, 'wowoSupervisor', _isValidSupervisor(refs, sup) ? sup : null);
     }
 
     // Le taux de réalisation est calculé côté serveur Coswin.

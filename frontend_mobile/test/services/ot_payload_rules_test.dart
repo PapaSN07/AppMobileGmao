@@ -53,7 +53,7 @@ void main() {
         'wowoJobClass': 'CEL-',
         'wowoSupervisor': 'Jean',
       }, _refs);
-      expect(p, {'wowoSupervisor': OTPayloadRules.systemSupervisor});
+      expect(p, isEmpty); // superviseur inconnu retiré, pas remplacé
     });
 
     test('maps priority aliases to NORMALE', () {

@@ -3,6 +3,7 @@ import 'package:appmobilegmao/services/cache_service.dart';
 import 'package:appmobilegmao/services/hive_service.dart';
 import 'package:appmobilegmao/services/ot_payload_rules.dart';
 import 'package:appmobilegmao/services/coswin_referential_service.dart';
+import 'package:appmobilegmao/services/coswin_action_service.dart';
 import 'package:appmobilegmao/services/ot_code_locator.dart';
 import 'package:appmobilegmao/models/ot_referentials.dart';
 import 'package:appmobilegmao/models/ot_status.dart';
@@ -63,10 +64,12 @@ class OTService {
   final ApiService _apiService;
   final CacheService _cacheService = CacheService();
   final CoswinReferentialService _referentials;
+  final CoswinActionService _actions;
   late final OTCodeLocator _codeLocator = OTCodeLocator(_probeCodes);
 
-  OTService(this._apiService, {CoswinReferentialService? referentials})
-      : _referentials = referentials ?? CoswinReferentialService(_apiService);
+  OTService(this._apiService, {CoswinReferentialService? referentials, CoswinActionService? actions})
+      : _referentials = referentials ?? CoswinReferentialService(_apiService),
+        _actions = actions ?? CoswinActionService(_apiService);
 
   /// Timeout étendu pour la récupération de liste d'OT.
   static const Duration _listOrdersTimeout = Duration(seconds: 60);
@@ -93,28 +96,58 @@ class OTService {
   /// Référentiels officiels Coswin (types, classes, priorités, statuts, superviseurs).
   Future<OTReferentials> getReferentials() => _referentials.load();
 
-  /// Récupérer les articles réels du stock Coswin Senelec (0 base locale)
-  Future<List<dynamic>> getItems() async {
-    try {
-      final response = await _apiService.getCoswin(
-        '/items',
-        queryParameters: {
-          'usePagination': 'true',
-          'filterOperator': 'different',
-          'filterOperand1': 'DUMMY',
-        },
-      );
-      if (response is Map<String, dynamic> && response['list'] is Map) {
-        final list = response['list'] as Map<String, dynamic>;
-        final items = list.values.firstWhere((v) => v is List, orElse: () => []);
-        return items is List ? items : [];
+  /// Nombre minimal de caractères pour interroger Coswin.
+  static const int minSearchLength = 2;
+
+  /// Recherche Coswin par code (« contient »). Coswin ne sait pas chercher dans
+  /// les descriptions : seule la recherche par code est possible.
+  Future<List<Map<String, dynamic>>> _searchByCode(String path, String query) async {
+    final q = query.trim();
+    if (q.length < minSearchLength) return const [];
+    final response = await _apiService.getCoswin(path, queryParameters: {
+      'usePagination': 'true',
+      'filterOperator': 'contains',
+      'filterOperand1': q,
+    });
+    if (response is Map && response['list'] is Map) {
+      for (final value in (response['list'] as Map).values) {
+        if (value is List) return value.whereType<Map<String, dynamic>>().toList();
       }
-      return [];
-    } catch (e) {
-      _log('⚠️ Impossible de charger les articles Coswin: $e');
-      return [];
     }
+    return const [];
   }
+
+  /// Articles du stock Coswin dont le code contient [query] (53 000+ articles : pas de liste complète).
+  Future<List<StockItem>> searchItems(String query) async {
+    final rows = await _searchByCode('/items', query);
+    return rows
+        .map((r) => StockItem(
+              r['sritCode']?.toString().trim() ?? '',
+              r['sritDescription']?.toString().trim() ?? '',
+              unit: r['sritStockUnit']?.toString().trim() ?? '',
+            ))
+        .where((i) => i.code.isNotEmpty)
+        .toList();
+  }
+
+  /// Compteurs Coswin dont le code contient [query].
+  Future<List<RefItem>> searchMeters(String query) async {
+    final rows = await _searchByCode('/meters', query);
+    return rows
+        .map((r) => RefItem(
+              r['mdmtCode']?.toString().trim() ?? '',
+              r['mdmtDescription']?.toString().trim() ?? '',
+              entity: r['mdmtEntity']?.toString().trim() ?? '',
+            ))
+        .where((m) => m.code.isNotEmpty)
+        .toList();
+  }
+
+  /// Actions Coswin (étapes du mode opératoire). Le premier chargement prend plusieurs minutes.
+  Future<List<RefItem>> getActions() => _actions.load();
+
+  /// Nombre d'actions déjà reçues pendant le premier chargement (affichage de la progression).
+  ValueListenable<int> get actionsLoadedCount => _actions.loadedCount;
 
   /// Récupérer les spécifications techniques officielles Coswin Senelec (100% direct Coswin, 0 mock)
   Future<List<dynamic>> getSpecifications() async {
@@ -536,11 +569,13 @@ class OTService {
         'reemDescription': empName,
         'woeaResource': resource,
         'woeaPlannedHours': emp['woeaPlannedHours'] ?? 0.0,
+        'woeaAllocationDate': emp['woeaAllocationDate'],
+        'woeaScheduleDate': emp['woeaScheduleDate'],
       };
     }).toList();
   }
 
-  static Map<String, dynamic> _partRow(dynamic pk, String partCode, String desc, dynamic qty) => {
+  static Map<String, dynamic> _partRow(dynamic pk, String partCode, String desc, dynamic qty, [dynamic plannedQty]) => {
         'pkStockUsed': pk,
         'pkPart': pk,
         'wosyPart': partCode,
@@ -552,6 +587,7 @@ class OTService {
         'wosyUsedQuantity': qty,
         'wosyQuantity': qty,
         'quantiteUtilise': qty.toString(),
+        if (plannedQty != null) 'wospQtyPlanned': plannedQty,
       };
 
   /// Récupérer les pièces de rechange d'un OT
@@ -572,7 +608,8 @@ class OTService {
       final artDesc = article ?? txt;
       final partCode = article != null ? _codeBeforeDash(article) : 'ARTICLE';
       final qty = double.tryParse(_segmentValue(txt, 'Qté:') ?? '') ?? 1.0;
-      parts.add(_partRow(_feedbackPk(fb), partCode, artDesc, qty));
+      final planned = double.tryParse(_segmentValue(txt, 'Qté planifiée:') ?? '');
+      parts.add(_partRow(_feedbackPk(fb), partCode, artDesc, qty, planned));
     }
     return parts;
   }
@@ -580,23 +617,32 @@ class OTService {
   /// Récupérer les services utilisés d'un OT
   Future<List<dynamic>> getServices(String otCode) async {
     final raw = await _getRawWorkOrder(otCode);
-    final services = List<dynamic>.from(_section(raw, 'workOrderFree2Viewworkorderfind'));
+    // Coswin n'a pas de services dans son API (free2 est une table libre sans rapport) :
+    // seuls les services notés par l'application sont relus.
+    final services = <dynamic>[];
 
-    // Services enregistrés via comptes-rendus tagués : "Service: CODE - desc | Qté: 2 | Unité: U"
+    // "Service: CODE - desc | Qté planifiée: 2 | Qté consommée: 1 | Unité: U | Coût: … | Type: … | …"
     for (final fb in _taggedFeedbacks(raw, FeedbackTag.service)) {
       final txt = _feedbackText(fb);
       final label = _segmentValue(txt, 'Service:') ?? txt;
       final code = _codeBeforeDash(label);
-      final qty = double.tryParse(_segmentValue(txt, 'Qté:') ?? '') ?? 1.0;
+      final desc = label.contains(' - ') ? label.substring(label.indexOf(' - ') + 3).trim() : label;
+      // Ancien format : une seule quantité « Qté: »
+      final legacyQty = double.tryParse(_segmentValue(txt, 'Qté:') ?? '');
       final pk = _feedbackPk(fb);
       services.add({
         'pkService': pk,
         'pkServiceUsed': pk,
         'woseService': code,
-        'woseDescription': label,
-        'wosePlannedQuantity': qty,
-        'woseUsedQuantity': qty,
+        'woseDescription': desc,
+        'wosePlannedQuantity': double.tryParse(_segmentValue(txt, 'Qté planifiée:') ?? '') ?? legacyQty ?? 1.0,
+        'woseUsedQuantity': double.tryParse(_segmentValue(txt, 'Qté consommée:') ?? '') ?? legacyQty ?? 0.0,
         'woseUnit': _segmentValue(txt, 'Unité:') ?? 'U',
+        'woseCost': _segmentValue(txt, 'Coût:') ?? '',
+        'woseReplacementType': _segmentValue(txt, 'Type:') ?? '',
+        'woseMeter': _segmentValue(txt, 'Compteur:') ?? '',
+        'woseAction': _segmentValue(txt, 'Action:') ?? '',
+        'woseSequence': _segmentValue(txt, 'Séq:') ?? '',
       });
     }
     return services;
@@ -677,16 +723,20 @@ class OTService {
   /// Récupérer les moyens d'un OT
   Future<List<dynamic>> getMoyens(String otCode) async {
     final raw = await _getRawWorkOrder(otCode);
-    final facilities = List<Map<String, dynamic>>.from(_section(raw, 'workOrderFree1Viewworkorderfind'));
+    // Coswin n'a pas de moyens dans son API (free1 contient des codes comptables) :
+    // seuls les moyens notés par l'application sont relus.
+    final facilities = <Map<String, dynamic>>[];
 
     // Moyens enregistrés via comptes-rendus tagués : "Moyen: X | Immat: Y | Durée: 2h"
     for (final fb in _taggedFeedbacks(raw, FeedbackTag.facility)) {
       final txt = _feedbackText(fb);
       final pk = _feedbackPk(fb);
+      final moyen = _segmentValue(txt, 'Moyen:') ?? 'VEHICULE';
       facilities.add({
         'pkFacility': pk,
         'pkFacilityUsed': pk,
-        'wofuFacility': _segmentValue(txt, 'Moyen:') ?? 'VEHICULE',
+        'wofuFacility': _codeBeforeDash(moyen),
+        'wofuDescription': moyen.contains(' - ') ? moyen.substring(moyen.indexOf(' - ') + 3).trim() : '',
         'wofuEquipment': _segmentValue(txt, 'Immat:') ?? 'VEHICULE',
         'wofuDuration': (_segmentValue(txt, 'Durée:') ?? '1.0').replaceAll('h', '').trim(),
         'wofuStartDate': fb['woefStartDate'] ?? '',
@@ -728,9 +778,8 @@ class OTService {
   /// Créer une action (mode opératoire) dans Coswin (/actions)
   Future<void> createOperation(String otCode, Map<String, dynamic> data) {
     final desc = (data['opopDescription'] ?? data['opopJobDescription'] ?? data['description'] ?? 'Action OT').toString().trim();
-    final actionCode = OTPayloadRules.truncateJob(
-      (data['wowaAction'] ?? _codeBeforeDash(desc)).toString().trim(),
-    );
+    // Code d'action Coswin (référentiel /actions), transmis tel quel : pas de troncature.
+    final actionCode = (data['wowaAction'] ?? _codeBeforeDash(desc)).toString().trim();
     return _mutate('créer l\'opération', otCode: otCode, () async {
       // wowaEquipment est obligatoire pour Coswin : équipement de l'OT par défaut.
       final equipment = (data['wowaEquipment'] ?? (await _getRawWorkOrder(otCode))['wowoEquipment'] ?? '')
@@ -882,7 +931,8 @@ class OTService {
     final partCode = (data['wospItem'] ?? data['wospPart'] ?? data['partCode'] ?? data['wosyPart'] ?? '').toString().trim();
     final desc = (data['wospPartDescription'] ?? data['article'] ?? data['partDescription'] ?? data['wosyDescription'] ?? partCode).toString().trim();
     final qty = (data['wospQtyUsed'] ?? data['qtyUsed'] ?? data['wosyUsedQuantity'] ?? data['wosyQuantity'] ?? '1.0').toString().trim();
-    return 'Article: $partCode - $desc | Qté: $qty';
+    final planned = (data['wospQtyPlanned'] ?? data['plannedQty'] ?? '').toString().trim();
+    return 'Article: $partCode - $desc | Qté: $qty${planned.isNotEmpty ? ' | Qté planifiée: $planned' : ''}';
   }
 
   Future<void> updatePart(String otCode, int pk, Map<String, dynamic> data) =>
@@ -913,22 +963,38 @@ class OTService {
   /// Enregistrer un moyen/véhicule utilisé sur l'OT dans Coswin via compte-rendu tagué
   Future<void> createFacilityUsed(String otCode, Map<String, dynamic> data) {
     final moyen = (data['wofuFacility'] ?? data['moyen'] ?? 'VEHICULE').toString().trim();
+    final desc = (data['wofuDescription'] ?? data['moyenDesc'] ?? '').toString().trim();
     final immat = (data['wofuEquipment'] ?? data['equipement'] ?? moyen).toString().trim();
     final duration = (data['wofuDuration'] ?? data['duration'] ?? '1.0').toString().trim();
+    final label = desc.isNotEmpty && desc != moyen ? '$moyen - $desc' : moyen;
 
-    return _createTaggedFeedback(otCode, FeedbackTag.facility, 'Moyen: $moyen | Immat: $immat | Durée: ${duration}h');
+    return _createTaggedFeedback(otCode, FeedbackTag.facility, 'Moyen: $label | Immat: $immat | Durée: ${duration}h');
   }
 
   Future<void> deleteFacilityUsed(String otCode, int pk) async => _notDeletable('un moyen');
 
   /// Enregistrer un service utilisé sur l'OT dans Coswin via compte-rendu tagué
   Future<void> createServiceUsed(String otCode, Map<String, dynamic> data) {
-    final code = (data['woseService'] ?? data['serviceCode'] ?? '').toString().trim();
-    final desc = (data['woseDescription'] ?? data['article'] ?? code).toString().trim();
-    final qty = (data['woseQuantity'] ?? data['woseUsedQuantity'] ?? data['wosePlannedQuantity'] ?? '1.0').toString().trim();
-    final unit = (data['woseUnit'] ?? 'U').toString().trim();
+    String field(String key, [String fallback = '']) => (data[key] ?? fallback).toString().trim();
+    final code = field('woseService', field('serviceCode'));
+    final desc = field('woseDescription', code);
 
-    return _createTaggedFeedback(otCode, FeedbackTag.service, 'Service: $code - $desc | Qté: $qty | Unité: $unit');
+    final segments = <String>[
+      'Service: $code - $desc',
+      'Qté planifiée: ${field('wosePlannedQuantity', '1.0')}',
+      'Qté consommée: ${field('woseUsedQuantity', '0.0')}',
+      'Unité: ${field('woseUnit', 'U')}',
+      // Champs facultatifs : notés seulement s'ils sont renseignés
+      for (final e in const {
+        'woseCost': 'Coût',
+        'woseReplacementType': 'Type',
+        'woseMeter': 'Compteur',
+        'woseAction': 'Action',
+        'woseSequence': 'Séq',
+      }.entries)
+        if (field(e.key).isNotEmpty) '${e.value}: ${field(e.key)}',
+    ];
+    return _createTaggedFeedback(otCode, FeedbackTag.service, segments.join(' | '));
   }
 
   Future<void> deleteServiceUsed(String otCode, int pk) async => _notDeletable('un service');

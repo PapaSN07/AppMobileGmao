@@ -37,12 +37,16 @@ class MainsOeuvreTabState extends State<MainsOeuvreTab>
       setState(() {
         employes = list.map((item) {
           final isPlanned = item['woeaIsPlanned'] == true ? 'Planifié' : 'Non planifié';
+          // Coswin n'a pas de date de fin d'affectation : fin = début + heures prévues.
+          final start = _parseDate(item['woeaAllocationDate'] ?? item['woeaScheduleDate']);
+          final plannedHours = double.tryParse(item['woeaPlannedHours']?.toString() ?? '') ?? 0;
+          final end = start?.add(Duration(minutes: (plannedHours * 60).round()));
           return {
             'pk':               (item['pkWorkforce'] ?? item['pkEmployeeAllocated'] ?? 0) as int,
             'employe':          item['reemCode']?.toString() ?? item['woeaEmployee']?.toString() ?? '',
             'description':      item['reemDescription']?.toString() ?? item['woeaResource']?.toString() ?? 'Intervenant',
-            'dateDebut':        _formatDate(item['woeaAllocationDate']),
-            'dateFin':          '',
+            'dateDebut':        _formatDate(start),
+            'dateFin':          _formatDate(end),
             'heuresRealisees':  '0',
             'etatOT':           isPlanned,
             'ressource':        item['woeaResource']?.toString() ?? 'RDEF',
@@ -76,10 +80,14 @@ class MainsOeuvreTabState extends State<MainsOeuvreTab>
 
 
 
-  String _formatDate(dynamic raw) {
-    final s = raw?.toString() ?? '';
-    if (s.isEmpty) return '';
-    return s.replaceAll('T', ' ').substring(0, s.length > 16 ? 16 : s.length);
+  /// Date Coswin (ISO 8601, UTC) convertie en heure locale.
+  static DateTime? _parseDate(dynamic raw) => DateTime.tryParse(raw?.toString() ?? '')?.toLocal();
+
+  /// Format affiché : jj/mm/aaaa hh:mm.
+  static String _formatDate(DateTime? d) {
+    if (d == null) return '';
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${two(d.day)}/${two(d.month)}/${d.year} ${two(d.hour)}:${two(d.minute)}';
   }
 
   @override

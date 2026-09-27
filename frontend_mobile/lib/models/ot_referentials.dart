@@ -24,6 +24,18 @@ class RefItem {
   String get label => description.isEmpty || description == code ? code : '$description ($code)';
 }
 
+/// Article du stock Coswin (référentiel /items).
+class StockItem {
+  final String code;
+  final String description;
+  final String unit;
+
+  const StockItem(this.code, this.description, {this.unit = ''});
+
+  /// Libellé affiché : "DESCRIPTION (UNITÉ)".
+  String get label => unit.isEmpty ? description : '$description ($unit)';
+}
+
 /// Référentiels OT officiels chargés depuis Coswin.
 class OTReferentials {
   final List<RefItem> jobTypes;

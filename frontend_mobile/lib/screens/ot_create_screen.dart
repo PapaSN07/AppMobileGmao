@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
 import 'package:appmobilegmao/models/work_order.dart';
@@ -7,6 +8,8 @@ import 'package:appmobilegmao/widgets/custom_app_bar.dart';
 import 'package:appmobilegmao/services/ot_service.dart';
 import 'package:appmobilegmao/models/ot_referentials.dart';
 import 'package:appmobilegmao/models/ot_status.dart';
+import 'package:appmobilegmao/models/attached_file_note.dart';
+import 'package:appmobilegmao/widgets/attachment_warning.dart';
 import 'package:appmobilegmao/services/hive_service.dart';
 import 'package:appmobilegmao/services/equipment_service.dart';
 import 'package:appmobilegmao/screens/fichier_lie_screen.dart';
@@ -60,35 +63,10 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
   List<_GenericSelectionItem> _supervisors = [];
   List<_GenericSelectionItem> _statuses = [];
 
-  static final List<_GenericSelectionItem> _standardActions = [
-    _GenericSelectionItem(code: 'DIAG', description: 'Diagnostic et contrôle préliminaire'),
-    _GenericSelectionItem(code: 'REMPL', description: 'Remplacement de pièce / composant'),
-    _GenericSelectionItem(code: 'REPAR', description: 'Réparation et remise en état'),
-    _GenericSelectionItem(code: 'CONT', description: 'Contrôle et mesures électriques'),
-    _GenericSelectionItem(code: 'NETT', description: 'Nettoyage et dépoussiérage'),
-    _GenericSelectionItem(code: 'SERR', description: 'Serrage des connexions et bornes'),
-    _GenericSelectionItem(code: 'ESSAI', description: 'Essais et mise en service'),
-    _GenericSelectionItem(code: 'SECUR', description: 'Consignation et mise en sécurité'),
-  ];
-
-  List<_GenericSelectionItem> _standardParts = [
-    _GenericSelectionItem(code: '0110002', description: 'POTEAU BOIS S140  10 M (P)'),
-    _GenericSelectionItem(code: '1R0750', description: 'ROULEAU DE FIL SOUPLE (PI)'),
-    _GenericSelectionItem(code: 'TRVX00003', description: 'TERRAINS CIMENTES  L=0,8 et P=1 (PI)'),
-    _GenericSelectionItem(code: 'TRVX00004', description: 'TERRAINS CIMENTES  L=1,2 et P=0,8 (PI)'),
-    _GenericSelectionItem(code: '123456', description: 'Test reparable (PI)'),
-  ];
+  // Actions Coswin (étapes du mode opératoire), chargées en arrière-plan
+  List<_GenericSelectionItem> _actions = [];
 
   List<_GenericSelectionItem> _standardAttributes = [];
-
-  final List<_GenericSelectionItem> _standardFacilities = [
-    _GenericSelectionItem(code: 'VEH_LEGER', description: 'Véhicule Léger'),
-    _GenericSelectionItem(code: 'VEH_LOURD', description: 'Véhicule Lourd'),
-    _GenericSelectionItem(code: 'ENGIN', description: 'Engin de chantier'),
-    _GenericSelectionItem(code: 'NACELLE', description: 'Nacelle élévatrice'),
-    _GenericSelectionItem(code: 'GROUPE_ELEC', description: 'Groupe électrogène'),
-    _GenericSelectionItem(code: 'OUTILLAGE_SPEC', description: 'Outillage spécialisé'),
-  ];
 
   /// Matricule de l'utilisateur connecté (vide si inconnu : le champ devra être choisi).
   String get _currentMatricule => HiveService.getCurrentUser()?.matricule ?? '';
@@ -205,17 +183,6 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
   final TextEditingController _tempServiceCompteurController = TextEditingController();
   final TextEditingController _tempServiceActionController = TextEditingController();
   String _tempServiceReplacementType = '0. Systématique';
-  bool _tempServiceMajDirecte = false;
-  bool _tempServiceSansBS = false;
-
-  static final List<_GenericSelectionItem> _standardServices = [
-    _GenericSelectionItem(code: 'PREST_ELEC', description: 'Prestation Électrique Externe'),
-    _GenericSelectionItem(code: 'PREST_MECAN', description: 'Prestation Mécanique / Usinage'),
-    _GenericSelectionItem(code: 'CONTROLE_APAVE', description: 'Contrôle Réglementaire APAVE / Bureau Veritas'),
-    _GenericSelectionItem(code: 'NETTOYAGE_INDUS', description: 'Nettoyage Industriel et Dépoussiérage HTA'),
-    _GenericSelectionItem(code: 'TRANSPORT_ENGIN', description: 'Transport et Levage par Grue'),
-    _GenericSelectionItem(code: 'LOCATION_GROUPE', description: 'Location Groupe Électrogène de Secours'),
-  ];
 
   // Contrôleurs temporaires Sous-attributs
   final TextEditingController _tempAttrNameController = TextEditingController();
@@ -294,95 +261,6 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
     _loadSelectors();
   }
 
-  /// Formate un commentaire pour l'enregistrement Coswin avec ses métadonnées de fichier joint (WAF safe)
-  static String _formatCommentWithAttachment(String text, Map<String, dynamic>? attached) {
-    final cleanText = text.trim();
-    if (attached == null) return cleanText;
-
-    final nom = (attached['nom'] ?? '').toString().trim();
-    final fileDesc = (attached['description'] ?? '').toString().trim();
-    final type = (attached['type'] ?? '').toString().trim();
-    final cat = (attached['categorie'] ?? '').toString().trim();
-    final url = (attached['url'] ?? '').toString().trim();
-    final imp = (attached['isImprimable'] == true || attached['isImprimable']?.toString().toLowerCase() == 'true') ? 'Oui' : 'Non';
-    final date = (attached['dateCreation'] ?? '').toString().trim();
-    final author = (attached['createur'] ?? '').toString().trim();
-
-    final parts = <String>[];
-    if (nom.isNotEmpty) parts.add('Nom: $nom');
-    if (fileDesc.isNotEmpty) parts.add('Desc: $fileDesc');
-    if (type.isNotEmpty) parts.add('Type: $type');
-    if (cat.isNotEmpty) parts.add('Cat: $cat');
-    if (url.isNotEmpty) parts.add('URL: $url');
-    if (imp == 'Oui') parts.add('Imprimable: Oui');
-    if (date.isNotEmpty) parts.add('Date: $date');
-    if (author.isNotEmpty) parts.add('Auteur: $author');
-
-    final fileMeta = parts.join(' ; ');
-    if (cleanText.isNotEmpty) {
-      return '$cleanText\n[PJ: $fileMeta]';
-    } else {
-      return '[PJ: $fileMeta]';
-    }
-  }
-
-  /// Décode les métadonnées d'un fichier joint stocké dans le texte du commentaire
-  static Map<String, dynamic>? _parseAttachedFileFromComment(String rawText) {
-    String tag = '';
-    if (rawText.contains('[PJ:')) {
-      tag = '[PJ:';
-    } else if (rawText.contains('📎 [Fichier joint:')) {
-      tag = '📎 [Fichier joint:';
-    } else {
-      return null;
-    }
-
-    final startIdx = rawText.indexOf(tag);
-    final endIdx = rawText.indexOf(']', startIdx);
-    final content = endIdx != -1
-        ? rawText.substring(startIdx + tag.length, endIdx).trim()
-        : rawText.substring(startIdx + tag.length).trim();
-
-    final map = <String, dynamic>{};
-    final delimiter = content.contains(' ; ') ? ' ; ' : '|';
-    final tokens = content.split(delimiter);
-    for (final token in tokens) {
-      final t = token.trim();
-      if (t.startsWith('Nom:')) {
-        map['nom'] = t.substring(4).trim();
-      } else if (t.startsWith('Desc:')) {
-        map['description'] = t.substring(5).trim();
-      } else if (t.startsWith('Type:')) {
-        map['type'] = t.substring(5).trim();
-      } else if (t.startsWith('Cat:')) {
-        map['categorie'] = t.substring(4).trim();
-      } else if (t.startsWith('URL:')) {
-        map['url'] = t.substring(4).trim();
-      } else if (t.startsWith('Imprimable:')) {
-        map['isImprimable'] = t.substring(11).trim() == 'Oui';
-      } else if (t.startsWith('Date:')) {
-        map['dateCreation'] = t.substring(5).trim();
-      } else if (t.startsWith('Auteur:')) {
-        map['createur'] = t.substring(7).trim();
-      }
-    }
-    if (map.isEmpty && content.isNotEmpty) {
-      map['nom'] = content;
-    }
-    return map.isNotEmpty ? map : null;
-  }
-
-  /// Extrait le texte pur du commentaire sans les balises de fichier joint
-  static String _extractCleanCommentText(String rawText) {
-    if (rawText.contains('[PJ:')) {
-      return rawText.split('[PJ:')[0].trim();
-    }
-    if (rawText.contains('📎 [Fichier joint:')) {
-      return rawText.split('📎 [Fichier joint:')[0].trim();
-    }
-    return rawText.trim();
-  }
-
   /// Charge de manière asynchrone toutes les sous-ressources de l'OT en édition
   Future<void> _loadAllSubResources() async {
     final otCode = widget.orderToEdit!.wowoCode.toString();
@@ -401,8 +279,8 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
       setState(() {
         _comments.addAll(docs.map((doc) {
           final rawText = (doc['wodoComment'] ?? doc['wodoDescription'] ?? doc['comment'] ?? doc['reemDescription'] ?? '').toString();
-          final attached = _parseAttachedFileFromComment(rawText);
-          final cleanDesc = _extractCleanCommentText(rawText);
+          final attached = AttachedFileNote.parse(rawText);
+          final cleanDesc = AttachedFileNote.stripFrom(rawText);
           return {
             'pk': (doc['pkDocument'] ?? doc['pkEmployeeFeedback'] ?? doc['pkComment'] ?? 0) as int,
             'employee': (doc['author'] ?? doc['wodoCreationUser'] ?? doc['woefEmployee'] ?? '').toString(),
@@ -452,6 +330,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
             'partCode': partCode,
             'article': description,
             'qtyUsed': double.tryParse(qty) ?? 0.0,
+            if (item['wospQtyPlanned'] != null) 'plannedQty': item['wospQtyPlanned'],
           };
         }));
       });
@@ -463,6 +342,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
           _facilities.addAll(facs.map((item) => {
             'pk': (item['pkFacility'] ?? item['pk'] ?? 0) as int,
             'moyen': item['wofuFacility']?.toString() ?? item['moyen']?.toString() ?? '',
+            'moyenDesc': item['wofuDescription']?.toString() ?? '',
             'equipement': item['wofuEquipment']?.toString() ?? item['equipement']?.toString() ?? '',
             'duration': double.tryParse(item['wofuDuration']?.toString() ?? '1.0') ?? 1.0,
           }));
@@ -493,6 +373,12 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
               'plannedQty': double.tryParse(qtyPlan) ?? 1.0,
               'usedQty': double.tryParse(qtyCons) ?? 0.0,
               'unit': item['woseUnit']?.toString() ?? 'U',
+              'description': description,
+              'cost': item['woseCost']?.toString() ?? '',
+              'replacementType': item['woseReplacementType']?.toString() ?? '',
+              'compteur': item['woseMeter']?.toString() ?? '',
+              'action': item['woseAction']?.toString() ?? '',
+              'sequence': item['woseSequence']?.toString() ?? '',
             };
           }));
         });
@@ -571,29 +457,8 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
   Future<void> _loadSelectors() async {
     // 1. Charger les référentiels officiels Coswin Senelec (types, classes, priorités, statuts, superviseurs)
     await _loadCoswinReferentials();
+    unawaited(_loadCoswinActions());
 
-    // Charger les articles Coswin si non encore chargés dans les référentiels
-    try {
-      if (_standardParts.length <= 5) {
-        final realItems = await _otService.getItems();
-        if (mounted && realItems.isNotEmpty) {
-          setState(() {
-            _standardParts = realItems
-                .map((e) {
-                  final c = (e['sritCode'] ?? e['code'])?.toString() ?? '';
-                  final d = (e['sritDescription'] ?? e['description'])?.toString() ?? c;
-                  final u = (e['sritStockUnit'] ?? e['unit'])?.toString() ?? '';
-                  final fullDesc = u.isNotEmpty ? '$d ($u)' : d;
-                  return _GenericSelectionItem(code: c, description: fullDesc);
-                })
-                .where((it) => it.code.isNotEmpty)
-                .toList();
-          });
-        }
-      }
-    } catch (e) {
-      debugPrint('Erreur chargement articles Coswin: $e');
-    }
 
     // Charger les spécifications Coswin en direct (100% réel, 0 mock)
     try {
@@ -679,6 +544,59 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
     }
   }
 
+  Future<void> _loadCoswinActions() async {
+    try {
+      final actions = await _otService.getActions();
+      if (!mounted) return;
+      setState(() {
+        _actions = actions
+            .map((a) => _GenericSelectionItem(code: a.code, description: a.description))
+            .toList();
+      });
+    } catch (e) {
+      debugPrint('Erreur chargement actions Coswin: $e');
+    }
+  }
+
+  /// Ouvre la liste des actions Coswin (premier chargement long : on prévient l'utilisateur).
+  Future<void> _showActionSelector(void Function(_GenericSelectionItem action) onSelected) async {
+    if (_actions.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 4),
+          content: ValueListenableBuilder<int>(
+            valueListenable: _otService.actionsLoadedCount,
+            builder: (_, count, __) => Text(
+              'Chargement des actions Coswin (première fois, 1 à 3 minutes)… $count reçues',
+            ),
+          ),
+        ),
+      );
+      await _loadCoswinActions();
+      if (!mounted) return;
+      if (_actions.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Liste des actions Coswin indisponible. Réessayez plus tard.')),
+        );
+        return;
+      }
+    }
+    _showGenericSelector(
+      title: 'Choisir une Action Coswin',
+      items: _actions,
+      onSelected: (code) => onSelected(_actions.firstWhere((a) => a.code == code)),
+    );
+  }
+
+  /// Action Coswin correspondant au texte saisi (« CODE - description » ou « CODE »).
+  _GenericSelectionItem? _actionFromText(String text) {
+    final code = text.split(' - ').first.trim();
+    for (final a in _actions) {
+      if (a.code == code) return a;
+    }
+    return null;
+  }
+
   /// Ouvre un sélecteur de référentiel Coswin ; si la liste est vide
   /// (Coswin injoignable au chargement de l'écran), elle est rechargée d'abord.
   Future<void> _showReferentialSelector({
@@ -701,6 +619,34 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
     }
     _showGenericSelector(title: title, items: items(), onSelected: onSelected);
   }
+
+  /// Fenêtre de recherche Coswin par code (Coswin ne cherche pas dans les descriptions).
+  void _showCoswinSearch({
+    required String title,
+    required String hint,
+    required Future<List<_GenericSelectionItem>> Function(String query) search,
+    required void Function(_GenericSelectionItem item) onSelected,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => _CoswinSearchModal(title: title, hint: hint, search: search, onSelected: onSelected),
+    );
+  }
+
+  Future<List<_GenericSelectionItem>> _searchItems(String query) async =>
+      (await _otService.searchItems(query))
+          .map((i) => _GenericSelectionItem(code: i.code, description: i.description, unit: i.unit))
+          .toList();
+
+  Future<List<_GenericSelectionItem>> _searchMeters(String query) async =>
+      (await _otService.searchMeters(query))
+          .map((m) => _GenericSelectionItem(code: m.code, description: m.description))
+          .toList();
 
   void _showGenericSelector({
     required String title,
@@ -761,21 +707,57 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
   }
 
   /// Procède à la cascade d'enregistrement global de l'OT (création ou modification)
-  Future<void> _handleSaveGlobal() async {
-    if (_formKey.currentState == null || !_formKey.currentState!.validate()) {
-      _tabController.animateTo(0);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: Colors.red.shade800,
-          content: const Row(
-            children: [
-              Icon(Icons.error_outline, color: Colors.white),
-              SizedBox(width: 8),
-              Expanded(child: Text('Veuillez remplir les champs obligatoires (surlignés en rouge) *', style: TextStyle(fontWeight: FontWeight.bold))),
-            ],
-          ),
+  /// Champs obligatoires de l'onglet Détails (libellé → saisie).
+  /// Contrôlés sur les valeurs elles-mêmes : le formulaire n'existe que lorsque
+  /// l'onglet Détails est affiché, on ne peut donc pas s'appuyer sur lui depuis un autre onglet.
+  Map<String, TextEditingController> get _requiredFields => {
+        if (!_isEditMode && !_autoGenerateCode) 'Code OT': _codeController,
+        'Description / Travail': _jobController,
+        'Famille (Type)': _jobTypeController,
+        'Classe de travail': _jobClassController,
+        'Zone': _zoneController,
+        'Entité': _entityController,
+        'Centre de charge': _costcentreController,
+        'Équipement (Code)': _equipmentController,
+        'Technicien / Superviseur': _supervisorController,
+      };
+
+  List<String> _missingRequiredFields() => _requiredFields.entries
+      .where((e) => e.value.text.trim().isEmpty)
+      .map((e) => e.key)
+      .toList();
+
+  /// Superviseur accepté seulement s'il figure dans la liste Coswin (quand elle est chargée).
+  bool _isKnownSupervisor(String code) =>
+      _supervisors.isEmpty || _supervisors.any((s) => s.code == code);
+
+  void _showSaveError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: Colors.red.shade800,
+        duration: const Duration(seconds: 5),
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message, style: const TextStyle(fontWeight: FontWeight.bold))),
+          ],
         ),
-      );
+      ),
+    );
+  }
+
+  Future<void> _handleSaveGlobal() async {
+    final missing = _missingRequiredFields();
+    final supervisor = _supervisorController.text.trim();
+    final unknownSupervisor = supervisor.isNotEmpty && !_isKnownSupervisor(supervisor);
+    if (missing.isNotEmpty || unknownSupervisor) {
+      _tabController.animateTo(0);
+      // Surligner les champs en rouge une fois l'onglet Détails affiché
+      WidgetsBinding.instance.addPostFrameCallback((_) => _formKey.currentState?.validate());
+      _showSaveError(missing.isNotEmpty
+          ? 'Champs à remplir : ${missing.join(', ')}'
+          : 'Le superviseur « $supervisor » n\'existe pas dans Coswin : choisissez-le dans la liste.');
       return;
     }
 
@@ -793,7 +775,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
         'wowoRequestEntity': _entityController.text.trim(),
         'wowoCostcentre': _costcentreController.text.trim(),
         'wowoEquipment': _equipmentController.text.trim(),
-        'wowoSupervisor': (RegExp(r'^\d+$').hasMatch(_supervisorController.text.trim()) || _supervisorController.text.trim() == 'supervisor') ? _supervisorController.text.trim() : 'supervisor',
+        'wowoSupervisor': _supervisorController.text.trim(),
         'wowoCompletionRate': _completionRate,
         if (_priority.trim().isNotEmpty) 'wowoPriority': _priority.trim(),
         'wowoUserStatus': _status,
@@ -899,7 +881,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
       for (final comment in _comments) {
         if (comment['pk'] == null) {
           try {
-            final fullDesc = _formatCommentWithAttachment(
+            final fullDesc = AttachedFileNote.compose(
               comment['description']?.toString() ?? '',
               comment['attachedFile'] as Map<String, dynamic>?,
             );
@@ -973,6 +955,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
           try {
             await _otService.createFacilityUsed(finalOTCode, {
               'wofuFacility': fac['moyen'],
+              'wofuDescription': fac['moyenDesc'] ?? '',
               'wofuEquipment': fac['equipement'],
               'wofuDuration': fac['duration'] ?? 1.0,
             });
@@ -988,12 +971,16 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
         if (srv['pk'] == null) {
           try {
             await _otService.createServiceUsed(finalOTCode, {
-              'woseService': srv['article'],
-              'woseDescription': srv['article'],
+              'woseService': srv['serviceCode'] ?? srv['article'],
+              'woseDescription': srv['description'] ?? srv['article'],
               'wosePlannedQuantity': srv['plannedQty'] ?? 1.0,
               'woseUsedQuantity': srv['usedQty'] ?? 0.0,
-              'woseQuantity': (srv['usedQty'] ?? 0.0) > 0 ? srv['usedQty'] : (srv['plannedQty'] ?? 1.0),
               'woseUnit': srv['unit'] ?? 'U',
+              'woseCost': srv['cost'] ?? '',
+              'woseReplacementType': srv['replacementType'] ?? '',
+              'woseMeter': srv['compteur'] ?? '',
+              'woseAction': srv['action'] ?? '',
+              'woseSequence': srv['sequence'] ?? '',
             });
           } catch (e) {
             _tabController.animateTo(4);
@@ -1437,18 +1424,9 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                     suffixIcon: IconButton(
                       icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF0F1B80)),
                       tooltip: 'Choisir une action type',
-                      onPressed: () {
-                        _showGenericSelector(
-                          title: 'Choisir une Action / Étape',
-                          items: _standardActions,
-                          onSelected: (code) {
-                            final match = _standardActions.firstWhere((a) => a.code == code);
-                            setState(() {
-                              _tempOpController.text = '${match.code} - ${match.description}';
-                            });
-                          },
-                        );
-                      },
+                      onPressed: () => _showActionSelector((match) {
+                        setState(() => _tempOpController.text = '${match.code} - ${match.description}');
+                      }),
                     ),
                   ),
                 ),
@@ -1458,8 +1436,16 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                 onPressed: () {
                   final text = _tempOpController.text.trim();
                   if (text.isEmpty) return;
+                  // Coswin refuse toute action absente de son référentiel
+                  final action = _actionFromText(text);
+                  if (action == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Choisissez une action dans la liste Coswin (bouton ▼).')),
+                    );
+                    return;
+                  }
                   setState(() {
-                    _operations.add({'description': text});
+                    _operations.add({'description': '${action.code} - ${action.description}'});
                     _tempOpController.clear();
                   });
                 },
@@ -1597,6 +1583,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                           ),
                         ],
                       ),
+                      const AttachmentNotSentWarning(),
                       if ((_tempCommentAttachedFile!['description'] ?? '').toString().isNotEmpty) ...[
                         const SizedBox(height: 4),
                         Text(
@@ -1805,6 +1792,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                                             ),
                                         ],
                                       ),
+                                      const AttachmentNotSentWarning(),
                                       if ((attached['description'] ?? '').toString().isNotEmpty) ...[
                                         const SizedBox(height: 4),
                                         Text(
@@ -1978,6 +1966,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                                   ),
                                 ],
                               ),
+                              const AttachmentNotSentWarning(),
                               if ((attached['description'] ?? '').toString().isNotEmpty) ...[
                                 const SizedBox(height: 4),
                                 Text(
@@ -2477,23 +2466,16 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                             border: InputBorder.none,
                             suffixIcon: IconButton(
                               icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF0F1B80)),
-                              tooltip: 'Choisir une référence article',
-                              onPressed: () {
-                                _showGenericSelector(
-                                  title: 'Choisir un Article / Pièce',
-                                  items: _standardParts,
-                                  onSelected: (code) {
-                                    final match = _standardParts.firstWhere(
-                                      (p) => p.code == code,
-                                      orElse: () => _GenericSelectionItem(code: code, description: code),
-                                    );
-                                    setState(() {
-                                      _tempPartCodeController.text = match.code;
-                                      _tempPartArticleController.text = match.description;
-                                    });
-                                  },
-                                );
-                              },
+                              tooltip: 'Rechercher un article Coswin',
+                              onPressed: () => _showCoswinSearch(
+                                title: 'Rechercher un article Coswin',
+                                hint: 'Code article (ex. 1R07, TRVX)',
+                                search: _searchItems,
+                                onSelected: (item) => setState(() {
+                                  _tempPartCodeController.text = item.code;
+                                  _tempPartArticleController.text = item.description;
+                                }),
+                              ),
                             ),
                           ),
                         ),
@@ -2646,26 +2628,6 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                             labelText: 'Moyen / Type *',
                             isDense: true,
                             border: InputBorder.none,
-                            suffixIcon: IconButton(
-                              icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF0F1B80)),
-                              tooltip: 'Choisir un moyen',
-                              onPressed: () {
-                                _showGenericSelector(
-                                  title: 'Choisir un Moyen / Véhicule',
-                                  items: _standardFacilities,
-                                  onSelected: (code) {
-                                    final match = _standardFacilities.firstWhere(
-                                      (p) => p.code == code,
-                                      orElse: () => _GenericSelectionItem(code: code, description: code),
-                                    );
-                                    setState(() {
-                                      _tempFacMoyenController.text = match.code;
-                                      _tempFacMoyenDescController.text = match.description;
-                                    });
-                                  },
-                                );
-                              },
-                            ),
                           ),
                         ),
                       ),
@@ -2681,14 +2643,9 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                         padding: const EdgeInsets.symmetric(horizontal: 8),
                         child: TextFormField(
                           controller: _tempFacMoyenDescController,
-                          readOnly: true,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey.shade800,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          // Coswin n'a pas de liste de moyens : saisie libre
                           decoration: const InputDecoration(
-                            labelText: 'Désignation (Auto)',
+                            labelText: 'Désignation',
                             isDense: true,
                             border: InputBorder.none,
                           ),
@@ -2810,27 +2767,6 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Ligne 1: Origine / Approvisionnement (0. Stock)
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: Colors.grey.shade400),
-                      ),
-                      child: const Row(
-                        children: [
-                          Text('0. Stock', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                          Icon(Icons.arrow_drop_down, size: 18),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-
                 // Ligne 2: Article / Service (Jaune requis) et Désignation (Auto)
                 Row(
                   children: [
@@ -2851,23 +2787,17 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                             border: InputBorder.none,
                             suffixIcon: IconButton(
                               icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF0F1B80)),
-                              tooltip: 'Choisir une prestation / service',
-                              onPressed: () {
-                                _showGenericSelector(
-                                  title: 'Choisir une Prestation / Service',
-                                  items: _standardServices,
-                                  onSelected: (code) {
-                                    final match = _standardServices.firstWhere(
-                                      (s) => s.code == code,
-                                      orElse: () => _GenericSelectionItem(code: code, description: code),
-                                    );
-                                    setState(() {
-                                      _tempServiceArticleController.text = match.code;
-                                      _tempServiceDescController.text = match.description;
-                                    });
-                                  },
-                                );
-                              },
+                              tooltip: 'Rechercher un article Coswin',
+                              onPressed: () => _showCoswinSearch(
+                                title: 'Rechercher un article Coswin',
+                                hint: 'Code article (ex. TRVX, NETT)',
+                                search: _searchItems,
+                                onSelected: (item) => setState(() {
+                                  _tempServiceArticleController.text = item.code;
+                                  _tempServiceDescController.text = item.description;
+                                  if (item.unit.isNotEmpty) _tempServiceUnitController.text = item.unit;
+                                }),
+                              ),
                             ),
                           ),
                         ),
@@ -3010,24 +2940,21 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                       flex: 3,
                       child: TextFormField(
                         controller: _tempServiceCompteurController,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Compteur',
                           isDense: true,
-                          border: OutlineInputBorder(),
-                          suffixIcon: Icon(Icons.arrow_drop_down, color: Color(0xFF0F1B80)),
+                          border: const OutlineInputBorder(),
+                          suffixIcon: IconButton(
+                            icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF0F1B80)),
+                            tooltip: 'Rechercher un compteur Coswin',
+                            onPressed: () => _showCoswinSearch(
+                              title: 'Rechercher un compteur Coswin',
+                              hint: 'Code compteur (ex. _CPT, 402PE)',
+                              search: _searchMeters,
+                              onSelected: (item) => setState(() => _tempServiceCompteurController.text = item.code),
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      flex: 2,
-                      child: CheckboxListTile(
-                        dense: true,
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text('MàJ directe relevé', style: TextStyle(fontSize: 11)),
-                        value: _tempServiceMajDirecte,
-                        onChanged: (val) => setState(() => _tempServiceMajDirecte = val ?? false),
-                        controlAffinity: ListTileControlAffinity.leading,
                       ),
                     ),
                   ],
@@ -3058,31 +2985,11 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                           border: const OutlineInputBorder(),
                           suffixIcon: IconButton(
                             icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF0F1B80)),
-                            onPressed: () {
-                              _showGenericSelector(
-                                title: 'Choisir une Action Coswin',
-                                items: _standardActions,
-                                onSelected: (code) {
-                                  setState(() {
-                                    _tempServiceActionController.text = code;
-                                  });
-                                },
-                              );
-                            },
+                            onPressed: () => _showActionSelector((match) {
+                              setState(() => _tempServiceActionController.text = match.code);
+                            }),
                           ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      flex: 2,
-                      child: CheckboxListTile(
-                        dense: true,
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text('PR sans BS', style: TextStyle(fontSize: 11)),
-                        value: _tempServiceSansBS,
-                        onChanged: (val) => setState(() => _tempServiceSansBS = val ?? false),
-                        controlAffinity: ListTileControlAffinity.leading,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -3121,8 +3028,6 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                             'compteur': compteur,
                             'action': action,
                             'replacementType': _tempServiceReplacementType,
-                            'majDirecte': _tempServiceMajDirecte,
-                            'sansBS': _tempServiceSansBS,
                           });
                           _tempServiceArticleController.clear();
                           _tempServiceDescController.clear();
@@ -3133,8 +3038,6 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                           _tempServiceSeqController.clear();
                           _tempServiceCompteurController.clear();
                           _tempServiceActionController.clear();
-                          _tempServiceMajDirecte = false;
-                          _tempServiceSansBS = false;
                         });
                       },
                       style: ElevatedButton.styleFrom(
@@ -3815,7 +3718,144 @@ class _GenericSelectionItem {
   final String code;
   final String description;
 
-  _GenericSelectionItem({required this.code, required this.description});
+  /// Unité de stock (articles Coswin), vide sinon.
+  final String unit;
+
+  _GenericSelectionItem({required this.code, required this.description, this.unit = ''});
+}
+
+/// Recherche Coswin par code, au fil de la saisie.
+class _CoswinSearchModal extends StatefulWidget {
+  final String title;
+  final String hint;
+  final Future<List<_GenericSelectionItem>> Function(String query) search;
+  final void Function(_GenericSelectionItem item) onSelected;
+
+  const _CoswinSearchModal({
+    required this.title,
+    required this.hint,
+    required this.search,
+    required this.onSelected,
+  });
+
+  @override
+  State<_CoswinSearchModal> createState() => _CoswinSearchModalState();
+}
+
+class _CoswinSearchModalState extends State<_CoswinSearchModal> {
+  final TextEditingController _queryController = TextEditingController();
+  Timer? _debounce;
+  List<_GenericSelectionItem> _results = [];
+  bool _loading = false;
+  String? _error;
+  int _requestId = 0;
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _queryController.dispose();
+    super.dispose();
+  }
+
+  void _onChanged(String value) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 400), () => _run(value.trim()));
+  }
+
+  Future<void> _run(String query) async {
+    final id = ++_requestId;
+    if (query.length < OTService.minSearchLength) {
+      setState(() {
+        _results = [];
+        _loading = false;
+        _error = null;
+      });
+      return;
+    }
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final results = await widget.search(query);
+      if (!mounted || id != _requestId) return; // réponse d'une recherche dépassée
+      setState(() {
+        _results = results;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted || id != _requestId) return;
+      setState(() {
+        _loading = false;
+        _error = e.toString();
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final query = _queryController.text.trim();
+    Widget body;
+    if (_loading) {
+      body = const Center(child: CircularProgressIndicator(color: Color(0xFF0F1B80)));
+    } else if (_error != null) {
+      body = Center(child: Text('Erreur Coswin : $_error', textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)));
+    } else if (query.length < OTService.minSearchLength) {
+      body = const Center(
+        child: Text('Tapez au moins 2 caractères du code.\nCoswin ne cherche pas dans les descriptions.',
+            textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
+      );
+    } else if (_results.isEmpty) {
+      body = const Center(child: Text('Aucun résultat pour ce code.', style: TextStyle(color: Colors.grey)));
+    } else {
+      body = ListView.separated(
+        itemCount: _results.length,
+        separatorBuilder: (_, __) => const Divider(height: 1),
+        itemBuilder: (context, index) {
+          final item = _results[index];
+          return ListTile(
+            title: Text(item.code, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0F1B80))),
+            subtitle: Text(item.unit.isEmpty ? item.description : '${item.description} (${item.unit})'),
+            onTap: () {
+              Navigator.pop(context);
+              widget.onSelected(item);
+            },
+          );
+        },
+      );
+    }
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: SizedBox(
+        height: MediaQuery.of(context).size.height * 0.75,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(widget.title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF0F1B80))),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _queryController,
+                autofocus: true,
+                textCapitalization: TextCapitalization.characters,
+                onChanged: _onChanged,
+                decoration: InputDecoration(
+                  hintText: widget.hint,
+                  prefixIcon: const Icon(Icons.search),
+                  border: const OutlineInputBorder(),
+                  isDense: true,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Expanded(child: body),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _GenericSelectionModal extends StatefulWidget {
