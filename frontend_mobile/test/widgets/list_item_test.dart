@@ -112,7 +112,7 @@ void main() {
       expect(find.text('OT001'), findsOneWidget);
 
       // Vérifier que les champs sont affichés
-      expect(find.text('Famille: '), findsOneWidget);
+      expect(find.text('Type d\'intervention: '), findsOneWidget);
       expect(find.text('Maintenance'), findsOneWidget);
       expect(find.text('Zone: '), findsOneWidget);
       expect(find.text('Thiès'), findsOneWidget);

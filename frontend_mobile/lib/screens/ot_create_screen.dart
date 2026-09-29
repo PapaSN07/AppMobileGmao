@@ -67,7 +67,6 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
   // Actions Coswin (étapes du mode opératoire), chargées en arrière-plan
   List<_GenericSelectionItem> _actions = [];
 
-  List<_GenericSelectionItem> _standardAttributes = [];
 
   /// Matricule de l'utilisateur connecté (vide si inconnu : le champ devra être choisi).
   String get _currentMatricule => HiveService.getCurrentUser()?.matricule ?? '';
@@ -103,7 +102,6 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
   final List<int> _deletedParts = [];
   final List<int> _deletedFacilities = [];
   final List<int> _deletedServices = [];
-  final List<int> _deletedAttributes = [];
 
   // Contrôleurs temporaires pour l'ajout dans les onglets
   final TextEditingController _tempOpController = TextEditingController();
@@ -186,10 +184,6 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
   String _tempServiceReplacementType = '0. Systématique';
 
   // Contrôleurs temporaires Sous-attributs
-  final TextEditingController _tempAttrNameController = TextEditingController();
-  final TextEditingController _tempAttrValueController = TextEditingController();
-  final TextEditingController _tempAttrDescController = TextEditingController();
-  final TextEditingController _tempAttrUnitController = TextEditingController();
 
   @override
   void initState() {
@@ -292,6 +286,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
             'totalHours': doc['woefTotalHours']?.toString() ?? '1',
             'status': (doc['wodoType'] ?? doc['woefUserStatus'] ?? 'CR').toString(),
             'attachedFile': attached,
+            'type': (doc['type'] ?? 'Compte-rendu').toString(),
           };
         }));
       });
@@ -392,8 +387,10 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
       setState(() {
         _attributes.addAll(attrs.map((item) => {
           'pk': (item['pkAttribute'] ?? item['pkWorkOrderAttribute'] ?? 0) as int,
+          'source': item['source']?.toString() ?? 'coswin',
           'name': item['woatName']?.toString() ?? '',
           'value': item['woatValue']?.toString() ?? '',
+          'originalValue': item['woatValue']?.toString() ?? '',
           'description': item['woatDescription']?.toString() ?? '',
           'unit': item['woatUnitSymbol']?.toString() ?? '',
         }));
@@ -448,10 +445,6 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
     _tempServiceSeqController.dispose();
     _tempServiceCompteurController.dispose();
     _tempServiceActionController.dispose();
-    _tempAttrNameController.dispose();
-    _tempAttrValueController.dispose();
-    _tempAttrDescController.dispose();
-    _tempAttrUnitController.dispose();
     super.dispose();
   }
 
@@ -460,27 +453,6 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
     await _loadCoswinReferentials();
     unawaited(_loadCoswinActions());
 
-
-    // Charger les spécifications Coswin en direct (100% réel, 0 mock)
-    try {
-      if (_standardAttributes.isEmpty) {
-        final realSpecs = await _otService.getSpecifications();
-        if (mounted && realSpecs.isNotEmpty) {
-          setState(() {
-            _standardAttributes = realSpecs
-                .map((e) {
-                  final code = (e['code'] ?? e['name'])?.toString() ?? '';
-                  final desc = (e['description'] ?? e['name'] ?? code)?.toString() ?? '';
-                  return _GenericSelectionItem(code: code, description: desc);
-                })
-                .where((it) => it.code.isNotEmpty)
-                .toList();
-          });
-        }
-      }
-    } catch (e) {
-      debugPrint('Erreur chargement spécifications Coswin: $e');
-    }
 
     // 2. Charger les sélecteurs de zones/entités de l'équipement
     final entityCode = _entityController.text.trim();
@@ -713,12 +685,12 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
   /// l'onglet Détails est affiché, on ne peut donc pas s'appuyer sur lui depuis un autre onglet.
   Map<String, TextEditingController> get _requiredFields => {
         if (!_isEditMode && !_autoGenerateCode) 'Code OT': _codeController,
-        'Description / Travail': _jobController,
-        'Famille (Type)': _jobTypeController,
-        'Classe de travail': _jobClassController,
+        'Intervention': _jobController,
+        'Type d\'intervention': _jobTypeController,
+        'Classe d\'intervention': _jobClassController,
         'Zone': _zoneController,
         'Entité': _entityController,
-        'Centre de charge': _costcentreController,
+        'Centre de responsabilité': _costcentreController,
         'Équipement (Code)': _equipmentController,
         'Technicien / Superviseur': _supervisorController,
       };
@@ -764,6 +736,9 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
 
     setState(() => _isSaving = true);
 
+    // Éléments enregistrés en compte-rendu parce que le pare-feu a bloqué l'écriture Coswin
+    var savedAsReport = 0;
+
     try {
       final code = _isEditMode ? _codeController.text.trim() : (_autoGenerateCode ? _generateRandomCode() : _codeController.text.trim());
 
@@ -781,6 +756,15 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
         if (_priority.trim().isNotEmpty) 'wowoPriority': _priority.trim(),
         'wowoUserStatus': _status,
       };
+
+      // Création : les commentaires saisis partent directement dans le champ Commentaire de Coswin
+      if (!_isEditMode) {
+        final note = OTService.commentsForCreation([
+          for (final c in _comments.where((c) => c['pk'] == null))
+            AttachedFileNote.compose(c['description']?.toString() ?? '', c['attachedFile'] as Map<String, dynamic>?),
+        ]);
+        if (note.isNotEmpty) otData['wowoFeedbackNote'] = note;
+      }
 
       final String finalOTCode;
 
@@ -843,14 +827,6 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
             throw Exception("Matériel / Services (suppression) : $e");
           }
         }
-        for (final pk in _deletedAttributes) {
-          try {
-            await _otService.deleteAttribute(finalOTCode, pk);
-          } catch (e) {
-            _tabController.animateTo(5);
-            throw Exception("Sous d'attributs (suppression) : $e");
-          }
-        }
       } else {
         // Mode Création : Création de l'OT principal (Onglet 0)
         try {
@@ -878,9 +854,9 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
         }
       }
 
-      // 2. Commentaires / Compte-rendu (Onglet 2)
+      // 2. Commentaires (Onglet 2) — en création, déjà envoyés avec l'OT
       for (final comment in _comments) {
-        if (comment['pk'] == null) {
+        if (_isEditMode && comment['pk'] == null) {
           try {
             final fullDesc = AttachedFileNote.compose(
               comment['description']?.toString() ?? '',
@@ -890,7 +866,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
             final emp = (comment['employee']?.toString().trim().isNotEmpty == true)
                 ? comment['employee']
                 : dynamicMatricule;
-            await _otService.createDocument(finalOTCode, {
+            final target = await _otService.addComment(finalOTCode, text: fullDesc, reportData: {
               'woefEmployee': emp,
               'reemDescription': fullDesc,
               'woefStartDate': comment['startDate'],
@@ -899,6 +875,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
               'woefTotalHours': comment['totalHours'],
               'woefUserStatus': comment['status'],
             });
+            if (target == SaveTarget.report) savedAsReport++;
           } catch (e) {
             _tabController.animateTo(2);
             throw Exception("Compte-rendu : $e");
@@ -936,13 +913,14 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
       for (final part in _parts) {
         if (part['pk'] == null) {
           try {
-            await _otService.createPart(finalOTCode, {
+            final target = await _otService.createPart(finalOTCode, {
               'wospItem': part['partCode'],
               'wospPart': part['partCode'],
               'wospPartDescription': part['article'],
               'wospQtyPlanned': part['plannedQty'] ?? 0.0,
               'wospQtyUsed': part['qtyUsed'] ?? 1.0,
             });
+            if (target == SaveTarget.report) savedAsReport++;
           } catch (e) {
             _tabController.animateTo(4);
             throw Exception("Matériel / Pièces : $e");
@@ -990,17 +968,11 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
         }
       }
 
-      // 5. Attributs (Onglet 5)
+      // 5. Attributs (Onglet 5) : seules les valeurs modifiées des attributs Coswin sont envoyées
       for (final attr in _attributes) {
-        if (attr['pk'] == null) {
+        if (attr['source'] == 'coswin' && attr['value'] != attr['originalValue']) {
           try {
-            await _otService.createAttribute(finalOTCode, {
-              'woatName': attr['name'],
-              'woatValue': attr['value'],
-              'woatDescription': attr['description'],
-              'woatUnitSymbol': attr['unit'],
-              'woatValueType': 'ALPHANUMERIC',
-            });
+            await _otService.updateAttribute(finalOTCode, attr['pk'] as int, {'woatValue': attr['value']});
           } catch (e) {
             _tabController.animateTo(5);
             throw Exception("Sous d'attributs : $e");
@@ -1011,8 +983,15 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
       // Vider le cache pour forcer le rechargement de la liste principale
       await _otService.clearCache();
 
+      final savedMessage = _isEditMode ? 'OT N° $finalOTCode mis à jour.' : 'OT N° $finalOTCode créé.';
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_isEditMode ? 'OT N° $finalOTCode mis à jour avec succès !' : 'OT N° $finalOTCode créé avec succès !')),
+        SnackBar(
+          duration: Duration(seconds: savedAsReport > 0 ? 6 : 3),
+          content: Text(savedAsReport == 0
+              ? savedMessage
+              : '$savedMessage $savedAsReport élément(s) enregistré(s) en compte-rendu : '
+                  'le pare-feu Senelec bloque l\'écriture directe dans Coswin.'),
+        ),
       );
 
       Navigator.of(context).pop(true);
@@ -1156,7 +1135,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
               ],
             ],
             _buildInputField(
-              label: 'Description / Travail *',
+              label: 'Intervention *',
               controller: _jobController,
               validator: (val) => val == null || val.isEmpty ? 'Champ obligatoire' : null,
               maxLength: 15,
@@ -1184,13 +1163,13 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
               children: [
                 Expanded(
                   child: _buildInputField(
-                    label: 'Famille (Type) *',
+                    label: 'Type d\'intervention *',
                     controller: _jobTypeController,
                     validator: (val) => val == null || val.isEmpty ? 'Obligatoire' : null,
                     suffixIcon: const Icon(Icons.arrow_drop_down, color: AppTheme.senelecReflexBlue),
                     onTap: () {
                       _showReferentialSelector(
-                        title: 'Choisir la Famille (Type)',
+                        title: 'Choisir le type d\'intervention',
                         items: () => _jobTypes,
                         onSelected: (val) => setState(() => _jobTypeController.text = val),
                       );
@@ -1200,14 +1179,14 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                 SizedBox(width: spacing.medium),
                 Expanded(
                   child: _buildInputField(
-                    label: 'Classe de travail *',
+                    label: 'Classe d\'intervention *',
                     controller: _jobClassController,
                     validator: (val) => val == null || val.isEmpty ? 'Obligatoire' : null,
                     maxLength: 8,
                     suffixIcon: const Icon(Icons.arrow_drop_down, color: AppTheme.senelecReflexBlue),
                     onTap: () {
                       _showReferentialSelector(
-                        title: 'Choisir la Classe de travail',
+                        title: 'Choisir la classe d\'intervention',
                         items: () => _jobClasses,
                         onSelected: (val) => setState(() => _jobClassController.text = val),
                       );
@@ -1263,13 +1242,13 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
               children: [
                 Expanded(
                   child: _buildInputField(
-                    label: 'Centre de charge *',
+                    label: 'Centre de responsabilité *',
                     controller: _costcentreController,
                     validator: (val) => val == null || val.isEmpty ? 'Obligatoire' : null,
                     suffixIcon: const Icon(Icons.arrow_drop_down, color: AppTheme.senelecReflexBlue),
                     onTap: () {
                       _showGenericSelector(
-                        title: 'Choisir le Centre de charge',
+                        title: 'Choisir le centre de responsabilité',
                         items: _extractSelectionItems('centreCharges'),
                         onSelected: (val) => setState(() => _costcentreController.text = val),
                       );
@@ -1724,11 +1703,12 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
-                                      'Par : ${comm['employee'] ?? '-'}',
+                                      '${comm['pk'] == null ? 'Nouveau commentaire' : comm['type'] ?? 'Commentaire'} · Par : ${comm['employee'] ?? '-'}',
                                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey),
                                     ),
                                   ),
-                                  IconButton(
+                                  // Coswin ne permet pas de supprimer un commentaire enregistré
+                                  if (comm['pk'] == null) IconButton(
                                     icon: const Icon(Icons.delete, color: Colors.red, size: 20),
                                     padding: EdgeInsets.zero,
                                     constraints: const BoxConstraints(),
@@ -3110,134 +3090,64 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
     );
   }
 
-  /// Onglet 6: Sous-attributs (Ajout simple en mémoire)
+  /// Onglet 6 : attributs Coswin de l'OT (créés par Coswin à partir de l'équipement).
+  /// On y saisit les valeurs ; les anciens attributs notés en compte-rendu sont en lecture seule.
   Widget _buildAttributesTab(ResponsiveSpacing spacing) {
-    return Column(
-      children: [
-        Container(
-          color: Colors.grey[100],
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _tempAttrNameController,
-                      decoration: InputDecoration(
-                        labelText: 'Nom Attribut *',
-                        isDense: true,
-                        suffixIcon: IconButton(
-                          icon: const Icon(Icons.arrow_drop_down, color: AppTheme.senelecReflexBlue),
-                          tooltip: 'Choisir une caractéristique Coswin',
-                          onPressed: () {
-                            _showGenericSelector(
-                              title: 'Choisir une Caractéristique Coswin',
-                              items: _standardAttributes,
-                              onSelected: (code) {
-                                final match = _standardAttributes.firstWhere(
-                                  (a) => a.code == code,
-                                  orElse: () => _GenericSelectionItem(code: code, description: code),
-                                );
-                                setState(() {
-                                  _tempAttrNameController.text = match.code;
-                                  _tempAttrDescController.text = match.description;
-                                  if (match.description.contains('[') && match.description.contains(']')) {
-                                    final u = match.description.split('[').last.split(']').first.trim();
-                                    if (u.isNotEmpty) _tempAttrUnitController.text = u;
-                                  }
-                                });
-                              },
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _tempAttrValueController,
-                      decoration: const InputDecoration(labelText: 'Valeur *', isDense: true),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _tempAttrDescController,
-                      decoration: const InputDecoration(labelText: 'Description / Équipement', isDense: true),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _tempAttrUnitController,
-                      decoration: const InputDecoration(labelText: 'Unité (ex: V, A, °C)', isDense: true),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  ElevatedButton(
-                    onPressed: () {
-                      final name = _tempAttrNameController.text.trim();
-                      final val = _tempAttrValueController.text.trim();
-                      if (name.isEmpty || val.isEmpty) return;
-                      setState(() {
-                        _attributes.add({
-                          'name': name,
-                          'value': val,
-                          'description': _tempAttrDescController.text.trim(),
-                          'unit': _tempAttrUnitController.text.trim(),
-                        });
-                        _tempAttrNameController.clear();
-                        _tempAttrValueController.clear();
-                        _tempAttrDescController.clear();
-                        _tempAttrUnitController.clear();
-                      });
-                    },
-                    style: ElevatedButton.styleFrom(backgroundColor: AppTheme.senelecReflexBlue),
-                    child: const Icon(Icons.add, color: Colors.white),
-                  ),
-                ],
-              ),
-            ],
+    if (!_isEditMode) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text(
+            'Les attributs sont créés par Coswin avec l\'OT, à partir de l\'équipement.\n'
+            'Renseignez-les en modifiant l\'OT une fois créé.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey),
           ),
         ),
-        Expanded(
-          child: _attributes.isEmpty
-              ? const Center(child: Text('Aucun sous-attribut configuré'))
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _attributes.length,
-                  itemBuilder: (context, index) {
-                    final attr = _attributes[index];
-                    final unit = attr['unit'] as String;
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      child: ListTile(
-                        leading: const Icon(Icons.tune, color: AppTheme.senelecReflexBlue),
-                        title: Text('${attr['name']} : ${attr['value']}${unit.isNotEmpty ? ' $unit' : ''}'),
-                        subtitle: attr['description'].toString().isNotEmpty ? Text(attr['description']) : null,
-                        trailing: IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red),
-                          onPressed: () {
-                            setState(() {
-                              final removed = _attributes.removeAt(index);
-                              if (removed['pk'] != null) {
-                                _deletedAttributes.add(removed['pk'] as int);
-                              }
-                            });
-                          },
-                        ),
-                      ),
-                    );
-                  },
+      );
+    }
+    if (_attributes.isEmpty) {
+      return const Center(child: Text('Aucun attribut Coswin pour cet OT'));
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _attributes.length,
+      itemBuilder: (context, index) {
+        final attr = _attributes[index];
+        final isCoswin = attr['source'] == 'coswin';
+        final unit = (attr['unit'] ?? '').toString();
+        final description = (attr['description'] ?? '').toString();
+        return Card(
+          margin: const EdgeInsets.only(bottom: 8),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  attr['name']?.toString() ?? 'Attribut',
+                  style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.senelecReflexBlue),
                 ),
-        ),
-      ],
+                if (description.isNotEmpty)
+                  Text(description, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                const SizedBox(height: 6),
+                TextFormField(
+                  key: ValueKey('attr-${attr['pk']}'),
+                  initialValue: attr['value']?.toString() ?? '',
+                  readOnly: !isCoswin,
+                  decoration: InputDecoration(
+                    labelText: isCoswin ? 'Valeur' : 'Valeur (notée en compte-rendu)',
+                    suffixText: unit.isNotEmpty ? unit : null,
+                    isDense: true,
+                    border: const OutlineInputBorder(),
+                  ),
+                  onChanged: (value) => attr['value'] = value.trim(),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 

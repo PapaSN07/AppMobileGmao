@@ -74,7 +74,10 @@ class ListItemCustom extends StatelessWidget {
       primaryText: code,
       primaryLabel: 'Code',
       fields: [
-        ItemField(label: 'Famille', value: famille.trim().isEmpty ? '-' : famille),
+        ItemField(
+          label: 'Famille',
+          value: famille.trim().isEmpty ? '-' : famille,
+        ),
         ItemField(label: 'Zone', value: zone.trim().isEmpty ? '-' : zone),
         ItemField(label: 'Entité', value: entity.trim().isEmpty ? '-' : entity),
         ItemField(label: 'Unité', value: unite.trim().isEmpty ? '-' : unite),
@@ -127,7 +130,7 @@ class ListItemCustom extends StatelessWidget {
       primaryText: code,
       primaryLabel: 'Code',
       fields: [
-        ItemField(label: 'Famille', value: famille),
+        ItemField(label: 'Type d\'intervention', value: famille),
         ItemField(label: 'Zone', value: zone),
         ItemField(label: 'Entité', value: entity),
         ItemField(label: 'Équipement', value: unite),
@@ -135,7 +138,7 @@ class ListItemCustom extends StatelessWidget {
       overlayDetails: {
         'Code': code,
         if (status != null && status.isNotEmpty) 'État': status, // ✅ AJOUTÉ
-        'Famille': famille,
+        'Type d\'intervention': famille,
         'Zone': zone,
         'Entité': entity,
         'Équipement': unite,
@@ -277,19 +280,11 @@ class ListItemCustom extends StatelessWidget {
     return GestureDetector(
       onTap: onTap ?? () => _showOverlay(context),
       child: Container(
-        padding: spacing.custom(
-          horizontal: 14,
-          vertical: 12,
-        ),
+        padding: spacing.custom(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
           color: backgroundColor ?? Colors.white,
-          borderRadius: BorderRadius.circular(
-            responsive.spacing(16),
-          ),
-          border: Border.all(
-            color: const Color(0xFFE2E8F0),
-            width: 1.0,
-          ),
+          borderRadius: BorderRadius.circular(responsive.spacing(16)),
+          border: Border.all(color: const Color(0xFFE2E8F0), width: 1.0),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.04),
@@ -316,9 +311,7 @@ class ListItemCustom extends StatelessWidget {
       height: responsive.spacing(48),
       decoration: BoxDecoration(
         color: iconColor ?? AppTheme.senelecReflexBlue.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(
-          responsive.spacing(12),
-        ),
+        borderRadius: BorderRadius.circular(responsive.spacing(12)),
       ),
       child: Icon(
         icon,
@@ -410,30 +403,42 @@ class ListItemCustom extends StatelessWidget {
     ResponsiveSpacing spacing,
   ) {
     return Expanded(
-      child: Row(
-        children: [
-          Text(
-            '${field.label}: ',
-            style: TextStyle(
-              fontFamily: AppTheme.fontRoboto,
-              fontWeight: FontWeight.w500,
-              color: const Color(0xFF64748B),
-              fontSize: responsive.sp(12),
+      // Libellé limité à 60 % de la largeur : un libellé long (« Type d'intervention »)
+      // est coupé proprement au lieu de déborder, et la valeur reste visible.
+      child: LayoutBuilder(
+        builder:
+            (context, constraints) => Row(
+              children: [
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: constraints.maxWidth * 0.6,
+                  ),
+                  child: Text(
+                    '${field.label}: ',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: AppTheme.fontRoboto,
+                      fontWeight: FontWeight.w500,
+                      color: const Color(0xFF64748B),
+                      fontSize: responsive.sp(12),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    field.value,
+                    style: TextStyle(
+                      fontFamily: AppTheme.fontRoboto,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF1E293B),
+                      fontSize: responsive.sp(12),
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
             ),
-          ),
-          Expanded(
-            child: Text(
-              field.value,
-              style: TextStyle(
-                fontFamily: AppTheme.fontRoboto,
-                fontWeight: FontWeight.w700,
-                color: const Color(0xFF1E293B),
-                fontSize: responsive.sp(12),
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
       ),
     );
   }

@@ -151,6 +151,7 @@ class _HomeScreenState extends State<HomeScreen> {
       famille: order.wowoJobType.isNotEmpty
           ? order.wowoJobType
           : (order.wowoJobClass.isNotEmpty ? order.wowoJobClass : '-'),
+      classe: order.wowoJobClass,
       zone: order.wowoZone?.isNotEmpty == true ? order.wowoZone! : '-',
       entity: order.wowoRequestEntity.isNotEmpty ? order.wowoRequestEntity : '-',
       unite: order.wowoEquipment.isNotEmpty ? order.wowoEquipment : '-',

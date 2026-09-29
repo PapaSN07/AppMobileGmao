@@ -5,6 +5,9 @@ class Order {
   final IconData icon;
   final String code;
   final String famille;
+
+  /// Classe d'intervention (wowoJobClass).
+  final String classe;
   final String zone;
   final String entity;
   final String unite;
@@ -18,6 +21,7 @@ class Order {
     required this.icon,
     required this.code,
     required this.famille,
+    this.classe = '',
     required this.zone,
     required this.entity,
     required this.unite,

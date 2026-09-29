@@ -43,6 +43,8 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+# Rapports générés par Gradle (jamais à versionner)
+/android/build/
 
 flutter/
 .vscode/

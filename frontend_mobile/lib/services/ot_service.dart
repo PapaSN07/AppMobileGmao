@@ -6,6 +6,7 @@ import 'package:appmobilegmao/services/coswin_referential_service.dart';
 import 'package:appmobilegmao/services/coswin_action_service.dart';
 import 'package:appmobilegmao/services/ot_code_locator.dart';
 import 'package:appmobilegmao/models/ot_referentials.dart';
+import 'package:appmobilegmao/models/coswin_comment_log.dart';
 import 'package:appmobilegmao/models/ot_status.dart';
 import 'package:appmobilegmao/models/work_order.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -51,6 +52,15 @@ enum FeedbackTag {
   bool matches(String text) => text.startsWith(prefix) || text.contains(label);
 
   static bool isTagged(String text) => values.any((t) => t.matches(text));
+}
+
+/// Où un élément a réellement été enregistré.
+enum SaveTarget {
+  /// Dans le champ ou la table Coswin prévu (commentaire, stock…).
+  coswin,
+
+  /// En compte-rendu, parce que le pare-feu Senelec a bloqué l'écriture directe.
+  report,
 }
 
 /// Entrée du cache mémoire d'un OT brut Coswin.
@@ -148,56 +158,6 @@ class OTService {
 
   /// Nombre d'actions déjà reçues pendant le premier chargement (affichage de la progression).
   ValueListenable<int> get actionsLoadedCount => _actions.loadedCount;
-
-  /// Récupérer les spécifications techniques officielles Coswin Senelec (100% direct Coswin, 0 mock)
-  Future<List<dynamic>> getSpecifications() async {
-    try {
-      final response = await _apiService.getCoswin('/specifications');
-      if (response is Map<String, dynamic>) {
-        final findList = response['specificationFindList'];
-        if (findList is Map && findList['specificationRow'] is List) {
-          final rows = findList['specificationRow'] as List;
-          final formatted = <Map<String, dynamic>>[];
-          final seenKeys = <String>{};
-
-          for (final r in rows) {
-            if (r is! Map) continue;
-            final code = (r['cwspCode'] ?? '').toString().trim();
-            final idx = r['cwspIndex'] ?? 1;
-            final unit = (r['cwspUnit'] ?? '').toString().trim();
-            final authVal = (r['cwspAuthorizedValue'] ?? '').toString().trim();
-            final valType = r['cwspValueType'] ?? 0;
-
-            final key = authVal.isNotEmpty ? '${code}_${idx}_$authVal' : '${code}_$idx';
-            if (!seenKeys.add(key)) continue;
-
-            String desc = authVal.isNotEmpty
-                ? '$authVal (Classe $code)'
-                : 'Caractéristique $code #$idx';
-            if (unit.isNotEmpty) {
-              desc += ' [$unit]';
-            }
-
-            formatted.add({
-              'code': authVal.isNotEmpty ? authVal : 'SPEC_$code#$idx',
-              'index': idx,
-              'name': desc,
-              'description': desc,
-              'unit': unit,
-              'classCode': code,
-              'valueType': valType,
-              'authorizedValue': authVal,
-            });
-          }
-          return formatted;
-        }
-      }
-      return [];
-    } catch (e) {
-      _log('⚠️ Impossible de charger les spécifications Coswin: $e');
-      return [];
-    }
-  }
 
   /// Vérifier la connectivité Internet
   Future<bool> hasInternetConnection() async {
@@ -445,6 +405,30 @@ class OTService {
     }
   }
 
+  /// Tente l'écriture Coswin ; si le pare-feu la refuse, enregistre en compte-rendu.
+  /// Le résultat indique où l'élément a réellement été enregistré (jamais en silence).
+  Future<SaveTarget> _withFirewallFallback(
+    Future<void> Function() coswinWrite,
+    Future<void> Function() reportWrite,
+  ) async {
+    try {
+      await coswinWrite();
+      return SaveTarget.coswin;
+    } on ApiException catch (e) {
+      if (!e.firewallBlocked) rethrow;
+      _log('⚠️ Pare-feu : écriture Coswin refusée, enregistrement en compte-rendu');
+      await reportWrite();
+      return SaveTarget.report;
+    }
+  }
+
+  /// Nom affiché dans l'historique des commentaires Coswin.
+  static String get _commentAuthor {
+    final user = HiveService.getCurrentUser();
+    final username = user?.username.trim() ?? '';
+    return username.isNotEmpty ? username : (user?.matricule ?? 'Application mobile');
+  }
+
   /// Suppression que l'API Coswin ne propose pas : on échoue explicitement
   /// plutôt que de laisser croire à l'utilisateur que l'élément a disparu.
   Never _notDeletable(String what) {
@@ -463,7 +447,13 @@ class OTService {
 
     return _mutate('mettre à jour l\'OT', otCode: code, () async {
       final payload = OTPayloadRules.forUpdate(data, await _referentials.load());
-      final current = OTStatus.normalize((await _rawWorkOrder(code))?['wowoUserStatus']?.toString());
+      final raw = await _rawWorkOrder(code);
+      // Taux inchangé : on garde le texte saisi dans Coswin (ex. « 100% suite vandalisme »).
+      if (WorkOrder.parseCompletionRate(payload['wowoLongString2']) ==
+          WorkOrder.parseCompletionRate(raw?['wowoLongString2'])) {
+        payload.remove('wowoLongString2');
+      }
+      final current = OTStatus.normalize(raw?['wowoUserStatus']?.toString());
       final wanted = payload['wowoUserStatus']?.toString();
       final newStatus = wanted != null && wanted != current ? wanted : null;
 
@@ -648,10 +638,25 @@ class OTService {
     return services;
   }
 
-  /// Récupérer les commentaires/feedbacks d'un OT
+  /// Récupérer les commentaires d'un OT : d'abord le champ Commentaire de Coswin
+  /// (`wowoFeedbackNote`), puis les comptes-rendus d'intervention.
   Future<List<dynamic>> getDocuments(String otCode) async {
     final raw = await _getRawWorkOrder(otCode);
-    return _section(raw, 'employeeFeedbackViewworkorderfind')
+    final coswinComments = CoswinCommentLog.parse(raw['wowoFeedbackNote']?.toString()).map((c) {
+      final author = c.author.isNotEmpty ? c.author : 'Coswin';
+      return <String, dynamic>{
+        'pkDocument': 0, // entrée du champ Commentaire : ni modifiable ni supprimable
+        'source': 'coswin',
+        'type': 'Commentaire Coswin',
+        'comment': c.text,
+        'wodoComment': c.text,
+        'wodoDescription': c.text,
+        'author': author,
+        'wodoCreationUser': author,
+        'createdAt': c.dateTime?.toIso8601String() ?? '',
+      };
+    });
+    final reports = _section(raw, 'employeeFeedbackViewworkorderfind')
         // Les comptes-rendus techniques tagués ont leur propre onglet
         .where((fb) => !FeedbackTag.isTagged(_feedbackText(fb)))
         .map((fb) {
@@ -665,15 +670,21 @@ class OTService {
         'comment': txt.isNotEmpty ? txt : 'Compte-rendu intervention',
         'wodoComment': txt,
         'wodoDescription': txt,
+        'source': 'report',
+        'type': 'Compte-rendu',
         'author': author,
         'wodoCreationUser': author,
         'woefEmployee': author,
         'createdAt': dateStr,
       };
-    }).toList();
+    });
+    return [...coswinComments, ...reports];
   }
 
-  static Map<String, dynamic> _attributeRow(dynamic pk, dynamic name, dynamic value, dynamic desc, dynamic unit) => {
+  static Map<String, dynamic> _attributeRow(dynamic pk, dynamic name, dynamic value, dynamic desc, dynamic unit,
+          {String source = 'coswin'}) =>
+      {
+        'source': source,
         'pkWorkOrderAttribute': pk,
         'pkAttribute': pk,
         'woatName': name,
@@ -715,7 +726,7 @@ class OTService {
           value = right;
         }
       }
-      attrs.add(_attributeRow(_feedbackPk(fb), name, value, desc, ''));
+      attrs.add(_attributeRow(_feedbackPk(fb), name, value, desc, '', source: 'report'));
     }
     return attrs;
   }
@@ -923,9 +934,51 @@ class OTService {
         () => _apiService.deleteCoswin('/workorders/$otCode/allocatedemployees/$pk'));
   }
 
-  /// Enregistrer une pièce de rechange utilisée sur l'OT dans Coswin via compte-rendu tagué
-  Future<void> createPart(String otCode, Map<String, dynamic> data) =>
-      _createTaggedFeedback(otCode, FeedbackTag.part, _partText(data));
+  /// Ajoute un commentaire dans le champ Commentaire de Coswin (`wowoFeedbackNote`).
+  /// Si le pare-feu bloque la modification, il est enregistré en compte-rendu ([reportData]).
+  Future<SaveTarget> addComment(String otCode, {required String text, required Map<String, dynamic> reportData}) {
+    return _withFirewallFallback(
+      () => _mutate('ajouter le commentaire', otCode: otCode, () async {
+        final raw = await _rawWorkOrder(otCode);
+        final note = CoswinCommentLog.prepend(
+          raw?['wowoFeedbackNote']?.toString(),
+          author: _commentAuthor,
+          text: text,
+        );
+        await _apiService.putCoswin(
+          '/workorders/$otCode/update0',
+          data: OTPayloadRules.update0Body({'wowoFeedbackNote': note}),
+        );
+      }),
+      () => createDocument(otCode, reportData),
+    );
+  }
+
+  /// Historique Coswin des commentaires saisis à la création d'un OT (champ `wowoFeedbackNote`).
+  static String commentsForCreation(List<String> texts) {
+    var note = '';
+    for (final text in texts.where((t) => t.trim().isNotEmpty)) {
+      note = CoswinCommentLog.prepend(note, author: _commentAuthor, text: text);
+    }
+    return note;
+  }
+
+  /// Enregistre une pièce dans le stock Coswin de l'OT ; si le pare-feu bloque,
+  /// elle est notée en compte-rendu tagué.
+  Future<SaveTarget> createPart(String otCode, Map<String, dynamic> data) {
+    double qty(dynamic v, double fallback) => double.tryParse(v?.toString() ?? '') ?? fallback;
+    final code = (data['wospItem'] ?? data['wospPart'] ?? data['partCode'] ?? data['wosyPart'] ?? '').toString().trim();
+    final stock = {
+      'wosuSpare': code,
+      'wosuPlannedQuantity': qty(data['wospQtyPlanned'] ?? data['plannedQty'], 0),
+      'wosuActualQuantity': qty(data['wospQtyUsed'] ?? data['qtyUsed'] ?? data['wosyUsedQuantity'], 1),
+    };
+    return _withFirewallFallback(
+      () => _mutate('enregistrer la pièce', otCode: otCode,
+          () => _apiService.putCoswin('/workorders/$otCode/stockused/updateorcreate', data: stock)),
+      () => _createTaggedFeedback(otCode, FeedbackTag.part, _partText(data)),
+    );
+  }
 
   static String _partText(Map<String, dynamic> data) {
     final partCode = (data['wospItem'] ?? data['wospPart'] ?? data['partCode'] ?? data['wosyPart'] ?? '').toString().trim();
@@ -940,10 +993,6 @@ class OTService {
 
   Future<void> deletePart(String otCode, int pk) async => _notDeletable('une pièce');
 
-  /// Enregistrer un sous-attribut sur l'OT dans Coswin via compte-rendu tagué
-  Future<void> createAttribute(String otCode, Map<String, dynamic> data) =>
-      _createTaggedFeedback(otCode, FeedbackTag.attribute, _attributeText(data));
-
   static String _attributeText(Map<String, dynamic> data) {
     final name = (data['woatName'] ?? data['name'] ?? 'Attribut').toString().trim();
     final value = (data['woatValue'] ?? data['value'] ?? '').toString().trim();
@@ -955,8 +1004,19 @@ class OTService {
     return '$name: $value$unitPart$descPart';
   }
 
-  Future<void> updateAttribute(String otCode, int pk, Map<String, dynamic> data) =>
-      _updateTaggedFeedback(otCode, pk, FeedbackTag.attribute, _attributeText(data));
+  /// Modifie la valeur d'un attribut. Attribut Coswin : `PUT /attributes/{pk}` (bloqué par le
+  /// pare-feu pour l'instant) ; ancien attribut noté en compte-rendu : texte réécrit.
+  Future<void> updateAttribute(String otCode, int pk, Map<String, dynamic> data) async {
+    final raw = await _getRawWorkOrder(otCode);
+    final isCoswinAttribute = _section(raw, 'workOrderAttributeViewworkorderfind')
+        .any((a) => (a['pkWorkOrderAttribute'] ?? a['pkAttribute']) == pk);
+    if (!isCoswinAttribute) {
+      return _updateTaggedFeedback(otCode, pk, FeedbackTag.attribute, _attributeText(data));
+    }
+    final value = (data['woatValue'] ?? data['value'] ?? '').toString().trim();
+    await _mutate('modifier l\'attribut', otCode: otCode,
+        () => _apiService.putCoswin('/workorders/$otCode/attributes/$pk', data: {'woatValue': value}));
+  }
 
   Future<void> deleteAttribute(String otCode, int pk) async => _notDeletable('un attribut');
 

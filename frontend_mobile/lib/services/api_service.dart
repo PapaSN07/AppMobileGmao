@@ -8,7 +8,10 @@ class ApiException implements Exception {
   final int? statusCode;
   final String? endpoint;
 
-  ApiException(this.message, {this.statusCode, this.endpoint});
+  /// Requête refusée par le pare-feu Senelec (page « Request Rejected »).
+  final bool firewallBlocked;
+
+  ApiException(this.message, {this.statusCode, this.endpoint, this.firewallBlocked = false});
 
   @override
   String toString() {
@@ -338,7 +341,7 @@ class ApiService {
         if (kDebugMode) {
           print('⚠️ ApiService: Réponse HTML au lieu de JSON (WAF/Firewall)');
         }
-        return ApiException(message, statusCode: 403, endpoint: endpoint);
+        return ApiException(message, statusCode: 403, endpoint: endpoint, firewallBlocked: true);
       }
     }
 

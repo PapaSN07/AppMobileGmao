@@ -128,4 +128,30 @@ void main() {
       expect(() => OTPayloadRules.createSimple0Body({'wowoJobType': 'CORR'}), throwsArgumentError);
     });
   });
+
+  group('Taux de réalisation et commentaire Coswin', () {
+    test('completion rate is sent as wowoLongString2', () {
+      expect(OTPayloadRules.forUpdate({'wowoCompletionRate': 62.4}, _refs)['wowoLongString2'], '62%');
+      final created = OTPayloadRules.forCreate({'wowoCompletionRate': 50.0}, _refs);
+      expect(created['wowoLongString2'], '50%');
+      expect(created.containsKey('wowoCompletionRate'), isFalse);
+    });
+
+    test('createSimple0 carries the comment and the rate', () {
+      final body = OTPayloadRules.createSimple0Body({
+        'wowoEquipment': 'EQ1',
+        'wowoJobType': 'CORR',
+        'wowoFeedbackNote': '<b>#[agent] - 28-09-2026 09:00:00</b><br>Texte<br><br>',
+        'wowoLongString2': '50%',
+      });
+      final main = body['workordercreatesimple0'] as Map;
+      expect(main['wowoFeedbackNote'], contains('#[agent]'));
+      expect(main['wowoLongString2'], '50%');
+    });
+
+    test('update0 carries the comment and the rate', () {
+      final view = OTPayloadRules.update0Body({'wowoFeedbackNote': 'note', 'wowoLongString2': '75%'})['workorder0View'];
+      expect(view, {'wowoFeedbackNote': 'note', 'wowoLongString2': '75%'});
+    });
+  });
 }

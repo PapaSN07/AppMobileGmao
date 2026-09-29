@@ -27,7 +27,7 @@ class EquipmentModel(Base):
     longitude = Column('ereq_longitude', Float, nullable=True)
     latitude = Column('ereq_latitude', Float, nullable=True)
     feeder = Column('ereq_string2', String(255), nullable=True)
-    barCode = Column('ereq_bar_code', String(50), nullable=True)  # ✅ AJOUTÉ
+    barCode = Column('ereq_bar_code', String(50), nullable=True)  #  AJOUTÉ
     creation_date = Column('ereq_creation_date', Date, default=func.now())
 
     def __init__(self, **kwargs):

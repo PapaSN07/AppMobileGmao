@@ -90,6 +90,7 @@ class OTPayloadRules {
     if (_str(payload['wowoScheduleDate']).isEmpty) {
       payload['wowoScheduleDate'] = DateTime.now().toUtc().toIso8601String();
     }
+    _moveCompletionRate(payload);
     return payload;
   }
 
@@ -125,9 +126,14 @@ class OTPayloadRules {
       _setOrRemove(payload, 'wowoSupervisor', _isValidSupervisor(refs, sup) ? sup : null);
     }
 
-    // Le taux de réalisation est calculé côté serveur Coswin.
-    payload.remove('wowoCompletionRate');
+    _moveCompletionRate(payload);
     return payload;
+  }
+
+  /// Le taux saisi dans l'application part dans le champ Coswin `wowoLongString2` (« 75% »).
+  static void _moveCompletionRate(Map<String, dynamic> payload) {
+    final rate = double.tryParse(_str(payload.remove('wowoCompletionRate')));
+    if (rate != null) payload['wowoLongString2'] = '${rate.clamp(0, 100).round()}%';
   }
 
   // ---------------- Formats de requête Coswin ----------------
@@ -137,7 +143,7 @@ class OTPayloadRules {
   static const Set<String> updatableFields = {
     'wowoEquipment', 'wowoJobType', 'wowoJobClass', 'wowoPriority', 'wowoActionEntity',
     'wowoScheduleDate', 'wowoSupervisor', 'wowoCostcentre', 'wowoTargetDate',
-    'wowoStartDate', 'wowoEndDate', 'wowoFeedbackNote',
+    'wowoStartDate', 'wowoEndDate', 'wowoFeedbackNote', 'wowoLongString2',
   };
 
   /// Champs de l'en-tête de création (schéma WorkOrderExtraViewworkordercreatesimple0).
@@ -185,7 +191,10 @@ class OTPayloadRules {
     final status = OTStatus.normalize(_str(payload['wowoUserStatus']));
     return {
       'workordercreatesimple0': {
-        ..._pick(payload, {'wowoScheduleDate', 'wowoSupervisor', 'wowoTargetDate', 'wowoStartDate', 'wowoEndDate'}),
+        ..._pick(payload, {
+          'wowoScheduleDate', 'wowoSupervisor', 'wowoTargetDate', 'wowoStartDate', 'wowoEndDate',
+          'wowoFeedbackNote', 'wowoLongString2', // commentaire et taux de réalisation Coswin
+        }),
         'workOrderExtraViewworkordercreatesimple0': extra,
       },
       'woUserStatusCreatesimple0List': {

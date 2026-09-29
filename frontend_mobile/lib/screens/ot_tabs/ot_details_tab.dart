@@ -63,14 +63,20 @@ class DetailsTabState extends State<DetailsTab> {
             ),
             const SizedBox(height: 16),
             _buildDetailField(
-              label: 'Description',
+              label: 'Intervention',
               value: widget.order.description,
               spacing: spacing,
             ),
             const SizedBox(height: 16),
             _buildDetailField(
-              label: 'Famille / Classe',
+              label: 'Type d\'intervention',
               value: widget.order.famille,
+              spacing: spacing,
+            ),
+            const SizedBox(height: 16),
+            _buildDetailField(
+              label: 'Classe d\'intervention',
+              value: widget.order.classe.isNotEmpty ? widget.order.classe : '-',
               spacing: spacing,
             ),
             const SizedBox(height: 16),
@@ -87,7 +93,7 @@ class DetailsTabState extends State<DetailsTab> {
             ),
             const SizedBox(height: 16),
             _buildDetailField(
-              label: 'Centre de charge',
+              label: 'Centre de responsabilité',
               value: widget.order.centre,
               spacing: spacing,
             ),

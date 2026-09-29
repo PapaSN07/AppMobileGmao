@@ -76,17 +76,23 @@ class WorkOrder {
     this.wowoCompletionRate, //  AJOUTÉ
   });
 
+  /// Taux saisi dans Coswin (`wowoLongString2`) : nombre en tête, suivi de « % »
+  /// et parfois d'un texte (« 100% suite vandalisme » → 100). Null si absent.
+  static double? parseCompletionRate(dynamic raw) {
+    final m = RegExp(r'^\s*(\d+(?:[.,]\d+)?)\s*%').firstMatch(raw?.toString() ?? '');
+    if (m == null) return null;
+    final value = double.tryParse(m.group(1)!.replaceAll(',', '.'));
+    return value?.clamp(0, 100).toDouble();
+  }
+
   factory WorkOrder.fromJson(Map<String, dynamic> json) {
     final extra = json['workOrderExtraViewworkorderfind'] as Map<String, dynamic>?;
 
-    // Calcul dynamique du taux d'avancement si non fourni
-    double? completionRate =
+    // Taux de réalisation : valeur saisie dans Coswin (wowoLongString2, ex. « 75% »),
+    // sinon valeur fournie, sinon déduite du statut en dernier recours.
+    final double? completionRate = parseCompletionRate(json['wowoLongString2']) ??
         double.tryParse(json['wowoCompletionRate']?.toString() ?? '') ??
-            OTStatus.completionRate(json['wowoUserStatus']?.toString());
-    final longString2 = json['wowoLongString2']?.toString() ?? '';
-    if (completionRate == null && longString2.contains('%')) {
-      completionRate = double.tryParse(longString2.replaceAll('%', '').trim());
-    }
+        OTStatus.completionRate(json['wowoUserStatus']?.toString());
 
     // Extraction robuste des descriptions (Coswin natif vs format aplati)
     final equipDesc = json['wowoEquipmentDescription'] ??

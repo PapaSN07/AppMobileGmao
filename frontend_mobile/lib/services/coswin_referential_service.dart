@@ -46,7 +46,7 @@ class CoswinReferentialService {
     if (raw != null) {
       try {
         final cached = OTReferentials.fromJson(jsonDecode(raw) as Map<String, dynamic>);
-        if (!_isComplete(cached)) return refresh();
+        if (!_isComplete(cached)) return await refresh();
         _apply(cached);
         final savedAt = DateTime.tryParse(prefs.getString(_prefsDateKey) ?? '');
         if (savedAt == null || DateTime.now().difference(savedAt) > _ttl) {
