@@ -1,3 +1,6 @@
+import 'package:appmobilegmao/services/connectivity_service.dart';
+import 'dart:async';
+import 'package:appmobilegmao/widgets/offline_data_banner.dart';
 import 'package:appmobilegmao/models/order.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:appmobilegmao/widgets/list_item.dart';
@@ -14,7 +17,15 @@ import 'package:appmobilegmao/screens/ot_detail_screen.dart';
 import 'package:appmobilegmao/screens/di/di_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  /// Ouvre un onglet de l'écran principal (flèches des cartes OT / DI).
+  /// Sans lui (écran utilisé seul), les flèches ouvrent la liste dans une nouvelle page.
+  final ValueChanged<int>? onOpenTab;
+
+  const HomeScreen({super.key, this.onOpenTab});
+
+  /// Index des onglets OT et DI dans l'écran principal.
+  static const int otTabIndex = 2;
+  static const int diTabIndex = 3;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -45,6 +56,18 @@ class _HomeScreenState extends State<HomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadOTs();
     });
+    // Retour du réseau : on remplace la liste hors ligne par les vraies données
+    _reconnection = ConnectivityService().onReconnected(() {
+      if (mounted && (_paginator.offlineSince != null || _errorMessage != null)) _loadOTs();
+    });
+  }
+
+  late final StreamSubscription<bool> _reconnection;
+
+  @override
+  void dispose() {
+    _reconnection.cancel();
+    super.dispose();
   }
 
   // ✅ FIX #4 : Détection du changement d'entité ici, pas dans build()
@@ -227,6 +250,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     });
                   },
                   onArrowTap: () {
+                    // Même écran et même en-tête que l'onglet OT (plus de page « OT par service » en double)
+                    if (widget.onOpenTab != null) {
+                      widget.onOpenTab!(HomeScreen.otTabIndex);
+                      return;
+                    }
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -250,6 +278,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     });
                   },
                   onArrowTap: () {
+                    if (widget.onOpenTab != null) {
+                      widget.onOpenTab!(HomeScreen.diTabIndex);
+                      return;
+                    }
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -302,6 +334,9 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
             SizedBox(height: spacing.medium),
+
+            if (selectedCategory == 'OT' && !_isLoadingOT && _paginator.offlineSince != null)
+              OfflineDataBanner(since: _paginator.offlineSince!),
 
             // 📋 Liste Animée des OT / DI
             Expanded(
@@ -460,7 +495,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                       centre: order.wowoCostcentre,
                                       description: order.mdjbDescription ?? order.wowoEquipmentDescription,
                                       status: order.wowoUserStatus,
-                                      onTap: () {
+                                      // Comme dans l'onglet OT : la fiche bleue s'ouvre d'abord,
+                                      // son bouton mène aux détails en lecture seule
+                                      onDetailsTap: () {
                                         Navigator.push(
                                           context,
                                           MaterialPageRoute(

@@ -1,4 +1,7 @@
 
+import 'package:appmobilegmao/services/connectivity_service.dart';
+import 'package:appmobilegmao/services/offline_snapshots.dart';
+import 'dart:async';
 import 'package:appmobilegmao/models/centre_charge.dart';
 import 'package:appmobilegmao/models/entity.dart';
 import 'package:appmobilegmao/models/equipment_attribute.dart';
@@ -40,7 +43,19 @@ class EquipmentProvider extends ChangeNotifier {
   bool _isLoadingMore = false;
 
   // ✅ Constructeur avec injection d'AuthProvider
-  EquipmentProvider(this._authProvider);
+  EquipmentProvider(this._authProvider) {
+    _reconnection = ConnectivityService().onReconnected(() {
+      if (_offlineSince != null || _error != null) fetchEquipments(forceRefresh: true);
+    });
+  }
+
+  late final StreamSubscription<bool> _reconnection;
+
+  @override
+  void dispose() {
+    _reconnection.cancel();
+    super.dispose();
+  }
 
   // ✅ FIX : Méthode appelée par ProxyProvider quand AuthProvider change (entité active modifiée dans les OT)
   void onAuthProviderUpdated(AuthProvider newAuthProvider) {
@@ -52,9 +67,14 @@ class EquipmentProvider extends ChangeNotifier {
         print('🔄 EquipmentProvider: entité changée $_lastLoadedEntity → $newEntity, rechargement...');
       }
       _lastLoadedEntity = newEntity;
-      fetchEquipments(forceRefresh: true);
+      // Appelé pendant la reconstruction des providers : on recharge juste après
+      Future.microtask(() => fetchEquipments(forceRefresh: true));
     }
   }
+
+  /// Numéro de la dernière demande de liste : au démarrage plusieurs demandes partent
+  /// en même temps (écran, changement de service) ; seule la plus récente compte.
+  int _fetchGeneration = 0;
 
   // Getters
   List<Map<String, dynamic>> get equipments => _equipments;
@@ -64,6 +84,24 @@ class EquipmentProvider extends ChangeNotifier {
   bool get hasMore => _displayedCount < _equipments.length;
   String? get error => _error;
   bool get isOffline => _isOffline;
+
+  /// Liste affichée sans réseau : date de la copie enregistrée, sinon null.
+  DateTime? _offlineSince;
+  DateTime? get offlineSince => _offlineSince;
+
+  static String _snapshotKey(String entity) => 'equipments|$entity';
+
+  /// Affiche la dernière liste enregistrée pour [entity] ; false s'il n'y en a pas.
+  bool _restoreSnapshot(String entity) {
+    final saved = OfflineSnapshots.readList(_snapshotKey(entity));
+    if (saved == null) return false;
+    _allEquipments = saved.data;
+    _equipments = List.from(_allEquipments);
+    _displayedCount = _pageSize;
+    _offlineSince = saved.savedAt;
+    _error = null;
+    return true;
+  }
   Map<String, dynamic>? get cachedSelectors => _cachedSelectors;
   bool get selectorsLoaded => _selectorsLoaded;
   bool get attributesLoading => _attributesLoading;
@@ -107,12 +145,15 @@ class EquipmentProvider extends ChangeNotifier {
   // ✅ fetchEquipments : entity OBLIGATOIRE (vient de l'utilisateur/activeEntity) - 100% API Réelle
   Future<void> fetchEquipments({bool forceRefresh = false}) async {
     if (_isLoading && !forceRefresh) return;
+    final generation = ++_fetchGeneration;
+    bool isOutdated() => generation != _fetchGeneration;
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
       await _checkConnectivity();
+      if (isOutdated()) return;
 
       final entity = _authProvider.activeEntity;
       if (entity.isEmpty) {
@@ -138,22 +179,34 @@ class EquipmentProvider extends ChangeNotifier {
           search: _filters['search'],
           description: _filters['description'],
         ).timeout(const Duration(seconds: 30));
+        // Une demande plus récente (autre service) est partie entre-temps : sa réponse prime
+        if (isOutdated()) return;
 
         final apiItems = response.items.map(_toMap).toList();
         _allEquipments = _deduplicateList(apiItems);
         _equipments = List.from(_allEquipments);
         _displayedCount = _pageSize;
-      } else {
-        _error = 'Mode hors-ligne : connexion réseau indisponible';
+        _offlineSince = null;
+        // Liste complète du service (sans recherche) : gardée pour la consultation hors ligne
+        if ((_filters['search'] ?? '').isEmpty && (_filters['description'] ?? '').isEmpty &&
+            (_filters['zone'] ?? '').isEmpty && (_filters['famille'] ?? '').isEmpty) {
+          unawaited(OfflineSnapshots.saveList(_snapshotKey(entity), _allEquipments));
+        }
+      } else if (!_restoreSnapshot(entity)) {
+        _error = 'Mode hors-ligne : aucune liste enregistrée sur ce téléphone pour ce service';
       }
     } catch (e) {
+      if (isOutdated()) return;
+      if (isNetworkFailure(e) && _restoreSnapshot(_authProvider.activeEntity)) return;
       _error = 'Erreur lors de la récupération des équipements réels: ${e.toString()}';
       if (kDebugMode) {
         print(_error);
       }
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      if (!isOutdated()) {
+        _isLoading = false;
+        notifyListeners();
+      }
     }
   }
 
@@ -480,15 +533,10 @@ class EquipmentProvider extends ChangeNotifier {
       }
     }
 
+    // Sans identifiant, le serveur ne peut pas recevoir la modification :
+    // on le dit plutôt que de modifier seulement l'affichage du téléphone.
     if (numericId == null) {
-      final idxAll = _allEquipments.indexWhere((e) => e['code']?.toString() == idOrCode || e['id']?.toString() == idOrCode);
-      if (idxAll != -1) {
-        _allEquipments[idxAll] = {..._allEquipments[idxAll], ...fields};
-        _equipments = List.from(_allEquipments);
-        notifyListeners();
-        return;
-      }
-      throw Exception('Impossible d\'identifier l\'équipement à modifier');
+      throw Exception('Équipement sans identifiant : la modification ne peut pas être envoyée au serveur.');
     }
 
     try {

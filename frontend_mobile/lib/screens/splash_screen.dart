@@ -1,3 +1,5 @@
+import 'package:appmobilegmao/provider/auth_provider.dart';
+import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:appmobilegmao/screens/auth/login_screen.dart';
@@ -72,11 +74,17 @@ class _SplashScreenState extends State<SplashScreen>
         return;
       }
 
-      // Toujours rediriger vers l'écran de Login au démarrage (pas d'auto-connexion)
+      // Rester connecté : une session enregistrée ouvre directement l'application
+      if (!mounted) return;
+      final authProvider = context.read<AuthProvider>();
+      final hasSession = await authProvider.hasSavedSession();
+      if (hasSession) await authProvider.resumeSession();
+
       if (mounted) {
         Navigator.of(context).pushReplacement(
           PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) => const LoginScreen(),
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                hasSession ? MainScreen() : const LoginScreen(),
             transitionsBuilder: (context, animation, secondaryAnimation, child) {
               return FadeTransition(opacity: animation, child: child);
             },

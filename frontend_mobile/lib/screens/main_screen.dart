@@ -46,10 +46,10 @@ class _MainScreenState extends State<MainScreen> {
     }
     // rôle normal : pages complètes
     return [
-      const HomeScreen(),
+      HomeScreen(onOpenTab: _onTabTapped),
       const EquipmentScreen(),
-      const OtScreen(),
-      const DiScreen(),
+      const OtScreen(), // HomeScreen.otTabIndex
+      const DiScreen(), // HomeScreen.diTabIndex
     ];
   }
 

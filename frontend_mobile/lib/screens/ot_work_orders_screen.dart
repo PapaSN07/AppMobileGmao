@@ -1,3 +1,6 @@
+import 'package:appmobilegmao/services/connectivity_service.dart';
+import 'dart:async';
+import 'package:appmobilegmao/widgets/offline_data_banner.dart';
 import 'package:appmobilegmao/models/work_order.dart';
 import 'package:appmobilegmao/models/ot_status.dart';
 import 'package:appmobilegmao/models/ot_referentials.dart';
@@ -81,7 +84,15 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen>
       _bootstrapService();
     });
     _loadFilterOptions();
+    // Retour du réseau : on remplace la liste hors ligne par les vraies données
+    _reconnection = ConnectivityService().onReconnected(() {
+      if (mounted && (_paginator.offlineSince != null || _errorMessage != null)) {
+        _loadOrders(isRefresh: true);
+      }
+    });
   }
+
+  late final StreamSubscription<bool> _reconnection;
 
   Future<void> _loadFilterOptions() async {
     final refs = await _otService.getReferentials();
@@ -94,6 +105,7 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen>
 
   @override
   void dispose() {
+    _reconnection.cancel();
     _serviceController.dispose();
     _searchController.dispose();
     super.dispose();
@@ -733,6 +745,12 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen>
           ),
 
           SizedBox(height: spacing.small),
+
+          if (!_isLoading && _paginator.offlineSince != null)
+            Padding(
+              padding: spacing.custom(horizontal: 16),
+              child: OfflineDataBanner(since: _paginator.offlineSince!),
+            ),
 
           // 📋 Liste des OT
           Expanded(

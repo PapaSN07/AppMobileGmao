@@ -1,3 +1,4 @@
+import 'package:appmobilegmao/services/pending_equipment_changes.dart';
 import 'package:appmobilegmao/models/equipment_attribute.dart';
 import 'package:appmobilegmao/provider/auth_provider.dart';
 import 'package:appmobilegmao/provider/equipment_provider.dart';
@@ -1225,8 +1226,9 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
         'unite': resolvedUnite,
         'centre_charge': resolvedCentre,
         'description': _descriptionController.text.trim(),
-        'longitude': valueLongitude ?? '12311231',
-        'latitude': valueLatitude ?? '12311231',
+        // Position envoyée seulement si elle est connue : sans elle, la position existante est conservée
+        if ((valueLongitude ?? '').isNotEmpty) 'longitude': valueLongitude,
+        if ((valueLatitude ?? '').isNotEmpty) 'latitude': valueLatitude,
         'feeder': feederCode,
         'feeder_description': selectedFeeder ?? existingFeederDescription,
         'created_by': authProvider.currentUser?.username ?? '',
@@ -1251,6 +1253,8 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
       if (equipmentId.isEmpty) throw Exception('ID de l\'équipement manquant');
 
       await equipmentProvider.updateEquipment(equipmentId, updatedData);
+      // La modification est une proposition : la liste garde l'ancienne valeur jusqu'à validation
+      await PendingEquipmentChanges.markPending(existingCode.toString());
       await Future.delayed(const Duration(milliseconds: 300));
 
       // En mode debug sans utilisateur connecté, fetchEquipments recharge
@@ -1262,8 +1266,8 @@ class _ModifyEquipmentScreenState extends State<ModifyEquipmentScreen> {
       if (mounted && Navigator.canPop(context)) {
         NotificationService.showSuccess(
           context,
-          title: '🎉 Succès',
-          message: 'Équipement modifié avec succès !',
+          title: 'Modification envoyée',
+          message: 'En attente de validation : l\'ancienne valeur reste affichée jusque-là.',
           showAction: false,
           duration: const Duration(seconds: 2),
         );

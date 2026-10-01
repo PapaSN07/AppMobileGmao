@@ -4,16 +4,27 @@ import 'dart:io';
 import 'package:appmobilegmao/models/user.dart';
 import 'package:appmobilegmao/services/api_service.dart';
 import 'package:appmobilegmao/services/hive_service.dart';
+import 'package:appmobilegmao/services/connectivity_service.dart';
+import 'package:appmobilegmao/services/offline_credentials.dart';
 import 'package:flutter/foundation.dart';
 
 class AuthService {
   final ApiService apiClient;
+  final OfflineCredentials _offline;
+  final Future<bool> Function() _hasNetwork;
 
   static const String __prefixURI = '/api/v1/auth';
 
-  AuthService({ApiService? apiClient}) : apiClient = apiClient ?? ApiService();
+  AuthService({ApiService? apiClient, OfflineCredentials? offline, Future<bool> Function()? hasNetwork})
+      : apiClient = apiClient ?? ApiService(),
+        _offline = offline ?? OfflineCredentials(),
+        _hasNetwork = hasNetwork ?? ConnectivityService().isConnected;
 
   Future<Map<String, dynamic>> login(String username, String password) async {
+    // Téléphone sans réseau : vérification immédiate sur le téléphone, sans attendre le délai du serveur
+    if (!await _networkAvailable()) {
+      return _offlineOrFailure(username, password, "Pas de connexion internet.");
+    }
     try {
       final response = await apiClient.post(
         '$__prefixURI/login',
@@ -28,6 +39,8 @@ class AuthService {
 
         final user = User.fromJson(response['data']);
         await HiveService.cacheCurrentUser(user);
+        // Permet une connexion hors ligne ultérieure sur ce téléphone (empreinte, pas le mot de passe)
+        await _offline.remember(username, password, user.toJson());
 
         // ✅ Sauvegarder les tokens JWT
         final accessToken = response['access_token'];
@@ -70,6 +83,10 @@ class AuthService {
       // Cas inconnu
       return _failureResponse("Erreur inconnue lors de la connexion");
     } on ApiException catch (e) {
+      // Requête bloquée par le pare-feu : serveur injoignable, pas un mauvais mot de passe
+      if (e.firewallBlocked) {
+        return _offlineOrFailure(username, password, e.message);
+      }
       // ✅ Si erreur 401 ou 403 => mauvais identifiants
       if (e.statusCode == 401 || e.statusCode == 403) {
         return _failureResponse("Nom d'utilisateur ou mot de passe incorrect");
@@ -89,19 +106,56 @@ class AuthService {
 
       // ✅ Si erreur réseau ou service indisponible (0, null, 503)
       if (e.statusCode == null || e.statusCode == 0 || e.statusCode == 503) {
-        return _failureResponse(e.message.isNotEmpty ? e.message : "Impossible de joindre le serveur Senelec. Vérifiez votre connexion internet.");
+        return _offlineOrFailure(
+          username,
+          password,
+          e.message.isNotEmpty ? e.message : "Impossible de joindre le serveur Senelec. Vérifiez votre connexion internet.",
+        );
       }
 
       return _failureResponse("Erreur serveur : ${e.message}");
     } on SocketException {
-      return _failureResponse("Impossible de joindre le serveur. Vérifiez votre connexion internet.");
+      return _offlineOrFailure(username, password, "Impossible de joindre le serveur. Vérifiez votre connexion internet.");
     } on TimeoutException {
-      return _failureResponse("Le serveur met trop de temps à répondre. Veuillez réessayer.");
+      return _offlineOrFailure(username, password, "Le serveur met trop de temps à répondre. Veuillez réessayer.");
     } catch (e) {
       if (kDebugMode) {
         print('❌ AuthService: Erreur inattendue durant login: $e');
       }
       return _failureResponse("Erreur lors de la connexion");
+    }
+  }
+
+  /// Serveur injoignable : connexion hors ligne si ce téléphone a déjà connecté cet utilisateur
+  /// avec ce mot de passe ; sinon, le message d'erreur réseau.
+  Future<Map<String, dynamic>> _offlineOrFailure(String username, String password, String networkMessage) async {
+    try {
+      final userJson = await _offline.verify(username, password);
+      if (userJson == null) {
+        return _failureResponse(
+          '$networkMessage\nSans réseau, il faut le même mot de passe que lors de la dernière connexion '
+          'en ligne sur ce téléphone (avec cette version de l\'application).',
+        );
+      }
+      final user = User.fromJson(userJson);
+      await HiveService.cacheCurrentUser(user);
+      return {
+        'success': true,
+        'offline': true,
+        'data': user,
+        'message': 'Connexion hors ligne',
+      };
+    } catch (e) {
+      if (kDebugMode) print('❌ AuthService: connexion hors ligne impossible: $e');
+      return _failureResponse('$networkMessage\nLa connexion hors ligne a échoué sur ce téléphone.');
+    }
+  }
+
+  Future<bool> _networkAvailable() async {
+    try {
+      return await _hasNetwork();
+    } catch (_) {
+      return true; // En cas de doute, on tente le serveur
     }
   }
 
@@ -117,11 +171,11 @@ class AuthService {
       final response = await apiClient.post(
         '$__prefixURI/logout',
         data: {'username': username},
-      );
-
-      // ✅ NOUVEAU: Supprimer les tokens
-      await HiveService.clearTokens();
-      apiClient.clearAuthToken();
+      ).whenComplete(() async {
+        // Même sans réseau, les jetons sont effacés : sinon l'application se rouvrirait connectée
+        await HiveService.clearTokens();
+        apiClient.clearAuthToken();
+      });
 
       if (response != null && response['status'] == 'success') {
         if (kDebugMode) {

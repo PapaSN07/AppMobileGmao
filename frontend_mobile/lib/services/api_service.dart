@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'dart:async';
 import 'package:appmobilegmao/services/coswin_digest_interceptor.dart';
 import 'package:appmobilegmao/services/hive_service.dart';
 import 'package:flutter/foundation.dart';
@@ -21,13 +23,27 @@ class ApiException implements Exception {
   }
 }
 
+/// Vrai quand l'échec vient de l'absence de réseau (serveur injoignable), pas d'un refus du serveur.
+bool isNetworkFailure(Object error) {
+  if (error is ApiException) {
+    return error.statusCode == null || error.statusCode == 0 || error.statusCode == 503;
+  }
+  if (error is SocketException || error is TimeoutException) return true;
+  return error.toString().contains('Aucune connexion Internet');
+}
+
 class ApiService {
   static ApiService? _instance;
+
+  /// Appelé quand le serveur refuse définitivement la session (jeton de rafraîchissement rejeté) :
+  /// l'application renvoie alors vers l'écran de connexion (voir main.dart).
+  static VoidCallback? onSessionExpired;
   late final Dio _dio;
   late final Dio _dioCoswin;
   late String baseUrl;
   String? _authToken;
-  bool _isRefreshing = false;
+  /// Renouvellement de session en cours, partagé par toutes les requêtes refusées en même temps.
+  Future<String?>? _refreshInFlight;
 
   static const Duration _timeout = Duration(seconds: 30);
   static const int _productionPort = 9099;
@@ -189,6 +205,35 @@ class ApiService {
     if (kDebugMode) print('ApiService: token supprimé');
   }
 
+  /// Demande un nouveau jeton d'accès ; null si impossible.
+  Future<String?> _refreshAccessToken() async {
+    final refresh = await HiveService.getRefreshToken();
+    if (refresh == null) return null;
+    try {
+      final r = await _dio.post(
+        '/api/v1/auth/refresh',
+        data: {'refresh_token': refresh},
+      );
+      final newToken = r.data?['access_token'];
+      if (newToken is String && newToken.isNotEmpty) {
+        await HiveService.saveAccessToken(newToken);
+        setAuthToken(newToken);
+        return newToken;
+      }
+    } on DioException catch (dioErr) {
+      // Ne déconnecter QUE si le serveur rejette formellement le jeton (401/403)
+      final refreshStatus = dioErr.response?.statusCode;
+      if (refreshStatus == 401 || refreshStatus == 403) {
+        await HiveService.clearAllCache();
+        clearAuthToken();
+        onSessionExpired?.call();
+      }
+    } catch (_) {
+      // Erreur réseau : ne pas déconnecter l'utilisateur
+    }
+    return null;
+  }
+
   void _setupInterceptors() {
     // Journal HTTP en debug uniquement : il contient identifiants de connexion et tokens.
     if (kDebugMode) {
@@ -222,34 +267,16 @@ class ApiService {
 
           // SOLID: Ne tenter le rafraîchissement que pour les requêtes métier (évite les boucles sur auth)
           if (resp?.statusCode == 401 && !isAuthRoute) {
-            final refresh = await HiveService.getRefreshToken();
-            if (refresh != null && !_isRefreshing) {
-              _isRefreshing = true;
+            // Toutes les requêtes refusées (un écran par onglet au démarrage) attendent
+            // le même renouvellement, puis sont rejouées avec le nouveau jeton.
+            final newToken = await (_refreshInFlight ??=
+                _refreshAccessToken().whenComplete(() => _refreshInFlight = null));
+            if (newToken != null) {
+              error.requestOptions.headers['Authorization'] = 'Bearer $newToken';
               try {
-                final r = await _dio.post(
-                  '/api/v1/auth/refresh',
-                  data: {'refresh_token': refresh},
-                );
-                final newToken = r.data?['access_token'];
-                if (newToken != null) {
-                  await HiveService.saveAccessToken(newToken);
-                  setAuthToken(newToken);
-                  error.requestOptions.headers['Authorization'] =
-                      'Bearer $newToken';
-                  final retry = await _dio.fetch(error.requestOptions);
-                  return handler.resolve(retry);
-                }
-              } on DioException catch (dioErr) {
-                // SOLID: Ne déconnecter QUE si le serveur rejette formellement le token (401/403)
-                final refreshStatus = dioErr.response?.statusCode;
-                if (refreshStatus == 401 || refreshStatus == 403) {
-                  await HiveService.clearAllCache();
-                  clearAuthToken();
-                }
-              } catch (_) {
-                // Erreur réseau ou abort de socket: ne pas déconnecter l'utilisateur
-              } finally {
-                _isRefreshing = false;
+                return handler.resolve(await _dio.fetch(error.requestOptions));
+              } on DioException catch (retryError) {
+                return handler.next(retryError);
               }
             }
           }

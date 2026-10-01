@@ -1,3 +1,4 @@
+import 'package:appmobilegmao/widgets/offline_data_banner.dart';
 import 'dart:async';
 
 import 'package:appmobilegmao/provider/auth_provider.dart';
@@ -12,8 +13,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:appmobilegmao/utils/responsive.dart';
 import 'package:appmobilegmao/theme/responsive_spacing.dart';
-
-import 'package:appmobilegmao/widgets/equipments/equipment_form_dialog.dart';
 
 class EquipmentScreen extends StatefulWidget {
   const EquipmentScreen({super.key});
@@ -30,24 +29,6 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
 
   // Logging
   static const String __logName = 'EquipmentScreen -';
-
-  void _openEquipmentForm([Map<String, dynamic>? item]) async {
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) => EquipmentFormDialog(equipmentToEdit: item),
-    );
-    if (result == true && mounted) {
-      final provider = Provider.of<EquipmentProvider>(context, listen: false);
-      provider.fetchEquipments();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            item != null ? 'Équipement modifié avec succès !' : 'Équipement créé avec succès !',
-          ),
-        ),
-      );
-    }
-  }
 
   @override
   void initState() {
@@ -263,6 +244,12 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
 
           SizedBox(height: spacing.small),
 
+          if (equipmentProvider.offlineSince != null)
+            Padding(
+              padding: spacing.custom(horizontal: 16),
+              child: OfflineDataBanner(since: equipmentProvider.offlineSince!),
+            ),
+
           // 📋 Liste des Équipements
           Expanded(
             child: Padding(
@@ -273,10 +260,11 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                 hasMore: equipmentProvider.hasMore,
                 onLoadMore: () => equipmentProvider.loadMore(),
                 items: equipmentProvider.visibleEquipments,
+                errorMessage: equipmentProvider.error,
                 onRefresh: () => _refreshWithFilters(equipmentProvider),
                 itemBuilder: (item) => buildEquipmentItem(
                   item,
-                  onEdit: () => _openEquipmentForm(item),
+                  showEditButton: true,
                 ),
               ),
             ),

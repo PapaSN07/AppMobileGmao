@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:appmobilegmao/services/api_service.dart';
 
@@ -15,6 +16,19 @@ class ConnectivityService {
     return _isLocalHost();
   }
   
+  /// Appelle [onBack] chaque fois que le téléphone retrouve le réseau
+  /// (après un court délai, le temps que la connexion soit vraiment utilisable).
+  StreamSubscription<bool> onReconnected(void Function() onBack) {
+    var wasOnline = true;
+    isConnected().then((online) => wasOnline = online);
+    return connectivityStream.listen((online) {
+      if (online && !wasOnline) {
+        Future.delayed(const Duration(seconds: 2), onBack);
+      }
+      wasOnline = online;
+    });
+  }
+
   Stream<bool> get connectivityStream {
     return _connectivity.onConnectivityChanged.map(
       (result) => result != ConnectivityResult.none || _isLocalHost(),

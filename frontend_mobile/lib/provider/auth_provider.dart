@@ -67,6 +67,31 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  /// Rester connecté : une session existe sur ce téléphone (profil + jeton de rafraîchissement).
+  Future<bool> hasSavedSession() async {
+    return HiveService.getCurrentUser() != null && (await HiveService.getRefreshToken()) != null;
+  }
+
+  /// Reprend la session enregistrée sans repasser par l'écran de connexion.
+  Future<void> resumeSession() async {
+    _currentUser = HiveService.getCurrentUser();
+    _isOfflineSession = false;
+    notifyListeners();
+    try {
+      await _wsService.connect();
+    } catch (_) {
+      // Pas de réseau : l'application reste utilisable, les notifications reprendront plus tard
+    }
+  }
+
+  /// Session ouverte sans réseau (mot de passe vérifié sur le téléphone).
+  bool _isOfflineSession = false;
+  bool get isOfflineSession => _isOfflineSession;
+
+  /// Message de la dernière tentative de connexion échouée (réseau, identifiants…).
+  String? _lastLoginError;
+  String? get lastLoginError => _lastLoginError;
+
   /// Connexion utilisateur
   Future<bool> login(String username, String password) async {
     try {
@@ -75,21 +100,25 @@ class AuthProvider with ChangeNotifier {
       if (result['success'] == true) {
         final userData = result['data'];
         _currentUser = userData;
+        _isOfflineSession = result['offline'] == true;
+        _lastLoginError = null;
 
         await HiveService.cacheCurrentUser(_currentUser!);
 
-        // ✅ NOUVEAU: Se connecter au WebSocket après login réussi
-        await _wsService.connect();
+        // Notifications temps réel seulement si le serveur est joignable
+        if (!_isOfflineSession) await _wsService.connect();
 
         notifyListeners();
         return true;
       }
 
+      _lastLoginError = result['message']?.toString();
       return false;
     } catch (e) {
       if (kDebugMode) {
         print('❌ AuthProvider: Erreur login: $e');
       }
+      _lastLoginError = 'Erreur lors de la connexion. Veuillez réessayer.';
       return false;
     }
   }
@@ -106,6 +135,7 @@ class AuthProvider with ChangeNotifier {
 
       await HiveService.clearAllCache();
       _currentUser = null;
+      _isOfflineSession = false;
       notifyListeners();
     } catch (e) {
       if (kDebugMode) {

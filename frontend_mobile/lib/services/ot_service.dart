@@ -1,3 +1,5 @@
+import 'package:appmobilegmao/services/offline_snapshots.dart';
+import 'dart:async';
 import 'package:appmobilegmao/services/api_service.dart';
 import 'package:appmobilegmao/services/cache_service.dart';
 import 'package:appmobilegmao/services/hive_service.dart';
@@ -192,17 +194,30 @@ class OTService {
   static int? _parseCode(dynamic value) =>
       value is int ? value : int.tryParse(value?.toString() ?? '');
 
+  static String _rawSnapshotKey(Object otCode) => 'ot_raw|$otCode';
+
   Future<Map<String, dynamic>?> _fetchRawWorkOrder(String otCode) async {
-    final response = await _apiService.getCoswin(
-      '/workorders',
-      queryParameters: {
-        'filterColumn': 'wowoCode',
-        'filterOperator': 'equals',
-        'filterOperand1': otCode,
-      },
-    );
+    final dynamic response;
+    try {
+      response = await _apiService.getCoswin(
+        '/workorders',
+        queryParameters: {
+          'filterColumn': 'wowoCode',
+          'filterOperator': 'equals',
+          'filterOperand1': otCode,
+        },
+      );
+    } catch (e) {
+      // Sans réseau : dernière copie de l'OT gardée sur le téléphone
+      final saved = isNetworkFailure(e) ? OfflineSnapshots.readMap(_rawSnapshotKey(otCode)) : null;
+      if (saved != null) return saved.data;
+      rethrow;
+    }
     final list = _extractWorkOrderList(response);
-    return list.isNotEmpty ? list.first as Map<String, dynamic> : null;
+    if (list.isEmpty) return null;
+    final raw = list.first as Map<String, dynamic>;
+    unawaited(OfflineSnapshots.saveMap(_rawSnapshotKey(otCode), raw));
+    return raw;
   }
 
   /// OT brut Coswin, partagé pendant [_rawCacheTtl] entre tous les appelants.
@@ -334,8 +349,8 @@ class OTService {
       final filterByService = scope == 'service' && reqUpper.isNotEmpty;
 
       final seenCodes = <int>{};
-      final orders = _extractWorkOrderList(response)
-          .whereType<Map<String, dynamic>>()
+      final raws = _extractWorkOrderList(response).whereType<Map<String, dynamic>>().toList();
+      final orders = raws
           .map(WorkOrder.fromJson)
           .where((o) => supervisor == null || (o.wowoSupervisor ?? '').trim() == supervisor)
           .where((o) =>
@@ -348,6 +363,12 @@ class OTService {
         ..sort((a, b) => b.wowoCode.compareTo(a.wowoCode));
 
       _log('✅ ${orders.length} OT retenus sur [$lo → $hi]');
+      // Fiches gardées pour pouvoir ouvrir ces OT sans réseau
+      final kept = orders.map((o) => o.wowoCode).toSet();
+      unawaited(OfflineSnapshots.saveAll({
+        for (final raw in raws)
+          if (kept.contains(_parseCode(raw['wowoCode']))) _rawSnapshotKey(raw['wowoCode']): raw,
+      }));
       return OTPageResult(
         workorders: orders,
         lastCode: lo,

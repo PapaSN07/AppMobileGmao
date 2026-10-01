@@ -48,6 +48,17 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (result) {
         if (mounted) {
+          if (authProvider.isOfflineSession) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                duration: Duration(seconds: 5),
+                content: Text(
+                  'Connexion hors ligne : les données Coswin (OT) ne s\'afficheront '
+                  'qu\'une fois le réseau revenu.',
+                ),
+              ),
+            );
+          }
           Navigator.of(context).pushReplacement(
             PageRouteBuilder(
               pageBuilder:
@@ -73,7 +84,7 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       } else {
         setState(() {
-          _errorMessage = 'Nom d\'utilisateur ou mot de passe incorrect';
+          _errorMessage = authProvider.lastLoginError ?? 'Nom d\'utilisateur ou mot de passe incorrect';
         });
       }
     } on SocketException catch (_) {

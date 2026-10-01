@@ -383,8 +383,11 @@ def update_equipment_mobile(equipment_id: str, updates: Dict[str, Any]) -> tuple
                 # 3) Créer les attributs si fournis dans updates
                 attributes_data = updates.get('attributs', [])
                 created_attributes = 0
-                
+
                 if attributes_data:
+                    # L'application envoie la liste complète des attributs : on remplace ceux de la
+                    # proposition précédente au lieu de les ajouter une nouvelle fois (doublons).
+                    session.query(AttributeClicClac).filter_by(code=updates['code']).delete(synchronize_session=False)
                     for attr_data in attributes_data:
                         try:
                             new_attribute = AttributeClicClac(

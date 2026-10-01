@@ -1,3 +1,6 @@
+import 'package:appmobilegmao/services/offline_snapshots.dart';
+import 'package:appmobilegmao/services/api_service.dart';
+import 'dart:async';
 import 'package:appmobilegmao/models/work_order.dart';
 import 'package:appmobilegmao/services/ot_service.dart';
 
@@ -19,7 +22,10 @@ class OTYearPaginator {
   String _requestEntity = '';
   bool _excludeClosed = true;
 
-  bool get canLoadPreviousYear => currentYear > minYear;
+  /// Liste affichée sans réseau : date de la copie enregistrée, sinon null.
+  DateTime? offlineSince;
+
+  bool get canLoadPreviousYear => offlineSince == null && currentYear > minYear;
 
   /// Plus rien à charger : fin de l'année en cours et plus d'année antérieure.
   bool get isExhausted => !hasMoreInYear && !canLoadPreviousYear;
@@ -64,25 +70,39 @@ class OTYearPaginator {
     return found;
   }
 
-  /// Repart de l'OT le plus récent de l'année courante.
+  String get _snapshotKey => 'ot_list|$_requestEntity|$_excludeClosed';
+
+  /// Repart de l'OT le plus récent de l'année courante. Sans réseau, renvoie la
+  /// dernière liste chargée sur ce téléphone (voir [offlineSince]).
   Future<List<WorkOrder>> loadFirst({
     required String requestEntity,
     required bool excludeClosed,
     int maxBatches = 1,
     bool Function(List<WorkOrder> collected)? stopWhen,
     void Function(List<WorkOrder> collected)? onBatch,
-  }) {
+  }) async {
     _requestEntity = requestEntity;
     _excludeClosed = excludeClosed;
     currentYear = DateTime.now().year;
     hasMoreInYear = true;
     _nextUpToCode = null;
-    return _collect(
-      knownCodes: const {},
-      maxBatches: maxBatches,
-      stopWhen: stopWhen ?? (_) => true,
-      onBatch: onBatch,
-    );
+    offlineSince = null;
+    try {
+      final orders = await _collect(
+        knownCodes: const {},
+        maxBatches: maxBatches,
+        stopWhen: stopWhen ?? (_) => true,
+        onBatch: onBatch,
+      );
+      unawaited(OfflineSnapshots.saveList(_snapshotKey, orders.map((o) => o.toJson()).toList()));
+      return orders;
+    } catch (e) {
+      final saved = isNetworkFailure(e) ? OfflineSnapshots.readList(_snapshotKey) : null;
+      if (saved == null) rethrow;
+      hasMoreInYear = false;
+      offlineSince = saved.savedAt;
+      return saved.data.map(WorkOrder.fromJson).toList();
+    }
   }
 
   /// Charge la suite jusqu'à trouver [minNew] OT absents de [knownCodes],
@@ -92,7 +112,8 @@ class OTYearPaginator {
     int maxBatches = 1,
     int minNew = 1,
     void Function(List<WorkOrder> found)? onBatch,
-  }) {
+  }) async {
+    if (offlineSince != null) return const [];
     return _collect(
       knownCodes: knownCodes,
       maxBatches: maxBatches,

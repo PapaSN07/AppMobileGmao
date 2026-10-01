@@ -11,6 +11,9 @@ class EquipmentList extends StatelessWidget {
   final bool isLoadingMore;
   final bool hasMore;
   final List items;
+
+  /// Cause de l'échec du dernier chargement, affichée à la place de « Aucun équipement ».
+  final String? errorMessage;
   final Future<void> Function()? onRefresh;
   final VoidCallback? onLoadMore;
   final Widget Function(dynamic item) itemBuilder;
@@ -21,6 +24,7 @@ class EquipmentList extends StatelessWidget {
     this.isLoadingMore = false,
     this.hasMore = false,
     required this.items,
+    this.errorMessage,
     this.onRefresh,
     this.onLoadMore,
     required this.itemBuilder,
@@ -34,8 +38,8 @@ class EquipmentList extends StatelessWidget {
 
     if (items.isEmpty) {
       return EmptyState(
-        title: '📦 Aucun équipement',
-        message: 'Aucun équipement n\'a été trouvé.',
+        title: errorMessage != null ? 'Impossible de charger les équipements' : '📦 Aucun équipement',
+        message: errorMessage ?? 'Aucun équipement n\'a été trouvé.',
         icon: Icons.inventory_2_outlined,
         onRetry: onRefresh,
       );

@@ -25,6 +25,9 @@ class ListItemCustom extends StatelessWidget {
   final VoidCallback? onDetailsTap; // ✅ Bouton détails pour l'overlay
   final Widget? trailing;
 
+  /// Ligne affichée sous les champs (ex. badge « En attente de validation »).
+  final Widget? footer;
+
   const ListItemCustom({
     super.key,
     this.id,
@@ -45,7 +48,44 @@ class ListItemCustom extends StatelessWidget {
     this.statusBadge,
     this.onDetailsTap,
     this.trailing,
+    this.footer,
   });
+
+  /// Détails d'un équipement : fiche bleue et écran de modification utilisent les mêmes clés.
+  static Map<String, String> equipmentDetails({
+    String? id,
+    required String codeParent,
+    required String feeder,
+    required String feederDescription,
+    required String code,
+    required String famille,
+    required String zone,
+    required String entity,
+    required String unite,
+    required String centre,
+    required String description,
+    required String longitude,
+    required String latitude,
+  }) {
+    final identifier = (id != null && id.isNotEmpty) ? id : code;
+    return {
+      'id': identifier,
+      'ID': identifier,
+      'code': code,
+      'Code': code,
+      'Famille': famille,
+      'Zone': zone,
+      'Entité': entity,
+      'Unité': unite,
+      'Centre Charge': centre,
+      'Code Parent': codeParent,
+      'Feeder': feeder,
+      'Feeder Description': feederDescription,
+      'Description': description,
+      'Longitude': longitude,
+      'Latitude': latitude,
+    };
+  }
 
   // Constructeur pour les équipements
   factory ListItemCustom.equipment({
@@ -67,10 +107,12 @@ class ListItemCustom extends StatelessWidget {
     String overlayTitle = 'Détails de l\'équipement',
     VoidCallback? onTap,
     Widget? trailing,
+    Widget? statusBadge,
   }) {
     return ListItemCustom(
       id: id,
       icon: Icons.settings,
+      footer: statusBadge,
       primaryText: code,
       primaryLabel: 'Code',
       fields: [
@@ -82,23 +124,21 @@ class ListItemCustom extends StatelessWidget {
         ItemField(label: 'Entité', value: entity.trim().isEmpty ? '-' : entity),
         ItemField(label: 'Unité', value: unite.trim().isEmpty ? '-' : unite),
       ],
-      overlayDetails: {
-        'id': (id != null && id.isNotEmpty) ? id : code,
-        'ID': (id != null && id.isNotEmpty) ? id : code,
-        'code': code,
-        'Code': code,
-        'Famille': famille,
-        'Zone': zone,
-        'Entité': entity,
-        'Unité': unite,
-        'Centre Charge': centre,
-        'Code Parent': codeParent,
-        'Feeder': feeder,
-        'Feeder Description': feederDescription,
-        'Description': description,
-        'Longitude': longitude,
-        'Latitude': latitude,
-      },
+      overlayDetails: equipmentDetails(
+        id: id,
+        codeParent: codeParent,
+        feeder: feeder,
+        feederDescription: feederDescription,
+        code: code,
+        famille: famille,
+        zone: zone,
+        entity: entity,
+        unite: unite,
+        centre: centre,
+        description: description,
+        longitude: longitude,
+        latitude: latitude,
+      ),
       overlayTitle: overlayTitle,
       showModifyButton: showModifyButton,
       onTap: onTap,
@@ -328,6 +368,10 @@ class ListItemCustom extends StatelessWidget {
         _buildPrimaryRow(responsive, spacing),
         const SizedBox(height: 4),
         ..._buildFieldRows(responsive, spacing),
+        if (footer != null) ...[
+          const SizedBox(height: 6),
+          footer!,
+        ],
       ],
     );
   }

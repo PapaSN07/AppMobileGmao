@@ -50,18 +50,23 @@ class EquipmentBadge extends StatelessWidget {
               width: spacing.tiny / 2,
             ), // ✅ MODIFIÉ: Espacement responsive (3px ≈ tiny/2)
           ],
-          Text(
-            label,
-            style: TextStyle(
-              fontFamily: AppTheme.fontMontserrat,
-              fontSize: responsive.sp(12), // ✅ MODIFIÉ: Taille texte responsive
-              fontWeight: FontWeight.w600,
-              color: color,
-              decoration: TextDecoration.none, // ✅ AJOUTÉ: Pas de soulignement
-              decorationColor: Colors.transparent, // ✅ AJOUTÉ
+          Flexible(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontFamily: AppTheme.fontMontserrat,
+                fontSize: responsive.sp(
+                  12,
+                ), // ✅ MODIFIÉ: Taille texte responsive
+                fontWeight: FontWeight.w600,
+                color: color,
+                decoration:
+                    TextDecoration.none, // ✅ AJOUTÉ: Pas de soulignement
+                decorationColor: Colors.transparent, // ✅ AJOUTÉ
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),

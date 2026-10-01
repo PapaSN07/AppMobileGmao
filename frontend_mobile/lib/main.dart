@@ -1,3 +1,6 @@
+import 'package:appmobilegmao/services/offline_snapshots.dart';
+import 'package:appmobilegmao/screens/auth/login_screen.dart';
+import 'package:appmobilegmao/services/pending_equipment_changes.dart';
 import 'package:appmobilegmao/provider/notification_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:overlay_support/overlay_support.dart';
@@ -21,10 +24,15 @@ void main() async {
 
   // Initialiser le service Hive (qui gère l'init et les adaptateurs)
   await HiveService.init();
+  // Équipements modifiés depuis ce téléphone, encore en attente de validation
+  await PendingEquipmentChanges.load();
+  await OfflineSnapshots.load();
 
   // Nettoyer les anciens caches de données au démarrage pour forcer 100% de données fraîches en direct
   await HiveService.clearDataCache();
   await CacheService().clearCache();
+
+  _returnToLoginOnSessionExpiry();
 
   runApp(
     // CORRIGÉ: Injection correcte avec ProxyProvider
@@ -63,6 +71,23 @@ void main() async {
   );
 }
 
+/// Navigation globale : permet de revenir à la connexion quand la session expire.
+final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
+
+void _returnToLoginOnSessionExpiry() {
+  ApiService.onSessionExpired = () {
+    final navigator = appNavigatorKey.currentState;
+    if (navigator == null) return;
+    navigator.pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (_) => false,
+    );
+    ScaffoldMessenger.maybeOf(navigator.context)?.showSnackBar(
+      const SnackBar(content: Text('Session expirée : veuillez vous reconnecter.')),
+    );
+  };
+}
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -70,6 +95,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return OverlaySupport.global(
       child: MaterialApp(
+        navigatorKey: appNavigatorKey,
         title: 'GMAO - Senelec',
         theme: ThemeData(
           primaryColor: AppTheme.secondaryColor,
