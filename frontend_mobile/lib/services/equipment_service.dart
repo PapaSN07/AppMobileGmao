@@ -397,6 +397,9 @@ class EquipmentService {
     }
   }
 
+  /// Envoie un équipement ajouté sans réseau (données déjà mises en forme par Equipment.toJson).
+  Future<void> postNewEquipment(Map<String, dynamic> payload) => _apiService.post(__prefixURI, data: payload);
+
   /// Met à jour un équipement existant avec ses attributs
   Future<Equipment> updateEquipment(
     int equipmentId,

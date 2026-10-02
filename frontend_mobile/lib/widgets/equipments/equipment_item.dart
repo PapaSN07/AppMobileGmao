@@ -1,3 +1,4 @@
+import 'package:appmobilegmao/services/pending_ot_queue.dart';
 import 'package:appmobilegmao/screens/equipments/modify_equipment_screen.dart';
 import 'package:appmobilegmao/services/pending_equipment_changes.dart';
 import 'package:flutter/material.dart';
@@ -76,18 +77,32 @@ Widget buildEquipmentItem(
     );
   }
 
-  // Modification envoyée depuis ce téléphone, pas encore validée
+  // Ajout pas encore envoyé (sans réseau), ou ajout/modification envoyé pas encore validé.
+  // Se met à jour tout seul quand l'envoi différé part.
   final code = equipment['code']?.toString() ?? '';
-  final pendingSince = PendingEquipmentChanges.pendingSince(code);
-  Widget? pendingBadge;
-  if (pendingSince != null) {
-    String two(int n) => n.toString().padLeft(2, '0');
-    pendingBadge = EquipmentBadge(
-      label: 'En attente de validation · envoyé le ${two(pendingSince.day)}/${two(pendingSince.month)}',
-      color: Colors.orange.shade800,
-      icon: Icons.schedule,
-    );
-  }
+  final pendingBadge = ValueListenableBuilder<List<PendingOtAction>>(
+    valueListenable: PendingOtQueue.actions,
+    builder: (context, actions, _) {
+      final Widget badge;
+      if (actions.any((a) => a.kind == PendingOtKind.createEquipment && a.otCode == code)) {
+        badge = EquipmentBadge(
+          label: 'Nouvel équipement · en attente d\'envoi',
+          color: Colors.orange.shade800,
+          icon: Icons.cloud_upload_outlined,
+        );
+      } else {
+        final pendingSince = PendingEquipmentChanges.pendingSince(code);
+        if (pendingSince == null) return const SizedBox.shrink();
+        String two(int n) => n.toString().padLeft(2, '0');
+        badge = EquipmentBadge(
+          label: 'En attente de validation · envoyé le ${two(pendingSince.day)}/${two(pendingSince.month)}',
+          color: Colors.orange.shade800,
+          icon: Icons.schedule,
+        );
+      }
+      return Padding(padding: const EdgeInsets.only(top: 6), child: badge);
+    },
+  );
 
   return ListItemCustom.equipment(
     id: equipment['id']?.toString() ?? '',

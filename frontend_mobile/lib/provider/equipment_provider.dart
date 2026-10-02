@@ -1,3 +1,6 @@
+import 'package:appmobilegmao/services/pending_equipment_changes.dart';
+import 'package:appmobilegmao/services/pending_ot_queue.dart';
+import 'package:appmobilegmao/utils/selector_loader.dart';
 
 import 'package:appmobilegmao/services/connectivity_service.dart';
 import 'package:appmobilegmao/services/offline_snapshots.dart';
@@ -484,40 +487,63 @@ class EquipmentProvider extends ChangeNotifier {
   }
 
   // ✅ addEquipment : entity LIBRE (saisie par l'utilisateur dans equipmentData)
-  Future<void> addEquipment(Map<String, dynamic> equipmentData) async {
-    await _checkConnectivity();
-    if (_isOffline) throw Exception('Mode hors ligne');
-    var currentUser = _authProvider.currentUser;
+  /// Ajoute un équipement (proposition à valider sur le web). Sans réseau, il est gardé
+  /// sur le téléphone et envoyé automatiquement au retour du réseau : renvoie alors true.
+  Future<bool> addEquipment(Map<String, dynamic> equipmentData) async {
+    final currentUser = _authProvider.currentUser;
+    // L'écran envoie des codes ; un libellé éventuel est converti en code, jamais tronqué.
+    String codeOf(String key, String selectorType) {
+      final value = equipmentData[key]?.toString();
+      return SelectorLoader.extractCodeFromTypedSelectors(value, selectorType, _cachedSelectors) ?? value ?? '';
+    }
 
     final equipment = Equipment(
       code: equipmentData['code'] ?? '',
       description: equipmentData['description'] ?? '',
-      famille: _extractCode(equipmentData['famille'], 'familles') ?? '',
-      zone: _extractCode(equipmentData['zone'], 'zones') ?? '',
-      entity:
-          _extractCode(equipmentData['entity'], 'entities') ??
-          '', // ✅ Saisie utilisateur
-      unite: _extractCode(equipmentData['unite'], 'unites') ?? '',
-      centreCharge:
-          _extractCode(equipmentData['centreCharge'], 'centreCharges') ?? '',
+      famille: codeOf('famille', 'familles'),
+      zone: codeOf('zone', 'zones'),
+      entity: codeOf('entity', 'entities'),
+      unite: codeOf('unite', 'unites'),
+      centreCharge: codeOf('centreCharge', 'centreCharges'),
       codeParent: equipmentData['codeParent'] ?? '',
-      feeder: _extractCode(equipmentData['feeder'], 'feeders'),
+      feeder: codeOf('feeder', 'feeders'),
       feederDescription: equipmentData['feederDescription'],
       longitude: equipmentData['longitude'] ?? '',
       latitude: equipmentData['latitude'] ?? '',
       attributes: _extractAttributes(equipmentData['attributs']),
       createdBy: currentUser?.username ?? '',
     );
+    if (equipment.famille.isEmpty) throw Exception('Famille équipement requise');
 
-    await _equipmentService.addEquipment(equipment);
-    _allEquipments.insert(0, equipmentData);
-    _equipments.insert(0, equipmentData);
+    await _checkConnectivity();
+    var queued = _isOffline;
+    if (!queued) {
+      try {
+        await _equipmentService.addEquipment(equipment);
+      } catch (e) {
+        if (!isNetworkFailure(e)) rethrow;
+        queued = true;
+      }
+    }
+    if (queued) {
+      await PendingOtQueue.enqueue(
+        PendingOtKind.createEquipment,
+        equipment.code,
+        data: equipment.toJson(),
+        username: currentUser?.username ?? '',
+      );
+    } else {
+      await PendingEquipmentChanges.markPending(equipment.code);
+    }
+
+    final shown = _toMap(equipment);
+    _allEquipments.insert(0, shown);
+    _equipments.insert(0, shown);
     notifyListeners();
+    return queued;
   }
 
-  Future<void> createEquipment(Map<String, dynamic> equipmentData) async {
-    await addEquipment(equipmentData);
-  }
+  Future<bool> createEquipment(Map<String, dynamic> equipmentData) => addEquipment(equipmentData);
 
   // Mettre à jour équipement
   Future<void> updateEquipment(String idOrCode, Map<String, dynamic> fields) async {
@@ -744,103 +770,6 @@ class EquipmentProvider extends ChangeNotifier {
     'latitude': eq.latitude,
     'attributes': eq.attributes?.map((a) => a.toJson()).toList() ?? [],
   };
-
-  String? _extractCode(String? displayValue, String selectorType) {
-    if (displayValue == null ||
-        displayValue.isEmpty ||
-        _cachedSelectors == null) {
-      return null;
-    }
-
-    // ✅ CORRECTION: Gérer les objets typés au lieu des Maps
-    final selectorData = _cachedSelectors![selectorType];
-
-    if (selectorData == null) return null;
-
-    try {
-      // ✅ Détecter le type et extraire le code correspondant
-      switch (selectorType) {
-        case 'familles':
-          final list = selectorData as List<Famille>;
-          for (final item in list) {
-            if (item.description == displayValue) {
-              return item.code;
-            }
-          }
-          break;
-
-        case 'zones':
-          final list = selectorData as List<Zone>;
-          for (final item in list) {
-            if (item.description == displayValue) {
-              return item.code;
-            }
-          }
-          break;
-
-        case 'entities':
-          final list = selectorData as List<Entity>;
-          for (final item in list) {
-            if (item.description == displayValue) {
-              return item.code;
-            }
-          }
-          break;
-
-        case 'unites':
-          final list = selectorData as List<Unite>;
-          for (final item in list) {
-            if (item.description == displayValue) {
-              return item.code;
-            }
-          }
-          break;
-
-        case 'centreCharges':
-          final list = selectorData as List<CentreCharge>;
-          for (final item in list) {
-            if (item.description == displayValue) {
-              return item.code;
-            }
-          }
-          break;
-
-        case 'feeders':
-          final list = selectorData as List<Feeder>;
-          for (final item in list) {
-            if (item.description == displayValue) {
-              return item.code;
-            }
-          }
-          break;
-
-        default:
-          if (kDebugMode) {
-            print(
-              '⚠️ EquipmentProvider - Type de sélecteur inconnu: $selectorType',
-            );
-          }
-          return null;
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print(
-          '❌ EquipmentProvider - Erreur _extractCode pour $selectorType: $e',
-        );
-      }
-      return null;
-    }
-
-    // Fallback: retourner la valeur tronquée si aucune correspondance
-    if (kDebugMode) {
-      print(
-        '⚠️ EquipmentProvider - Aucune correspondance pour "$displayValue" dans $selectorType',
-      );
-    }
-    return displayValue.length > 20
-        ? displayValue.substring(0, 20)
-        : displayValue;
-  }
 
   List<EquipmentAttribute>? _extractAttributes(dynamic attributsData) {
     if (attributsData == null || attributsData is! List) return null;

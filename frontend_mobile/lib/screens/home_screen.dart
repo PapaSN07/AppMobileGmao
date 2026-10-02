@@ -1,3 +1,4 @@
+import 'package:appmobilegmao/services/ot_sync_service.dart';
 import 'package:appmobilegmao/services/connectivity_service.dart';
 import 'dart:async';
 import 'package:appmobilegmao/widgets/offline_data_banner.dart';
@@ -60,12 +61,17 @@ class _HomeScreenState extends State<HomeScreen> {
     _reconnection = ConnectivityService().onReconnected(() {
       if (mounted && (_paginator.offlineSince != null || _errorMessage != null)) _loadOTs();
     });
+    // Saisies hors ligne envoyées : la liste montre les OT tels qu'ils sont dans Coswin
+    _syncService = context.read<OtSyncService>()..completedSyncs.addListener(_loadOTs);
   }
+
+  late final OtSyncService _syncService;
 
   late final StreamSubscription<bool> _reconnection;
 
   @override
   void dispose() {
+    _syncService.completedSyncs.removeListener(_loadOTs);
     _reconnection.cancel();
     super.dispose();
   }

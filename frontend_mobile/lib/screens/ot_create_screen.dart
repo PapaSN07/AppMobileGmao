@@ -1,3 +1,4 @@
+import 'package:appmobilegmao/services/pending_ot_queue.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
 import 'dart:async';
 import 'package:provider/provider.dart';
@@ -738,6 +739,8 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
 
     // Éléments enregistrés en compte-rendu parce que le pare-feu a bloqué l'écriture Coswin
     var savedAsReport = 0;
+    // Saisies gardées sur le téléphone faute de réseau
+    final queuedBefore = PendingOtQueue.all().length;
 
     try {
       final code = _isEditMode ? _codeController.text.trim() : (_autoGenerateCode ? _generateRandomCode() : _codeController.text.trim());
@@ -983,10 +986,16 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
       // Vider le cache pour forcer le rechargement de la liste principale
       await _otService.clearCache();
 
-      final savedMessage = _isEditMode ? 'OT N° $finalOTCode mis à jour.' : 'OT N° $finalOTCode créé.';
+      final queued = PendingOtQueue.all().length - queuedBefore;
+      final savedMessage = queued > 0
+          ? 'Pas de réseau : enregistré sur le téléphone ($queued saisie${queued > 1 ? 's' : ''}). '
+              'Envoi automatique à Coswin dès le retour du réseau.'
+          : _isEditMode
+              ? 'OT N° $finalOTCode mis à jour.'
+              : 'OT N° $finalOTCode créé.';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          duration: Duration(seconds: savedAsReport > 0 ? 6 : 3),
+          duration: Duration(seconds: savedAsReport > 0 || queued > 0 ? 6 : 3),
           content: Text(savedAsReport == 0
               ? savedMessage
               : '$savedMessage $savedAsReport élément(s) enregistré(s) en compte-rendu : '

@@ -889,13 +889,15 @@ class _AddEquipmentScreenState extends State<AddEquipmentScreen> {
         print('   - feederDescription: ${equipmentData['feederDescription']}');
       }
 
-      await equipmentProvider.addEquipment(equipmentData);
+      final queued = await equipmentProvider.addEquipment(equipmentData);
 
       if (mounted) {
         NotificationService.showSuccess(
           context,
-          title: '✅ Succès',
-          message: 'Équipement ajouté !',
+          title: queued ? 'Enregistré sur le téléphone' : 'Équipement envoyé',
+          message: queued
+              ? 'Pas de réseau : il sera envoyé automatiquement au retour du réseau, puis validé sur le web.'
+              : 'En attente de validation sur le web.',
           showAction: false,
         );
         Navigator.pop(context, true);

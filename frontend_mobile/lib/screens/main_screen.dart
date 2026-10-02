@@ -1,3 +1,9 @@
+import 'package:appmobilegmao/screens/pending_sync_screen.dart';
+import 'package:appmobilegmao/services/hive_service.dart';
+import 'package:appmobilegmao/services/connectivity_service.dart';
+import 'package:appmobilegmao/services/ot_sync_service.dart';
+import 'package:appmobilegmao/services/pending_ot_queue.dart';
+import 'dart:async';
 import 'package:appmobilegmao/screens/equipments/history_equipment_screen.dart';
 import 'package:appmobilegmao/utils/string_utils.dart';
 import 'package:appmobilegmao/widgets/custom_bottom_navigation_bar.dart';
@@ -33,6 +39,55 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
     _currentIndex = widget.initialIndex;
+    // Saisies faites sans réseau : envoyées à l'ouverture et à chaque retour du réseau
+    WidgetsBinding.instance.addPostFrameCallback((_) => _sendPending());
+    _reconnection = ConnectivityService().onReconnected(_sendPending);
+  }
+
+  late final StreamSubscription<bool> _reconnection;
+
+  @override
+  void dispose() {
+    _reconnection.cancel();
+    super.dispose();
+  }
+
+  Future<void> _sendPending() async {
+    if (!mounted) return;
+    final report = await context.read<OtSyncService>().syncNow();
+    if (!mounted || report.sent == 0) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Saisies hors ligne : ${report.summary}'),
+        action: report.blocked > 0 ? SnackBarAction(label: 'Voir', onPressed: _openPendingSync) : null,
+      ),
+    );
+  }
+
+  void _openPendingSync() {
+    Navigator.push(context, MaterialPageRoute(builder: (_) => const PendingSyncScreen()));
+  }
+
+  /// Icône des envois en attente (visible seulement s'il en reste).
+  Widget _pendingSyncButton(Color color) {
+    return ValueListenableBuilder<List<PendingOtAction>>(
+      valueListenable: PendingOtQueue.actions,
+      builder: (context, actions, _) {
+        final username = HiveService.getCurrentUser()?.username;
+        final mine = actions.where((a) => a.username == username).toList();
+        if (mine.isEmpty) return const SizedBox.shrink();
+        final blocked = mine.any((a) => a.status != PendingStatus.pending);
+        return IconButton(
+          tooltip: 'Envois en attente',
+          onPressed: _openPendingSync,
+          icon: Badge(
+            label: Text('${mine.length}'),
+            backgroundColor: blocked ? Colors.red.shade700 : Colors.orange.shade800,
+            child: Icon(Icons.cloud_upload_outlined, color: color),
+          ),
+        );
+      },
+    );
   }
 
   // Retirer _pages initialisé dans initState, au lieu de ça : getter dynamique
@@ -97,6 +152,16 @@ class _MainScreenState extends State<MainScreen> {
   // Obtenir la couleur du texte selon la page
   Color _getAppBarTextColor() {
     return AppTheme.senelecIndigo;
+  }
+
+  /// Prévient l'agent que ses saisies hors ligne partiront à sa prochaine connexion.
+  String _logoutMessage() {
+    final username = HiveService.getCurrentUser()?.username;
+    final count = PendingOtQueue.all().where((a) => a.username == username).length;
+    if (count == 0) return 'Êtes-vous sûr de vouloir vous déconnecter ?';
+    return '$count saisie${count > 1 ? 's' : ''} pas encore envoyée${count > 1 ? 's' : ''} à Coswin '
+        '(faite${count > 1 ? 's' : ''} sans réseau). Elle${count > 1 ? 's' : ''} partira à votre '
+        'prochaine connexion sur ce téléphone.\n\nSe déconnecter quand même ?';
   }
 
   void _openProfile() {
@@ -166,7 +231,8 @@ class _MainScreenState extends State<MainScreen> {
     final textColor = _getAppBarTextColor();
     final isHome = authProvider.isPrestataire ? false : _currentIndex == 0;
 
-    bool shouldShowAddButton = false;
+    // Onglet Équipements (le premier onglet pour un prestataire) : bouton d'ajout
+    final shouldShowAddButton = authProvider.isPrestataire ? _currentIndex == 0 : _currentIndex == 1;
 
     if (shouldShowAddButton) {
       // Page Equipment - Bouton +
@@ -284,7 +350,7 @@ class _MainScreenState extends State<MainScreen> {
             ],
           ),
           content: Text(
-            'Êtes-vous sûr de vouloir vous déconnecter ?',
+            _logoutMessage(),
             style: TextStyle(fontSize: responsive.sp(16)), // ✅ Texte responsive
           ),
           actions: [
@@ -471,6 +537,7 @@ class _MainScreenState extends State<MainScreen> {
                 ),
               ),
               actions: [
+                _pendingSyncButton(textColor),
                 Padding(
                   padding: spacing.custom(
                     right: 16,

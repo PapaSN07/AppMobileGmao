@@ -1,3 +1,4 @@
+import 'package:appmobilegmao/services/ot_sync_service.dart';
 import 'package:appmobilegmao/services/connectivity_service.dart';
 import 'dart:async';
 import 'package:appmobilegmao/widgets/offline_data_banner.dart';
@@ -90,9 +91,16 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen>
         _loadOrders(isRefresh: true);
       }
     });
+    // Saisies hors ligne envoyées : la liste montre les OT tels qu'ils sont dans Coswin
+    _syncService = context.read<OtSyncService>()..completedSyncs.addListener(_reloadAfterSync);
   }
 
   late final StreamSubscription<bool> _reconnection;
+  late final OtSyncService _syncService;
+
+  void _reloadAfterSync() {
+    if (mounted) _loadOrders(isRefresh: true);
+  }
 
   Future<void> _loadFilterOptions() async {
     final refs = await _otService.getReferentials();
@@ -105,6 +113,7 @@ class _OTWorkOrdersScreenState extends State<OTWorkOrdersScreen>
 
   @override
   void dispose() {
+    _syncService.completedSyncs.removeListener(_reloadAfterSync);
     _reconnection.cancel();
     _serviceController.dispose();
     _searchController.dispose();

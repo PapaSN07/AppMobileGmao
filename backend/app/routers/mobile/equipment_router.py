@@ -19,6 +19,7 @@ from app.services.equipment_service import (
     get_equipment_by_id,
     get_equipments_infinite,
     get_feeders,
+    DuplicateEquipmentError,
     insert_equipment,
     update_equipment_mobile,
     get_all_equipment_histories_prestataire,
@@ -139,6 +140,10 @@ async def add_equipment_mobile(request: AddEquipmentRequest) -> Dict[str, Any]:
         else:
             raise HTTPException(status_code=500, detail="Erreur lors de l'ajout de l'équipement")
             
+    except HTTPException:
+        raise
+    except DuplicateEquipmentError as e:
+        raise HTTPException(status_code=409, detail=str(e))
     except ValidationError as e:
         logger.error(f"❌ Erreur validation Pydantic: {e}")
         raise HTTPException(status_code=422, detail=f"Données invalides: {e}")

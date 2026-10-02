@@ -1,3 +1,7 @@
+import 'package:appmobilegmao/services/equipment_service.dart';
+import 'package:appmobilegmao/services/connectivity_service.dart';
+import 'package:appmobilegmao/services/ot_sync_service.dart';
+import 'package:appmobilegmao/services/pending_ot_queue.dart';
 import 'package:appmobilegmao/services/offline_snapshots.dart';
 import 'package:appmobilegmao/screens/auth/login_screen.dart';
 import 'package:appmobilegmao/services/pending_equipment_changes.dart';
@@ -27,6 +31,7 @@ void main() async {
   // Équipements modifiés depuis ce téléphone, encore en attente de validation
   await PendingEquipmentChanges.load();
   await OfflineSnapshots.load();
+  await PendingOtQueue.load();
 
   // Nettoyer les anciens caches de données au démarrage pour forcer 100% de données fraîches en direct
   await HiveService.clearDataCache();
@@ -62,6 +67,19 @@ void main() async {
 
         // 3️⃣ Service OT partagé (injecté dans les écrans, remplaçable dans les tests)
         Provider<OTService>(create: (_) => OTService(ApiService())),
+
+        // Envoi des écritures d'OT faites sans réseau
+        Provider<OtSyncService>(
+          create: (context) => OtSyncService(
+            send: (action) async {
+              if (action.kind != PendingOtKind.createEquipment) return context.read<OTService>().replay(action);
+              await EquipmentService().postNewEquipment(action.data);
+              await PendingEquipmentChanges.markPending(action.otCode);
+            },
+            currentUsername: () => HiveService.getCurrentUser()?.username,
+            hasNetwork: ConnectivityService().isConnected,
+          ),
+        ),
 
         // 4️⃣ Provider pour les notifications
         ChangeNotifierProvider(create: (_) => NotificationProvider()),

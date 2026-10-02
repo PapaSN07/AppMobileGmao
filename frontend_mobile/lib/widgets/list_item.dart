@@ -1,3 +1,5 @@
+import 'package:appmobilegmao/widgets/pending_ot_badge.dart';
+import 'package:appmobilegmao/services/pending_ot_queue.dart';
 import 'package:flutter/material.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:appmobilegmao/widgets/custom_overlay.dart';
@@ -167,7 +169,9 @@ class ListItemCustom extends StatelessWidget {
     return ListItemCustom(
       id: id,
       icon: Icons.assignment,
-      primaryText: code,
+      // OT créé sans réseau : pas encore de numéro Coswin
+      primaryText: PendingOtQueue.isTemporaryCode(code) ? 'Nouvel OT (hors ligne)' : code,
+      footer: PendingOtBadge(otCode: code),
       primaryLabel: 'Code',
       fields: [
         ItemField(label: 'Type d\'intervention', value: famille),
@@ -368,10 +372,7 @@ class ListItemCustom extends StatelessWidget {
         _buildPrimaryRow(responsive, spacing),
         const SizedBox(height: 4),
         ..._buildFieldRows(responsive, spacing),
-        if (footer != null) ...[
-          const SizedBox(height: 6),
-          footer!,
-        ],
+        if (footer != null) footer!,
       ],
     );
   }

@@ -1,3 +1,4 @@
+import 'package:appmobilegmao/services/ot_sync_service.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -26,6 +27,9 @@ void main() {
           ChangeNotifierProvider(create: (_) => EquipmentProvider(authProvider)),
           ChangeNotifierProvider(create: (_) => NotificationProvider()),
           Provider<OTService>.value(value: FakeOTService()),
+          Provider<OtSyncService>.value(
+            value: OtSyncService(send: (_) async {}, currentUsername: () => null, hasNetwork: () async => false),
+          ),
         ],
         child: const MaterialApp(home: SplashScreen(testMode: true)),
       );

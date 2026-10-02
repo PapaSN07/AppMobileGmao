@@ -621,6 +621,18 @@ def get_equipment_attributes_by_code(equipment_code: str) -> List[Dict[str, Any]
         return []
 
 
+class DuplicateEquipmentError(Exception):
+    """Un équipement (ou une proposition en attente) porte déjà ce code."""
+
+
+def _attribute_index(value: Any) -> int:
+    """Rang d'un attribut ; absent ou illisible → 0 (l'attribut est gardé quand même)."""
+    try:
+        return int(value or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
 def insert_equipment(equipment: EquipmentClicClac) -> tuple[bool, Optional[int]]:
     """
     Insère un nouvel équipement dans la DB temporaire MSSQL (ClicClac).
@@ -647,8 +659,10 @@ def insert_equipment(equipment: EquipmentClicClac) -> tuple[bool, Optional[int]]
                 ).first()
                 
                 if existing_equipment:
-                    logger.error(f"Équipement avec le code {equipment.code} existe déjà")
-                    return (False, None)
+                    raise DuplicateEquipmentError(
+                        f"Un équipement avec le code {equipment.code} existe déjà "
+                        "(peut-être en attente de validation)."
+                    )
 
                 # 2) Créer l'équipement ClicClac
                 new_equipment = EquipmentClicClac(
@@ -660,8 +674,9 @@ def insert_equipment(equipment: EquipmentClicClac) -> tuple[bool, Optional[int]]
                     unite=equipment.unite,
                     centre_charge=equipment.centre_charge,
                     description=equipment.description,
-                    longitude=str(equipment.longitude),
-                    latitude=str(equipment.latitude),
+                    # Coordonnées absentes : NULL, pas le texte « None »
+                    longitude=str(equipment.longitude) if equipment.longitude is not None else None,
+                    latitude=str(equipment.latitude) if equipment.latitude is not None else None,
                     feeder=equipment.feeder,
                     feeder_description=equipment.feeder_description,
                     info=equipment.info,
@@ -695,7 +710,7 @@ def insert_equipment(equipment: EquipmentClicClac) -> tuple[bool, Optional[int]]
                             new_attribute = AttributeClicClac(
                                 specification=attr_data.get('specification', ''),
                                 famille=equipment.famille,
-                                indx=int(attr_data.get('index', 0)),  # ✅ 'index' depuis le request
+                                indx=_attribute_index(attr_data.get('index')),
                                 attribute_name=attr_data.get('name', ''),  # ✅ 'name' depuis le request
                                 value=str(attr_data.get('value', '')) if attr_data.get('value') is not None else None,
                                 code=equipment.code,
@@ -749,11 +764,15 @@ def insert_equipment(equipment: EquipmentClicClac) -> tuple[bool, Optional[int]]
                 
                 return (True, equipment_id)
 
+            except DuplicateEquipmentError:
+                raise
             except Exception as e:
                 logger.error(f"Erreur lors de l'insertion équipement ClicClac: {e}")
                 session.rollback()
                 return (False, None)
 
+    except DuplicateEquipmentError:
+        raise
     except Exception as e:
         logger.error(f"insert_equipment fatal error: {e}")
         return (False, None)

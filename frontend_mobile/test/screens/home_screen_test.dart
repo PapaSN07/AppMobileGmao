@@ -1,3 +1,4 @@
+import 'package:appmobilegmao/services/ot_sync_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:appmobilegmao/screens/home_screen.dart';
@@ -21,6 +22,9 @@ void main() {
         providers: [
           ChangeNotifierProvider.value(value: authProvider),
           Provider<OTService>.value(value: FakeOTService()),
+          Provider<OtSyncService>.value(
+            value: OtSyncService(send: (_) async {}, currentUsername: () => null, hasNetwork: () async => false),
+          ),
         ],
         child: const MaterialApp(home: HomeScreen()),
       );

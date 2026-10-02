@@ -1,3 +1,5 @@
+import 'package:appmobilegmao/services/hive_service.dart';
+import 'package:appmobilegmao/services/pending_ot_queue.dart';
 import 'package:appmobilegmao/services/offline_snapshots.dart';
 import 'package:appmobilegmao/services/api_service.dart';
 import 'dart:async';
@@ -95,14 +97,27 @@ class OTYearPaginator {
         onBatch: onBatch,
       );
       unawaited(OfflineSnapshots.saveList(_snapshotKey, orders.map((o) => o.toJson()).toList()));
-      return orders;
+      return [..._createdOffline(), ...orders];
     } catch (e) {
       final saved = isNetworkFailure(e) ? OfflineSnapshots.readList(_snapshotKey) : null;
       if (saved == null) rethrow;
       hasMoreInYear = false;
       offlineSince = saved.savedAt;
-      return saved.data.map(WorkOrder.fromJson).toList();
+      return [..._createdOffline(), ...saved.data.map(WorkOrder.fromJson)];
     }
+  }
+
+  /// OT créés sans réseau pour ce service, pas encore dans Coswin (affichés en tête).
+  List<WorkOrder> _createdOffline() {
+    final username = HiveService.getCurrentUser()?.username ?? '';
+    final service = _requestEntity.toUpperCase().trim();
+    return PendingOtQueue.forUser(username)
+        .where((a) => a.kind == PendingOtKind.createOT)
+        .map((a) => WorkOrder.fromJson({...a.data, 'wowoCode': int.parse(a.otCode)}))
+        .where((o) => service.isEmpty || o.wowoRequestEntity.toUpperCase().contains(service))
+        .toList()
+        .reversed
+        .toList();
   }
 
   /// Charge la suite jusqu'à trouver [minNew] OT absents de [knownCodes],

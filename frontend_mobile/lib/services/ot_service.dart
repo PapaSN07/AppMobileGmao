@@ -7,6 +7,8 @@ import 'package:appmobilegmao/services/ot_payload_rules.dart';
 import 'package:appmobilegmao/services/coswin_referential_service.dart';
 import 'package:appmobilegmao/services/coswin_action_service.dart';
 import 'package:appmobilegmao/services/ot_code_locator.dart';
+import 'package:appmobilegmao/services/ot_conflict.dart';
+import 'package:appmobilegmao/services/pending_ot_queue.dart';
 import 'package:appmobilegmao/models/ot_referentials.dart';
 import 'package:appmobilegmao/models/coswin_comment_log.dart';
 import 'package:appmobilegmao/models/ot_status.dart';
@@ -63,6 +65,9 @@ enum SaveTarget {
 
   /// En compte-rendu, parce que le pare-feu Senelec a bloqué l'écriture directe.
   report,
+
+  /// Sur le téléphone, faute de réseau : sera envoyé automatiquement au retour du réseau.
+  queued,
 }
 
 /// Entrée du cache mémoire d'un OT brut Coswin.
@@ -426,6 +431,105 @@ class OTService {
     }
   }
 
+  /// Marque les écritures rejouées depuis la file (elles ne doivent pas y retourner).
+  static const Symbol _replayZoneKey = #otReplay;
+
+  bool get _isReplaying => Zone.current[_replayZoneKey] == true;
+
+  /// Écriture d'OT : envoyée tout de suite si le réseau est là ; sinon gardée sur le
+  /// téléphone ([PendingOtQueue]) et envoyée plus tard, [queued] donnant alors le résultat.
+  /// Un OT qui a déjà des écritures en attente garde l'ordre : la nouvelle attend aussi.
+  Future<T> _sendOrQueue<T>(
+    PendingOtKind kind,
+    String otCode, {
+    int? pk,
+    required Map<String, dynamic> data,
+    required Future<T> Function() send,
+    required T Function() queued,
+    Map<String, dynamic> baseline = const {},
+  }) async {
+    if (_isReplaying) return send();
+
+    final mustWait = PendingOtQueue.isTemporaryCode(otCode) || PendingOtQueue.hasPendingFor(otCode);
+    if (!mustWait && await hasInternetConnection()) {
+      try {
+        return await send();
+      } catch (e) {
+        if (!isNetworkFailure(e)) rethrow;
+      }
+    }
+    await PendingOtQueue.enqueue(
+      kind,
+      otCode,
+      pk: pk,
+      data: data,
+      baseline: baseline,
+      username: HiveService.getCurrentUser()?.username ?? '',
+    );
+    _log('📥 Hors ligne : ${kind.label} (OT $otCode) gardé sur le téléphone');
+    return queued();
+  }
+
+  /// Envoie une écriture gardée hors ligne (appelé par OtSyncService).
+  /// Lève [OtConflictException] si l'OT a été modifié dans Coswin entre-temps.
+  Future<void> replay(PendingOtAction action) =>
+      runZoned(() => _replay(action), zoneValues: {_replayZoneKey: true});
+
+  Future<void> _replay(PendingOtAction action) async {
+    final code = action.otCode;
+    final pk = action.pk ?? 0;
+    final data = action.data;
+    switch (action.kind) {
+      case PendingOtKind.createOT:
+        final created = await createOT(data);
+        await PendingOtQueue.replaceCode(code, '${created.wowoCode}');
+      case PendingOtKind.updateOT:
+        if (!action.force) {
+          _invalidateRaw(code);
+          final conflicts = OtConflict.detect(
+            baseline: action.baseline,
+            wanted: data,
+            current: await _rawWorkOrder(code) ?? const {},
+          );
+          if (conflicts.isNotEmpty) throw OtConflictException(conflicts);
+        }
+        await updateOT(int.parse(code), data);
+      case PendingOtKind.createOperation:
+        await createOperation(code, data);
+      case PendingOtKind.updateOperation:
+        await updateOperation(code, pk, data);
+      case PendingOtKind.createDocument:
+        await createDocument(code, data);
+      case PendingOtKind.updateDocument:
+        await updateDocument(code, pk, data);
+      case PendingOtKind.createWorkforce:
+        await createWorkforce(code, data);
+      case PendingOtKind.updateWorkforce:
+        await updateWorkforce(code, pk, data);
+      case PendingOtKind.deleteWorkforce:
+        await deleteWorkforce(code, pk);
+      case PendingOtKind.addComment:
+        await addComment(
+          code,
+          text: data['text']?.toString() ?? '',
+          reportData: Map<String, dynamic>.from(data['reportData'] as Map? ?? const {}),
+          writtenAt: DateTime.tryParse(data['writtenAt']?.toString() ?? ''),
+        );
+      case PendingOtKind.createPart:
+        await createPart(code, data);
+      case PendingOtKind.updatePart:
+        await updatePart(code, pk, data);
+      case PendingOtKind.updateAttribute:
+        await updateAttribute(code, pk, data);
+      case PendingOtKind.createFacilityUsed:
+        await createFacilityUsed(code, data);
+      case PendingOtKind.createServiceUsed:
+        await createServiceUsed(code, data);
+      case PendingOtKind.createEquipment:
+        throw UnsupportedError('L\'ajout d\'équipement est envoyé par EquipmentService, pas par OTService.');
+    }
+  }
+
   /// Tente l'écriture Coswin ; si le pare-feu la refuse, enregistre en compte-rendu.
   /// Le résultat indique où l'élément a réellement été enregistré (jamais en silence).
   Future<SaveTarget> _withFirewallFallback(
@@ -464,6 +568,18 @@ class OTService {
   /// et l'entité demandeuse ne sont pas modifiables par l'API Coswin.
   Future<void> updateOT(int workOrderCode, Map<String, dynamic> data) {
     final code = '$workOrderCode';
+    return _sendOrQueue(
+      PendingOtKind.updateOT,
+      code,
+      data: data,
+      // Valeurs d'origine (dernière fiche gardée) : permettent de voir si Coswin a changé entre-temps
+      baseline: OtConflict.baselineFor(data, OfflineSnapshots.readMap(_rawSnapshotKey(code))?.data),
+      send: () => _updateOT(code, data),
+      queued: () {},
+    );
+  }
+
+  Future<void> _updateOT(String code, Map<String, dynamic> data) {
     final path = '/workorders/$code/update0';
 
     return _mutate('mettre à jour l\'OT', otCode: code, () async {
@@ -492,7 +608,33 @@ class OTService {
   }
 
   /// Créer un nouvel OT dans Coswin (`POST /workorders/createSimple0`).
-  Future<WorkOrder> createOT(Map<String, dynamic> data) {
+  ///
+  /// Sans réseau, l'OT est gardé sur le téléphone avec un code provisoire (négatif)
+  /// et créé dans Coswin au retour du réseau.
+  Future<WorkOrder> createOT(Map<String, dynamic> data) async {
+    if (_isReplaying || await hasInternetConnection()) {
+      try {
+        return await _createOT(data);
+      } catch (e) {
+        if (_isReplaying || !_isNetworkFailureBeforeSending(e)) rethrow;
+      }
+    }
+    final temporaryCode = PendingOtQueue.newTemporaryCode();
+    await PendingOtQueue.enqueue(
+      PendingOtKind.createOT,
+      '$temporaryCode',
+      data: data,
+      username: HiveService.getCurrentUser()?.username ?? '',
+    );
+    _log('📥 Hors ligne : OT gardé sur le téléphone (code provisoire $temporaryCode)');
+    return WorkOrder.fromJson({...data, 'wowoCode': temporaryCode});
+  }
+
+  /// Échec réseau de la création : l'OT n'a pas été créé (le message d'erreur est encapsulé).
+  static bool _isNetworkFailureBeforeSending(Object e) =>
+      isNetworkFailure(e) || e.toString().contains('Aucune connexion Internet');
+
+  Future<WorkOrder> _createOT(Map<String, dynamic> data) {
     return _mutate(
       'créer l\'OT',
       errorPrefix: 'Erreur lors de la création de l\'OT dans Coswin',
@@ -505,7 +647,12 @@ class OTService {
         // Coswin ne renvoie que le code du nouvel OT : on relit l'OT complet.
         final newCode = response is Map ? _parseCode(response['wowoCode']) : null;
         if (newCode == null) throw Exception('Coswin n\'a pas renvoyé le code du nouvel OT');
-        return getOTDetails('$newCode');
+        try {
+          return await getOTDetails('$newCode');
+        } catch (_) {
+          // L'OT est créé : une relecture impossible ne doit pas faire croire à un échec
+          return WorkOrder.fromJson({...otPayload, 'wowoCode': newCode});
+        }
       },
     );
   }
@@ -812,7 +959,8 @@ class OTService {
     final desc = (data['opopDescription'] ?? data['opopJobDescription'] ?? data['description'] ?? 'Action OT').toString().trim();
     // Code d'action Coswin (référentiel /actions), transmis tel quel : pas de troncature.
     final actionCode = (data['wowaAction'] ?? _codeBeforeDash(desc)).toString().trim();
-    return _mutate('créer l\'opération', otCode: otCode, () async {
+    return _sendOrQueue(PendingOtKind.createOperation, otCode, data: data, queued: () {},
+        send: () => _mutate('créer l\'opération', otCode: otCode, () async {
       // wowaEquipment est obligatoire pour Coswin : équipement de l'OT par défaut.
       final equipment = (data['wowaEquipment'] ?? (await _getRawWorkOrder(otCode))['wowoEquipment'] ?? '')
           .toString()
@@ -824,7 +972,7 @@ class OTService {
         'wowaDuration': _duration(data),
       };
       await _apiService.postCoswin('/workorders/$otCode/actions', data: payload);
-    });
+    }));
   }
 
   static double _duration(Map<String, dynamic> data) =>
@@ -832,8 +980,9 @@ class OTService {
 
   /// Modifier une opération (seule la durée est modifiable côté Coswin).
   Future<void> updateOperation(String otCode, int pk, Map<String, dynamic> data) {
-    return _mutate('modifier l\'opération', otCode: otCode,
-        () => _apiService.putCoswin('/workorders/$otCode/actions/$pk', data: {'wowaDuration': _duration(data)}));
+    return _sendOrQueue(PendingOtKind.updateOperation, otCode, pk: pk, data: data, queued: () {},
+        send: () => _mutate('modifier l\'opération', otCode: otCode,
+            () => _apiService.putCoswin('/workorders/$otCode/actions/$pk', data: {'wowaDuration': _duration(data)})));
   }
 
   Future<void> deleteOperation(String otCode, int pk) async => _notDeletable('une opération');
@@ -873,14 +1022,22 @@ class OTService {
       'woefLongString1': commentText,
     };
 
-    return _mutate('enregistrer le commentaire', otCode: otCode,
-        () => _apiService.postCoswin('/workorders/$otCode/employeefeedbacks', data: payload));
+    return _sendOrQueue(
+      PendingOtKind.createDocument,
+      otCode,
+      // Dates figées à la saisie, pas à l'envoi
+      data: {...data, 'woefStartDate': payload['woefStartDate'], 'woefEndDate': payload['woefEndDate']},
+      queued: () {},
+      send: () => _mutate('enregistrer le commentaire', otCode: otCode,
+          () => _apiService.postCoswin('/workorders/$otCode/employeefeedbacks', data: payload)),
+    );
   }
 
   /// Modifier le texte d'un compte-rendu.
   Future<void> updateDocument(String otCode, int pk, Map<String, dynamic> data) {
     final text = (data['comment'] ?? data['wodoComment'] ?? data['woefLongString1'] ?? '').toString().trim();
-    return _putFeedbackText(otCode, pk, text, 'modifier le commentaire');
+    return _sendOrQueue(PendingOtKind.updateDocument, otCode, pk: pk, data: data, queued: () {},
+        send: () => _putFeedbackText(otCode, pk, text, 'modifier le commentaire'));
   }
 
   Future<void> _putFeedbackText(String otCode, int pk, String text, String action) {
@@ -935,8 +1092,18 @@ class OTService {
       'woeaIsPlanned': data['woeaIsPlanned'] ?? true,
     };
 
-    return _mutate('affecter l\'intervenant', otCode: otCode,
-        () => _apiService.postCoswin('/workorders/$otCode/allocatedemployees', data: payload));
+    return _sendOrQueue(
+      PendingOtKind.createWorkforce,
+      otCode,
+      data: {
+        ...data,
+        'woeaAllocationDate': payload['woeaAllocationDate'],
+        'woeaScheduleDate': payload['woeaScheduleDate'],
+      },
+      queued: () {},
+      send: () => _mutate('affecter l\'intervenant', otCode: otCode,
+          () => _apiService.postCoswin('/workorders/$otCode/allocatedemployees', data: payload)),
+    );
   }
 
   /// Modifier une affectation (heures et dates ; l'intervenant n'est pas modifiable côté Coswin).
@@ -946,18 +1113,47 @@ class OTService {
       'woeaAllocationDate': _isoOrNow(data['woeaAllocationDate']),
       'woeaScheduleDate': _isoOrNow(data['woeaScheduleDate'] ?? data['woeaAllocationDate']),
     };
-    return _mutate('modifier l\'intervenant', otCode: otCode,
-        () => _apiService.putCoswin('/workorders/$otCode/allocatedemployees/$pk', data: payload));
+    return _sendOrQueue(
+      PendingOtKind.updateWorkforce,
+      otCode,
+      pk: pk,
+      data: {
+        ...data,
+        'woeaAllocationDate': payload['woeaAllocationDate'],
+        'woeaScheduleDate': payload['woeaScheduleDate'],
+      },
+      queued: () {},
+      send: () => _mutate('modifier l\'intervenant', otCode: otCode,
+          () => _apiService.putCoswin('/workorders/$otCode/allocatedemployees/$pk', data: payload)),
+    );
   }
 
   Future<void> deleteWorkforce(String otCode, int pk) {
-    return _mutate('supprimer l\'intervenant', otCode: otCode,
-        () => _apiService.deleteCoswin('/workorders/$otCode/allocatedemployees/$pk'));
+    return _sendOrQueue(PendingOtKind.deleteWorkforce, otCode, pk: pk, data: const {}, queued: () {},
+        send: () => _mutate('supprimer l\'intervenant', otCode: otCode,
+            () => _apiService.deleteCoswin('/workorders/$otCode/allocatedemployees/$pk')));
   }
 
   /// Ajoute un commentaire dans le champ Commentaire de Coswin (`wowoFeedbackNote`).
   /// Si le pare-feu bloque la modification, il est enregistré en compte-rendu ([reportData]).
-  Future<SaveTarget> addComment(String otCode, {required String text, required Map<String, dynamic> reportData}) {
+  /// [writtenAt] : heure de saisie (commentaire écrit sans réseau et envoyé plus tard).
+  Future<SaveTarget> addComment(
+    String otCode, {
+    required String text,
+    required Map<String, dynamic> reportData,
+    DateTime? writtenAt,
+  }) {
+    final at = writtenAt ?? DateTime.now();
+    return _sendOrQueue(
+      PendingOtKind.addComment,
+      otCode,
+      data: {'text': text, 'reportData': reportData, 'writtenAt': at.toIso8601String()},
+      queued: () => SaveTarget.queued,
+      send: () => _addComment(otCode, text, reportData, at),
+    );
+  }
+
+  Future<SaveTarget> _addComment(String otCode, String text, Map<String, dynamic> reportData, DateTime at) {
     return _withFirewallFallback(
       () => _mutate('ajouter le commentaire', otCode: otCode, () async {
         final raw = await _rawWorkOrder(otCode);
@@ -965,6 +1161,7 @@ class OTService {
           raw?['wowoFeedbackNote']?.toString(),
           author: _commentAuthor,
           text: text,
+          now: at,
         );
         await _apiService.putCoswin(
           '/workorders/$otCode/update0',
@@ -994,10 +1191,16 @@ class OTService {
       'wosuPlannedQuantity': qty(data['wospQtyPlanned'] ?? data['plannedQty'], 0),
       'wosuActualQuantity': qty(data['wospQtyUsed'] ?? data['qtyUsed'] ?? data['wosyUsedQuantity'], 1),
     };
-    return _withFirewallFallback(
-      () => _mutate('enregistrer la pièce', otCode: otCode,
-          () => _apiService.putCoswin('/workorders/$otCode/stockused/updateorcreate', data: stock)),
-      () => _createTaggedFeedback(otCode, FeedbackTag.part, _partText(data)),
+    return _sendOrQueue(
+      PendingOtKind.createPart,
+      otCode,
+      data: data,
+      queued: () => SaveTarget.queued,
+      send: () => _withFirewallFallback(
+        () => _mutate('enregistrer la pièce', otCode: otCode,
+            () => _apiService.putCoswin('/workorders/$otCode/stockused/updateorcreate', data: stock)),
+        () => _createTaggedFeedback(otCode, FeedbackTag.part, _partText(data)),
+      ),
     );
   }
 
@@ -1010,7 +1213,8 @@ class OTService {
   }
 
   Future<void> updatePart(String otCode, int pk, Map<String, dynamic> data) =>
-      _updateTaggedFeedback(otCode, pk, FeedbackTag.part, _partText(data));
+      _sendOrQueue(PendingOtKind.updatePart, otCode, pk: pk, data: data, queued: () {},
+          send: () => _updateTaggedFeedback(otCode, pk, FeedbackTag.part, _partText(data)));
 
   Future<void> deletePart(String otCode, int pk) async => _notDeletable('une pièce');
 
@@ -1027,7 +1231,11 @@ class OTService {
 
   /// Modifie la valeur d'un attribut. Attribut Coswin : `PUT /attributes/{pk}` (bloqué par le
   /// pare-feu pour l'instant) ; ancien attribut noté en compte-rendu : texte réécrit.
-  Future<void> updateAttribute(String otCode, int pk, Map<String, dynamic> data) async {
+  Future<void> updateAttribute(String otCode, int pk, Map<String, dynamic> data) =>
+      _sendOrQueue(PendingOtKind.updateAttribute, otCode, pk: pk, data: data, queued: () {},
+          send: () => _updateAttribute(otCode, pk, data));
+
+  Future<void> _updateAttribute(String otCode, int pk, Map<String, dynamic> data) async {
     final raw = await _getRawWorkOrder(otCode);
     final isCoswinAttribute = _section(raw, 'workOrderAttributeViewworkorderfind')
         .any((a) => (a['pkWorkOrderAttribute'] ?? a['pkAttribute']) == pk);
@@ -1049,7 +1257,8 @@ class OTService {
     final duration = (data['wofuDuration'] ?? data['duration'] ?? '1.0').toString().trim();
     final label = desc.isNotEmpty && desc != moyen ? '$moyen - $desc' : moyen;
 
-    return _createTaggedFeedback(otCode, FeedbackTag.facility, 'Moyen: $label | Immat: $immat | Durée: ${duration}h');
+    return _sendOrQueue(PendingOtKind.createFacilityUsed, otCode, data: data, queued: () {},
+        send: () => _createTaggedFeedback(otCode, FeedbackTag.facility, 'Moyen: $label | Immat: $immat | Durée: ${duration}h'));
   }
 
   Future<void> deleteFacilityUsed(String otCode, int pk) async => _notDeletable('un moyen');
@@ -1075,7 +1284,8 @@ class OTService {
       }.entries)
         if (field(e.key).isNotEmpty) '${e.value}: ${field(e.key)}',
     ];
-    return _createTaggedFeedback(otCode, FeedbackTag.service, segments.join(' | '));
+    return _sendOrQueue(PendingOtKind.createServiceUsed, otCode, data: data, queued: () {},
+        send: () => _createTaggedFeedback(otCode, FeedbackTag.service, segments.join(' | ')));
   }
 
   Future<void> deleteServiceUsed(String otCode, int pk) async => _notDeletable('un service');
