@@ -21,7 +21,9 @@ class _DICreateScreenState extends State<DICreateScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.requestToEdit != null ? 'Modifier la DI' : 'Créer une DI'),
+        title: Text(
+          widget.requestToEdit != null ? 'Modifier la DI' : 'Créer une DI',
+        ),
         backgroundColor: AppTheme.senelecReflexBlue,
       ),
       body: const Center(
@@ -30,7 +32,11 @@ class _DICreateScreenState extends State<DICreateScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.edit_note_outlined, size: 64, color: AppTheme.senelecReflexBlue),
+              Icon(
+                Icons.edit_note_outlined,
+                size: 64,
+                color: AppTheme.senelecReflexBlue,
+              ),
               SizedBox(height: 16),
               Text(
                 "Écran de création / modification DI",
@@ -245,7 +251,10 @@ import 'package:appmobilegmao/widgets/custom_app_bar.dart';
           color: Colors.white,
           border: Border(top: BorderSide(color: Colors.grey[200]!, width: 1)),
         ),
-        child: ElevatedButton(
+        // Bouton au-dessus de la barre de gestes / des boutons Android
+        child: SafeArea(
+          top: false,
+          child: ElevatedButton(
           onPressed: _submitForm,
           style: ElevatedButton.styleFrom(
             backgroundColor: AppTheme.secondaryColor,
@@ -261,6 +270,7 @@ import 'package:appmobilegmao/widgets/custom_app_bar.dart';
               fontSize: responsive.sp(14),
             ),
           ),
+        ),
         ),
       ),
     );
@@ -634,4 +644,3 @@ import 'package:appmobilegmao/widgets/custom_app_bar.dart';
   }
 }
 */
-

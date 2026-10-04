@@ -28,46 +28,49 @@ class CustomBottomNavigationBar extends StatelessWidget {
                 ? _buildPrestataireItems(responsive)
                 : _buildLdapItems(responsive);
 
-        final bottomInset = MediaQuery.of(context).viewPadding.bottom > 0
-            ? MediaQuery.of(context).viewPadding.bottom
-            : MediaQuery.of(context).padding.bottom;
-
-        return Container(
-          height: responsive.spacing(100) + (bottomInset > 0 ? bottomInset : 0),
-          decoration: BoxDecoration(
-            color: AppTheme.secondaryColor, // Couleur de fond
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(20), // Coins arrondis en haut à gauche
-              topRight: Radius.circular(20), // Coins arrondis en haut à droite
+        // Pas de hauteur fixe : la barre prend la place de son contenu, et BottomNavigationBar
+        // ajoute lui-même, une seule fois, la zone système du bas (barre de gestes, boutons).
+        // Police agrandie dans les réglages du téléphone : respectée, mais limitée pour la barre.
+        return MediaQuery.withClampedTextScaling(
+          maxScaleFactor: 1.3,
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppTheme.secondaryColor, // Couleur de fond
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(20), // Coins arrondis en haut à gauche
+                topRight: Radius.circular(
+                  20,
+                ), // Coins arrondis en haut à droite
+              ),
             ),
-          ),
-          child: Padding(
-            padding: EdgeInsets.only(
-              left: spacing.small,
-              right: spacing.small,
-              bottom: bottomInset > 0 ? bottomInset : 0,
-            ), // ✅ Padding responsive avec marge système bas
-            child: BottomNavigationBar(
-              currentIndex: currentIndex,
-              onTap: onTap,
-              type: BottomNavigationBarType.fixed,
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              selectedItemColor:
-                  AppTheme.primaryColor, // Couleur des éléments sélectionnés
-              unselectedItemColor:
-                  AppTheme
-                      .primaryColor75, // Couleur des éléments non sélectionnés
-              selectedLabelStyle: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: responsive.sp(12), // ✅ Taille de texte responsive
-                fontFamily: AppTheme.fontRoboto,
+            child: Padding(
+              padding: EdgeInsets.only(
+                left: spacing.small,
+                right: spacing.small,
+                top: spacing.small,
               ),
-              unselectedLabelStyle: TextStyle(
-                fontSize: responsive.sp(11), // ✅ Taille de texte responsive
-                fontFamily: AppTheme.fontRoboto,
+              child: BottomNavigationBar(
+                currentIndex: currentIndex,
+                onTap: onTap,
+                type: BottomNavigationBarType.fixed,
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                selectedItemColor:
+                    AppTheme.primaryColor, // Couleur des éléments sélectionnés
+                unselectedItemColor:
+                    AppTheme
+                        .primaryColor75, // Couleur des éléments non sélectionnés
+                selectedLabelStyle: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: responsive.sp(12), // ✅ Taille de texte responsive
+                  fontFamily: AppTheme.fontRoboto,
+                ),
+                unselectedLabelStyle: TextStyle(
+                  fontSize: responsive.sp(11), // ✅ Taille de texte responsive
+                  fontFamily: AppTheme.fontRoboto,
+                ),
+                items: items,
               ),
-              items: items,
             ),
           ),
         );

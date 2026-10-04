@@ -1,3 +1,4 @@
+import 'package:appmobilegmao/services/ot_conflict.dart';
 import 'package:appmobilegmao/services/hive_service.dart';
 import 'package:appmobilegmao/services/ot_sync_service.dart';
 import 'package:appmobilegmao/services/pending_ot_queue.dart';
@@ -15,22 +16,6 @@ class PendingSyncScreen extends StatefulWidget {
 
 class _PendingSyncScreenState extends State<PendingSyncScreen> {
   bool _sending = false;
-
-  /// Libellés Senelec des champs d'OT (tableau des conflits).
-  static const Map<String, String> _fieldLabels = {
-    'wowoJob': 'Intervention',
-    'wowoJobType': 'Type d\'intervention',
-    'wowoJobClass': 'Classe d\'intervention',
-    'wowoCostcentre': 'Centre de responsabilité',
-    'wowoEquipment': 'Équipement',
-    'wowoSupervisor': 'Superviseur',
-    'wowoUserStatus': 'Statut',
-    'wowoPriority': 'Priorité',
-    'wowoZone': 'Zone',
-    'wowoRequestEntity': 'Entité',
-    'wowoCompletionRate': 'Taux de réalisation',
-    'wowoFeedbackNote': 'Commentaire',
-  };
 
   OtSyncService get _sync => context.read<OtSyncService>();
 
@@ -155,7 +140,7 @@ class _PendingSyncScreenState extends State<PendingSyncScreen> {
                   padding: const EdgeInsets.only(bottom: 6),
                   child: Text.rich(TextSpan(children: [
                     TextSpan(
-                      text: '${_fieldLabels[c.field] ?? c.field}\n',
+                      text: '${OtConflict.labelOf(c.field)}\n',
                       style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                     TextSpan(text: 'Coswin : ${c.coswin.isEmpty ? '(vide)' : c.coswin}\n'),

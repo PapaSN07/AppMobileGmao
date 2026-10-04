@@ -1,3 +1,4 @@
+import 'package:appmobilegmao/provider/equipment_provider.dart';
 import 'package:appmobilegmao/screens/pending_sync_screen.dart';
 import 'package:appmobilegmao/services/hive_service.dart';
 import 'package:appmobilegmao/services/connectivity_service.dart';
@@ -41,7 +42,44 @@ class _MainScreenState extends State<MainScreen> {
     _currentIndex = widget.initialIndex;
     // Saisies faites sans réseau : envoyées à l'ouverture et à chaque retour du réseau
     WidgetsBinding.instance.addPostFrameCallback((_) => _sendPending());
-    _reconnection = ConnectivityService().onReconnected(_sendPending);
+    _reconnection = ConnectivityService().onReconnected(_onNetworkBack);
+  }
+
+  /// Retour du réseau : session ouverte hors ligne → on la rouvre en ligne (le serveur des
+  /// équipements exige un jeton, que la connexion hors ligne ne donne pas), puis on envoie.
+  Future<void> _onNetworkBack() async {
+    if (!mounted) return;
+    if (context.read<AuthProvider>().isOfflineSession) await _reconnectOnline();
+    await _sendPending();
+  }
+
+  bool _askingPassword = false;
+
+  Future<void> _reconnectOnline() async {
+    if (_askingPassword) return;
+    _askingPassword = true;
+    try {
+      final auth = context.read<AuthProvider>();
+      final username = auth.currentUser?.username ?? '';
+      final password = await showDialog<String>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const _ReconnectDialog(),
+      );
+      if (password == null || username.isEmpty || !mounted) return;
+
+      final ok = await auth.login(username, password);
+      if (!mounted) return;
+      final online = ok && !auth.isOfflineSession;
+      if (online) context.read<EquipmentProvider>().fetchEquipments(forceRefresh: true);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(online
+            ? 'Session en ligne rétablie : données à jour.'
+            : auth.lastLoginError ?? 'Reconnexion impossible pour le moment.'),
+      ));
+    } finally {
+      _askingPassword = false;
+    }
   }
 
   late final StreamSubscription<bool> _reconnection;
@@ -554,6 +592,57 @@ class _MainScreenState extends State<MainScreen> {
           ),
         );
       },
+    );
+  }
+}
+
+/// Mot de passe demandé au retour du réseau après une connexion hors ligne.
+class _ReconnectDialog extends StatefulWidget {
+  const _ReconnectDialog();
+
+  @override
+  State<_ReconnectDialog> createState() => _ReconnectDialogState();
+}
+
+class _ReconnectDialogState extends State<_ReconnectDialog> {
+  final _password = TextEditingController();
+
+  @override
+  void dispose() {
+    _password.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    if (_password.text.isNotEmpty) Navigator.pop(context, _password.text);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Le réseau est revenu'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Vous êtes connecté hors ligne. Entrez votre mot de passe pour mettre à jour '
+            'les équipements et envoyer vos ajouts.',
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _password,
+            obscureText: true,
+            autofocus: true,
+            decoration: const InputDecoration(labelText: 'Mot de passe'),
+            onSubmitted: (_) => _submit(),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Plus tard')),
+        TextButton(onPressed: _submit, child: const Text('Se reconnecter')),
+      ],
     );
   }
 }

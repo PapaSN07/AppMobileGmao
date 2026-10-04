@@ -484,16 +484,7 @@ class OTService {
         final created = await createOT(data);
         await PendingOtQueue.replaceCode(code, '${created.wowoCode}');
       case PendingOtKind.updateOT:
-        if (!action.force) {
-          _invalidateRaw(code);
-          final conflicts = OtConflict.detect(
-            baseline: action.baseline,
-            wanted: data,
-            current: await _rawWorkOrder(code) ?? const {},
-          );
-          if (conflicts.isNotEmpty) throw OtConflictException(conflicts);
-        }
-        await updateOT(int.parse(code), data);
+        await updateOT(int.parse(code), data, baseline: action.baseline, force: action.force);
       case PendingOtKind.createOperation:
         await createOperation(code, data);
       case PendingOtKind.updateOperation:
@@ -566,25 +557,39 @@ class OTService {
   ///
   /// Le statut est transmis à part, uniquement s'il a changé. `wowoJob`, la zone
   /// et l'entité demandeuse ne sont pas modifiables par l'API Coswin.
-  Future<void> updateOT(int workOrderCode, Map<String, dynamic> data) {
+  ///
+  /// Avec ou sans réseau, si Coswin a changé un des champs modifiés depuis que l'agent a
+  /// ouvert l'OT, lève [OtConflictException] (sauf [force] : l'agent a choisi sa version).
+  /// [baseline] : valeurs d'origine gardées avec une saisie hors ligne (envoi différé).
+  Future<void> updateOT(
+    int workOrderCode,
+    Map<String, dynamic> data, {
+    bool force = false,
+    Map<String, dynamic>? baseline,
+  }) {
     final code = '$workOrderCode';
+    // Valeurs d'origine : la fiche Coswin lue à l'ouverture de l'OT, avant la relecture ci-dessous
+    final origin = baseline ?? OtConflict.baselineFor(data, OfflineSnapshots.readMap(_rawSnapshotKey(code))?.data);
     return _sendOrQueue(
       PendingOtKind.updateOT,
       code,
       data: data,
-      // Valeurs d'origine (dernière fiche gardée) : permettent de voir si Coswin a changé entre-temps
-      baseline: OtConflict.baselineFor(data, OfflineSnapshots.readMap(_rawSnapshotKey(code))?.data),
-      send: () => _updateOT(code, data),
+      baseline: origin,
+      send: () => _updateOT(code, data, force ? const {} : origin),
       queued: () {},
     );
   }
 
-  Future<void> _updateOT(String code, Map<String, dynamic> data) {
+  Future<void> _updateOT(String code, Map<String, dynamic> data, Map<String, dynamic> origin) {
     final path = '/workorders/$code/update0';
 
     return _mutate('mettre à jour l\'OT', otCode: code, () async {
       final payload = OTPayloadRules.forUpdate(data, await _referentials.load());
+      // Relue juste avant l'envoi : c'est l'état actuel de Coswin qui compte
+      _invalidateRaw(code);
       final raw = await _rawWorkOrder(code);
+      final conflicts = OtConflict.detect(baseline: origin, wanted: data, current: raw ?? const {});
+      if (conflicts.isNotEmpty) throw OtConflictException(conflicts);
       // Taux inchangé : on garde le texte saisi dans Coswin (ex. « 100% suite vandalisme »).
       if (WorkOrder.parseCompletionRate(payload['wowoLongString2']) ==
           WorkOrder.parseCompletionRate(raw?['wowoLongString2'])) {
@@ -1156,6 +1161,8 @@ class OTService {
   Future<SaveTarget> _addComment(String otCode, String text, Map<String, dynamic> reportData, DateTime at) {
     return _withFirewallFallback(
       () => _mutate('ajouter le commentaire', otCode: otCode, () async {
+        // Historique relu juste avant : un commentaire ajouté entre-temps par un autre agent est gardé
+        _invalidateRaw(otCode);
         final raw = await _rawWorkOrder(otCode);
         final note = CoswinCommentLog.prepend(
           raw?['wowoFeedbackNote']?.toString(),

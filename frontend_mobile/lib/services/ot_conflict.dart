@@ -11,8 +11,36 @@ class OtConflictException implements Exception {
       '(${conflicts.map((c) => c.field).join(', ')}).';
 }
 
-/// Détection des conflits d'une modification d'OT faite sans réseau.
+/// Détection des conflits d'une modification d'OT (avec ou sans réseau).
 class OtConflict {
+  /// Libellés Senelec des champs d'OT (affichage des conflits).
+  static const Map<String, String> fieldLabels = {
+    'wowoJob': 'Intervention',
+    'wowoJobType': 'Type d\'intervention',
+    'wowoJobClass': 'Classe d\'intervention',
+    'wowoCostcentre': 'Centre de responsabilité',
+    'wowoEquipment': 'Équipement',
+    'wowoSupervisor': 'Superviseur',
+    'wowoUserStatus': 'Statut',
+    'wowoPriority': 'Priorité',
+    'wowoZone': 'Zone',
+    'wowoRequestEntity': 'Entité',
+    'wowoCompletionRate': 'Taux de réalisation',
+    'wowoLongString2': 'Taux de réalisation',
+    'wowoFeedbackNote': 'Commentaire',
+  };
+
+  static String labelOf(String field) => fieldLabels[field] ?? field;
+
+  /// Champs que l'agent a réellement changés depuis l'ouverture de l'écran : seuls ceux-là
+  /// partent à Coswin, pour ne pas réécrire avec d'anciennes valeurs ce qu'un autre a changé.
+  static Map<String, dynamic> changedFields(Map<String, dynamic> initial, Map<String, dynamic> current) {
+    return {
+      for (final entry in current.entries)
+        if (entry.key != 'wowoCode' && _text(entry.value) != _text(initial[entry.key])) entry.key: entry.value,
+    };
+  }
+
   /// Valeurs Coswin, au moment de la saisie, des champs que l'agent modifie.
   static Map<String, dynamic> baselineFor(Map<String, dynamic> wanted, Map<String, dynamic>? coswinOt) {
     if (coswinOt == null) return const {};

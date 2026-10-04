@@ -85,6 +85,17 @@ void main() {
       expect(conflicts.single.mine, 'PREVENTIF');
     });
 
+    test('only the fields the agent changed are sent', () {
+      final initial = {'wowoCode': 1, 'wowoJobType': 'CORRECTIF', 'wowoPriority': '2', 'wowoCompletionRate': 0.0};
+      final current = {'wowoCode': 1, 'wowoJobType': 'PREVENTIF', 'wowoPriority': '2', 'wowoCompletionRate': 0.0};
+      expect(OtConflict.changedFields(initial, current), {'wowoJobType': 'PREVENTIF'});
+      expect(OtConflict.changedFields(initial, initial), isEmpty);
+    });
+
+    test('a field added in the form counts as a change', () {
+      expect(OtConflict.changedFields({'wowoJob': 'A'}, {'wowoJob': 'A', 'wowoPriority': '1'}), {'wowoPriority': '1'});
+    });
+
     test('the baseline only keeps the fields being changed', () {
       expect(
         OtConflict.baselineFor({'wowoJobType': 'X'}, {'wowoJobType': 'CORRECTIF', 'wowoZone': 'DAKAR'}),

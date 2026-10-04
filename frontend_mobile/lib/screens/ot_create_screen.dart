@@ -1,3 +1,4 @@
+import 'package:appmobilegmao/services/ot_conflict.dart';
 import 'package:appmobilegmao/services/pending_ot_queue.dart';
 import 'package:appmobilegmao/theme/app_theme.dart';
 import 'dart:async';
@@ -228,6 +229,9 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
 
       final normStatus = ot.wowoUserStatus.trim().toUpperCase();
       _status = OTStatus.normalize(normStatus) ?? normStatus;
+
+      // Valeurs à l'ouverture : seuls les champs changés depuis partiront à Coswin
+      _initialOtData = _otFormData(_codeController.text.trim());
 
       _isLoadingData = true;
       _loadAllSubResources();
@@ -721,6 +725,74 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
     );
   }
 
+  /// En-tête de l'OT tel que saisi dans le formulaire.
+  Map<String, dynamic> _otFormData(String code) => {
+        'wowoCode': int.tryParse(code) ?? 2026999999,
+        'wowoJob': _jobController.text.trim(),
+        'wowoJobType': _jobTypeController.text.trim(),
+        'wowoJobClass': _jobClassController.text.trim(),
+        'wowoZone': _zoneController.text.trim(),
+        'wowoRequestEntity': _entityController.text.trim(),
+        'wowoCostcentre': _costcentreController.text.trim(),
+        'wowoEquipment': _equipmentController.text.trim(),
+        'wowoSupervisor': _supervisorController.text.trim(),
+        'wowoCompletionRate': _completionRate,
+        if (_priority.trim().isNotEmpty) 'wowoPriority': _priority.trim(),
+        'wowoUserStatus': _status,
+      };
+
+  /// En-tête de l'OT à l'ouverture de l'écran (modification).
+  Map<String, dynamic> _initialOtData = const {};
+
+  /// Envoie les champs modifiés de l'OT. Si Coswin a changé l'un d'eux depuis l'ouverture,
+  /// l'agent choisit ; false s'il garde la version de Coswin (rien n'est envoyé).
+  Future<bool> _saveOtHeader(Map<String, dynamic> changes) async {
+    if (changes.isEmpty) return true;
+    final code = widget.orderToEdit!.wowoCode;
+    try {
+      await _otService.updateOT(code, changes);
+      return true;
+    } on OtConflictException catch (conflict) {
+      if (!await _confirmOverwrite(conflict)) return false;
+      await _otService.updateOT(code, changes, force: true);
+      return true;
+    }
+  }
+
+  Future<bool> _confirmOverwrite(OtConflictException conflict) async {
+    final choice = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('OT modifié dans Coswin'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text("Quelqu'un a changé ces champs depuis que vous avez ouvert l'OT :"),
+              const SizedBox(height: 12),
+              for (final c in conflict.conflicts)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Text(
+                    '${OtConflict.labelOf(c.field)}\n'
+                    'Coswin : ${c.coswin.isEmpty ? '(vide)' : c.coswin}\n'
+                    'Votre valeur : ${c.mine.isEmpty ? '(vide)' : c.mine}',
+                  ),
+                ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Garder Coswin')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Envoyer ma version')),
+        ],
+      ),
+    );
+    return choice == true;
+  }
+
   Future<void> _handleSaveGlobal() async {
     final missing = _missingRequiredFields();
     final supervisor = _supervisorController.text.trim();
@@ -745,20 +817,7 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
     try {
       final code = _isEditMode ? _codeController.text.trim() : (_autoGenerateCode ? _generateRandomCode() : _codeController.text.trim());
 
-      final Map<String, dynamic> otData = {
-        'wowoCode': int.tryParse(code) ?? 2026999999,
-        'wowoJob': _jobController.text.trim(),
-        'wowoJobType': _jobTypeController.text.trim(),
-        'wowoJobClass': _jobClassController.text.trim(),
-        'wowoZone': _zoneController.text.trim(),
-        'wowoRequestEntity': _entityController.text.trim(),
-        'wowoCostcentre': _costcentreController.text.trim(),
-        'wowoEquipment': _equipmentController.text.trim(),
-        'wowoSupervisor': _supervisorController.text.trim(),
-        'wowoCompletionRate': _completionRate,
-        if (_priority.trim().isNotEmpty) 'wowoPriority': _priority.trim(),
-        'wowoUserStatus': _status,
-      };
+      final otData = _otFormData(code);
 
       // Création : les commentaires saisis partent directement dans le champ Commentaire de Coswin
       if (!_isEditMode) {
@@ -772,13 +831,24 @@ class _OTCreateScreenState extends State<OTCreateScreen> with SingleTickerProvid
       final String finalOTCode;
 
       if (_isEditMode) {
-        // Mode Édition : Mise à jour de l'OT principal (Onglet 0)
+        // Mode Édition : seuls les champs modifiés de l'OT principal (Onglet 0)
         finalOTCode = widget.orderToEdit!.wowoCode.toString();
+        final bool saved;
         try {
-          await _otService.updateOT(widget.orderToEdit!.wowoCode, otData);
+          saved = await _saveOtHeader(OtConflict.changedFields(_initialOtData, otData));
         } catch (e) {
           _tabController.animateTo(0);
           throw Exception("Informations générales : $e");
+        }
+        if (!saved) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              duration: Duration(seconds: 6),
+              content: Text("Enregistrement annulé : l'OT a changé dans Coswin. "
+                  'Rouvrez-le pour voir ses nouvelles valeurs.'),
+            ));
+          }
+          return;
         }
 
         // --- EXÉCUTER LES SUPPRESSIONS D'ÉLÉMENTS ---
